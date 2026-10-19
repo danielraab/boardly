@@ -87,6 +87,19 @@ User
 
 ## Development
 
+### Workflow
+
+All code changes go through **OpenSpec**. Every change starts as a proposal in
+`openspec/changes/` (proposal, design, specs, tasks). It is then implemented and
+finally archived into `openspec/specs/`.
+
+```
+/opsx:explore  →  /opsx:propose  →  /opsx:apply  →  /opsx:archive
+```
+
+Typo fixes, formatting, dependency bumps and documentation-only edits don't need a change. See
+[CLAUDE.md](CLAUDE.md) for the full rules.
+
 ### Frontend
 
 ```bash
