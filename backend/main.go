@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
 
+	"famodash/internal/aaguid"
 	"famodash/internal/auth"
 	"famodash/internal/config"
 	"famodash/internal/db"
@@ -30,7 +32,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("configuration: %w", err)
 	}
@@ -50,6 +52,14 @@ func run() error {
 
 	userStore := users.NewStore(database)
 	authService := auth.NewService(database, userStore, mail.New(cfg.SMTP), cfg.BaseURL)
+	if authService.WebAuthn, err = auth.NewWebAuthn(cfg.WebAuthnRPID, cfg.Origin()); err != nil {
+		return err
+	}
+	if cfg.AAGUIDListURL != "" {
+		providers := aaguid.New(cfg.AAGUIDListURL, filepath.Join(filepath.Dir(cfg.DBPath), "aaguids.json"))
+		authService.Providers = providers
+		go providers.Run(ctx)
+	}
 	go authService.RunJanitor(ctx, time.Hour)
 
 	srv := &http.Server{
@@ -68,7 +78,7 @@ func run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath, "base_url", cfg.BaseURL.String())
+		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath, "base_url", cfg.BaseURL.String(), "webauthn_rp_id", cfg.WebAuthnRPID)
 		errCh <- srv.ListenAndServe()
 	}()
 

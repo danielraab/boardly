@@ -4,7 +4,7 @@
 		"signIn": "Anmelden",
 		"language": "Sprache",
 		"loading": "Wird geladen…",
-		"profile": "Profil",
+		"settings": "Einstellungen",
 		"signOut": "Abmelden"
 	},
 	"notFound": {
@@ -24,7 +24,11 @@
 		"resendIn": "Neuen Link senden in {{seconds}} s",
 		"useOther": "Andere E-Mail-Adresse verwenden",
 		"invalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
-		"rateLimited": "Zu viele Anfragen. Versuche es in {{seconds}} s noch einmal."
+		"rateLimited": "Zu viele Anfragen. Versuche es in {{seconds}} s noch einmal.",
+		"or": "oder",
+		"passkey": "Mit Passkey anmelden",
+		"passkeyUnknown": "Dieser Passkey ist nicht mehr gültig. Melde dich stattdessen mit einem E-Mail-Link an.",
+		"passkeyInvalid": "Der Passkey konnte nicht geprüft werden. Versuche es noch einmal oder melde dich mit einem E-Mail-Link an."
 	},
 	"landing": {
 		"hero": {
@@ -67,8 +71,15 @@
 		"placeholderTitle": "Hier erscheinen deine Dashboards",
 		"placeholderText": "Dashboards kommen bald. Du wirst sie direkt auf dieser Seite gestalten und bearbeiten."
 	},
+	"settings": {
+		"title": "Einstellungen",
+		"tabs": {
+			"label": "Einstellungsbereiche",
+			"profile": "Profil",
+			"passkeys": "Passkeys"
+		}
+	},
 	"profile": {
-		"title": "Profil",
 		"email": "E-Mail-Adresse",
 		"nameLabel": "Anzeigename",
 		"namePlaceholder": "Namen hinzufügen",
@@ -77,5 +88,35 @@
 		"saving": "Wird gespeichert…",
 		"saved": "Gespeichert.",
 		"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein."
+	},
+	"passkeys": {
+		"intro": "Mit Passkeys meldest du dich per Fingerabdruck, Gesicht oder Geräte-PIN an statt mit einem E-Mail-Link.",
+		"windowOpen": "Du hast dich mit einem E-Mail-Link angemeldet und kannst noch Passkeys hinzufügen für",
+		"remaining": "Verbleibende Zeit zum Hinzufügen von Passkeys",
+		"windowClosed": "Um einen Passkey hinzuzufügen, melde dich zuerst mit einem E-Mail-Link an. Danach kannst du 5 Minuten lang Passkeys hinzufügen.",
+		"unsupported": "Dieser Browser unterstützt keine Passkeys. Verwende einen anderen Browser oder ein anderes Gerät, um einen hinzuzufügen.",
+		"sendLink": "Anmeldelink senden",
+		"linkSent": "Wir haben einen Anmeldelink an {{email}} geschickt. Öffne ihn, um Passkeys hinzuzufügen.",
+		"linkRateLimited": "Zu viele Anfragen. Versuche es in einer Minute noch einmal.",
+		"add": "Passkey hinzufügen",
+		"addTitle": "Passkey hinzufügen",
+		"addText": "Gib dem Passkey einen Namen, damit du ihn später wiedererkennst. Danach fordert dich dein Browser auf, ihn zu erstellen.",
+		"labelLabel": "Name (optional)",
+		"labelPlaceholder": "z. B. Arbeitslaptop",
+		"labelTooLong": "Der Name darf höchstens 64 Zeichen lang sein.",
+		"alreadyRegistered": "Dieses Gerät oder dieser Passwortmanager hat bereits einen Passkey für dein Konto.",
+		"continue": "Weiter",
+		"adding": "Warte auf den Browser…",
+		"cancel": "Abbrechen",
+		"emptyTitle": "Noch keine Passkeys",
+		"emptyText": "Füge einen Passkey hinzu, um dich nächstes Mal mit einem Tipp anzumelden. Jedes Gerät und jeder Passwortmanager bekommt einen eigenen Passkey.",
+		"fallbackName": "Passkey",
+		"created": "Hinzugefügt am {{date}}",
+		"lastUsed": "zuletzt verwendet am {{date}}",
+		"neverUsed": "noch nie verwendet",
+		"delete": "Passkey {{name}} löschen",
+		"deleteTitle": "Passkey löschen?",
+		"deleteText": "Du kannst dich dann nicht mehr mit „{{name}}“ anmelden. Die Anmeldung per E-Mail-Link funktioniert weiterhin.",
+		"deleteConfirm": "Löschen"
 	}
 }

@@ -6,8 +6,11 @@ import (
 	"testing"
 )
 
-func env(vars map[string]string) func(string) string {
-	return func(k string) string { return vars[k] }
+func env(vars map[string]string) func(string) (string, bool) {
+	return func(k string) (string, bool) {
+		v, ok := vars[k]
+		return v, ok
+	}
 }
 
 func TestLoadDefaults(t *testing.T) {
@@ -92,6 +95,8 @@ func TestLoadInvalid(t *testing.T) {
 		{"smtp port not a number", "FAMODASH_SMTP_PORT", "smtp"},
 		{"unknown TLS mode", "FAMODASH_SMTP_TLS", "ssl"},
 		{"proxy flag not a bool", "FAMODASH_TRUST_PROXY_HEADERS", "maybe"},
+		{"RP ID of another host", "FAMODASH_WEBAUTHN_RP_ID", "example.org"},
+		{"AAGUID list URL relative", "FAMODASH_AAGUID_LIST_URL", "/aaguids.json"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -101,6 +106,58 @@ func TestLoadInvalid(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tt.key) {
 				t.Fatalf("error %q does not name %s", err, tt.key)
+			}
+		})
+	}
+}
+
+func TestWebAuthnRPID(t *testing.T) {
+	tests := []struct {
+		name, baseURL, rpID, want string
+	}{
+		{"default dev", "", "", "localhost"},
+		{"default from base URL host", "https://home.example.org:8443/dash", "", "home.example.org"},
+		{"override with parent domain", "https://home.example.org", "example.org", "example.org"},
+		{"override with same host", "https://home.example.org", "HOME.example.org", "HOME.example.org"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vars := map[string]string{}
+			if tt.baseURL != "" {
+				vars["FAMODASH_BASE_URL"] = tt.baseURL
+			}
+			if tt.rpID != "" {
+				vars["FAMODASH_WEBAUTHN_RP_ID"] = tt.rpID
+			}
+			cfg, err := Load(env(vars))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.WebAuthnRPID != tt.want {
+				t.Fatalf("WebAuthnRPID = %q, want %q", cfg.WebAuthnRPID, tt.want)
+			}
+		})
+	}
+}
+
+func TestAAGUIDListURL(t *testing.T) {
+	tests := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"unset uses upstream", nil, DefaultAAGUIDListURL},
+		{"self-hosted", map[string]string{"FAMODASH_AAGUID_LIST_URL": "https://files.example.org/aaguids.json"}, "https://files.example.org/aaguids.json"},
+		{"empty disables", map[string]string{"FAMODASH_AAGUID_LIST_URL": ""}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(tt.vars))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.AAGUIDListURL != tt.want {
+				t.Fatalf("AAGUIDListURL = %q, want %q", cfg.AAGUIDListURL, tt.want)
 			}
 		})
 	}

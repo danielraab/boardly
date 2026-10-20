@@ -84,6 +84,11 @@ func newServer(t *testing.T) *server {
 	store.Now = c.Now
 	svc := auth.NewService(database, store, box, base)
 	svc.Now = c.Now
+	var err error
+	if svc.WebAuthn, err = auth.NewWebAuthn(base.Hostname(), testOrigin); err != nil {
+		t.Fatal(err)
+	}
+	svc.Providers = testProviders(t)
 
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store,
@@ -526,7 +531,7 @@ func TestMe(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if len(body) != 3 || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" {
+	if len(body) != 4 || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" {
 		t.Fatalf("body = %v", body)
 	}
 }
@@ -724,5 +729,55 @@ func TestUnconfirmedInvalidTokenIsStillInvalid(t *testing.T) {
 		if rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_token" {
 			t.Fatalf("%s: got %d %s", body, rec.Code, rec.Body)
 		}
+	}
+}
+
+// --- passkeys 3.2: enrollment window ---
+
+func enrollmentUntil(t *testing.T, rec *httptest.ResponseRecorder) any {
+	t.Helper()
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	v, ok := body["passkeyEnrollmentUntil"]
+	if !ok {
+		t.Fatalf("no passkeyEnrollmentUntil in %s", rec.Body)
+	}
+	return v
+}
+
+func TestMeEnrollmentWindowAfterMagicLink(t *testing.T) {
+	s := newServer(t)
+	signedInAt := s.clock.Now()
+	want := signedInAt.Add(5 * time.Minute).Format(time.RFC3339)
+
+	// The verify response already carries the window, so the client cache has it.
+	verify := s.req("POST", "/api/auth/magic-link/verify", `{"token":"`+s.requestToken(t, "ann@example.org")+`","confirm":true}`)
+	if got := enrollmentUntil(t, verify); got != want {
+		t.Fatalf("verify passkeyEnrollmentUntil = %v, want %s", got, want)
+	}
+	cookie := sessionCookie(verify).Value
+	s.clock.Advance(61 * time.Second)
+
+	rec := s.req("GET", "/api/me", "", withCookie(cookie))
+	if got := enrollmentUntil(t, rec); got != want {
+		t.Fatalf("passkeyEnrollmentUntil = %v, want %s", got, want)
+	}
+	var mode string
+	_ = s.db.QueryRow(`SELECT auth_method FROM sessions`).Scan(&mode)
+	if mode != "magic_link" {
+		t.Fatalf("auth_method = %q", mode)
+	}
+
+	// PATCH returns the same shape, so the client cache keeps the window.
+	rec = s.req("PATCH", "/api/me", `{"name":"Ann"}`, withCookie(cookie))
+	if got := enrollmentUntil(t, rec); got != want {
+		t.Fatalf("PATCH passkeyEnrollmentUntil = %v, want %s", got, want)
+	}
+
+	s.clock.Advance(4 * time.Minute)
+	if got := enrollmentUntil(t, s.req("GET", "/api/me", "", withCookie(cookie))); got != nil {
+		t.Fatalf("after the window: passkeyEnrollmentUntil = %v, want null", got)
 	}
 }

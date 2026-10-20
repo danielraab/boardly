@@ -21,7 +21,7 @@ The server SHALL serve the REST API under `/api/` and the built web app from the
 For a `GET` request outside `/api/` whose path matches no built file, the server SHALL respond with the web app's HTML document and status 200, so client-side routes work on reload.
 
 #### Scenario: Deep link reload
-- **WHEN** a client requests `GET /profile` directly
+- **WHEN** a client requests `GET /settings` directly
 - **THEN** the server responds with status 200 and the web app's HTML document
 
 ### Requirement: API errors use a JSON format

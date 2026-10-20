@@ -1,6 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import { Link } from "@tanstack/react-router";
-import { CircleUserRound, LogIn, LogOut, UserRound } from "lucide-react";
+import { CircleUserRound, LogIn, LogOut, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMe, useSignOut } from "#/features/auth/session";
 import { headerButton, menuItem, menuPopup } from "./menuStyles";
@@ -43,10 +43,10 @@ export function UserMenu() {
 								<Menu.LinkItem
 									closeOnClick
 									className={menuItem}
-									render={<Link to="/profile" />}
+									render={<Link to="/settings" />}
 								>
-									<UserRound className="size-4 text-muted" aria-hidden />
-									{t("shell.profile")}
+									<Settings className="size-4 text-muted" aria-hidden />
+									{t("shell.settings")}
 								</Menu.LinkItem>
 								<Menu.Item className={menuItem} onClick={() => void signOut()}>
 									<LogOut className="size-4 text-muted" aria-hidden />

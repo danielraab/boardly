@@ -152,6 +152,8 @@ precedence over the file.
 | `FAMODASH_SMTP_FROM` | `Famodash <noreply@localhost>` | Sender address of sign-in emails |
 | `FAMODASH_SMTP_TLS` | `starttls` | `starttls` (required STARTTLS, usually port 587), `tls` (implicit TLS, usually port 465) or `none` |
 | `FAMODASH_TRUST_PROXY_HEADERS` | `false` | Take the client IP from `X-Forwarded-For` (for rate limiting). Enable it only behind a reverse proxy that sets this header |
+| `FAMODASH_WEBAUTHN_RP_ID` | host name of `FAMODASH_BASE_URL` | Relying party ID that passkeys are bound to. It must be the base URL's host name or a parent domain of it (e.g. `example.org` for `dash.example.org`) |
+| `FAMODASH_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
 back, stop the server and restore a backup of the database file.
@@ -188,6 +190,30 @@ Mailpit instead (http://localhost:8025).
   the proxy as a whole. Don't enable it when the server is reachable without the proxy, because
   clients could then fake their IP.
 
+### Passkeys
+
+Signed-in users can add passkeys on **Settings → Passkeys** and then sign in on `/login` with
+**Sign in with passkey** or by picking the passkey in the email field's autofill. No email
+address needs to be typed.
+
+- **Adding needs a fresh email sign-in.** A passkey can only be added within **5 minutes** after
+  signing in with a magic link, in the browser session that opened the link. Signing in with a
+  passkey never allows adding one, so a stolen or forgotten-open session can't add its own
+  passkey. When the window is closed, the Passkeys tab offers **Send sign-in link** to get a new
+  link. Deleting a passkey is allowed at any time.
+- **Passkeys are bound to the host name.** They belong to the relying party ID, which is the host
+  name of `FAMODASH_BASE_URL` (or `FAMODASH_WEBAUTHN_RP_ID`). If you later move Famodash to
+  another host name, existing passkeys stop working. Users can still sign in with an email link
+  and add new passkeys. Browsers only allow passkeys on `https://` sites and on `localhost`.
+- **Provider names and icons** ("iCloud Keychain", "Google Password Manager", …) come from the
+  community [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids)
+  list. The server downloads it (about 7 MB) and caches it as `aaguids.json` next to the
+  database, and downloads it again once the copy is a day old. This needs outbound HTTPS to `raw.githubusercontent.com`.
+  Without it, passkeys are shown as "Passkey" with a generic icon and otherwise work the same.
+  For servers without internet access, download `combined_aaguid.json` yourself, serve it from
+  a URL the server can reach and set `FAMODASH_AAGUID_LIST_URL` to it. The list isn't shipped
+  with Famodash because upstream declares no license.
+
 ### Translations
 
 UI texts live in `frontend/src/locales/en.json` and `de.json`. Both files must have the same
@@ -195,4 +221,4 @@ keys; a test checks this.
 
 ## Status
 
-Early development. Sign-in with magic links, the profile page and the landing page work; the other features described above are the target scope and are not implemented yet.
+Early development. Sign-in with magic links and passkeys, the settings page and the landing page work; the other features described above are the target scope and are not implemented yet.
