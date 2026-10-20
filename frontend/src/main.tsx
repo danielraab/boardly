@@ -3,9 +3,11 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { createQueryClient } from "#/features/auth/session";
 import { initI18n } from "#/i18n";
+import { initTheme } from "#/theme";
 import { routeTree } from "./routeTree.gen";
 
 initI18n();
+initTheme();
 
 const queryClient = createQueryClient();
 

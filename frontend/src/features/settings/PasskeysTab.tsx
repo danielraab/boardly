@@ -23,6 +23,7 @@ import {
 } from "#/features/auth/passkey";
 import { meQueryKey, type User } from "#/features/auth/session";
 import { ApiError, api } from "#/lib/api";
+import { useThemeMode } from "#/theme";
 
 const MAX_LABEL = 64;
 
@@ -81,7 +82,7 @@ export function PasskeysTab({ user }: { user: User }) {
 				{passkeys.isPending ? (
 					<p className="text-muted">{t("common.loading")}</p>
 				) : passkeys.isError ? (
-					<p role="alert" className="text-sm text-red-700">
+					<p role="alert" className="text-sm text-danger">
 						{t("common.genericError")}
 					</p>
 				) : passkeys.data.length === 0 ? (
@@ -174,7 +175,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 				</output>
 			)}
 			{send.isError && (
-				<p role="alert" className="mt-3 text-sm text-red-700">
+				<p role="alert" className="mt-3 text-sm text-danger">
 					{send.error instanceof ApiError && send.error.code === "rate_limited"
 						? t("passkeys.linkRateLimited")
 						: t("common.genericError")}
@@ -265,7 +266,7 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 							className={textInput}
 						/>
 						{message && (
-							<p role="alert" className="mt-3 text-sm text-red-700">
+							<p role="alert" className="mt-3 text-sm text-danger">
 								{message}
 							</p>
 						)}
@@ -289,8 +290,10 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 }
 
 function ProviderIcon({ passkey }: { passkey: Passkey }) {
-	// The app has a light theme only, so the light variant comes first.
-	const src = passkey.provider?.iconLight ?? passkey.provider?.iconDark;
+	const mode = useThemeMode();
+	const { iconLight, iconDark } = passkey.provider ?? {};
+	const src =
+		mode === "dark" ? (iconDark ?? iconLight) : (iconLight ?? iconDark);
 	if (!src) {
 		return (
 			<KeyRound
@@ -336,7 +339,7 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 			</div>
 			<AlertDialog.Root onOpenChange={(open) => open && remove.reset()}>
 				<AlertDialog.Trigger
-					className="inline-flex size-9 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-red-700"
+					className="inline-flex size-9 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-danger"
 					aria-label={t("passkeys.delete", { name })}
 				>
 					<Trash2 className="size-4" aria-hidden />
@@ -351,7 +354,7 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 							{t("passkeys.deleteText", { name })}
 						</AlertDialog.Description>
 						{remove.isError && (
-							<p role="alert" className="mt-3 text-sm text-red-700">
+							<p role="alert" className="mt-3 text-sm text-danger">
 								{t("common.genericError")}
 							</p>
 						)}

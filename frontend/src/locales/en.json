@@ -1,12 +1,23 @@
 {
 	"shell": {
 		"userMenu": "User menu",
+		"theme": "Theme",
 		"signIn": "Sign in",
 		"language": "Language",
 		"loading": "Loading…",
 		"favourites": "Favourites",
 		"settings": "Settings",
 		"signOut": "Sign out"
+	},
+	"theme": {
+		"system": "System",
+		"white": "White",
+		"black": "Black",
+		"sand": "Sand",
+		"sage": "Sage",
+		"fjord": "Fjord",
+		"dusk": "Dusk",
+		"ember": "Ember"
 	},
 	"notFound": {
 		"title": "Page not found",

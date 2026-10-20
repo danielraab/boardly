@@ -72,6 +72,12 @@ Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep 
   - the client can only see the subtree below its root and nothing outside it.
 - A user can have several tokens with different roots, for example one per device or per purpose.
 
+### Themes
+
+The palette button in the header switches between 7 color themes: **White**, **Black**, **Sand**,
+**Sage** (light) and **Fjord**, **Dusk**, **Ember** (dark). The default, **System**, follows the
+operating system's light or dark setting. The choice is remembered in the browser.
+
 ## Concept overview
 
 ```
@@ -304,6 +310,15 @@ address needs to be typed.
 
 UI texts live in `frontend/src/locales/en.json` and `de.json`. Both files must have the same
 keys; a test checks this.
+
+### Themes
+
+Each theme is a `[data-theme="…"]` block in `frontend/src/styles.css` that sets all color tokens
+(`paper`, `surface`, `ink`, `muted`, `line`, `accent`, `danger`, `on-danger`, `shadow`). Components
+use only these tokens, never raw Tailwind colors. To add a theme, add its block, add it to the list
+in `frontend/src/theme/index.ts` and to the inline script in `frontend/index.html`, and add its name
+to both locale files. Tests check that every theme defines all tokens, meets the WCAG contrast
+minimums, and that the inline script matches the theme list.
 
 ## Status
 
