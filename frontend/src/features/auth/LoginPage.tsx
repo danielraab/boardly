@@ -1,16 +1,107 @@
-import { useMutation } from "@tanstack/react-query";
-import { MailCheck } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { WebAuthnAbortService } from "@simplewebauthn/browser";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { KeyRound, MailCheck } from "lucide-react";
+import {
+	type FormEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { ApiError, api } from "#/lib/api";
+import {
+	isCancelled,
+	signInWithPasskey,
+	supportsPasskeyAutofill,
+	supportsPasskeys,
+} from "./passkey";
+import { meQueryKey, type User } from "./session";
 import { useCountdown } from "./useCountdown";
 
 const RESEND_SECONDS = 60;
 
-type Problem = "invalidEmail" | "rateLimited" | "generic";
+type Problem =
+	| "invalidEmail"
+	| "rateLimited"
+	| "passkeyUnknown"
+	| "passkeyInvalid"
+	| "generic";
 
 export const primaryButton =
 	"inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 font-medium text-paper hover:bg-ink/85 disabled:cursor-not-allowed disabled:bg-ink/40";
+
+export const secondaryButton =
+	"inline-flex items-center justify-center gap-2 rounded-full border border-line px-6 py-3 font-medium text-ink hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50";
+
+function passkeyProblem(error: unknown): Problem | null {
+	if (isCancelled(error)) return null;
+	if (error instanceof ApiError && error.code === "passkey_unknown") {
+		return "passkeyUnknown";
+	}
+	if (error instanceof ApiError && error.code === "passkey_invalid") {
+		return "passkeyInvalid";
+	}
+	return "generic";
+}
+
+/**
+ * Passkey sign-in for the login page: autofill on the email field (where the
+ * browser supports it) and a modal prompt for the button.
+ */
+function usePasskeySignIn(onProblem: (problem: Problem | null) => void) {
+	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	const [supported] = useState(supportsPasskeys);
+	const [pending, setPending] = useState(false);
+	const active = useRef(true);
+
+	const signedIn = useCallback(
+		async (user: User) => {
+			queryClient.setQueryData(meQueryKey, user);
+			await navigate({ to: "/" });
+		},
+		[queryClient, navigate],
+	);
+
+	const startAutofill = useCallback(async () => {
+		if (!(await supportsPasskeyAutofill()) || !active.current) return;
+		try {
+			await signedIn(await signInWithPasskey(true));
+		} catch (e) {
+			// An aborted autofill request was replaced by the button or the page closed.
+			if (!active.current || isCancelled(e)) return;
+			onProblem(passkeyProblem(e));
+			if (e instanceof ApiError) void startAutofill();
+		}
+	}, [signedIn, onProblem]);
+
+	useEffect(() => {
+		active.current = true;
+		if (supported) void startAutofill();
+		return () => {
+			active.current = false;
+			WebAuthnAbortService.cancelCeremony();
+		};
+	}, [supported, startAutofill]);
+
+	async function signInWithButton() {
+		onProblem(null);
+		setPending(true);
+		try {
+			await signedIn(await signInWithPasskey(false));
+		} catch (e) {
+			if (!active.current) return;
+			onProblem(passkeyProblem(e));
+			void startAutofill();
+		} finally {
+			if (active.current) setPending(false);
+		}
+	}
+
+	return { supported, pending, signInWithButton };
+}
 
 export function LoginPage() {
 	const { t, i18n } = useTranslation();
@@ -18,6 +109,7 @@ export function LoginPage() {
 	const [sentTo, setSentTo] = useState<string | null>(null);
 	const [problem, setProblem] = useState<Problem | null>(null);
 	const countdown = useCountdown();
+	const passkey = usePasskeySignIn(setProblem);
 
 	const request = useMutation({
 		mutationFn: (address: string) =>
@@ -58,9 +150,13 @@ export function LoginPage() {
 				: null
 			: problem === "invalidEmail"
 				? t("login.invalidEmail")
-				: problem === "generic"
-					? t("common.genericError")
-					: null;
+				: problem === "passkeyUnknown"
+					? t("login.passkeyUnknown")
+					: problem === "passkeyInvalid"
+						? t("login.passkeyInvalid")
+						: problem === "generic"
+							? t("common.genericError")
+							: null;
 	const alert = message && (
 		<p role="alert" className="mt-4 text-sm text-red-700">
 			{message}
@@ -126,7 +222,7 @@ export function LoginPage() {
 					id="login-email"
 					type="email"
 					name="email"
-					autoComplete="username"
+					autoComplete={passkey.supported ? "username webauthn" : "username"}
 					required
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
@@ -140,6 +236,20 @@ export function LoginPage() {
 					{request.isPending ? t("login.sending") : t("login.submit")}
 				</button>
 			</form>
+			{passkey.supported && (
+				<>
+					<p className="mt-6 text-sm text-muted">{t("login.or")}</p>
+					<button
+						type="button"
+						className={`${secondaryButton} mt-4 w-full`}
+						disabled={passkey.pending}
+						onClick={() => void passkey.signInWithButton()}
+					>
+						<KeyRound className="size-5" strokeWidth={1.75} aria-hidden />
+						{t("login.passkey")}
+					</button>
+				</>
+			)}
 			{alert}
 		</section>
 	);

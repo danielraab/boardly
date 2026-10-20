@@ -71,23 +71,23 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Profile and Sign out in this order", async () => {
+	it("shows name, email, Settings and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
-		expect(menu.textContent).toBe("Annann@example.orgProfileSign out");
+		expect(menu.textContent).toBe("Annann@example.orgSettingsSign out");
 		expect(
 			within(menu)
 				.getAllByRole("menuitem")
 				.map((i) => i.textContent),
-		).toEqual(["Profile", "Sign out"]);
+		).toEqual(["Settings", "Sign out"]);
 	});
 
 	it("shows the email without an empty name line when there is no name", async () => {
 		mockApi({ "GET /api/me": signedIn() });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
-		expect(menu.textContent).toBe("ann@example.orgProfileSign out");
+		expect(menu.textContent).toBe("ann@example.orgSettingsSign out");
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
 		).toBeNull();
@@ -102,13 +102,13 @@ describe("signed-in user menu", () => {
 		expect(within(menu).queryAllByRole("menuitem")).toHaveLength(0);
 	});
 
-	it("goes to /profile from the Profile item and closes the menu", async () => {
+	it("goes to /settings from the Settings item and closes the menu", async () => {
 		mockApi({ "GET /api/me": signedIn() });
 		const { user, router } = renderApp("/");
 		const menu = await openMenu(user);
-		await user.click(within(menu).getByRole("menuitem", { name: "Profile" }));
+		await user.click(within(menu).getByRole("menuitem", { name: "Settings" }));
 		await waitFor(() =>
-			expect(router.state.location.pathname).toBe("/profile"),
+			expect(router.state.location.pathname).toBe("/settings"),
 		);
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 	});
@@ -118,8 +118,8 @@ describe("signed-in user menu", () => {
 			"GET /api/me": signedIn(),
 			"POST /api/auth/logout": { status: 204 },
 		});
-		const { user, router } = renderApp("/profile");
-		await screen.findByRole("heading", { name: "Profile" });
+		const { user, router } = renderApp("/settings");
+		await screen.findByRole("heading", { name: "Settings" });
 		await user.click(screen.getByRole("button", { name: "User menu" }));
 		await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
 

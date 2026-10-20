@@ -1,0 +1,14 @@
+{
+  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
+    "name": "Google Password Manager",
+    "icon_dark": "data:image/svg+xml;base64,ZGFyaw==",
+    "icon_light": "data:image/svg+xml;base64,bGlnaHQ="
+  },
+  "FBFC3007-154E-4ECC-8C0B-6E020557D7BD": {
+    "name": "iCloud Keychain"
+  },
+  "bada5566-a7aa-401f-bd96-45619a55120d": {
+    "name": "1Password",
+    "icon_light": "https://example.org/not-a-data-uri.svg"
+  }
+}

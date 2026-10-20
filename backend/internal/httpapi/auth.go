@@ -82,7 +82,7 @@ func (a *api) verifyLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	a.setSessionCookie(w, sess)
 	http.SetCookie(w, a.loginRequestCookie("", -1))
-	WriteJSON(w, http.StatusOK, user)
+	WriteJSON(w, http.StatusOK, me{User: user, PasskeyEnrollmentUntil: sess.EnrollmentUntil})
 	return nil
 }
 
@@ -97,10 +97,26 @@ func (a *api) logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// me is the response of GET /api/me: the user plus the session's passkey
+// enrollment window (nil when none is open).
+type me struct {
+	users.User
+	PasskeyEnrollmentUntil *time.Time `json:"passkeyEnrollmentUntil"`
+}
+
 func (a *api) getMe(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
-	WriteJSON(w, http.StatusOK, user)
+	a.writeMe(w, r, user)
 	return nil
+}
+
+func (a *api) writeMe(w http.ResponseWriter, r *http.Request, user users.User) {
+	sess, _ := CurrentSession(r.Context())
+	body := me{User: user}
+	if sess.EnrollmentOpen(a.auth.Now()) {
+		body.PasskeyEnrollmentUntil = sess.EnrollmentUntil
+	}
+	WriteJSON(w, http.StatusOK, body)
 }
 
 func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
@@ -128,7 +144,7 @@ func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	WriteJSON(w, http.StatusOK, user)
+	a.writeMe(w, r, user)
 	return nil
 }
 
@@ -136,10 +152,18 @@ var errUnauthenticated = NewError(http.StatusUnauthorized, "unauthenticated", "S
 
 type userKey struct{}
 
+type sessionKey struct{}
+
 // CurrentUser returns the signed-in user that requireUser put into the context.
 func CurrentUser(ctx context.Context) (users.User, bool) {
 	u, ok := ctx.Value(userKey{}).(users.User)
 	return u, ok
+}
+
+// CurrentSession returns the session that requireUser put into the context.
+func CurrentSession(ctx context.Context) (auth.Session, bool) {
+	s, ok := ctx.Value(sessionKey{}).(auth.Session)
+	return s, ok
 }
 
 // requireUser loads the session and its user, renews the cookie when the session
@@ -167,7 +191,9 @@ func (a *api) requireUser(next HandlerFunc) HandlerFunc {
 		if sess.Renewed {
 			a.setSessionCookie(w, sess)
 		}
-		return next(w, r.WithContext(context.WithValue(r.Context(), userKey{}, user)))
+		ctx := context.WithValue(r.Context(), userKey{}, user)
+		ctx = context.WithValue(ctx, sessionKey{}, sess)
+		return next(w, r.WithContext(ctx))
 	}
 }
 

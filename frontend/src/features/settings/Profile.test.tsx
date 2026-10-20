@@ -12,12 +12,12 @@ async function openMenuText(user: ReturnType<typeof renderApp>["user"]) {
 	return text;
 }
 
-describe("profile page", () => {
+describe("settings profile tab", () => {
 	it("shows the email and an empty name field", async () => {
 		mockApi({ "GET /api/me": signedIn() });
-		renderApp("/profile");
+		renderApp("/settings");
 		expect(
-			await screen.findByRole("heading", { name: "Profile" }),
+			await screen.findByRole("heading", { name: "Settings" }),
 		).toBeVisible();
 		expect(screen.getByText("ann@example.org")).toBeVisible();
 		expect(screen.getByLabelText("Display name")).toHaveValue("");
@@ -30,7 +30,7 @@ describe("profile page", () => {
 			"PATCH /api/me": ({ body }) =>
 				signedIn({ name: (body as { name: string }).name.trim() }),
 		});
-		const { user } = renderApp("/profile");
+		const { user } = renderApp("/settings");
 
 		await user.type(await screen.findByLabelText("Display name"), "Ann Smith");
 		await user.click(screen.getByRole("button", { name: "Save" }));
@@ -49,7 +49,7 @@ describe("profile page", () => {
 			"GET /api/me": signedIn({ name: "Ann" }),
 			"PATCH /api/me": signedIn({ name: null }),
 		});
-		const { user } = renderApp("/profile");
+		const { user } = renderApp("/settings");
 
 		const input = await screen.findByLabelText("Display name");
 		expect(input).toHaveValue("Ann");
@@ -68,7 +68,7 @@ describe("profile page", () => {
 			"GET /api/me": signedIn(),
 			"PATCH /api/me": apiError(400, "invalid_name"),
 		});
-		const { user } = renderApp("/profile");
+		const { user } = renderApp("/settings");
 		await user.type(
 			await screen.findByLabelText("Display name"),
 			"x".repeat(101),

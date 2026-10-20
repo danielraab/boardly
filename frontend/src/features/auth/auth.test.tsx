@@ -6,8 +6,8 @@ import { renderApp } from "#/test/renderApp";
 const never = () => new Promise<never>(() => {});
 
 describe("route protection", () => {
-	it("redirects signed-out visitors from /profile to /login", async () => {
-		const { router } = renderApp("/profile");
+	it("redirects signed-out visitors from /settings to /login", async () => {
+		const { router } = renderApp("/settings");
 		await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
 		expect(
 			await screen.findByRole("heading", { name: "Sign in" }),
@@ -33,7 +33,7 @@ describe("route protection", () => {
 
 	it("switches to signed out when a request returns 401", async () => {
 		const api = mockApi({ "GET /api/me": signedIn() });
-		const { user, router } = renderApp("/profile");
+		const { user, router } = renderApp("/settings");
 		const input = await screen.findByLabelText("Display name");
 
 		api.set({ "PATCH /api/me": apiError(401, "unauthenticated") });

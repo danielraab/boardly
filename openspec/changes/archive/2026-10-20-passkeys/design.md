@@ -2,7 +2,7 @@
 
 ## Context
 
-This builds on `magic-link-auth`: `users` (UUID ids), `sessions` (hashed id, `auth_method`), the `requireUser` middleware, CSRF middleware (JSON + Origin), the `apiError` format, TanStack Query `['me']`, the `/login` email form (`autocomplete="username"`) and the `/profile` header. The base URL is `FAMODASH_BASE_URL`, which is `http://localhost:3000` in dev, where Vite proxies `/api`. Requirements are in `auth-passkey`, `auth-session` and `user-profile` of this change.
+This builds on `magic-link-auth`: `users` (UUID ids), `sessions` (hashed id, `auth_method`), the `requireUser` middleware, CSRF middleware (JSON + Origin), the `apiError` format, TanStack Query `['me']`, the `/login` email form (`autocomplete="username"`) and the `/profile` page with email and display name. The base URL is `FAMODASH_BASE_URL`, which is `http://localhost:3000` in dev, where Vite proxies `/api`. Requirements are in `auth-passkey`, `auth-session` and `user-profile` of this change.
 
 ## Goals / Non-Goals
 
@@ -26,7 +26,7 @@ This builds on `magic-link-auth`: `users` (UUID ids), `sessions` (hashed id, `au
 ### RP configuration
 `RPID = FAMODASH_WEBAUTHN_RP_ID` or the host name of `FAMODASH_BASE_URL`. `RPOrigins = [origin of FAMODASH_BASE_URL]`. `RPDisplayName = "Famodash"`. In dev, `localhost` is a valid RP ID and browsers treat `http://localhost` as a secure context.
 
-### Data model (migration `0003_passkeys.sql`)
+### Data model (migration `0004_passkeys.sql`)
 ```
 passkeys                                  webauthn_challenges
 ────────                                  ───────────────────
@@ -35,14 +35,16 @@ user_id         → users ON DELETE CASCADE kind        TEXT ('login' | 'registe
 credential_id   BLOB UNIQUE               user_id     TEXT NULL
 public_key      BLOB                      session_id  BLOB NULL (for 'register')
 aaguid          BLOB (16)                 data        TEXT (go-webauthn SessionData JSON)
-sign_count      INTEGER                   label       TEXT NULL
-transports      TEXT (JSON array)         expires_at  TEXT (now + 5 min)
+sign_count      INTEGER                   expires_at  TEXT (now + 5 min)
+transports      TEXT (JSON array)
 backup_eligible INTEGER, backup_state INTEGER
 label           TEXT NULL
 created_at, last_used_at TEXT NULL
 
 sessions + passkey_enrollment_until TEXT NULL
 ```
+The label is sent with `registration/verify`, so challenges don't store it. The migration is `0004` because `0003_login_request.sql` already exists.
+
 The WebAuthn user handle is the 16 bytes of the user's UUID: opaque, stable and free of PII. Credentials are stored as the fields go-webauthn needs to rebuild `webauthn.Credential`, not as an opaque blob. That way `last_used_at` and `sign_count` can be updated, and the data stays inspectable.
 
 ### Ceremony state: DB-backed challenge with an HttpOnly cookie
@@ -75,8 +77,8 @@ On magic-link redemption, `sessions.passkey_enrollment_until = now + 5 min`. Pas
 
 ### Frontend
 - `/login`: on mount, if `PublicKeyCredential.isConditionalMediationAvailable()` resolves true, start `startAuthentication({ optionsJSON, useBrowserAutofill: true })` and set the email input to `autocomplete="username webauthn"`. A "Sign in with passkey" button (lucide `KeyRound`) runs the modal flow. simplewebauthn aborts the pending conditional request. `NotAllowedError` (cancelled) → no message. Success → `setQueryData(['me'])`, then navigate to `/`. Without WebAuthn the button is hidden.
-- `/profile`: Base UI `Tabs` under the header. The tab value is synced with `validateSearch` (`tab: 'passkeys'` default).
-- Passkeys tab: list items with a provider icon (`<img>` picks `iconDark` under `prefers-color-scheme: dark`, generic `KeyRound` fallback), name (label → provider → "Passkey"), and dates formatted with `Intl.DateTimeFormat(i18n.language)`. An "Add passkey" `Dialog` holds the label input (max 64) and then the browser prompt. The delete `AlertDialog` confirms deletion. The countdown is a `useNow(1000)` hook that only ticks while the window is open. On zero it refetches `['me']`.
+- `/settings` (formerly `/profile`, no redirect since the app isn't released): uses the full width of the app container like the start page (only the name input row keeps `max-w-xl`). The "Settings" heading, then Base UI `Tabs` "Profile" (email and display name form, unchanged) and "Passkeys". The tab value is synced with `validateSearch` (`tab: 'profile' | 'passkeys'`, `profile` default; unknown values are set to `undefined` because the raw search params are merged under the validated ones).
+- Passkeys tab: list items with a provider icon (`<img>` with the variant for the app's theme; the app is light-only for now, so `iconLight`, then `iconDark`, then a generic `KeyRound` fallback), name (label → provider → "Passkey"), and dates formatted with `Intl.DateTimeFormat(i18n.language)`. An "Add passkey" `Dialog` holds the label input (max 64) and then the browser prompt. The delete `AlertDialog` confirms deletion. The countdown is a `useNow(1000)` hook that only ticks while the window is open. On zero it refetches `['me']`.
 - Mutations invalidate `['passkeys']`.
 
 ## Risks / Trade-offs
@@ -90,4 +92,4 @@ On magic-link redemption, `sessions.passkey_enrollment_until = now + 5 min`. Pas
 
 ## Migration Plan
 
-Migration `0003_passkeys.sql` adds tables and a nullable column. Existing sessions get `passkey_enrollment_until = NULL`, so they can't add passkeys until the next magic-link sign-in. Rollback means restoring the DB file.
+Migration `0004_passkeys.sql` adds tables and a nullable column. Existing sessions get `passkey_enrollment_until = NULL`, so they can't add passkeys until the next magic-link sign-in. Rollback means restoring the DB file.

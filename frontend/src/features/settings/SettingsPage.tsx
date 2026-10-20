@@ -1,3 +1,4 @@
+import { Tabs } from "@base-ui/react/tabs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -5,16 +6,58 @@ import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/features/auth/LoginPage";
 import { meQueryKey, type User, useMe } from "#/features/auth/session";
 import { ApiError, api } from "#/lib/api";
+import { PasskeysTab } from "./PasskeysTab";
 
-export function ProfilePage() {
+export type SettingsTab = "profile" | "passkeys";
+
+const tabClass =
+	"-mb-px border-b-2 border-transparent px-3 py-2 font-medium text-muted hover:text-ink data-[active]:border-ink data-[active]:text-ink";
+
+export function SettingsPage({
+	tab,
+	onTabChange,
+}: {
+	tab: SettingsTab;
+	onTabChange: (tab: SettingsTab) => void;
+}) {
+	const { t } = useTranslation();
 	const { data: me } = useMe();
 	// The session can end while the page is open (401 from any request).
 	if (me === null) return <Navigate to="/login" />;
 	if (!me) return null;
-	return <ProfileHeader user={me} />;
+	return (
+		<div className="pt-12">
+			<h1 className="text-3xl font-semibold tracking-tight">
+				{t("settings.title")}
+			</h1>
+			<Tabs.Root
+				className="mt-8"
+				value={tab}
+				onValueChange={(value) => onTabChange(value as SettingsTab)}
+			>
+				<Tabs.List
+					className="flex gap-1 border-b border-line"
+					aria-label={t("settings.tabs.label")}
+				>
+					<Tabs.Tab value="profile" className={tabClass}>
+						{t("settings.tabs.profile")}
+					</Tabs.Tab>
+					<Tabs.Tab value="passkeys" className={tabClass}>
+						{t("settings.tabs.passkeys")}
+					</Tabs.Tab>
+				</Tabs.List>
+				<Tabs.Panel value="profile" className="pt-6">
+					<ProfileTab user={me} />
+				</Tabs.Panel>
+				<Tabs.Panel value="passkeys" className="pt-6">
+					<PasskeysTab user={me} />
+				</Tabs.Panel>
+			</Tabs.Root>
+		</div>
+	);
 }
 
-function ProfileHeader({ user }: { user: User }) {
+function ProfileTab({ user }: { user: User }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
 	const [name, setName] = useState(user.name ?? "");
@@ -46,11 +89,8 @@ function ProfileHeader({ user }: { user: User }) {
 				: null;
 
 	return (
-		<section className="max-w-xl pt-12">
-			<h1 className="text-3xl font-semibold tracking-tight">
-				{t("profile.title")}
-			</h1>
-			<div className="mt-8 rounded-xl border border-line bg-surface p-6">
+		<section>
+			<div className="rounded-xl border border-line bg-surface p-6">
 				<dl>
 					<dt className="text-sm font-medium text-muted">
 						{t("profile.email")}
@@ -61,7 +101,7 @@ function ProfileHeader({ user }: { user: User }) {
 					<label htmlFor="profile-name" className="block text-sm font-medium">
 						{t("profile.nameLabel")}
 					</label>
-					<div className="mt-2 flex flex-col gap-3 sm:flex-row">
+					<div className="mt-2 flex max-w-xl flex-col gap-3 sm:flex-row">
 						<input
 							id="profile-name"
 							name="name"

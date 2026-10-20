@@ -115,16 +115,16 @@ func TestSMTPSenderIntegration(t *testing.T) {
 	if host == "" {
 		t.Skip("FAMODASH_TEST_SMTP_HOST not set")
 	}
-	cfg, err := config.Load(func(k string) string {
+	cfg, err := config.Load(func(k string) (string, bool) {
 		switch k {
 		case "FAMODASH_SMTP_HOST":
-			return host
+			return host, true
 		case "FAMODASH_SMTP_PORT":
-			return os.Getenv("FAMODASH_TEST_SMTP_PORT")
+			return os.LookupEnv("FAMODASH_TEST_SMTP_PORT")
 		case "FAMODASH_SMTP_TLS":
-			return "none"
+			return "none", true
 		}
-		return ""
+		return "", false
 	})
 	if err != nil {
 		t.Fatal(err)

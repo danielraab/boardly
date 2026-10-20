@@ -42,6 +42,12 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/auth/logout", HandlerFunc(a.logout))
 	mux.Handle("GET /api/me", a.requireUser(a.getMe))
 	mux.Handle("PATCH /api/me", a.requireUser(a.patchMe))
+	mux.Handle("POST /api/auth/passkey/login/options", HandlerFunc(a.passkeyLoginOptions))
+	mux.Handle("POST /api/auth/passkey/login/verify", HandlerFunc(a.passkeyLoginVerify))
+	mux.Handle("GET /api/passkeys", a.requireUser(a.listPasskeys))
+	mux.Handle("POST /api/passkeys/registration/options", a.requireUser(a.passkeyRegistrationOptions))
+	mux.Handle("POST /api/passkeys/registration/verify", a.requireUser(a.passkeyRegistrationVerify))
+	mux.Handle("DELETE /api/passkeys/{id}", a.requireUser(a.deletePasskey))
 
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))

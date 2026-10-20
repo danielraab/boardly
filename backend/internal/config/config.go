@@ -22,7 +22,18 @@ type Config struct {
 
 	// TrustProxyHeaders makes the server take the client IP from X-Forwarded-For.
 	TrustProxyHeaders bool
+
+	// WebAuthnRPID is the relying party ID passkeys are bound to. It defaults
+	// to the host name of BaseURL.
+	WebAuthnRPID string
+
+	// AAGUIDListURL is where the passkey provider list is downloaded from.
+	// Empty disables provider detection.
+	AAGUIDListURL string
 }
+
+// DefaultAAGUIDListURL is the community-maintained passkey provider list.
+const DefaultAAGUIDListURL = "https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/main/combined_aaguid.json"
 
 // SMTP holds the mail delivery settings. An empty Host disables delivery:
 // sign-in links are then written to the log.
@@ -35,9 +46,13 @@ type SMTP struct {
 	TLS      string // "starttls", "tls" or "none"
 }
 
-// Load builds a Config from the given environment lookup (usually os.Getenv).
+// Load builds a Config from the given environment lookup (usually os.LookupEnv).
 // Unset variables get their defaults; invalid values return an error naming the variable.
-func Load(getenv func(string) string) (Config, error) {
+func Load(lookupEnv func(string) (string, bool)) (Config, error) {
+	getenv := func(key string) string {
+		v, _ := lookupEnv(key)
+		return v
+	}
 	cfg := Config{
 		Port:      8080,
 		DBPath:    "./data/famodash.db",
@@ -106,6 +121,24 @@ func Load(getenv func(string) string) (Config, error) {
 		cfg.TrustProxyHeaders = b
 	}
 
+	cfg.WebAuthnRPID = cfg.BaseURL.Hostname()
+	if v := getenv("FAMODASH_WEBAUTHN_RP_ID"); v != "" {
+		if !isRegistrableSuffix(cfg.BaseURL.Hostname(), v) {
+			return Config{}, fmt.Errorf("FAMODASH_WEBAUTHN_RP_ID: %q must be the host name of FAMODASH_BASE_URL or a parent domain of it", v)
+		}
+		cfg.WebAuthnRPID = v
+	}
+
+	cfg.AAGUIDListURL = DefaultAAGUIDListURL
+	if v, ok := lookupEnv("FAMODASH_AAGUID_LIST_URL"); ok {
+		if v != "" {
+			if u, err := url.Parse(v); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				return Config{}, fmt.Errorf("FAMODASH_AAGUID_LIST_URL: %q must be an absolute http(s) URL or empty", v)
+			}
+		}
+		cfg.AAGUIDListURL = v
+	}
+
 	return cfg, nil
 }
 
@@ -126,6 +159,13 @@ func parseBaseURL(v string) (*url.URL, error) {
 		return nil, fmt.Errorf("%q must not contain credentials, a query or a fragment", v)
 	}
 	return u, nil
+}
+
+// isRegistrableSuffix reports whether rpID is host or a parent domain of it,
+// which is what browsers accept as relying party ID for pages on host.
+func isRegistrableSuffix(host, rpID string) bool {
+	host, rpID = strings.ToLower(host), strings.ToLower(rpID)
+	return host == rpID || strings.HasSuffix(host, "."+rpID)
 }
 
 // Origin returns the scheme and host of the base URL, as browsers send it in the Origin header.

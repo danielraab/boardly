@@ -48,8 +48,8 @@ The server SHALL reject state-changing API requests (POST, PUT, PATCH, DELETE) t
 ### Requirement: Protected pages in the web app
 Pages that require a user SHALL redirect signed-out visitors to `/login`. While the session state is loading, the web app SHALL show neither protected content nor the signed-out landing page.
 
-#### Scenario: Signed-out visitor opens profile
-- **WHEN** a signed-out visitor opens `/profile`
+#### Scenario: Signed-out visitor opens settings
+- **WHEN** a signed-out visitor opens `/settings`
 - **THEN** the browser shows `/login`
 
 ### Requirement: Sign out in the web app
@@ -65,3 +65,10 @@ When an API request made by the web app returns 401, the web app SHALL switch to
 #### Scenario: Session expired while open
 - **WHEN** the user's session was deleted on the server and the web app makes its next API request
 - **THEN** the user menu shows "Sign in" and protected pages redirect to `/login`
+
+### Requirement: Session records its sign-in method
+Every session SHALL record whether it was created by magic link or by passkey. The method SHALL NOT change for the lifetime of the session.
+
+#### Scenario: Passkey session
+- **WHEN** a user signs in with a passkey
+- **THEN** the session is recorded as a passkey session and never gets a passkey enrollment window

@@ -26,7 +26,13 @@ export const signedOut: MockResponse = {
 
 export function signedIn(user: Partial<User> = {}): MockResponse {
 	return {
-		body: { id: "u1", email: "ann@example.org", name: null, ...user },
+		body: {
+			id: "u1",
+			email: "ann@example.org",
+			name: null,
+			passkeyEnrollmentUntil: null,
+			...user,
+		},
 	};
 }
 
@@ -39,11 +45,15 @@ export function apiError(
 }
 
 /**
- * Replaces fetch with a mock that answers from routes (signed out by default)
- * and records every call. Unknown routes answer 404.
+ * Replaces fetch with a mock that answers from routes (signed out without
+ * passkeys by default) and records every call. Unknown routes answer 404.
  */
 export function mockApi(routes: Routes = {}) {
-	const all: Routes = { "GET /api/me": signedOut, ...routes };
+	const all: Routes = {
+		"GET /api/me": signedOut,
+		"GET /api/passkeys": { body: [] },
+		...routes,
+	};
 	const calls: Call[] = [];
 
 	const fetchMock = vi.fn(

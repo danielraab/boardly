@@ -4,7 +4,7 @@
 		"signIn": "Sign in",
 		"language": "Language",
 		"loading": "Loading…",
-		"profile": "Profile",
+		"settings": "Settings",
 		"signOut": "Sign out"
 	},
 	"notFound": {
@@ -24,7 +24,11 @@
 		"resendIn": "Send a new link in {{seconds}} s",
 		"useOther": "Use a different email address",
 		"invalidEmail": "Enter a valid email address.",
-		"rateLimited": "Too many requests. Try again in {{seconds}} s."
+		"rateLimited": "Too many requests. Try again in {{seconds}} s.",
+		"or": "or",
+		"passkey": "Sign in with passkey",
+		"passkeyUnknown": "This passkey is no longer valid. Sign in with an email link instead.",
+		"passkeyInvalid": "The passkey could not be verified. Try again or sign in with an email link."
 	},
 	"landing": {
 		"hero": {
@@ -67,8 +71,15 @@
 		"placeholderTitle": "Your dashboards will appear here",
 		"placeholderText": "Dashboards are coming soon. You'll build and edit them right on this page."
 	},
+	"settings": {
+		"title": "Settings",
+		"tabs": {
+			"label": "Settings sections",
+			"profile": "Profile",
+			"passkeys": "Passkeys"
+		}
+	},
 	"profile": {
-		"title": "Profile",
 		"email": "Email address",
 		"nameLabel": "Display name",
 		"namePlaceholder": "Add a name",
@@ -77,5 +88,35 @@
 		"saving": "Saving…",
 		"saved": "Saved.",
 		"nameTooLong": "The name can be at most 100 characters long."
+	},
+	"passkeys": {
+		"intro": "Passkeys let you sign in with your fingerprint, face or device PIN instead of an email link.",
+		"windowOpen": "You signed in with an email link, so you can add passkeys for another",
+		"remaining": "Time left to add passkeys",
+		"windowClosed": "To add a passkey, sign in with an email link first. You can then add passkeys for 5 minutes.",
+		"unsupported": "This browser doesn't support passkeys. Use another browser or device to add one.",
+		"sendLink": "Send sign-in link",
+		"linkSent": "We sent a sign-in link to {{email}}. Open it to add passkeys.",
+		"linkRateLimited": "Too many requests. Try again in a minute.",
+		"add": "Add passkey",
+		"addTitle": "Add passkey",
+		"addText": "Give the passkey a name so you can recognize it later. Your browser will then ask you to create it.",
+		"labelLabel": "Name (optional)",
+		"labelPlaceholder": "e.g. Work laptop",
+		"labelTooLong": "The name can be at most 64 characters long.",
+		"alreadyRegistered": "This device or password manager already has a passkey for your account.",
+		"continue": "Continue",
+		"adding": "Waiting for your browser…",
+		"cancel": "Cancel",
+		"emptyTitle": "No passkeys yet",
+		"emptyText": "Add a passkey to sign in with one tap next time. Each device or password manager gets its own passkey.",
+		"fallbackName": "Passkey",
+		"created": "Added {{date}}",
+		"lastUsed": "last used {{date}}",
+		"neverUsed": "never used",
+		"delete": "Delete passkey {{name}}",
+		"deleteTitle": "Delete passkey?",
+		"deleteText": "You will no longer be able to sign in with “{{name}}”. You can still sign in with an email link.",
+		"deleteConfirm": "Delete"
 	}
 }

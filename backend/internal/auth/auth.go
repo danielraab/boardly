@@ -13,6 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
+
+	"famodash/internal/aaguid"
 	famomail "famodash/internal/mail"
 	"famodash/internal/ratelimit"
 	"famodash/internal/users"
@@ -27,6 +30,11 @@ type Service struct {
 	// IPLimiter limits link requests per client IP.
 	IPLimiter *ratelimit.Limiter
 	Now       func() time.Time
+
+	// WebAuthn is the relying party for passkeys.
+	WebAuthn *webauthn.WebAuthn
+	// Providers names passkey providers; nil knows none.
+	Providers *aaguid.Directory
 }
 
 // NewService returns a service with the real clock and the default per-IP limit (20/h, burst 5).
