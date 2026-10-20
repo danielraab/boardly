@@ -1,0 +1,40 @@
+{
+	"shell": {
+		"userMenu": "User menu",
+		"signIn": "Sign in",
+		"language": "Language"
+	},
+	"notFound": {
+		"title": "Page not found",
+		"text": "The page you are looking for does not exist.",
+		"backHome": "Back to the start page"
+	},
+	"login": {
+		"title": "Sign in",
+		"comingSoon": "Signing in is coming soon."
+	},
+	"landing": {
+		"hero": {
+			"tagline": "Your favourites and dashboards, self-hosted and in one place.",
+			"cta": "Sign in"
+		},
+		"screenshot": {
+			"placeholder": "Screenshot coming soon"
+		},
+		"featuresTitle": "What Famodash does"
+	},
+	"features": {
+		"dashboards": {
+			"title": "Dashboards",
+			"description": "Build start pages with links, sections and navigation trees right in the browser."
+		},
+		"favourites": {
+			"title": "Favourites",
+			"description": "Keep all your bookmarks in one tree of folders and links."
+		},
+		"karakeep": {
+			"title": "Karakeep apps",
+			"description": "Save links from the Karakeep browser extensions and mobile apps."
+		}
+	}
+}

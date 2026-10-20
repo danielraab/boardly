@@ -1,0 +1,1 @@
+-- Baseline schema. There is no domain data yet; later migrations add tables.

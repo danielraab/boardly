@@ -1,29 +1,29 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import { AppShell } from "#/components/AppShell";
+import { NotFound } from "#/components/NotFound";
 
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import "../styles.css";
 
-import '../styles.css'
+const Devtools =
+	import.meta.env.DEV && import.meta.env.MODE !== "test"
+		? lazy(() => import("#/components/Devtools"))
+		: () => null;
 
 export const Route = createRootRoute({
-  component: RootComponent,
-})
+	component: RootComponent,
+	notFoundComponent: NotFound,
+});
 
 function RootComponent() {
-  return (
-    <>
-      <Outlet />
-      <TanStackDevtools
-        config={{
-          position: 'bottom-right',
-        }}
-        plugins={[
-          {
-            name: 'TanStack Router',
-            render: <TanStackRouterDevtoolsPanel />,
-          },
-        ]}
-      />
-    </>
-  )
+	return (
+		<>
+			<AppShell>
+				<Outlet />
+			</AppShell>
+			<Suspense>
+				<Devtools />
+			</Suspense>
+		</>
+	);
 }

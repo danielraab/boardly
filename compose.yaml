@@ -1,0 +1,24 @@
+# Development services. Started and stopped by `make dev-backend`
+# (or manually: docker compose --profile dev up -d).
+
+name: famodash
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.31
+    profiles: [dev]
+    ports:
+      - "8025:8025" # web UI: http://localhost:8025
+      - "1025:1025" # SMTP
+
+  sqlite-web:
+    image: coleifer/sqlite-web:latest
+    profiles: [dev]
+    # Run as the host user so files SQLite creates next to the DB (WAL/SHM) stay writable for the server.
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    environment:
+      SQLITE_DATABASE: famodash.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "8081:8080" # web UI: http://localhost:8081

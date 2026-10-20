@@ -1,0 +1,14 @@
+# Frontend build output embedded into the Go binary
+/backend/internal/web/dist/*
+!/backend/internal/web/dist/.gitkeep
+
+# Runtime data and build artifacts
+/data/
+/bin/
+
+# SQLite databases anywhere (e.g. backend/data/ when running `go run .` in backend/)
+*.db
+*.db-shm
+*.db-wal
+
+.env
