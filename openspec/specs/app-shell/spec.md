@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines the global frame around every Famodash page: the header with the product name, the language switcher and the user avatar with its menu.
-
 ## Requirements
-
 ### Requirement: Global header
 Every page SHALL show a header with the product name "Famodash" on the left, linking to `/`, and the language switcher and user avatar on the right.
 
@@ -46,15 +44,19 @@ Any client-side path that matches no route SHALL show a translated not-found mes
 - **THEN** the page shows the header and a not-found message with a link to `/`
 
 ### Requirement: Signed-in menu content
-When a user is signed in, the user menu SHALL show, in this order: the display name (if set), the email address, a "Settings" / "Einstellungen" link to `/settings`, and a "Sign out" / "Abmelden" action.
+When a user is signed in, the user menu SHALL show, in this order: the display name (if set), the email address, a "Favourites" / "Favoriten" link to `/favourites`, a "Settings" / "Einstellungen" link to `/settings`, and a "Sign out" / "Abmelden" action.
 
 #### Scenario: Menu with name
 - **WHEN** a signed-in user named "Ann" with email `ann@example.org` opens the user menu
-- **THEN** it shows "Ann", `ann@example.org`, "Settings" and "Sign out" in this order
+- **THEN** it shows "Ann", `ann@example.org`, "Favourites", "Settings" and "Sign out" in this order
 
 #### Scenario: Menu without name
 - **WHEN** a signed-in user without a display name opens the user menu
-- **THEN** it shows the email address followed by "Settings" and "Sign out", with no empty name line
+- **THEN** it shows the email address followed by "Favourites", "Settings" and "Sign out", with no empty name line
+
+#### Scenario: Favourites link
+- **WHEN** the user activates "Favourites"
+- **THEN** the menu closes and the browser shows `/favourites`
 
 #### Scenario: Settings link
 - **WHEN** the user activates "Settings"
@@ -66,3 +68,4 @@ While the web app doesn't know yet whether a user is signed in, the avatar SHALL
 #### Scenario: Slow session lookup
 - **WHEN** the current-user request hasn't completed yet and the visitor opens the user menu
 - **THEN** the menu shows a loading indicator and no "Sign in" or "Sign out" action
+
