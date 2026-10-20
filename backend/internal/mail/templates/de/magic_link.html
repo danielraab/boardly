@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>Dein Anmeldelink für Famodash</title></head>
+<body style="margin:0;padding:24px;background:#eef1f4;color:#1d2733;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #cbd3dc;border-radius:8px;">
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:20px;font-weight:600;">Famodash</p>
+<p style="margin:0 0 24px;">Mit diesem Button meldest du dich bei Famodash an. Er öffnet Famodash in diesem Browser.</p>
+<p style="margin:0 0 24px;"><a href="{{.Link}}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#1d2733;color:#eef1f4;text-decoration:none;font-weight:500;">Bei Famodash anmelden</a></p>
+<p style="margin:0 0 8px;font-size:14px;color:#5a6878;">Der Link ist {{.ValidMinutes}} Minuten gültig und kann nur einmal verwendet werden.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#5a6878;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link kann sich niemand anmelden.</p>
+<p style="margin:0;font-size:12px;color:#5a6878;word-break:break-all;">Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:<br>{{.Link}}</p>
+</td></tr>
+</table>
+</body>
+</html>

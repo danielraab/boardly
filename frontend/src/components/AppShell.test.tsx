@@ -1,5 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
 
 describe("app shell", () => {
@@ -60,6 +61,77 @@ describe("user menu", () => {
 		await user.click(items[0]);
 		await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+	});
+});
+
+describe("signed-in user menu", () => {
+	async function openMenu(user: ReturnType<typeof renderApp>["user"]) {
+		await screen.findByRole("heading", { name: /Welcome/ });
+		await user.click(screen.getByRole("button", { name: "User menu" }));
+		return screen.findByRole("menu");
+	}
+
+	it("shows name, email, Profile and Sign out in this order", async () => {
+		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
+		const { user } = renderApp("/");
+		const menu = await openMenu(user);
+		expect(menu.textContent).toBe("Annann@example.orgProfileSign out");
+		expect(
+			within(menu)
+				.getAllByRole("menuitem")
+				.map((i) => i.textContent),
+		).toEqual(["Profile", "Sign out"]);
+	});
+
+	it("shows the email without an empty name line when there is no name", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user } = renderApp("/");
+		const menu = await openMenu(user);
+		expect(menu.textContent).toBe("ann@example.orgProfileSign out");
+		expect(
+			within(menu).getByText("ann@example.org").previousSibling,
+		).toBeNull();
+	});
+
+	it("shows only a loading state while the session is unknown", async () => {
+		mockApi({ "GET /api/me": () => new Promise<never>(() => {}) });
+		const { user } = renderApp("/");
+		await user.click(await screen.findByRole("button", { name: "User menu" }));
+		const menu = await screen.findByRole("menu");
+		expect(within(menu).getByText("Loading…")).toBeVisible();
+		expect(within(menu).queryAllByRole("menuitem")).toHaveLength(0);
+	});
+
+	it("goes to /profile from the Profile item and closes the menu", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(within(menu).getByRole("menuitem", { name: "Profile" }));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/profile"),
+		);
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+	});
+
+	it("signs out to the landing page with 'Sign in' in the menu", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"POST /api/auth/logout": { status: 204 },
+		});
+		const { user, router } = renderApp("/profile");
+		await screen.findByRole("heading", { name: "Profile" });
+		await user.click(screen.getByRole("button", { name: "User menu" }));
+		await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Famodash" }),
+		).toBeVisible();
+		expect(api.callsTo("POST", "/api/auth/logout")).toHaveLength(1);
+
+		await user.click(screen.getByRole("button", { name: "User menu" }));
+		const items = await screen.findAllByRole("menuitem");
+		expect(items.map((i) => i.textContent)).toEqual(["Sign in"]);
 	});
 });
 

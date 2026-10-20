@@ -145,9 +145,48 @@ precedence over the file.
 | `FAMODASH_PORT` | `8080` | Port to listen on |
 | `FAMODASH_DB_PATH` | `./data/famodash.db` | SQLite database file; its directory is created if needed |
 | `FAMODASH_LOG_FORMAT` | `json` | Log format, `json` or `text` |
+| `FAMODASH_BASE_URL` | `http://localhost:3000` | Public URL of the web app, as users open it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
+| `FAMODASH_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
+| `FAMODASH_SMTP_PORT` | `587` | SMTP port |
+| `FAMODASH_SMTP_USERNAME` / `FAMODASH_SMTP_PASSWORD` | (empty) | SMTP login; leave empty for servers without authentication |
+| `FAMODASH_SMTP_FROM` | `Famodash <noreply@localhost>` | Sender address of sign-in emails |
+| `FAMODASH_SMTP_TLS` | `starttls` | `starttls` (required STARTTLS, usually port 587), `tls` (implicit TLS, usually port 465) or `none` |
+| `FAMODASH_TRUST_PROXY_HEADERS` | `false` | Take the client IP from `X-Forwarded-For` (for rate limiting). Enable it only behind a reverse proxy that sets this header |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
 back, stop the server and restore a backup of the database file.
+
+### Sign-in
+
+Anyone can sign up: the first sign-in with an email address creates the account.
+
+1. On `/login`, the visitor enters their email address. The server sends a one-time link that is
+   valid for 15 minutes, in the visitor's language.
+   The browser that asked also gets a short-lived login-request cookie (`famodash_login_request`).
+2. The link opens `/login/verify#token=…`. The token is in the URL fragment, so it never reaches
+   the server's or a proxy's access logs. The page removes it from the address bar.
+3. If the link is opened in the browser that requested it, the visitor is signed in right away.
+   Anywhere else (another device, a mail app's built-in browser, or a mail scanner that opens
+   links) the page asks the visitor to click **Complete sign-in** first, so merely opening the
+   link never uses it up. After sign-in the browser has an HttpOnly session cookie
+   (`famodash_session`) that expires after 30 days without use.
+
+Link requests are limited to one per minute and five per hour per email address, and 20 per
+hour per client IP.
+
+**Development without mail.** If `FAMODASH_SMTP_HOST` is empty, the server logs a warning at
+startup and writes every sign-in email (including the link) to its log. To sign in, copy the
+`/login/verify#token=…` link from the log into the browser. The default `.env` sends mail to
+Mailpit instead (http://localhost:8025).
+
+**Behind a reverse proxy** (e.g. Caddy, Traefik or nginx in front of the Docker container):
+
+- Set `FAMODASH_BASE_URL` to the public URL, for example `https://dash.example.org`. A wrong
+  value breaks the links in the emails and makes every sign-in request fail with
+  `forbidden_origin`. The server logs the effective base URL at startup.
+- Set `FAMODASH_TRUST_PROXY_HEADERS=true` so rate limits apply per real client instead of to
+  the proxy as a whole. Don't enable it when the server is reachable without the proxy, because
+  clients could then fake their IP.
 
 ### Translations
 
@@ -156,4 +195,4 @@ keys; a test checks this.
 
 ## Status
 
-Early development. The features described above are the target scope and are not implemented yet.
+Early development. Sign-in with magic links, the profile page and the landing page work; the other features described above are the target scope and are not implemented yet.

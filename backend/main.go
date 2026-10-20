@@ -13,9 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"famodash/internal/auth"
 	"famodash/internal/config"
 	"famodash/internal/db"
 	"famodash/internal/httpapi"
+	"famodash/internal/mail"
+	"famodash/internal/users"
 	"famodash/internal/web"
 )
 
@@ -45,15 +48,27 @@ func run() error {
 		return err
 	}
 
+	userStore := users.NewStore(database)
+	authService := auth.NewService(database, userStore, mail.New(cfg.SMTP), cfg.BaseURL)
+	go authService.RunJanitor(ctx, time.Hour)
+
 	srv := &http.Server{
-		Addr:              ":" + strconv.Itoa(cfg.Port),
-		Handler:           httpapi.New(httpapi.Deps{DB: database, Web: web.Handler()}),
+		Addr: ":" + strconv.Itoa(cfg.Port),
+		Handler: httpapi.New(httpapi.Deps{
+			DB:                database,
+			Web:               web.Handler(),
+			Auth:              authService,
+			Users:             userStore,
+			Origin:            cfg.Origin(),
+			SecureCookies:     cfg.SecureCookies(),
+			TrustProxyHeaders: cfg.TrustProxyHeaders,
+		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath)
+		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath, "base_url", cfg.BaseURL.String())
 		errCh <- srv.ListenAndServe()
 	}()
 

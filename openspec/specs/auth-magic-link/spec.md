@@ -1,10 +1,10 @@
-# Spec Delta
+# auth-magic-link Specification
 
 ## Purpose
 
 Lets anyone sign in to Famodash without a password, by receiving a one-time link at their email address. It creates the account on the first successful sign-in.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Request a sign-in link
 `POST /api/auth/magic-link` with `{"email": "...", "locale": "en"|"de"}` SHALL send a sign-in link to that address and respond with status 202. The email is trimmed and lowercased first. An unsupported or missing locale falls back to `en`.
@@ -43,7 +43,7 @@ The sign-in email SHALL be written in the requested locale. It SHALL contain the
 - **THEN** the email subject and body are English and mention the 15-minute validity
 
 ### Requirement: Redeem a sign-in link
-`POST /api/auth/magic-link/verify` with `{"token": "..."}` SHALL, for a valid unused and unexpired token, mark the token as used, create the account for its email if none exists, start a session, and respond 200 with the user.
+`POST /api/auth/magic-link/verify` with `{"token": "...", "confirm": true|false}` SHALL, for a valid unused and unexpired token, mark the token as used, create the account for its email if none exists, start a session, and respond 200 with the user. Without `"confirm": true`, it SHALL redeem the token only when the request carries the login-request cookie of the browser that requested the link. Otherwise it responds 403 with `error.code` `confirmation_required` and leaves the token unused.
 
 #### Scenario: First sign-in creates account
 - **WHEN** a valid token is redeemed for an address with no account
@@ -52,6 +52,10 @@ The sign-in email SHALL be written in the requested locale. It SHALL contain the
 #### Scenario: Existing account
 - **WHEN** a valid token is redeemed for an address with an account
 - **THEN** no new account is created and a session for the existing account is started
+
+#### Scenario: Unconfirmed redemption from another browser
+- **WHEN** a valid token is posted without `"confirm": true` and without the requesting browser's login-request cookie
+- **THEN** the server responds 403 with `confirmation_required`, sets no session cookie, and the token can still be redeemed
 
 ### Requirement: Invalid links are rejected
 Redeeming a token that is unknown, expired or already used SHALL respond 400 with `error.code` `invalid_token`, without starting a session. The response SHALL NOT reveal which of the three cases applies.
@@ -64,12 +68,20 @@ Redeeming a token that is unknown, expired or already used SHALL respond 400 wit
 - **WHEN** a token is redeemed 16 minutes after it was issued
 - **THEN** the server responds 400 with `invalid_token`
 
-### Requirement: Opening a link does not sign in on its own
-Opening the link SHALL NOT redeem the token. The verify page SHALL redeem it only after the visitor explicitly confirms, so mail scanners that pre-open links can neither sign in nor use up the link.
+### Requirement: Links sign in directly only in the requesting browser
+Requesting a sign-in link SHALL set a short-lived HttpOnly login-request cookie in the requesting browser. When the link is opened in that browser, the verify page SHALL sign in right away, without further interaction. Anywhere else (another browser or device, or a mail scanner that pre-opens links and runs their scripts) the token SHALL NOT be used up until the visitor explicitly confirms with "Complete sign-in".
 
-#### Scenario: Link opened
-- **WHEN** a browser opens `/login/verify#token=...`
-- **THEN** the page shows a "Complete sign-in" button and no redeem request is sent before it is activated
+#### Scenario: Same browser
+- **WHEN** a visitor requests a link and opens it in the same browser within its validity
+- **THEN** they are signed in and taken to `/` without having to confirm
+
+#### Scenario: Other browser or device
+- **WHEN** the link is opened in a browser without the login-request cookie
+- **THEN** the page shows a "Complete sign-in" button and the token stays unused until it is activated
+
+#### Scenario: Mail scanner
+- **WHEN** a client without the login-request cookie opens the link and runs the page's scripts
+- **THEN** no session is started and the visitor can still use the link afterwards
 
 #### Scenario: Confirmation
 - **WHEN** the visitor activates "Complete sign-in" and redemption succeeds

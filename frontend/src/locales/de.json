@@ -2,7 +2,10 @@
 	"shell": {
 		"userMenu": "Benutzermenü",
 		"signIn": "Anmelden",
-		"language": "Sprache"
+		"language": "Sprache",
+		"loading": "Wird geladen…",
+		"profile": "Profil",
+		"signOut": "Abmelden"
 	},
 	"notFound": {
 		"title": "Seite nicht gefunden",
@@ -11,7 +14,17 @@
 	},
 	"login": {
 		"title": "Anmelden",
-		"comingSoon": "Die Anmeldung kommt bald."
+		"intro": "Gib deine E-Mail-Adresse ein und wir schicken dir einen Anmeldelink. Kein Passwort nötig.",
+		"emailLabel": "E-Mail-Adresse",
+		"submit": "Anmeldelink senden",
+		"sending": "Wird gesendet…",
+		"sentTitle": "Schau in dein Postfach",
+		"sentText": "Wir haben einen Anmeldelink an <strong>{{email}}</strong> geschickt. Er ist 15 Minuten gültig.",
+		"resend": "Neuen Link senden",
+		"resendIn": "Neuen Link senden in {{seconds}} s",
+		"useOther": "Andere E-Mail-Adresse verwenden",
+		"invalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
+		"rateLimited": "Zu viele Anfragen. Versuche es in {{seconds}} s noch einmal."
 	},
 	"landing": {
 		"hero": {
@@ -36,5 +49,33 @@
 			"title": "Karakeep-Apps",
 			"description": "Speichere Links aus den Karakeep-Browsererweiterungen und Mobil-Apps."
 		}
+	},
+	"common": {
+		"loading": "Wird geladen…",
+		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+	},
+	"verify": {
+		"title": "Anmeldung abschließen",
+		"text": "Bestätige, um dich in diesem Browser bei Famodash anzumelden.",
+		"confirm": "Anmeldung abschließen",
+		"signingIn": "Anmeldung läuft…",
+		"invalid": "Dieser Anmeldelink ist ungültig oder abgelaufen.",
+		"requestNew": "Neuen Link anfordern"
+	},
+	"home": {
+		"greeting": "Willkommen, {{name}}",
+		"placeholderTitle": "Hier erscheinen deine Dashboards",
+		"placeholderText": "Dashboards kommen bald. Du wirst sie direkt auf dieser Seite gestalten und bearbeiten."
+	},
+	"profile": {
+		"title": "Profil",
+		"email": "E-Mail-Adresse",
+		"nameLabel": "Anzeigename",
+		"namePlaceholder": "Namen hinzufügen",
+		"nameHint": "Wird im Menü und auf deiner Startseite statt deiner E-Mail-Adresse angezeigt.",
+		"save": "Speichern",
+		"saving": "Wird gespeichert…",
+		"saved": "Gespeichert.",
+		"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein."
 	}
 }

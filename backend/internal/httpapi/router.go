@@ -5,6 +5,9 @@ import (
 	"context"
 	"net/http"
 	"strings"
+
+	"famodash/internal/auth"
+	"famodash/internal/users"
 )
 
 // Pinger reports whether the database is reachable.
@@ -16,15 +19,32 @@ type Pinger interface {
 type Deps struct {
 	DB  Pinger
 	Web http.Handler // serves the web app for every non-API path
+
+	Auth  *auth.Service
+	Users *users.Store
+	// Origin is the web app's origin (scheme://host[:port]); state-changing
+	// requests with another Origin header are rejected.
+	Origin string
+	// SecureCookies sets the Secure attribute on the session cookie.
+	SecureCookies bool
+	// TrustProxyHeaders takes the client IP from X-Forwarded-For.
+	TrustProxyHeaders bool
 }
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	api := http.NewServeMux()
-	api.Handle("GET /api/health", health(d.DB))
+	a := &api{auth: d.Auth, users: d.Users, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/health", health(d.DB))
+	mux.Handle("POST /api/auth/magic-link", HandlerFunc(a.requestLink))
+	mux.Handle("POST /api/auth/magic-link/verify", HandlerFunc(a.verifyLink))
+	mux.Handle("POST /api/auth/logout", HandlerFunc(a.logout))
+	mux.Handle("GET /api/me", a.requireUser(a.getMe))
+	mux.Handle("PATCH /api/me", a.requireUser(a.patchMe))
 
 	root := http.NewServeMux()
-	root.Handle("/api/", jsonMuxErrors(api))
+	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))
 	root.Handle("/", d.Web)
 	return logRequests(root)
 }
@@ -40,10 +60,15 @@ func health(db Pinger) HandlerFunc {
 }
 
 // jsonMuxErrors turns the plain-text 404 and 405 responses that http.ServeMux
-// writes for unmatched requests into the API's JSON error format.
-func jsonMuxErrors(mux *http.ServeMux) http.Handler {
+// writes for unmatched requests into the API's JSON error format. Matched
+// requests pass the cross-site request check first.
+func jsonMuxErrors(mux *http.ServeMux, origin string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, pattern := mux.Handler(r); pattern != "" {
+			if err := checkCSRF(r, origin); err != nil {
+				WriteError(w, err)
+				return
+			}
 			mux.ServeHTTP(w, r)
 			return
 		}

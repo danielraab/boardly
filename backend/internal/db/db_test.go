@@ -98,3 +98,30 @@ func TestShippedMigrationsApply(t *testing.T) {
 		t.Fatalf("Migrate: %v", err)
 	}
 }
+
+func TestDeletingUserCascadesToSessions(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO sessions (id_hash, user_id, auth_method, created_at, last_used_at, expires_at, user_agent)
+		VALUES (x'01', 'u1', 'magic_link', ?, ?, ?, '')`, ts, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM users WHERE id = 'u1'`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("sessions = %d, err %v; want 0 after deleting the user", n, err)
+	}
+}

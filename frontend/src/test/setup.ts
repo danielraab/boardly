@@ -1,7 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import i18n, { initI18n } from "#/i18n";
+import { mockApi } from "./api";
 
 initI18n();
 
@@ -10,9 +11,11 @@ window.scrollTo = () => {};
 
 beforeEach(async () => {
 	localStorage.clear();
+	mockApi();
 	await i18n.changeLanguage("en");
 });
 
 afterEach(() => {
 	cleanup();
+	vi.unstubAllGlobals();
 });

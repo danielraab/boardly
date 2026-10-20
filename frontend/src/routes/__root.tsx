@@ -1,4 +1,5 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { AppShell } from "#/components/AppShell";
 import { NotFound } from "#/components/NotFound";
@@ -10,7 +11,9 @@ const Devtools =
 		? lazy(() => import("#/components/Devtools"))
 		: () => null;
 
-export const Route = createRootRoute({
+export type RouterContext = { queryClient: QueryClient };
+
+export const Route = createRootRouteWithContext<RouterContext>()({
 	component: RootComponent,
 	notFoundComponent: NotFound,
 });
