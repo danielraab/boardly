@@ -21,6 +21,9 @@ func Open(path string) (*sql.DB, error) {
 	q.Add("_pragma", "journal_mode(WAL)")
 	q.Add("_pragma", "foreign_keys(1)")
 	q.Add("_pragma", "busy_timeout(5000)")
+	// Take the write lock at BEGIN, so concurrent writers wait on busy_timeout
+	// instead of failing when they upgrade a read transaction.
+	q.Add("_txlock", "immediate")
 	db, err := sql.Open("sqlite", "file:"+path+"?"+q.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("opening database: %w", err)

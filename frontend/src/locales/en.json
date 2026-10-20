@@ -2,7 +2,10 @@
 	"shell": {
 		"userMenu": "User menu",
 		"signIn": "Sign in",
-		"language": "Language"
+		"language": "Language",
+		"loading": "Loading…",
+		"profile": "Profile",
+		"signOut": "Sign out"
 	},
 	"notFound": {
 		"title": "Page not found",
@@ -11,7 +14,17 @@
 	},
 	"login": {
 		"title": "Sign in",
-		"comingSoon": "Signing in is coming soon."
+		"intro": "Enter your email address and we'll send you a link to sign in. No password needed.",
+		"emailLabel": "Email address",
+		"submit": "Send sign-in link",
+		"sending": "Sending…",
+		"sentTitle": "Check your inbox",
+		"sentText": "We sent a sign-in link to <strong>{{email}}</strong>. It is valid for 15 minutes.",
+		"resend": "Send a new link",
+		"resendIn": "Send a new link in {{seconds}} s",
+		"useOther": "Use a different email address",
+		"invalidEmail": "Enter a valid email address.",
+		"rateLimited": "Too many requests. Try again in {{seconds}} s."
 	},
 	"landing": {
 		"hero": {
@@ -36,5 +49,33 @@
 			"title": "Karakeep apps",
 			"description": "Save links from the Karakeep browser extensions and mobile apps."
 		}
+	},
+	"common": {
+		"loading": "Loading…",
+		"genericError": "Something went wrong. Please try again."
+	},
+	"verify": {
+		"title": "Complete sign-in",
+		"text": "Confirm to sign in to Famodash in this browser.",
+		"confirm": "Complete sign-in",
+		"signingIn": "Signing in…",
+		"invalid": "This sign-in link is invalid or has expired.",
+		"requestNew": "Request a new link"
+	},
+	"home": {
+		"greeting": "Welcome, {{name}}",
+		"placeholderTitle": "Your dashboards will appear here",
+		"placeholderText": "Dashboards are coming soon. You'll build and edit them right on this page."
+	},
+	"profile": {
+		"title": "Profile",
+		"email": "Email address",
+		"nameLabel": "Display name",
+		"namePlaceholder": "Add a name",
+		"nameHint": "Shown in the menu and on your start page instead of your email address.",
+		"save": "Save",
+		"saving": "Saving…",
+		"saved": "Saved.",
+		"nameTooLong": "The name can be at most 100 characters long."
 	}
 }

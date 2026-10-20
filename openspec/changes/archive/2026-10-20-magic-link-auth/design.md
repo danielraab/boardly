@@ -33,14 +33,21 @@ updated_at  TEXT            last_used_at TEXT                expires_at   TEXT
 Timestamps are RFC 3339 UTC text. User IDs are UUIDv4 strings, so they're safe to expose in the API and in later Karakeep-compatible responses. `auth_method` is stored now so that `passkeys` can add `'passkey'` and a step-up column without reshaping the table. Tokens reference the email, not a user, because the account is created only when the link is redeemed.
 
 ### Packages
-`internal/auth` (tokens, sessions, middleware, handlers), `internal/users` (store + `/api/me`), `internal/mail` (mailer interface, SMTP + log implementations, embedded templates), `internal/ratelimit`. `httpapi` gains `requireUser` middleware that loads the session into the request context.
+`internal/auth` (email normalization, tokens, magic-link request and redemption, sessions, janitor), `internal/users` (user store, name validation), `internal/mail` (mailer interface, SMTP + log implementations, embedded templates), `internal/ratelimit` (per-IP limiter, client IP). The HTTP side lives in `httpapi`: the `/api/auth/*` and `/api/me` handlers, the cookie writer, the CSRF check and the `requireUser` middleware that loads the signed-in user into the request context. `auth` and `users` don't import `httpapi`, because `httpapi` imports them (keeping handlers in `auth` would create an import cycle). `db` gains a fixed-width timestamp format (`2006-01-02T15:04:05.000Z`, still RFC 3339) so the text timestamps compare correctly in SQL, and opens transactions with `_txlock=immediate` so concurrent writers wait on `busy_timeout` instead of failing.
 
 ### Tokens and session IDs
 Both are 32 bytes from `crypto/rand`, base64url-encoded, and stored as SHA-256. A plain hash is enough because the inputs are high-entropy, so no slow KDF is needed. Lookup is by hash, so there's no timing-sensitive comparison of secrets. Redemption runs in one transaction: `UPDATE magic_link_tokens SET used_at=? WHERE token_hash=? AND used_at IS NULL AND expires_at>?`, check that exactly one row was affected, upsert the user by email, insert the session. Two concurrent redemptions therefore can't both succeed.
 
-### Scanner-safe link: fragment + explicit confirm
-The link is `<FAMODASH_BASE_URL>/login/verify#token=…`. The fragment never reaches the server, proxies or `Referer` headers, so tokens don't end up in access logs. The verify page reads it, removes it from the address bar with `history.replaceState`, and only POSTs it after the user clicks "Complete sign-in". That one click protects against scanners that render the page and run its JavaScript (e.g. Defender Safe Links detonation).
-- *Alternative*: auto-submit on page load. It saves a click, but some scanners run JS and would use up or redeem the link. Rejected.
+### Scanner-safe link: fragment + browser binding, explicit confirm elsewhere
+The link is `<FAMODASH_BASE_URL>/login/verify#token=…`. The fragment never reaches the server, proxies or `Referer` headers, so tokens don't end up in access logs. The verify page reads it and removes it from the address bar with `history.replaceState`.
+
+Requesting a link also sets a login-request cookie `famodash_login_request`: 32 random bytes, `HttpOnly`, `SameSite=Lax`, `Path=/api/auth/magic-link` (so it only goes to the request and verify endpoints), `Max-Age` 15 min, `Secure` like the session cookie. Its SHA-256 is stored with the token (`magic_link_tokens.browser_hash`, migration `0003`). If the browser already sends a login-request cookie, the server reuses its value, so every link requested from one browser stays bound to it. The cookie is set for known and unknown addresses alike and is not set on rejected (400/429) requests.
+
+The verify page posts `{token, confirm: false}` as soon as it opens. The server redeems only if the request's login-request cookie hashes to the token's `browser_hash` (same atomic `UPDATE … WHERE … AND browser_hash = ?`). If the token is otherwise valid but the cookie is missing or different, it answers 403 `confirmation_required` without touching the token, and the page shows "Complete sign-in", which posts `{token, confirm: true}`. A successful redemption clears the login-request cookie.
+
+Scanners that render the page and run its JavaScript (e.g. Defender Safe Links detonation) don't have the cookie, so they get `confirmation_required` and the link stays usable. In the common case, requesting and opening in the same browser, sign-in needs no click. Links opened on another device, or in a mail app's in-app browser that doesn't share cookies with the requesting browser, still need the click.
+- *Alternative*: auto-submit on page load without binding. It saves a click everywhere, but scanners that run JS would use up or redeem the link. Rejected.
+- *Alternative*: detect scanners by user agent. Scanners pose as normal browsers. Rejected.
 - *Alternative*: `GET /api/auth/verify?token=` with a server redirect. Scanners would follow it. Rejected.
 
 ### Session handling
@@ -70,14 +77,14 @@ The library is `github.com/wneessen/go-mail`: maintained, supports STARTTLS and 
 | `FAMODASH_TRUST_PROXY_HEADERS` | `false` | use `X-Forwarded-For` |
 
 ### Frontend: TanStack Query for server state, session in router context
-`@tanstack/react-query` holds `['me']`, fetched through `GET /api/me`: 401 maps to `null`, `retry: false`, `staleTime` 5 min. A small `api.ts` fetch wrapper always sends `Content-Type: application/json`, parses the error format into an `ApiError`, and on 401 sets `['me']` to `null`. Logout calls the endpoint, then `queryClient.clear()`, then navigates to `/`.
+`@tanstack/react-query` holds `['me']`, fetched through `GET /api/me`: 401 maps to `null`, `retry: false`, `staleTime` 5 min. A small `api.ts` fetch wrapper always sends `Content-Type: application/json`, parses the error format into an `ApiError`, and on 401 sets `['me']` to `null`. Logout calls the endpoint, then drops every cached query except `['me']` and sets `['me']` to `null`, then navigates to `/`. (A plain `queryClient.clear()` would leave the mounted `useMe` observers attached to removed queries, so the UI wouldn't switch to signed out.) A successful link redemption does the same reset and then sets `['me']` to the returned user.
 
 The router gets `queryClient` in its context. Protected routes (`/profile`) use `beforeLoad: ensureQueryData(['me'])` and, when the result is null, `throw redirect({ to: '/login' })`. `/login` redirects signed-in users to `/`. `/` picks `<Home/>` or `<Landing/>` from the `me` query and renders a neutral skeleton while it's pending, so the landing page doesn't flash for signed-in users.
 - *Alternative*: a hand-written React context with `useEffect` fetching. That means re-implementing caching, invalidation and pending states, and dashboards will need Query anyway. Rejected.
 
 ### UI pieces
 - `/login`: one email input (`type=email`, `autocomplete="username"`, so `passkeys` can append `webauthn`), submit, then a "Check your inbox" state with a 60 s resend countdown. On 429, the countdown uses `Retry-After`.
-- `/login/verify`: shows the "Complete sign-in" button, then a spinner, then success (navigate `/`) or an error with a link to `/login`. If there's no token in the fragment, it shows the error immediately.
+- `/login/verify`: first tries the unconfirmed redemption and shows "Signing in…" meanwhile. On success it navigates to `/`; on `confirmation_required` it shows the "Complete sign-in" button; on other errors it shows an error with a link to `/login`. If there's no token in the fragment, it shows the error immediately without a request.
 - `UserMenu`: three states (`pending` → loading item, `null` → Sign in, user → name/email header, Profile, Sign out). The header uses Base UI `Menu.Group` + `Menu.GroupLabel` so it isn't focusable as an item.
 - `/profile`: a header card with the email and an inline name form (input, Save button, disabled while unchanged). On success it calls `setQueryData(['me'], user)`.
 - Home: greeting plus a placeholder card ("Your dashboards will appear here").
