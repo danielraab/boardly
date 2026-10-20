@@ -113,8 +113,9 @@ make dev-frontend   # Vite on http://localhost:3000, proxies /api to :8080
 Open http://localhost:3000 during development. The Go server on :8080 serves the API and the
 last frontend build.
 
-`make dev-backend` also starts the `dev` profile of [compose.yaml](compose.yaml), and stops it
-again when the server stops (Ctrl+C or a kill):
+`make dev-backend` also starts the services of the `dev` profile in [compose.yaml](compose.yaml),
+and removes them again when the server stops (Ctrl+C or a kill). It doesn't start the `famodash`
+app service, see [Running with Docker](#running-with-docker):
 
 | Service | URL | Purpose |
 |---|---|---|
@@ -128,10 +129,82 @@ In development the database lives at `data/famodash.db` in the repository root.
 | `make build` | Builds the frontend into `backend/internal/web/dist` and the binary `bin/famodash`, which embeds it |
 | `make test` | Go tests and frontend tests (Vitest) |
 | `make check` | `go vet`, `gofmt`, Biome and the TypeScript type check |
+| `make docker` | Builds the container image `famodash:dev` (`DOCKER_PLATFORM=linux/arm64` for another architecture) |
 
 `./bin/famodash` is the whole app: it serves the REST API under `/api` and the web app, with
 client-side routes falling back to `index.html`. `GET /api/health` reports whether the
-database is reachable.
+database is reachable, and `famodash healthcheck` checks it from the command line: it exits 0
+when the server on `FAMODASH_PORT` is healthy and 1 otherwise.
+
+### Running with Docker
+
+The [Dockerfile](Dockerfile) builds the frontend and the server in separate stages and produces a
+small image that contains only the `famodash` binary. Build it from the repository root; nothing
+but Docker is needed on the host:
+
+```bash
+make docker                      # or: docker build -t famodash:dev .
+```
+
+The container:
+
+- needs `FAMODASH_BASE_URL` (the public URL users open). Without it, the container exits right
+  away with an error naming the variable,
+- listens on port 8080,
+- keeps the database and the passkey provider cache in `/data`,
+- runs as the non-root user `nonroot` (uid and gid 65532),
+- reports its state through `famodash healthcheck`, shown as `healthy` in `docker ps`.
+
+All other settings from [Configuration](#configuration) can be passed as environment variables.
+
+```bash
+docker run -d --name famodash \
+  -p 8080:8080 \
+  -e FAMODASH_BASE_URL=http://localhost:8080 \
+  -v famodash-data:/data \
+  famodash:dev
+```
+
+To try the image locally, the repository's [compose.yaml](compose.yaml) has a `famodash` service
+that builds it and runs it on http://localhost:8080 with a named volume and no mail delivery:
+
+```bash
+docker compose up -d --build
+docker compose logs famodash     # sign-in links are written here
+```
+
+It takes its base URL from `FAMODASH_COMPOSE_BASE_URL` (default `http://localhost:8080`), not
+from `FAMODASH_BASE_URL`, because Compose also reads the development `.env`, where that variable
+points to the Vite dev server.
+
+For a server, use your own Compose file, for example:
+
+```yaml
+services:
+  famodash:
+    image: famodash:dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      FAMODASH_BASE_URL: https://dash.example.org
+      FAMODASH_SMTP_HOST: smtp.example.org
+      FAMODASH_SMTP_USERNAME: famodash@example.org
+      FAMODASH_SMTP_PASSWORD: change-me
+      FAMODASH_SMTP_FROM: Famodash <famodash@example.org>
+    volumes:
+      - famodash-data:/data
+
+volumes:
+  famodash-data:
+```
+
+**Use a named volume for `/data`** as in both examples. Docker gives a new named volume the
+owner of the image's `/data` directory, so `nonroot` can write to it. A bind mount
+(e.g. `./data:/data`) keeps the owner of the host directory instead, and the server then fails to
+create its database. In that case either run the container as the directory's owner
+(`--user "$(id -u):$(id -g)"`, or `user: "1000:1000"` in Compose), or hand the directory to the
+image's user once with `sudo chown -R 65532:65532 ./data`.
 
 ### Configuration
 
@@ -145,7 +218,7 @@ precedence over the file.
 | `FAMODASH_PORT` | `8080` | Port to listen on |
 | `FAMODASH_DB_PATH` | `./data/famodash.db` | SQLite database file; its directory is created if needed |
 | `FAMODASH_LOG_FORMAT` | `json` | Log format, `json` or `text` |
-| `FAMODASH_BASE_URL` | `http://localhost:3000` | Public URL of the web app, as users open it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
+| `FAMODASH_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
 | `FAMODASH_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
 | `FAMODASH_SMTP_PORT` | `587` | SMTP port |
 | `FAMODASH_SMTP_USERNAME` / `FAMODASH_SMTP_PASSWORD` | (empty) | SMTP login; leave empty for servers without authentication |
@@ -181,7 +254,8 @@ startup and writes every sign-in email (including the link) to its log. To sign 
 `/login/verify#token=…` link from the log into the browser. The default `.env` sends mail to
 Mailpit instead (http://localhost:8025).
 
-**Behind a reverse proxy** (e.g. Caddy, Traefik or nginx in front of the Docker container):
+**Behind a reverse proxy** (e.g. Caddy, Traefik or nginx in front of the
+[Docker container](#running-with-docker)):
 
 - Set `FAMODASH_BASE_URL` to the public URL, for example `https://dash.example.org`. A wrong
   value breaks the links in the emails and makes every sign-in request fail with

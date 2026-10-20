@@ -13,8 +13,19 @@ func env(vars map[string]string) func(string) (string, bool) {
 	}
 }
 
+const testBaseURL = "http://localhost:3000"
+
+// withBaseURL returns vars plus the required FAMODASH_BASE_URL, unless vars sets it.
+func withBaseURL(vars map[string]string) map[string]string {
+	out := map[string]string{"FAMODASH_BASE_URL": testBaseURL}
+	for k, v := range vars {
+		out[k] = v
+	}
+	return out
+}
+
 func TestLoadDefaults(t *testing.T) {
-	cfg, err := Load(env(nil))
+	cfg, err := Load(env(withBaseURL(nil)))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,6 +82,59 @@ func TestLoadOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadBaseURLRequired(t *testing.T) {
+	tests := []struct {
+		name string
+		vars map[string]string
+	}{
+		{"unset", nil},
+		{"empty", map[string]string{"FAMODASH_BASE_URL": ""}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Load(env(tt.vars))
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			if !strings.Contains(err.Error(), "FAMODASH_BASE_URL") {
+				t.Fatalf("error %q does not name FAMODASH_BASE_URL", err)
+			}
+		})
+	}
+}
+
+func TestLoadPort(t *testing.T) {
+	tests := []struct {
+		name    string
+		vars    map[string]string
+		want    int
+		wantErr bool
+	}{
+		{"default", nil, 8080, false},
+		{"empty uses default", map[string]string{"FAMODASH_PORT": ""}, 8080, false},
+		{"set", map[string]string{"FAMODASH_PORT": "9000"}, 9000, false},
+		{"not a number", map[string]string{"FAMODASH_PORT": "abc"}, 0, true},
+		{"out of range", map[string]string{"FAMODASH_PORT": "0"}, 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := LoadPort(env(tt.vars))
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "FAMODASH_PORT") {
+					t.Fatalf("err = %v, want an error naming FAMODASH_PORT", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Fatalf("port = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestOriginIgnoresPath(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"FAMODASH_BASE_URL": "https://example.org:8443/dash"}))
 	if err != nil {
@@ -100,7 +164,7 @@ func TestLoadInvalid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Load(env(map[string]string{tt.key: tt.value}))
+			_, err := Load(env(withBaseURL(map[string]string{tt.key: tt.value})))
 			if err == nil {
 				t.Fatal("expected an error")
 			}
@@ -115,17 +179,14 @@ func TestWebAuthnRPID(t *testing.T) {
 	tests := []struct {
 		name, baseURL, rpID, want string
 	}{
-		{"default dev", "", "", "localhost"},
+		{"default dev", testBaseURL, "", "localhost"},
 		{"default from base URL host", "https://home.example.org:8443/dash", "", "home.example.org"},
 		{"override with parent domain", "https://home.example.org", "example.org", "example.org"},
 		{"override with same host", "https://home.example.org", "HOME.example.org", "HOME.example.org"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vars := map[string]string{}
-			if tt.baseURL != "" {
-				vars["FAMODASH_BASE_URL"] = tt.baseURL
-			}
+			vars := map[string]string{"FAMODASH_BASE_URL": tt.baseURL}
 			if tt.rpID != "" {
 				vars["FAMODASH_WEBAUTHN_RP_ID"] = tt.rpID
 			}
@@ -152,7 +213,7 @@ func TestAAGUIDListURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := Load(env(tt.vars))
+			cfg, err := Load(env(withBaseURL(tt.vars)))
 			if err != nil {
 				t.Fatal(err)
 			}

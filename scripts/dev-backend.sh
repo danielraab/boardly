@@ -35,6 +35,9 @@ load_env .env
 
 export DEV_UID="$(id -u)" DEV_GID="$(id -g)"
 compose=(docker compose --profile dev)
+# Named explicitly: compose always includes services without a profile (the
+# famodash app container), which must not run next to the dev server on :8080.
+dev_services=(mailpit sqlite-web)
 
 # The server creates the DB on first start; create the directory first so
 # the bind mount isn't created by Docker (as root).
@@ -49,14 +52,14 @@ cleanup() {
 		wait "$server_pid" 2>/dev/null || true
 	fi
 	echo "Stopping dev services..."
-	"${compose[@]}" down
+	"${compose[@]}" rm --stop --force "${dev_services[@]}"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 
-"${compose[@]}" up -d
+"${compose[@]}" up -d "${dev_services[@]}"
 echo "Mailpit:    http://localhost:8025"
 echo "sqlite-web: http://localhost:8081"
 

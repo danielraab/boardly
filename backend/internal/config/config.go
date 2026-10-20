@@ -47,14 +47,14 @@ type SMTP struct {
 }
 
 // Load builds a Config from the given environment lookup (usually os.LookupEnv).
-// Unset variables get their defaults; invalid values return an error naming the variable.
+// Unset optional variables get their defaults; a missing FAMODASH_BASE_URL or an
+// invalid value returns an error naming the variable.
 func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	getenv := func(key string) string {
 		v, _ := lookupEnv(key)
 		return v
 	}
 	cfg := Config{
-		Port:      8080,
 		DBPath:    "./data/famodash.db",
 		LogFormat: "json",
 		SMTP: SMTP{
@@ -64,13 +64,11 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		},
 	}
 
-	if v := getenv("FAMODASH_PORT"); v != "" {
-		port, err := parsePort(v)
-		if err != nil {
-			return Config{}, fmt.Errorf("FAMODASH_PORT: %w", err)
-		}
-		cfg.Port = port
+	port, err := LoadPort(lookupEnv)
+	if err != nil {
+		return Config{}, err
 	}
+	cfg.Port = port
 
 	if v := getenv("FAMODASH_DB_PATH"); v != "" {
 		cfg.DBPath = v
@@ -83,9 +81,9 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		cfg.LogFormat = v
 	}
 
-	baseURL := "http://localhost:3000"
-	if v := getenv("FAMODASH_BASE_URL"); v != "" {
-		baseURL = v
+	baseURL := getenv("FAMODASH_BASE_URL")
+	if baseURL == "" {
+		return Config{}, fmt.Errorf("FAMODASH_BASE_URL: required, set it to the public URL of the web app (e.g. https://dash.example.org)")
 	}
 	u, err := parseBaseURL(baseURL)
 	if err != nil {
@@ -140,6 +138,20 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// LoadPort reads only FAMODASH_PORT (default 8080), for commands that don't
+// need the full configuration, such as the health check.
+func LoadPort(lookupEnv func(string) (string, bool)) (int, error) {
+	v, _ := lookupEnv("FAMODASH_PORT")
+	if v == "" {
+		return 8080, nil
+	}
+	port, err := parsePort(v)
+	if err != nil {
+		return 0, fmt.Errorf("FAMODASH_PORT: %w", err)
+	}
+	return port, nil
 }
 
 func parsePort(v string) (int, error) {

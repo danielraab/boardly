@@ -117,6 +117,8 @@ func TestSMTPSenderIntegration(t *testing.T) {
 	}
 	cfg, err := config.Load(func(k string) (string, bool) {
 		switch k {
+		case "FAMODASH_BASE_URL":
+			return "http://localhost:3000", true
 		case "FAMODASH_SMTP_HOST":
 			return host, true
 		case "FAMODASH_SMTP_PORT":

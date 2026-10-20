@@ -1,4 +1,4 @@
-.PHONY: dev-backend dev-frontend build build-frontend build-backend test check
+.PHONY: dev-backend dev-frontend build build-frontend build-backend docker test check
 
 # Run the Go server on :8080 (API + last frontend build) with the dev compose
 # services (mailpit, sqlite-web); they stop again when the server stops.
@@ -17,6 +17,11 @@ build-frontend:
 
 build-backend:
 	cd backend && go build -o ../bin/famodash .
+
+# Build the container image famodash:dev, e.g. `make docker DOCKER_PLATFORM=linux/arm64`.
+DOCKER_PLATFORM ?=
+docker:
+	docker build $(if $(DOCKER_PLATFORM),--platform $(DOCKER_PLATFORM)) -t famodash:dev .
 
 test:
 	cd backend && go test ./...
