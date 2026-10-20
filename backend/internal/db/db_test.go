@@ -194,3 +194,68 @@ func TestPasskeyMigrationOnExistingData(t *testing.T) {
 		}
 	}
 }
+
+func TestFavouritesConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	node := `INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 0, ?, ?, '` + ts + `', '` + ts + `')`
+
+	mustExec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?), ('u2', 'b@example.org', ?, ?)`, ts, ts, ts, ts)
+	mustExec(node, "r1", "u1", nil, "folder", nil, nil)
+	mustExec(node, "r2", "u2", nil, "folder", nil, nil)
+	mustExec(node, "f1", "u1", "r1", "folder", "Work", nil)
+	mustExec(node, "l1", "u1", "f1", "link", "Docs", "https://example.org")
+
+	for name, args := range map[string][]any{
+		"link without parent":         {"x1", "u1", nil, "link", nil, "https://example.org"},
+		"folder with url":             {"x2", "u1", "r1", "folder", "F", "https://example.org"},
+		"link without url":            {"x3", "u1", "r1", "link", "L", nil},
+		"second root":                 {"x4", "u1", nil, "folder", nil, nil},
+		"root with title":             {"x5", "u2", nil, "folder", "Root", nil},
+		"node in another user's tree": {"x6", "u2", "f1", "folder", "Foreign", nil},
+		"unknown kind":                {"x7", "u1", "r1", "note", "N", nil},
+	} {
+		if err := exec(node, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	mustExec(`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t1', 'u1', 'Reading', 'reading', ?)`, ts)
+	if err := exec(`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t2', 'u1', 'reading', 'reading', ?)`, ts); err == nil {
+		t.Error("duplicate tag key succeeded, want a constraint error")
+	}
+	mustExec(`INSERT INTO favourite_node_tags (node_id, tag_id) VALUES ('l1', 't1')`)
+
+	// Deleting a folder removes its subtree and the subtree's tag links.
+	mustExec(`DELETE FROM favourite_nodes WHERE id = 'f1'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM favourite_node_tags`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("favourite_node_tags = %d, err %v; want 0 after deleting the folder", n, err)
+	}
+
+	mustExec(`DELETE FROM users WHERE id = 'u1'`)
+	for _, table := range []string{"favourite_nodes WHERE user_id = 'u1'", "tags"} {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("%s = %d, err %v; want 0 after deleting the user", table, n, err)
+		}
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"famodash/internal/auth"
+	"famodash/internal/favourites"
 	"famodash/internal/users"
 )
 
@@ -20,8 +21,9 @@ type Deps struct {
 	DB  Pinger
 	Web http.Handler // serves the web app for every non-API path
 
-	Auth  *auth.Service
-	Users *users.Store
+	Auth       *auth.Service
+	Users      *users.Store
+	Favourites *favourites.Store
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -33,7 +35,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -48,6 +50,12 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/passkeys/registration/options", a.requireUser(a.passkeyRegistrationOptions))
 	mux.Handle("POST /api/passkeys/registration/verify", a.requireUser(a.passkeyRegistrationVerify))
 	mux.Handle("DELETE /api/passkeys/{id}", a.requireUser(a.deletePasskey))
+	mux.Handle("GET /api/favourites", a.requireUser(a.getFavourites))
+	mux.Handle("POST /api/favourites", a.requireUser(a.createFavourite))
+	mux.Handle("PATCH /api/favourites/{id}", a.requireUser(a.updateFavourite))
+	mux.Handle("POST /api/favourites/{id}/move", a.requireUser(a.moveFavourite))
+	mux.Handle("DELETE /api/favourites/{id}", a.requireUser(a.deleteFavourite))
+	mux.Handle("GET /api/tags", a.requireUser(a.suggestTags))
 
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))

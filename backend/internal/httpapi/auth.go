@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"famodash/internal/auth"
+	"famodash/internal/favourites"
 	"famodash/internal/ratelimit"
 	"famodash/internal/users"
 )
@@ -30,6 +31,7 @@ const maxBodyBytes = 64 << 10
 type api struct {
 	auth          *auth.Service
 	users         *users.Store
+	favourites    *favourites.Store
 	origin        string
 	secureCookies bool
 	trustProxy    bool

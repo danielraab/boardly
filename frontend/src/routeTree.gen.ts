@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FavouritesRouteImport } from './routes/favourites'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as LoginVerifyRouteImport } from './routes/login/verify'
@@ -17,6 +18,11 @@ import { Route as LoginVerifyRouteImport } from './routes/login/verify'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavouritesRoute = FavouritesRouteImport.update({
+  id: '/favourites',
+  path: '/favourites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -37,12 +43,14 @@ const LoginVerifyRoute = LoginVerifyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
   '/login/verify': typeof LoginVerifyRoute
   '/login/': typeof LoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
   '/login/verify': typeof LoginVerifyRoute
   '/login': typeof LoginIndexRoute
@@ -50,20 +58,23 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
   '/login/verify': typeof LoginVerifyRoute
   '/login/': typeof LoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/login/verify' | '/login/'
+  fullPaths: '/' | '/favourites' | '/settings' | '/login/verify' | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/login/verify' | '/login'
-  id: '__root__' | '/' | '/settings' | '/login/verify' | '/login/'
+  to: '/' | '/favourites' | '/settings' | '/login/verify' | '/login'
+  id:
+    '__root__' | '/' | '/favourites' | '/settings' | '/login/verify' | '/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FavouritesRoute: typeof FavouritesRoute
   SettingsRoute: typeof SettingsRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   LoginIndexRoute: typeof LoginIndexRoute
@@ -76,6 +87,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favourites': {
+      id: '/favourites'
+      path: '/favourites'
+      fullPath: '/favourites'
+      preLoaderRoute: typeof FavouritesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -104,6 +122,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FavouritesRoute: FavouritesRoute,
   SettingsRoute: SettingsRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   LoginIndexRoute: LoginIndexRoute,
