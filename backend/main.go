@@ -1,4 +1,5 @@
 // Command famodash runs the Famodash server: the REST API and the embedded web app.
+// `famodash healthcheck` checks a running server and exits 0 if it is healthy.
 package main
 
 import (
@@ -25,6 +26,14 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		if err := runHealthcheck(os.LookupEnv); err != nil {
+			fmt.Fprintln(os.Stderr, "unhealthy:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if err := run(); err != nil {
 		slog.Error("server stopped", "error", err)
 		os.Exit(1)

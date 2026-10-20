@@ -1,0 +1,21 @@
+# Allow-list: the image is built only from frontend/ and backend/. Everything
+# else (.env, data/, bin/, .git, editor and tool folders) stays out of the build
+# context, including files added to the repository later.
+*
+!frontend/
+!backend/
+
+# Dependencies and build output are produced inside the build.
+**/node_modules
+frontend/dist
+frontend/.tanstack
+backend/internal/web/dist
+
+# Local secrets and databases.
+**/.env
+**/.env.*
+**/*.local
+**/*.db
+**/*.db-shm
+**/*.db-wal
+backend/data
