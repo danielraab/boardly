@@ -4,6 +4,7 @@
 		"signIn": "Anmelden",
 		"language": "Sprache",
 		"loading": "Wird geladen…",
+		"favourites": "Favoriten",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden"
 	},
@@ -118,5 +119,69 @@
 		"deleteTitle": "Passkey löschen?",
 		"deleteText": "Du kannst dich dann nicht mehr mit „{{name}}“ anmelden. Die Anmeldung per E-Mail-Link funktioniert weiterhin.",
 		"deleteConfirm": "Löschen"
+	},
+	"favourites": {
+		"title": "Favoriten",
+		"intro": "Alle deine Links in einem Baum. Ziehe Einträge an ihrem Griff, um sie umzusortieren oder in einen anderen Ordner zu verschieben.",
+		"addFolder": "Ordner hinzufügen",
+		"addLink": "Link hinzufügen",
+		"addFolderTo": "Ordner zu {{name}} hinzufügen",
+		"addLinkTo": "Link zu {{name}} hinzufügen",
+		"edit": "{{name}} bearbeiten",
+		"delete": "{{name}} löschen",
+		"move": "{{name}} verschieben",
+		"expand": "{{name}} aufklappen",
+		"collapse": "{{name}} zuklappen",
+		"dropAtEnd": "Hier ablegen, um auf die oberste Ebene zu verschieben",
+		"emptyTitle": "Noch keine Favoriten",
+		"emptyText": "Lege einen Ordner an, um deine Links zu gruppieren, oder füge gleich deinen ersten Link hinzu.",
+		"dialog": {
+			"newFolder": "Neuer Ordner",
+			"newLink": "Neuer Link",
+			"editFolder": "Ordner bearbeiten",
+			"editLink": "Link bearbeiten",
+			"inFolder": "In „{{name}}“",
+			"nameLabel": "Name",
+			"urlLabel": "URL",
+			"urlPlaceholder": "https://example.org",
+			"titleLabel": "Titel (optional)",
+			"tagsLabel": "Tags",
+			"tagsPlaceholder": "Tag hinzufügen",
+			"createTag": "„{{name}}“ hinzufügen",
+			"removeTag": "Tag {{name}} entfernen",
+			"save": "Speichern",
+			"saving": "Wird gespeichert…",
+			"cancel": "Abbrechen"
+		},
+		"errors": {
+			"nameRequired": "Gib einen Namen ein.",
+			"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein.",
+			"urlInvalid": "Gib eine Webadresse ein, die mit http:// oder https:// beginnt.",
+			"urlTooLong": "Die URL darf höchstens 2048 Zeichen lang sein.",
+			"titleTooLong": "Der Titel darf höchstens 1000 Zeichen lang sein.",
+			"tagTooLong": "Tags dürfen höchstens 100 Zeichen lang sein.",
+			"notFound": "Diesen Eintrag gibt es nicht mehr. Die Liste wurde neu geladen.",
+			"moveFailed": "Der Eintrag konnte nicht verschoben werden. Die Liste wurde wiederhergestellt."
+		},
+		"deleteDialog": {
+			"linkTitle": "Link löschen?",
+			"folderTitle": "Ordner löschen?",
+			"linkText": "„{{name}}“ wird aus deinen Favoriten entfernt.",
+			"emptyFolderText": "Der leere Ordner „{{name}}“ wird entfernt.",
+			"folderText_one": "„{{name}}“ enthält {{count}} Eintrag. Was soll damit passieren?",
+			"folderText_other": "„{{name}}“ enthält {{count}} Einträge. Was soll damit passieren?",
+			"deleteContents": "Den Ordner mit allem darin löschen",
+			"moveContents": "Den Inhalt behalten und nach „{{parent}}“ verschieben",
+			"confirm": "Löschen",
+			"cancel": "Abbrechen"
+		},
+		"dnd": {
+			"instructions": "Um einen Eintrag zu verschieben, drücke Leertaste oder Eingabe auf seinem Griff. Wähle die neue Stelle mit den Pfeiltasten nach oben und unten, lege ihn mit Leertaste oder Eingabe ab oder brich mit Escape ab.",
+			"pickedUp": "{{name}} aufgenommen.",
+			"position": "Position {{position}} in {{folder}}.",
+			"into": "In den Ordner {{folder}}.",
+			"dropped": "{{name}} verschoben.",
+			"cancelled": "Verschieben von {{name}} abgebrochen."
+		}
 	}
 }
