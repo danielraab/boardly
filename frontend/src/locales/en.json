@@ -4,6 +4,7 @@
 		"signIn": "Sign in",
 		"language": "Language",
 		"loading": "Loading…",
+		"favourites": "Favourites",
 		"settings": "Settings",
 		"signOut": "Sign out"
 	},
@@ -118,5 +119,69 @@
 		"deleteTitle": "Delete passkey?",
 		"deleteText": "You will no longer be able to sign in with “{{name}}”. You can still sign in with an email link.",
 		"deleteConfirm": "Delete"
+	},
+	"favourites": {
+		"title": "Favourites",
+		"intro": "All your links in one tree. Drag items by their handle to reorder them or move them into another folder.",
+		"addFolder": "Add folder",
+		"addLink": "Add link",
+		"addFolderTo": "Add folder to {{name}}",
+		"addLinkTo": "Add link to {{name}}",
+		"edit": "Edit {{name}}",
+		"delete": "Delete {{name}}",
+		"move": "Move {{name}}",
+		"expand": "Expand {{name}}",
+		"collapse": "Collapse {{name}}",
+		"dropAtEnd": "Drop here to move to the top level",
+		"emptyTitle": "No favourites yet",
+		"emptyText": "Add a folder to group your links, or add your first link right away.",
+		"dialog": {
+			"newFolder": "New folder",
+			"newLink": "New link",
+			"editFolder": "Edit folder",
+			"editLink": "Edit link",
+			"inFolder": "In “{{name}}”",
+			"nameLabel": "Name",
+			"urlLabel": "URL",
+			"urlPlaceholder": "https://example.org",
+			"titleLabel": "Title (optional)",
+			"tagsLabel": "Tags",
+			"tagsPlaceholder": "Add a tag",
+			"createTag": "Add “{{name}}”",
+			"removeTag": "Remove tag {{name}}",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel"
+		},
+		"errors": {
+			"nameRequired": "Enter a name.",
+			"nameTooLong": "The name can be at most 100 characters long.",
+			"urlInvalid": "Enter a web address that starts with http:// or https://.",
+			"urlTooLong": "The URL can be at most 2048 characters long.",
+			"titleTooLong": "The title can be at most 1000 characters long.",
+			"tagTooLong": "Tags can be at most 100 characters long.",
+			"notFound": "This item no longer exists. The list has been refreshed.",
+			"moveFailed": "The item could not be moved. The list has been restored."
+		},
+		"deleteDialog": {
+			"linkTitle": "Delete link?",
+			"folderTitle": "Delete folder?",
+			"linkText": "“{{name}}” will be removed from your favourites.",
+			"emptyFolderText": "The empty folder “{{name}}” will be removed.",
+			"folderText_one": "“{{name}}” contains {{count}} item. What should happen to it?",
+			"folderText_other": "“{{name}}” contains {{count}} items. What should happen to them?",
+			"deleteContents": "Delete the folder and everything in it",
+			"moveContents": "Keep the contents and move them to “{{parent}}”",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"dnd": {
+			"instructions": "To move an item, press space or enter on its handle. Choose the new place with the up and down arrow keys, press space or enter to drop it, or escape to cancel.",
+			"pickedUp": "Picked up {{name}}.",
+			"position": "Position {{position}} in {{folder}}.",
+			"into": "Into the folder {{folder}}.",
+			"dropped": "{{name}} moved.",
+			"cancelled": "Moving {{name}} cancelled."
+		}
 	}
 }

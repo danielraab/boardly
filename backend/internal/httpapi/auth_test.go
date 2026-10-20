@@ -15,6 +15,7 @@ import (
 
 	"famodash/internal/auth"
 	"famodash/internal/dbtest"
+	"famodash/internal/favourites"
 	"famodash/internal/mail"
 	"famodash/internal/users"
 )
@@ -91,7 +92,7 @@ func newServer(t *testing.T) *server {
 	svc.Providers = testProviders(t)
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store,
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favourites.NewStore(database),
 		Origin: testOrigin, SecureCookies: true,
 	})
 	return &server{h: h, db: database, clock: c, mail: box}

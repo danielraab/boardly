@@ -25,7 +25,19 @@ All data (dashboards, favourites, API tokens) belongs to a single user.
 Each user has exactly **one favourites tree**. It is the single source of truth for all bookmarks:
 
 - **Folder nodes** group other nodes and can be nested to any depth.
-- **Link nodes** hold a URL, a title and an optional icon or thumbnail.
+- **Link nodes** hold an `http` or `https` URL, an optional title and any number of **tags**. Icons
+  and thumbnails will follow.
+
+The tree is managed on the **Favourites** page (`/favourites`, linked from the user menu):
+
+- Add, rename and delete folders and links. Links open in a new tab.
+- Drag items by their handle to reorder them or move them into another folder. This also works with
+  the keyboard: focus the handle, press Space, choose the place with the arrow keys and press Space
+  again.
+- Deleting a folder that isn't empty asks whether to delete its contents too or move them to the
+  folder's parent.
+- Tags are created as you type them on a link, and existing tags are suggested. A tag that is no
+  longer on any link is removed.
 
 Dashboards (through navigation trees) and the Karakeep API both read from and write to this tree.
 Neither keeps its own separate copy of the bookmarks.
