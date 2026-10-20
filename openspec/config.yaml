@@ -1,20 +1,23 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Famodash ("favourites and more dashboard") is a self-hosted personal start page
+  and bookmark manager: WYSIWYG dashboards (12-column grid, widgets), one favourites
+  tree per user, a Karakeep-compatible API, and passwordless login (magic link, passkeys).
+  Anyone may sign up; all data belongs to a single user.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Tech stack:
+  - Backend: Go (standard library net/http with method patterns, log/slog), SQLite via
+    modernc.org/sqlite, embedded SQL migrations (backend/internal/db/migrations/NNNN_name.sql).
+  - Frontend: React 19, TanStack Router (file routes), Tailwind CSS 4, Base UI (@base-ui/react)
+    for interactive primitives, lucide-react icons, i18next/react-i18next, Vite, Biome, pnpm.
+  - One binary: Vite builds into backend/internal/web/dist, which Go embeds and serves with SPA
+    fallback. In dev, Vite (:3000) proxies /api to Go (:8080).
+
+  Conventions:
+  - REST/JSON API under /api. Errors are {"error": {"code": "<snake_case>", "message": "..."}}.
+  - Configuration only via FAMODASH_* environment variables with documented defaults.
+  - Every user-visible string is translated (en + de); keys are namespaced by area
+    (e.g. shell.userMenu, landing.hero.title).
+  - Tests live with the work that needs them: Go tests with httptest, frontend tests with
+    Vitest + Testing Library. `make check` and `make test` must pass.
