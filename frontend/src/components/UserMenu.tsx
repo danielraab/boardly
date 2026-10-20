@@ -1,6 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import { Link } from "@tanstack/react-router";
-import { CircleUserRound, LogIn, LogOut, Settings } from "lucide-react";
+import { CircleUserRound, LogIn, LogOut, Settings, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMe, useSignOut } from "#/features/auth/session";
 import { headerButton, menuItem, menuPopup } from "./menuStyles";
@@ -40,6 +40,14 @@ export function UserMenu() {
 									</Menu.GroupLabel>
 								</Menu.Group>
 								<div className="mx-1 mb-1 border-t border-line" />
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/favourites" />}
+								>
+									<Star className="size-4 text-muted" aria-hidden />
+									{t("shell.favourites")}
+								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick
 									className={menuItem}
