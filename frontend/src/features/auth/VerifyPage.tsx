@@ -70,7 +70,7 @@ export function VerifyPage() {
 			</h1>
 			{failed ? (
 				<>
-					<p role="alert" className="mt-3 text-red-700">
+					<p role="alert" className="mt-3 text-danger">
 						{!token || hasCode(redeem.error, "invalid_token")
 							? t("verify.invalid")
 							: t("common.genericError")}

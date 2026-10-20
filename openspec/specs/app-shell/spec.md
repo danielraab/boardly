@@ -2,14 +2,18 @@
 
 ## Purpose
 
-Defines the global frame around every Famodash page: the header with the product name, the language switcher and the user avatar with its menu.
+Defines the global frame around every Famodash page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
 ## Requirements
 ### Requirement: Global header
-Every page SHALL show a header with the product name "Famodash" on the left, linking to `/`, and the language switcher and user avatar on the right.
+Every page SHALL show a header with the product name "Famodash" on the left, linking to `/`, and on the right, in this order, the theme switcher, the language switcher and the user avatar.
 
 #### Scenario: Header on every page
 - **WHEN** a visitor opens `/`, `/login` or an unknown path
-- **THEN** the page shows the header with "Famodash", the language switcher and the avatar
+- **THEN** the page shows the header with "Famodash", the theme switcher, the language switcher and the avatar
+
+#### Scenario: Theme switcher placement
+- **WHEN** the header is rendered
+- **THEN** the theme switcher button comes directly before the language switcher button
 
 ### Requirement: Avatar shows a generic person icon
 The avatar SHALL be a round button that shows a generic person icon. It SHALL have an accessible name that describes it as the user menu.

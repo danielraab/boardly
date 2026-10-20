@@ -114,7 +114,7 @@ function DeleteForm({
 				</fieldset>
 			)}
 			{remove.isError && (
-				<p role="alert" className="mt-3 text-sm text-red-700">
+				<p role="alert" className="mt-3 text-sm text-danger">
 					{t("common.genericError")}
 				</p>
 			)}
