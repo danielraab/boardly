@@ -33,7 +33,7 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.5",
+    "@biomejs/biome": "2.5.15",
     "@tanstack/devtools-vite": "0.8.5",
     "@tanstack/router-plugin": "1.168.47",
     "@testing-library/jest-dom": "^7.0.1",
