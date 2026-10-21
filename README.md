@@ -67,21 +67,53 @@ Every dashboard has its own address, `/<user-slug>/<dashboard-slug>`, for exampl
 With more than one dashboard to choose from, the header shows the current dashboard's title next to
 "Famodash" as a dropdown for switching. Visitors only see the owner's public dashboards there.
 
-The dashboard content is still to come. Each dashboard:
+#### Layout
 
-- uses a **12-column grid** layout,
-- is edited **WYSIWYG**: you add, drag, resize and configure widgets directly on the page,
-- is made of **widgets** (see below).
+A dashboard is made of **sections**, and everything on it lives in a section. Sections sit on a
+**column grid** and fill it left to right, wrapping to the next line when a section doesn't fit.
+Each dashboard has its own grid settings in its dialog on `/dashboards`:
+
+- **Columns**: 6 by default (1–12).
+- **Columns on small screens**: 2 by default (1 up to the columns above).
+- **Small screens are narrower than** 640, 768 (default) or 1024 px. Below that width the dashboard
+  uses the small-screen column count.
+
+A section's width always counts in page columns, also inside another section. A section is never
+shown wider than its parent, so a width-6 section inside a width-3 section is 3 columns wide, and on
+a 2-column phone screen every wider section takes the full width. The stored width is kept, so
+raising the column count again brings the original layout back.
+
+#### Editing
+
+The owner of a dashboard sees an **Edit** button next to its title. It opens edit mode (the address
+gets `?edit=true`), where every section shows a drag handle and a settings button (borderless
+sections also get a dashed outline, so you can see them), and **Add section** buttons appear at the
+top level and inside sections:
+
+- Changes are a draft until you click **Save and exit**, which saves the whole layout at once. The
+  **✕** button leaves without saving. Leaving with unsaved changes (✕, another page, reload or
+  closing the tab) asks first.
+- Drag sections by their handle to reorder them or to move them into another section, with
+  everything inside them. With the keyboard: focus the handle, press Space, choose the place with
+  the arrow keys and press Space again.
+- Sections can be nested at most **5 levels** deep. A move that would go deeper is refused with a
+  message.
+- Deleting a section asks for confirmation and deletes everything inside it.
+- If the dashboard was saved elsewhere (another tab or device) since you started editing, saving is
+  refused instead of overwriting it. **Reload** then loads the current version.
+
+A new dashboard is empty. Sections can only be added in edit mode.
 
 ### Widgets
 
 | Widget | Description |
 |---|---|
 | **Link** | Icon or thumbnail, title and URL. Links always open in a new tab. |
-| **Section** | A container for other widgets, including nested sections. It has an optional icon, a label and a color that is used for its border. Inside, it has its own grid. |
+| **Section** | A container for other widgets, including nested sections (at most 5 levels). It has a width in columns, an optional title, a border that can be turned off, and a height: fitting its content, or a fixed number of rows (4rem each) with a scrollbar when the content is taller. Inside, it has a grid as many columns wide as the section. Widgets other than sections take the full width of their section; use a borderless section to place them side by side. |
 | **Navigation tree** | Shows part of the user's favourites tree. When you add one, you choose a node of the tree as its root, and the widget shows that node and everything below it. A dashboard can have several navigation trees, each with a different root. Changes to the favourites tree show up in the widget right away. |
 
-More widget types can be added later. The widget model is meant to be extended.
+Sections are available now. Link and navigation-tree widgets will follow. More widget types can be
+added later. The widget model is meant to be extended.
 
 ### Karakeep-compatible server
 
@@ -111,7 +143,7 @@ User
 │         ▲                    ▲
 │         │ root node          │ root node
 ├── Dashboards                 │
-│   └── Grid (12 columns)      │
+│   └── Grid (6 columns)       │
 │       ├── Link widget        │
 │       ├── Section widget (nests widgets)
 │       └── Navigation tree widget ──┘ (bound to a node)

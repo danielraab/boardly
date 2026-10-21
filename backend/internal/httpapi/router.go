@@ -62,6 +62,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/dashboards", a.requireUser(a.createDashboard))
 	mux.Handle("PATCH /api/dashboards/{id}", a.requireUser(a.updateDashboard))
 	mux.Handle("DELETE /api/dashboards/{id}", a.requireUser(a.deleteDashboard))
+	mux.Handle("PUT /api/dashboards/{id}/layout", a.requireUser(a.saveLayout))
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
 
 	root := http.NewServeMux()

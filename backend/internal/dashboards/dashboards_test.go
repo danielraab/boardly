@@ -137,8 +137,52 @@ func TestSlugsAndTitles(t *testing.T) {
 	}
 
 	got, err := f.s.Update(f.ctx, f.ann, home.ID, Patch{Title: ptr("  Start "), Slug: ptr("Start"), IsPublic: ptr(true)})
-	if err != nil || got != (Dashboard{ID: home.ID, Slug: "start", Title: "Start", IsPublic: true}) {
+	if err != nil || got != (Dashboard{ID: home.ID, Slug: "start", Title: "Start", IsPublic: true, Columns: DefaultColumns}) {
 		t.Fatalf("update = %+v, %v", got, err)
+	}
+}
+
+func TestColumns(t *testing.T) {
+	f := newFixture(t)
+	d := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
+	if d.Columns != DefaultColumns {
+		t.Fatalf("defaults = %+v, want %+v", d.Columns, DefaultColumns)
+	}
+	custom := f.create(f.ann, Fields{Title: "Wide", Slug: "wide", DesktopColumns: ptr(12), MobileColumns: ptr(1), MobileBreakpoint: ptr(1024)})
+	if custom.Columns != (Columns{12, 1, 1024}) {
+		t.Fatalf("custom = %+v", custom.Columns)
+	}
+
+	for name, fields := range map[string]Fields{
+		"desktop 0":         {DesktopColumns: ptr(0)},
+		"desktop 13":        {DesktopColumns: ptr(13)},
+		"mobile 0":          {MobileColumns: ptr(0)},
+		"mobile above desk": {DesktopColumns: ptr(4), MobileColumns: ptr(5)},
+		"breakpoint 800":    {MobileBreakpoint: ptr(800)},
+	} {
+		fields.Title, fields.Slug = "X", "x"
+		if _, err := f.s.Create(f.ctx, f.ann, fields); !errors.Is(err, ErrInvalidColumns) {
+			t.Errorf("create %s: %v", name, err)
+		}
+	}
+
+	// A patch of one count is checked against the stored other one.
+	if _, err := f.s.Update(f.ctx, f.ann, d.ID, Patch{DesktopColumns: ptr(1)}); !errors.Is(err, ErrInvalidColumns) {
+		t.Errorf("desktop below stored mobile: %v", err)
+	}
+	if _, err := f.s.Update(f.ctx, f.ann, d.ID, Patch{MobileColumns: ptr(7)}); !errors.Is(err, ErrInvalidColumns) {
+		t.Errorf("mobile above stored desktop: %v", err)
+	}
+	if _, err := f.s.Update(f.ctx, f.ann, d.ID, Patch{MobileBreakpoint: ptr(100)}); !errors.Is(err, ErrInvalidColumns) {
+		t.Errorf("breakpoint 100: %v", err)
+	}
+	if got := f.list(f.ann)[0]; got.Columns != DefaultColumns {
+		t.Fatalf("failed patches changed the columns: %+v", got.Columns)
+	}
+
+	got, err := f.s.Update(f.ctx, f.ann, d.ID, Patch{DesktopColumns: ptr(8)})
+	if err != nil || got.Columns != (Columns{8, 2, 768}) || got.Title != "Home" {
+		t.Fatalf("patch desktop = %+v, %v", got, err)
 	}
 }
 
