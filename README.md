@@ -44,7 +44,30 @@ Neither keeps its own separate copy of the bookmarks.
 
 ### Dashboards
 
-A user can create any number of dashboards. Each dashboard:
+A user can create any number of dashboards on the **Dashboards** page (`/dashboards`, linked from the
+user menu). Each dashboard has a title, an address, and two flags:
+
+- **Default**: the default dashboard is shown on `/` when you're signed in. You can have at most one.
+  Without one, `/` asks you to create your first dashboard or pick a default.
+- **Public**: anyone with the address can see a public dashboard, also without signing in. Private
+  dashboards are only visible to their owner. Everyone else gets "page not found".
+
+Every dashboard has its own address, `/<user-slug>/<dashboard-slug>`, for example `/ann/home`:
+
+- New accounts get a random **user slug** of 10 characters. You can change it in Settings → Profile.
+  It must be unique across all users and can't be a word Famodash reserves for its own pages
+  (`api`, `login`, `settings`, …).
+- A **dashboard slug** must be unique among your own dashboards. When you create a dashboard, it is
+  derived from the title.
+- Slugs are lowercase, 1–32 characters of `a-z`, `0-9` and `-`.
+- Renaming a slug breaks links that use the old address. They are not redirected, so the app asks for
+  confirmation first.
+- `/<user-slug>` alone redirects to `/`.
+
+With more than one dashboard to choose from, the header shows the current dashboard's title next to
+"Famodash" as a dropdown for switching. Visitors only see the owner's public dashboards there.
+
+The dashboard content is still to come. Each dashboard:
 
 - uses a **12-column grid** layout,
 - is edited **WYSIWYG**: you add, drag, resize and configure widgets directly on the page,

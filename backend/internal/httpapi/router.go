@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"famodash/internal/auth"
+	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
 	"famodash/internal/users"
 )
@@ -24,6 +25,7 @@ type Deps struct {
 	Auth       *auth.Service
 	Users      *users.Store
 	Favourites *favourites.Store
+	Dashboards *dashboards.Store
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -35,7 +37,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -56,6 +58,11 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/favourites/{id}/move", a.requireUser(a.moveFavourite))
 	mux.Handle("DELETE /api/favourites/{id}", a.requireUser(a.deleteFavourite))
 	mux.Handle("GET /api/tags", a.requireUser(a.suggestTags))
+	mux.Handle("GET /api/dashboards", a.requireUser(a.listDashboards))
+	mux.Handle("POST /api/dashboards", a.requireUser(a.createDashboard))
+	mux.Handle("PATCH /api/dashboards/{id}", a.requireUser(a.updateDashboard))
+	mux.Handle("DELETE /api/dashboards/{id}", a.requireUser(a.deleteDashboard))
+	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
 
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))

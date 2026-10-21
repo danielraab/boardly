@@ -7,7 +7,7 @@ describe("app shell", () => {
 	it.each([
 		"/",
 		"/login",
-		"/no-such-page",
+		"/no/such/page",
 	])("shows the header on %s", async (path) => {
 		renderApp(path);
 		expect(
@@ -18,7 +18,7 @@ describe("app shell", () => {
 	});
 
 	it("shows a not-found page with a link home for unknown paths", async () => {
-		renderApp("/no-such-page");
+		renderApp("/no/such/page");
 		expect(
 			await screen.findByRole("heading", { name: "Page not found" }),
 		).toBeVisible();
@@ -71,25 +71,27 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Favourites, Settings and Sign out in this order", async () => {
+	it("shows name, email, Dashboards, Favourites, Settings and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"Annann@example.orgFavouritesSettingsSign out",
+			"Annann@example.orgDashboardsFavouritesSettingsSign out",
 		);
 		expect(
 			within(menu)
 				.getAllByRole("menuitem")
 				.map((i) => i.textContent),
-		).toEqual(["Favourites", "Settings", "Sign out"]);
+		).toEqual(["Dashboards", "Favourites", "Settings", "Sign out"]);
 	});
 
 	it("shows the email without an empty name line when there is no name", async () => {
 		mockApi({ "GET /api/me": signedIn() });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
-		expect(menu.textContent).toBe("ann@example.orgFavouritesSettingsSign out");
+		expect(menu.textContent).toBe(
+			"ann@example.orgDashboardsFavouritesSettingsSign out",
+		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
 		).toBeNull();
@@ -102,6 +104,19 @@ describe("signed-in user menu", () => {
 		const menu = await screen.findByRole("menu");
 		expect(within(menu).getByText("Loading…")).toBeVisible();
 		expect(within(menu).queryAllByRole("menuitem")).toHaveLength(0);
+	});
+
+	it("goes to /dashboards from the Dashboards item and closes the menu", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Dashboards" }),
+		);
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/dashboards"),
+		);
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 	});
 
 	it("goes to /favourites from the Favourites item and closes the menu", async () => {
