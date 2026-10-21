@@ -26,17 +26,12 @@ describe("slugFromTitle", () => {
 });
 
 describe("slugError", () => {
-	it.each([
-		"a",
-		"home",
-		"my-board-2",
-		"-a",
-		"a-",
-		"-",
-		"a".repeat(32),
-	])("accepts %j", (slug) => {
-		expect(slugError(slug)).toBeNull();
-	});
+	it.each(["a", "home", "my-board-2", "-a", "a-", "-", "a".repeat(32)])(
+		"accepts %j",
+		(slug) => {
+			expect(slugError(slug)).toBeNull();
+		},
+	);
 
 	it.each(["", "a_b", "a.b", "Home", "a".repeat(33)])("rejects %j", (slug) => {
 		expect(slugError(slug)).toBe("invalid");
