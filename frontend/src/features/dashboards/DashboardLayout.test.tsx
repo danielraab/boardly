@@ -75,7 +75,9 @@ describe("dashboard layout", () => {
 		});
 		renderApp("/ann/home");
 		expect(
-			await screen.findByText("Click “Edit” to add the first section."),
+			await screen.findByText(
+				"Open the ⋯ menu and choose “Edit layout” to add the first section.",
+			),
 		).toBeVisible();
 		expect(screen.queryByRole("button", { name: "Add section" })).toBeNull();
 	});

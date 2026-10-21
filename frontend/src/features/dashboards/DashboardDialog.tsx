@@ -34,10 +34,13 @@ export function DashboardDialog({
 	target,
 	userSlug,
 	onClose,
+	onSaved,
 }: {
 	target: DashboardDialogTarget | null;
 	userSlug: string;
 	onClose: () => void;
+	/** Called with the saved dashboard before the queries are refreshed. */
+	onSaved?: (saved: Dashboard) => void;
 }) {
 	return (
 		<Dialog.Root
@@ -56,6 +59,7 @@ export function DashboardDialog({
 							editing={target.dashboard}
 							userSlug={userSlug}
 							onClose={onClose}
+							onSaved={onSaved}
 						/>
 					)}
 				</Dialog.Popup>
@@ -74,10 +78,12 @@ function DashboardForm({
 	editing,
 	userSlug,
 	onClose,
+	onSaved,
 }: {
 	editing: Dashboard | null;
 	userSlug: string;
 	onClose: () => void;
+	onSaved?: (saved: Dashboard) => void;
 }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
@@ -110,7 +116,8 @@ function DashboardForm({
 				? updateDashboard(editing.id, fields)
 				: createDashboard(fields);
 		},
-		onSuccess: () => {
+		onSuccess: (saved) => {
+			onSaved?.(saved);
 			void queryClient.invalidateQueries({ queryKey: dashboardsQueryKey });
 			void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
 			onClose();
