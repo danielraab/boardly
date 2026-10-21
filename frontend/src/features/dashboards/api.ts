@@ -45,6 +45,10 @@ export type DashboardEntry = { slug: string; title: string };
 export type DashboardViewData = {
 	/** Only set for the owner. */
 	id?: string;
+	/** Only set for the owner. */
+	isDefault?: boolean;
+	/** Only set for the owner. */
+	isPublic?: boolean;
 	dashboard: DashboardEntry;
 	ownerSlug: string;
 	isOwner: boolean;

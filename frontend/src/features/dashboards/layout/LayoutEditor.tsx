@@ -20,7 +20,11 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton, secondaryButton } from "#/components/buttonStyles";
+import {
+	primaryButton,
+	secondaryButton,
+	secondaryIconButton,
+} from "#/components/buttonStyles";
 import {
 	type DashboardViewData,
 	dashboardViewQueryKey,
@@ -365,7 +369,7 @@ export function LayoutEditor({
 						onClick={cancel}
 						aria-label={t("dashboards.editor.cancel")}
 						title={t("dashboards.editor.cancel")}
-						className={`${secondaryButton} p-2`}
+						className={secondaryIconButton}
 					>
 						<X className="size-4" aria-hidden />
 					</button>

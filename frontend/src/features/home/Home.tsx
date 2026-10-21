@@ -64,7 +64,7 @@ function DefaultDashboard({
 	);
 	if (view.isError) return <GenericError />;
 	if (!view.data) return null;
-	return <DashboardView view={view.data} />;
+	return <DashboardView view={view.data} atHome />;
 }
 
 function SelectDefault({ dashboards }: { dashboards: Dashboard[] }) {

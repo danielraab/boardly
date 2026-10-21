@@ -7,6 +7,10 @@ export const primaryButton = `${textButton} bg-ink text-paper hover:bg-ink/85 di
 
 export const secondaryButton = `${textButton} border border-line text-ink hover:bg-surface disabled:opacity-50`;
 
+/** An icon-only secondary button, square and as tall as the text buttons. */
+export const secondaryIconButton =
+	"inline-flex size-[2.375rem] shrink-0 items-center justify-center rounded-lg border border-line text-ink hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:bg-surface";
+
 export const dangerButton = `${textButton} bg-danger text-on-danger hover:bg-danger/90 disabled:opacity-50`;
 
 export const iconButton =

@@ -236,7 +236,7 @@
 			"cancel": "Abbrechen",
 			"layoutLabel": "Layout",
 			"desktopColumnsLabel": "Spalten",
-			"mobileColumnsLabel": "Spalten auf kleinen Bildschirmen",
+			"mobileColumnsLabel": "Spalten (mobil)",
 			"mobileColumnsTooMany": "Verwende höchstens so viele Spalten wie auf großen Bildschirmen.",
 			"breakpointLabel": "Kleine Bildschirme sind schmaler als",
 			"breakpointOption": "{{px}} px",
@@ -265,10 +265,12 @@
 		"view": {
 			"emptyTitle": "Dieses Dashboard ist leer",
 			"emptyText": "Zu diesem Dashboard wurde noch nichts hinzugefügt.",
-			"emptyOwnerText": "Klicke auf „Bearbeiten“, um den ersten Abschnitt hinzuzufügen."
+			"emptyOwnerText": "Öffne das ⋯-Menü und wähle „Layout bearbeiten“, um den ersten Abschnitt hinzuzufügen.",
+			"actions": "Dashboard-Aktionen",
+			"settings": "Einstellungen"
 		},
 		"editor": {
-			"edit": "Bearbeiten",
+			"editLayout": "Layout bearbeiten",
 			"saveAndExit": "Speichern und beenden",
 			"saving": "Wird gespeichert…",
 			"cancel": "Bearbeiten abbrechen",

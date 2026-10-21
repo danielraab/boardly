@@ -207,7 +207,7 @@ func TestForeignDashboard(t *testing.T) {
 
 func TestLookup(t *testing.T) {
 	f := newFixture(t)
-	f.create(f.ann, Fields{Title: "Home", Slug: "home", IsPublic: true})
+	f.create(f.ann, Fields{Title: "Home", Slug: "home", IsPublic: true, IsDefault: true})
 	f.create(f.ann, Fields{Title: "Links", Slug: "links", IsPublic: true})
 	f.create(f.ann, Fields{Title: "Work", Slug: "work"})
 
@@ -223,10 +223,17 @@ func TestLookup(t *testing.T) {
 	if err != nil || !v.IsOwner || v.Dashboard.Title != "Work" || v.OwnerSlug != "ann" || entries(v) != "home,links,work" {
 		t.Fatalf("owner/private = %+v, %v", v, err)
 	}
+	// The owner gets the flags, also when they are false.
+	if v.IsDefault == nil || *v.IsDefault || v.IsPublic == nil || *v.IsPublic {
+		t.Errorf("owner/private flags = %v, %v", v.IsDefault, v.IsPublic)
+	}
+	if v, err := f.s.Lookup(f.ctx, "ann", "home", f.ann); err != nil || v.IsDefault == nil || !*v.IsDefault || v.IsPublic == nil || !*v.IsPublic {
+		t.Errorf("owner/default flags = %+v, %v", v, err)
+	}
 
 	for name, viewer := range map[string]string{"signed out": "", "other user": f.bob} {
 		v, err := f.s.Lookup(f.ctx, "ann", "home", viewer)
-		if err != nil || v.IsOwner || entries(v) != "home,links" {
+		if err != nil || v.IsOwner || entries(v) != "home,links" || v.IsDefault != nil || v.IsPublic != nil {
 			t.Errorf("%s/public = %+v, %v", name, v, err)
 		}
 		for _, path := range [][2]string{{"ann", "work"}, {"nobody", "home"}, {"ann", "nothing"}} {

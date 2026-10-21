@@ -53,7 +53,10 @@ type Entry struct {
 // View is the result of resolving a dashboard address.
 type View struct {
 	// ID is only set for the owner, who needs it to save the layout.
-	ID        string `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
+	// IsDefault and IsPublic are only set for the owner, who can edit them.
+	IsDefault *bool  `json:"isDefault,omitempty"`
+	IsPublic  *bool  `json:"isPublic,omitempty"`
 	Dashboard Entry  `json:"dashboard"`
 	OwnerSlug string `json:"ownerSlug"`
 	IsOwner   bool   `json:"isOwner"`
@@ -285,14 +288,14 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID string) (View, error) {
 	var ownerID, dashboardID string
 	var v View
-	var public bool
+	var public, isDefault bool
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT u.id, u.slug, d.id, d.slug, d.title, d.is_public,
+		`SELECT u.id, u.slug, d.id, d.slug, d.title, d.is_public, d.is_default,
 		   d.desktop_columns, d.mobile_columns, d.mobile_breakpoint, d.layout_version
 		 FROM users u JOIN dashboards d ON d.user_id = u.id
 		 WHERE u.slug = ? AND d.slug = ?`,
 		strings.ToLower(userSlug), strings.ToLower(dashboardSlug),
-	).Scan(&ownerID, &v.OwnerSlug, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public,
+	).Scan(&ownerID, &v.OwnerSlug, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public, &isDefault,
 		&v.Columns.DesktopColumns, &v.Columns.MobileColumns, &v.Columns.MobileBreakpoint, &v.LayoutVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return View{}, ErrNotFound
@@ -306,6 +309,7 @@ func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID st
 	}
 	if v.IsOwner {
 		v.ID = dashboardID
+		v.IsDefault, v.IsPublic = &isDefault, &public
 	}
 	if v.Sections, err = loadSections(ctx, s.DB, dashboardID); err != nil {
 		return View{}, err
