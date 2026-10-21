@@ -66,6 +66,38 @@ echo "sqlite-web: http://localhost:8081"
 # Run in the background and wait, so signals are handled right away instead of
 # after the server exits. The working directory is the repository root, so
 # relative paths from .env resolve against it.
-"$root/bin/famodash-dev" &
-server_pid=$!
+start_server() {
+	"$root/bin/famodash-dev" &
+	server_pid=$!
+}
+
+stop_server() {
+	if [[ -n "$server_pid" ]] && kill -0 "$server_pid" 2>/dev/null; then
+		kill -INT "$server_pid" 2>/dev/null || true
+		wait "$server_pid" 2>/dev/null || true
+	fi
+	server_pid=""
+}
+
+start_server
+
+# On a terminal, "r" rebuilds and restarts the server; the dev services keep
+# running.
+if [[ -t 0 ]]; then
+	echo "Press r to rebuild and restart the server, Ctrl+C to stop."
+	while kill -0 "$server_pid" 2>/dev/null; do
+		# The timeout lets the loop notice when the server exits on its own.
+		if read -rsn1 -t 1 key && [[ "$key" == r ]]; then
+			echo "Rebuilding..."
+			# Build first, so a compile error leaves the running server alone.
+			if go -C backend build -o "$root/bin/famodash-dev" .; then
+				stop_server
+				start_server
+				echo "Server restarted."
+			else
+				echo "Build failed; keeping the current server."
+			fi
+		fi
+	done
+fi
 wait "$server_pid"
