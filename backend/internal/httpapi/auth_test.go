@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"famodash/internal/auth"
+	"famodash/internal/dashboards"
 	"famodash/internal/dbtest"
 	"famodash/internal/favourites"
 	"famodash/internal/mail"
@@ -92,7 +93,7 @@ func newServer(t *testing.T) *server {
 	svc.Providers = testProviders(t)
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favourites.NewStore(database),
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favourites.NewStore(database), Dashboards: dashboards.NewStore(database),
 		Origin: testOrigin, SecureCookies: true,
 	})
 	return &server{h: h, db: database, clock: c, mail: box}
@@ -532,7 +533,7 @@ func TestMe(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if len(body) != 4 || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" {
+	if slug, _ := body["slug"].(string); len(body) != 5 || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
 		t.Fatalf("body = %v", body)
 	}
 }
@@ -575,6 +576,39 @@ func TestPatchMeName(t *testing.T) {
 
 	if rec := s.req("PATCH", "/api/me", `{"name":"x"}`); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("signed out patch: %d", rec.Code)
+	}
+}
+
+func TestPatchMeSlug(t *testing.T) {
+	s := newServer(t)
+	cookie := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	patch := func(cookie, body string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/me", body, withCookie(cookie))
+	}
+
+	if rec := patch(bob, `{"slug":"Bob"}`); rec.Code != http.StatusOK || decodeUser(t, rec).Slug != "bob" {
+		t.Fatalf("set: %d %s", rec.Code, rec.Body)
+	}
+	for body, want := range map[string]string{
+		`{"slug":"a_nn"}`: "invalid_slug",
+		`{"slug":42}`:     "invalid_slug",
+		`{"slug":"API"}`:  "slug_reserved",
+	} {
+		if rec := patch(cookie, body); rec.Code != http.StatusBadRequest || errorCode(t, rec) != want {
+			t.Errorf("%s: %d %s, want %s", body, rec.Code, rec.Body, want)
+		}
+	}
+	rec := patch(cookie, `{"name":"Ann","slug":"bob"}`)
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "slug_taken" {
+		t.Fatalf("taken: %d %s", rec.Code, rec.Body)
+	}
+	if u := decodeUser(t, s.req("GET", "/api/me", "", withCookie(cookie))); u.Name != nil || u.Slug == "bob" {
+		t.Fatalf("rejected request changed the user: %+v", u)
+	}
+	rec = patch(cookie, `{"name":"Ann","slug":"ann"}`)
+	if u := decodeUser(t, rec); rec.Code != http.StatusOK || u.Slug != "ann" || u.Name == nil || *u.Name != "Ann" {
+		t.Fatalf("both: %d %s", rec.Code, rec.Body)
 	}
 }
 

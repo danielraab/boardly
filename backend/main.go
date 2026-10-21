@@ -18,6 +18,7 @@ import (
 	"famodash/internal/aaguid"
 	"famodash/internal/auth"
 	"famodash/internal/config"
+	"famodash/internal/dashboards"
 	"famodash/internal/db"
 	"famodash/internal/favourites"
 	"famodash/internal/httpapi"
@@ -80,6 +81,7 @@ func run() error {
 			Auth:              authService,
 			Users:             userStore,
 			Favourites:        favourites.NewStore(database),
+			Dashboards:        dashboards.NewStore(database),
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,
