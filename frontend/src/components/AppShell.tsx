@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard";
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { UserMenu } from "./UserMenu";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 						<DashboardSwitcher />
 					</div>
 					<div className="flex items-center gap-1">
+						<ThemeSwitcher />
 						<LanguageSwitcher />
 						<UserMenu />
 					</div>

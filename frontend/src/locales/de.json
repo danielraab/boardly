@@ -1,6 +1,7 @@
 {
 	"shell": {
 		"userMenu": "Benutzermenü",
+		"theme": "Farbschema",
 		"signIn": "Anmelden",
 		"language": "Sprache",
 		"loading": "Wird geladen…",
@@ -8,6 +9,16 @@
 		"favourites": "Favoriten",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden"
+	},
+	"theme": {
+		"system": "System",
+		"white": "Weiß",
+		"black": "Schwarz",
+		"sand": "Sand",
+		"sage": "Salbei",
+		"fjord": "Fjord",
+		"dusk": "Dämmerung",
+		"ember": "Glut"
 	},
 	"notFound": {
 		"title": "Seite nicht gefunden",
