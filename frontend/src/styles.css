@@ -1,15 +1,19 @@
 @import "tailwindcss";
 @import "@fontsource-variable/schibsted-grotesk";
 
-@theme {
+/* Defaults are the White theme; the [data-theme] blocks below override them. */
+@theme static {
 	--font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
 
-	--color-paper: #eef1f4;
+	--color-paper: #f4f4f5;
 	--color-surface: #ffffff;
-	--color-ink: #1d2733;
-	--color-muted: #5a6878;
-	--color-line: #cbd3dc;
-	--color-accent: #e9a23b;
+	--color-ink: #18181b;
+	--color-muted: #5c5c66;
+	--color-line: #d4d4d8;
+	--color-accent: #2563eb;
+	--color-danger: #b91c1c;
+	--color-on-danger: #ffffff;
+	--color-shadow: rgb(0 0 0 / 0.18);
 }
 
 * {
@@ -33,4 +37,101 @@ body {
 :focus-visible {
 	outline: 2px solid var(--color-accent);
 	outline-offset: 2px;
+}
+
+/*
+ * Themes. The resolved theme id is set as data-theme on <html> (see src/theme).
+ * Selectors are not limited to :root so theme swatches can set data-theme on
+ * themselves and render with that theme's tokens.
+ */
+
+[data-theme="white"] {
+	color-scheme: light;
+	--color-paper: #f4f4f5;
+	--color-surface: #ffffff;
+	--color-ink: #18181b;
+	--color-muted: #5c5c66;
+	--color-line: #d4d4d8;
+	--color-accent: #2563eb;
+	--color-danger: #b91c1c;
+	--color-on-danger: #ffffff;
+	--color-shadow: rgb(0 0 0 / 0.18);
+}
+
+[data-theme="black"] {
+	color-scheme: dark;
+	--color-paper: #0a0a0a;
+	--color-surface: #18181b;
+	--color-ink: #f4f4f5;
+	--color-muted: #a1a1aa;
+	--color-line: #2e2e33;
+	--color-accent: #60a5fa;
+	--color-danger: #f87171;
+	--color-on-danger: #0a0a0a;
+	--color-shadow: rgb(0 0 0 / 0.6);
+}
+
+[data-theme="sand"] {
+	color-scheme: light;
+	--color-paper: #f4efe6;
+	--color-surface: #fffaf2;
+	--color-ink: #2b2620;
+	--color-muted: #685e52;
+	--color-line: #ddd3c4;
+	--color-accent: #b4532a;
+	--color-danger: #a61b1b;
+	--color-on-danger: #ffffff;
+	--color-shadow: rgb(0 0 0 / 0.18);
+}
+
+[data-theme="sage"] {
+	color-scheme: light;
+	--color-paper: #edf2ec;
+	--color-surface: #fafcf8;
+	--color-ink: #1f2a22;
+	--color-muted: #536357;
+	--color-line: #cbd7ca;
+	--color-accent: #2f7a4a;
+	--color-danger: #b42318;
+	--color-on-danger: #ffffff;
+	--color-shadow: rgb(0 0 0 / 0.18);
+}
+
+[data-theme="fjord"] {
+	color-scheme: dark;
+	--color-paper: #242933;
+	--color-surface: #2e3440;
+	--color-ink: #eceff4;
+	--color-muted: #a3adbf;
+	--color-line: #434c5e;
+	--color-accent: #88c0d0;
+	--color-danger: #f0939b;
+	--color-on-danger: #242933;
+	--color-shadow: rgb(0 0 0 / 0.6);
+}
+
+[data-theme="dusk"] {
+	color-scheme: dark;
+	--color-paper: #1e1a2a;
+	--color-surface: #29233a;
+	--color-ink: #ece6f5;
+	--color-muted: #ab9fc2;
+	--color-line: #3c3350;
+	--color-accent: #e58fb4;
+	--color-danger: #ff8f8f;
+	--color-on-danger: #1e1a2a;
+	--color-shadow: rgb(0 0 0 / 0.6);
+}
+
+[data-theme="ember"] {
+	color-scheme: dark;
+	--color-paper: #1f1b18;
+	--color-surface: #2a2420;
+	--color-ink: #f2e9df;
+	--color-muted: #b0a291;
+	--color-line: #40372f;
+	--color-accent: #e9a23b;
+	--color-danger: #f28b82;
+	--color-on-danger: #1f1b18;
+	--color-shadow: rgb(0 0 0 / 0.6);
 }

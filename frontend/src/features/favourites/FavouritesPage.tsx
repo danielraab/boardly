@@ -130,7 +130,7 @@ export function FavouritesPage() {
 				{tree.isPending ? (
 					<p className="text-muted">{t("common.loading")}</p>
 				) : tree.isError ? (
-					<p role="alert" className="text-sm text-red-700">
+					<p role="alert" className="text-sm text-danger">
 						{t("common.genericError")}
 					</p>
 				) : (tree.data.children ?? []).length === 0 ? (
@@ -356,7 +356,7 @@ function TreeView({
 			onDragCancel={reset}
 		>
 			{move.isError && (
-				<p role="alert" className="mb-3 text-sm text-red-700">
+				<p role="alert" className="mb-3 text-sm text-danger">
 					{t("favourites.errors.moveFailed")}
 				</p>
 			)}
@@ -479,7 +479,7 @@ function TreeRow({
 			</button>
 			<button
 				type="button"
-				className={`${iconButton} hover:text-red-700`}
+				className={`${iconButton} hover:text-danger`}
 				aria-label={t("favourites.delete", { name })}
 				onClick={() => actions.remove(node)}
 			>

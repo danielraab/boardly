@@ -131,7 +131,7 @@ function ProfileTab({ user }: { user: User }) {
 						{t("profile.nameHint")}
 					</p>
 					{error && (
-						<p role="alert" className="mt-2 text-sm text-red-700">
+						<p role="alert" className="mt-2 text-sm text-danger">
 							{error}
 						</p>
 					)}
