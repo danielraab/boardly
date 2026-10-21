@@ -5,6 +5,7 @@
 		"signIn": "Sign in",
 		"language": "Language",
 		"loading": "Loading…",
+		"dashboards": "Dashboards",
 		"favourites": "Favourites",
 		"settings": "Settings",
 		"signOut": "Sign out"
@@ -80,8 +81,17 @@
 	},
 	"home": {
 		"greeting": "Welcome, {{name}}",
-		"placeholderTitle": "Your dashboards will appear here",
-		"placeholderText": "Dashboards are coming soon. You'll build and edit them right on this page."
+		"createFirst": {
+			"title": "Create your first dashboard",
+			"text": "Dashboards collect your links and widgets. Your default dashboard is shown right here.",
+			"action": "Create your first dashboard"
+		},
+		"selectDefault": {
+			"title": "Select your default dashboard",
+			"text": "The default dashboard is shown here on your start page.",
+			"label": "Default dashboard",
+			"placeholder": "Choose a dashboard"
+		}
 	},
 	"settings": {
 		"title": "Settings",
@@ -99,7 +109,10 @@
 		"save": "Save",
 		"saving": "Saving…",
 		"saved": "Saved.",
-		"nameTooLong": "The name can be at most 100 characters long."
+		"nameTooLong": "The name can be at most 100 characters long.",
+		"slugLabel": "Address",
+		"slugHint": "Your dashboards are at /{{slug}}/…",
+		"saveSlug": "Save address"
 	},
 	"passkeys": {
 		"intro": "Passkeys let you sign in with your fingerprint, face or device PIN instead of an email link.",
@@ -193,6 +206,61 @@
 			"into": "Into the folder {{folder}}.",
 			"dropped": "{{name}} moved.",
 			"cancelled": "Moving {{name}} cancelled."
+		}
+	},
+	"dashboards": {
+		"title": "Dashboards",
+		"intro": "Every dashboard has its own address. Your default dashboard is your start page, and public dashboards can be opened by anyone with the link.",
+		"create": "New dashboard",
+		"default": "Default",
+		"public": "Public",
+		"edit": "Edit {{title}}",
+		"delete": "Delete {{title}}",
+		"empty": {
+			"title": "No dashboards yet",
+			"text": "Create a dashboard to use it as your start page or to share it."
+		},
+		"dialog": {
+			"newTitle": "New dashboard",
+			"editTitle": "Edit dashboard",
+			"titleLabel": "Title",
+			"slugLabel": "Address",
+			"defaultLabel": "Default dashboard",
+			"defaultHint": "Shown on your start page.",
+			"publicLabel": "Public",
+			"publicHint": "Anyone with the address can see it, also without signing in.",
+			"titleRequired": "Enter a title.",
+			"titleTooLong": "The title can be at most 100 characters long.",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel"
+		},
+		"deleteDialog": {
+			"title": "Delete dashboard?",
+			"text": "“{{title}}” will be deleted, and its address will stop working.",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"slug": {
+			"invalid": "Use 1 to 32 characters: a–z, 0–9 and hyphens.",
+			"reserved": "This address is reserved by Famodash. Please choose another one.",
+			"taken": "This address is already taken.",
+			"renameHint": "Links that use the old address will stop working."
+		},
+		"confirmSlug": {
+			"title": "Change address?",
+			"text": "Links that use the old address will stop working. They are not redirected to the new one.",
+			"from": "Old",
+			"to": "New",
+			"confirm": "Change address",
+			"cancel": "Cancel"
+		},
+		"view": {
+			"emptyTitle": "This dashboard is empty",
+			"emptyText": "Widgets are coming soon. You'll add and arrange them right here."
+		},
+		"switcher": {
+			"label": "Switch dashboard"
 		}
 	}
 }

@@ -37,6 +37,7 @@ export function signedIn(user: Partial<User> = {}): MockResponse {
 			id: "u1",
 			email: "ann@example.org",
 			name: null,
+			slug: "ann",
 			passkeyEnrollmentUntil: null,
 			...user,
 		},
@@ -59,6 +60,7 @@ export function mockApi(routes: Routes = {}) {
 	const all: Routes = {
 		"GET /api/me": signedOut,
 		"GET /api/passkeys": { body: [] },
+		"GET /api/dashboards": { body: [] },
 		...routes,
 	};
 	const calls: Call[] = [];

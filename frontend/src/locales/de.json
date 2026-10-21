@@ -5,6 +5,7 @@
 		"signIn": "Anmelden",
 		"language": "Sprache",
 		"loading": "Wird geladen…",
+		"dashboards": "Dashboards",
 		"favourites": "Favoriten",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden"
@@ -80,8 +81,17 @@
 	},
 	"home": {
 		"greeting": "Willkommen, {{name}}",
-		"placeholderTitle": "Hier erscheinen deine Dashboards",
-		"placeholderText": "Dashboards kommen bald. Du wirst sie direkt auf dieser Seite gestalten und bearbeiten."
+		"createFirst": {
+			"title": "Erstelle dein erstes Dashboard",
+			"text": "Dashboards sammeln deine Links und Widgets. Dein Standard-Dashboard wird genau hier angezeigt.",
+			"action": "Erstes Dashboard erstellen"
+		},
+		"selectDefault": {
+			"title": "Wähle dein Standard-Dashboard",
+			"text": "Das Standard-Dashboard wird hier auf deiner Startseite angezeigt.",
+			"label": "Standard-Dashboard",
+			"placeholder": "Dashboard auswählen"
+		}
 	},
 	"settings": {
 		"title": "Einstellungen",
@@ -99,7 +109,10 @@
 		"save": "Speichern",
 		"saving": "Wird gespeichert…",
 		"saved": "Gespeichert.",
-		"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein."
+		"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein.",
+		"slugLabel": "Adresse",
+		"slugHint": "Deine Dashboards liegen unter /{{slug}}/…",
+		"saveSlug": "Adresse speichern"
 	},
 	"passkeys": {
 		"intro": "Mit Passkeys meldest du dich per Fingerabdruck, Gesicht oder Geräte-PIN an statt mit einem E-Mail-Link.",
@@ -193,6 +206,61 @@
 			"into": "In den Ordner {{folder}}.",
 			"dropped": "{{name}} verschoben.",
 			"cancelled": "Verschieben von {{name}} abgebrochen."
+		}
+	},
+	"dashboards": {
+		"title": "Dashboards",
+		"intro": "Jedes Dashboard hat eine eigene Adresse. Dein Standard-Dashboard ist deine Startseite, und öffentliche Dashboards kann jede Person mit dem Link öffnen.",
+		"create": "Neues Dashboard",
+		"default": "Standard",
+		"public": "Öffentlich",
+		"edit": "{{title}} bearbeiten",
+		"delete": "{{title}} löschen",
+		"empty": {
+			"title": "Noch keine Dashboards",
+			"text": "Erstelle ein Dashboard, um es als Startseite zu nutzen oder es zu teilen."
+		},
+		"dialog": {
+			"newTitle": "Neues Dashboard",
+			"editTitle": "Dashboard bearbeiten",
+			"titleLabel": "Titel",
+			"slugLabel": "Adresse",
+			"defaultLabel": "Standard-Dashboard",
+			"defaultHint": "Wird auf deiner Startseite angezeigt.",
+			"publicLabel": "Öffentlich",
+			"publicHint": "Jede Person mit der Adresse kann es sehen, auch ohne Anmeldung.",
+			"titleRequired": "Gib einen Titel ein.",
+			"titleTooLong": "Der Titel darf höchstens 100 Zeichen lang sein.",
+			"save": "Speichern",
+			"saving": "Wird gespeichert…",
+			"cancel": "Abbrechen"
+		},
+		"deleteDialog": {
+			"title": "Dashboard löschen?",
+			"text": "„{{title}}“ wird gelöscht, und seine Adresse funktioniert dann nicht mehr.",
+			"confirm": "Löschen",
+			"cancel": "Abbrechen"
+		},
+		"slug": {
+			"invalid": "Verwende 1 bis 32 Zeichen: a–z, 0–9 und Bindestriche.",
+			"reserved": "Diese Adresse ist für Famodash reserviert. Bitte wähle eine andere.",
+			"taken": "Diese Adresse ist bereits vergeben.",
+			"renameHint": "Links mit der alten Adresse funktionieren dann nicht mehr."
+		},
+		"confirmSlug": {
+			"title": "Adresse ändern?",
+			"text": "Links mit der alten Adresse funktionieren dann nicht mehr. Sie werden nicht auf die neue weitergeleitet.",
+			"from": "Alt",
+			"to": "Neu",
+			"confirm": "Adresse ändern",
+			"cancel": "Abbrechen"
+		},
+		"view": {
+			"emptyTitle": "Dieses Dashboard ist leer",
+			"emptyText": "Widgets kommen bald. Du wirst sie direkt hier hinzufügen und anordnen."
+		},
+		"switcher": {
+			"label": "Dashboard wechseln"
 		}
 	}
 }

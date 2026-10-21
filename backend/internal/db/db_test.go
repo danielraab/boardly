@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -257,5 +258,97 @@ func TestFavouritesConstraints(t *testing.T) {
 		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("%s = %d, err %v; want 0 after deleting the user", table, n, err)
 		}
+	}
+}
+
+func TestDashboardsMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0005")); err != nil {
+		t.Fatalf("Migrate to 0005: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?), ('u2', 'b@example.org', ?, ?)`, ts, ts, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	rows, err := db.Query(`SELECT slug FROM users`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for rows.Next() {
+		var slug *string
+		if err := rows.Scan(&slug); err != nil {
+			t.Fatal(err)
+		}
+		if slug == nil || len(*slug) != 10 || strings.Trim(*slug, "0123456789abcdef") != "" {
+			t.Fatalf("slug = %v, want 10 lowercase hex characters", slug)
+		}
+		seen[*slug] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 2 {
+		t.Fatalf("slugs = %v, want two distinct slugs", seen)
+	}
+}
+
+func TestDashboardsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dash := `INSERT INTO dashboards (id, user_id, slug, title, is_default, is_public, created_at, updated_at)
+		VALUES (?, ?, ?, 'T', ?, 0, '` + ts + `', '` + ts + `')`
+
+	mustExec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?), ('u2', 'b@example.org', 'bob', ?, ?)`, ts, ts, ts, ts)
+	if err := exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u3', 'c@example.org', 'ann', ?, ?)`, ts, ts); err == nil {
+		t.Error("duplicate user slug succeeded, want a constraint error")
+	}
+	mustExec(dash, "d1", "u1", "home", 1)
+	mustExec(dash, "d2", "u1", "work", 0)
+	mustExec(dash, "d3", "u2", "home", 1)
+
+	for name, args := range map[string][]any{
+		"second default":  {"x1", "u1", "links", 1},
+		"duplicate slug":  {"x2", "u1", "home", 0},
+		"uppercase slug":  {"x3", "u1", "Links", 0},
+		"invalid default": {"x4", "u1", "other", 2},
+	} {
+		if err := exec(dash, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	mustExec(`DELETE FROM users WHERE id = 'u1'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboards WHERE user_id = 'u1'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("dashboards = %d, err %v; want 0 after deleting the user", n, err)
 	}
 }

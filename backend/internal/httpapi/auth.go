@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"famodash/internal/auth"
+	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
 	"famodash/internal/ratelimit"
 	"famodash/internal/users"
@@ -32,6 +33,7 @@ type api struct {
 	auth          *auth.Service
 	users         *users.Store
 	favourites    *favourites.Store
+	dashboards    *dashboards.Store
 	origin        string
 	secureCookies bool
 	trustProxy    bool
@@ -126,29 +128,49 @@ func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(r, &body); err != nil {
 		return err
 	}
-	raw, ok := body["name"]
-	if !ok {
-		return NewError(http.StatusBadRequest, "invalid_request", "Nothing to update")
+	var patch users.Patch
+	if raw, ok := body["name"]; ok {
+		var name *string
+		if err := json.Unmarshal(raw, &name); err != nil {
+			return NewError(http.StatusBadRequest, "invalid_name", "The name must be a string or null")
+		}
+		patch.Name = &name
 	}
-	var name *string
-	if err := json.Unmarshal(raw, &name); err != nil {
-		return NewError(http.StatusBadRequest, "invalid_name", "The name must be a string or null")
+	if raw, ok := body["slug"]; ok {
+		var slug string
+		if err := json.Unmarshal(raw, &slug); err != nil {
+			return errInvalidSlug
+		}
+		patch.Slug = &slug
+	}
+	if patch.Name == nil && patch.Slug == nil {
+		return NewError(http.StatusBadRequest, "invalid_request", "Nothing to update")
 	}
 
 	current, _ := CurrentUser(r.Context())
-	user, err := a.users.SetName(r.Context(), current.ID, name)
-	if errors.Is(err, users.ErrInvalidName) {
+	user, err := a.users.Update(r.Context(), current.ID, patch)
+	switch {
+	case errors.Is(err, users.ErrInvalidName):
 		return NewError(http.StatusBadRequest, "invalid_name", "The name can be at most 100 characters long")
-	}
-	if errors.Is(err, users.ErrNotFound) {
+	case errors.Is(err, users.ErrInvalidSlug):
+		return errInvalidSlug
+	case errors.Is(err, users.ErrSlugReserved):
+		return NewError(http.StatusBadRequest, "slug_reserved", "This address is reserved")
+	case errors.Is(err, users.ErrSlugTaken):
+		return errSlugTaken
+	case errors.Is(err, users.ErrNotFound):
 		return errUnauthenticated
-	}
-	if err != nil {
+	case err != nil:
 		return err
 	}
 	a.writeMe(w, r, user)
 	return nil
 }
+
+var (
+	errInvalidSlug = NewError(http.StatusBadRequest, "invalid_slug", "A slug has 1 to 32 characters from a-z, 0-9 and \"-\"")
+	errSlugTaken   = NewError(http.StatusConflict, "slug_taken", "This slug is already in use")
+)
 
 var errUnauthenticated = NewError(http.StatusUnauthorized, "unauthenticated", "Sign in to continue")
 
@@ -172,31 +194,56 @@ func CurrentSession(ctx context.Context) (auth.Session, bool) {
 // was extended, and responds 401 when there is no valid session.
 func (a *api) requireUser(next HandlerFunc) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		c, err := r.Cookie(SessionCookie)
-		if err != nil {
-			return errUnauthenticated
-		}
-		sess, err := a.auth.LookupSession(r.Context(), c.Value)
-		if errors.Is(err, auth.ErrNoSession) {
-			return errUnauthenticated
-		}
+		ctx, err := a.withSession(w, r)
 		if err != nil {
 			return err
 		}
-		user, err := a.users.Get(r.Context(), sess.UserID)
-		if errors.Is(err, users.ErrNotFound) {
-			return errUnauthenticated
-		}
-		if err != nil {
-			return err
-		}
-		if sess.Renewed {
-			a.setSessionCookie(w, sess)
-		}
-		ctx := context.WithValue(r.Context(), userKey{}, user)
-		ctx = context.WithValue(ctx, sessionKey{}, sess)
 		return next(w, r.WithContext(ctx))
 	}
+}
+
+// optionalUser works like requireUser but continues without a user instead of
+// responding 401, so CurrentUser reports false for signed-out requests.
+func (a *api) optionalUser(next HandlerFunc) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		ctx, err := a.withSession(w, r)
+		if errors.Is(err, errUnauthenticated) {
+			return next(w, r)
+		}
+		if err != nil {
+			return err
+		}
+		return next(w, r.WithContext(ctx))
+	}
+}
+
+// withSession returns the request context with the session and its user, and
+// renews the cookie when the session was extended. Without a valid session it
+// returns errUnauthenticated.
+func (a *api) withSession(w http.ResponseWriter, r *http.Request) (context.Context, error) {
+	c, err := r.Cookie(SessionCookie)
+	if err != nil {
+		return nil, errUnauthenticated
+	}
+	sess, err := a.auth.LookupSession(r.Context(), c.Value)
+	if errors.Is(err, auth.ErrNoSession) {
+		return nil, errUnauthenticated
+	}
+	if err != nil {
+		return nil, err
+	}
+	user, err := a.users.Get(r.Context(), sess.UserID)
+	if errors.Is(err, users.ErrNotFound) {
+		return nil, errUnauthenticated
+	}
+	if err != nil {
+		return nil, err
+	}
+	if sess.Renewed {
+		a.setSessionCookie(w, sess)
+	}
+	ctx := context.WithValue(r.Context(), userKey{}, user)
+	return context.WithValue(ctx, sessionKey{}, sess), nil
 }
 
 func (a *api) setSessionCookie(w http.ResponseWriter, sess auth.Session) {
