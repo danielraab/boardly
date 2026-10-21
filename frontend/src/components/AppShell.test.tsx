@@ -6,19 +6,18 @@ import { renderApp } from "#/test/renderApp";
 import { THEME_STORAGE_KEY } from "#/theme";
 
 describe("app shell", () => {
-	it.each([
-		"/",
-		"/login",
-		"/no/such/page",
-	])("shows the header on %s", async (path) => {
-		renderApp(path);
-		expect(
-			await screen.findByRole("link", { name: "Famodash" }),
-		).toHaveAttribute("href", "/");
-		expect(screen.getByRole("button", { name: "Theme" })).toBeVisible();
-		expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
-		expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();
-	});
+	it.each(["/", "/login", "/no/such/page"])(
+		"shows the header on %s",
+		async (path) => {
+			renderApp(path);
+			expect(
+				await screen.findByRole("link", { name: "Famodash" }),
+			).toHaveAttribute("href", "/");
+			expect(screen.getByRole("button", { name: "Theme" })).toBeVisible();
+			expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
+			expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();
+		},
+	);
 
 	it("places the theme switcher directly before the language switcher", async () => {
 		renderApp("/");

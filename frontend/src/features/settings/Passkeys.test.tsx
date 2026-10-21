@@ -142,15 +142,18 @@ describe("passkey list", () => {
 		["white", gpm, gpm.provider?.iconLight],
 		["fjord", gpm, gpm.provider?.iconDark],
 		["black", lightOnly, "light.svg"],
-	])("in theme %s shows the matching provider icon", async (theme, passkey, src) => {
-		setTheme(theme);
-		mockApi({
-			"GET /api/me": signedIn(),
-			"GET /api/passkeys": { body: [passkey] },
-		});
-		renderApp("/settings?tab=passkeys");
-		expect(await providerIcon()).toHaveAttribute("src", src);
-	});
+	])(
+		"in theme %s shows the matching provider icon",
+		async (theme, passkey, src) => {
+			setTheme(theme);
+			mockApi({
+				"GET /api/me": signedIn(),
+				"GET /api/passkeys": { body: [passkey] },
+			});
+			renderApp("/settings?tab=passkeys");
+			expect(await providerIcon()).toHaveAttribute("src", src);
+		},
+	);
 
 	it("switches the provider icon when the theme changes", async () => {
 		mockApi({
