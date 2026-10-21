@@ -128,12 +128,20 @@ func TestViewDashboard(t *testing.T) {
 	ann := s.signIn(t, "ann@example.org")
 	bob := s.signIn(t, "bob@example.org")
 	s.setSlug(t, ann, "ann")
-	s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
+	s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true, "isDefault": true})
 	s.createDashboard(t, ann, map[string]any{"title": "Work", "slug": "work"})
 
 	rec := s.req("GET", "/api/u/Ann/Work", "", withCookie(ann))
 	if v := decodeJSONBody[dashboards.View](t, rec); rec.Code != http.StatusOK || !v.IsOwner || v.Dashboard.Title != "Work" || v.OwnerSlug != "ann" || len(v.Dashboards) != 2 {
 		t.Fatalf("owner: %d %s", rec.Code, rec.Body)
+	}
+	// Only the owner gets the flags, false ones included.
+	if body := rec.Body.String(); !strings.Contains(body, `"isDefault":false`) || !strings.Contains(body, `"isPublic":false`) {
+		t.Errorf("owner/private flags: %s", body)
+	}
+	rec = s.req("GET", "/api/u/ann/home", "", withCookie(ann))
+	if body := rec.Body.String(); !strings.Contains(body, `"isDefault":true`) || !strings.Contains(body, `"isPublic":true`) {
+		t.Errorf("owner/public default flags: %s", body)
 	}
 
 	for name, opts := range map[string][]func(*http.Request){
@@ -144,6 +152,9 @@ func TestViewDashboard(t *testing.T) {
 		rec := s.req("GET", "/api/u/ann/home", "", opts...)
 		if v := decodeJSONBody[dashboards.View](t, rec); rec.Code != http.StatusOK || v.IsOwner || len(v.Dashboards) != 1 {
 			t.Errorf("%s/public: %d %s", name, rec.Code, rec.Body)
+		}
+		if body := rec.Body.String(); strings.Contains(body, `"isDefault"`) || strings.Contains(body, `"isPublic"`) {
+			t.Errorf("%s/public leaks flags: %s", name, body)
 		}
 		for _, path := range []string{"/api/u/ann/work", "/api/u/ann/nothing", "/api/u/nobody/home"} {
 			if rec := s.req("GET", path, "", opts...); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {

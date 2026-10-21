@@ -16,6 +16,16 @@ function owner(sections: Section[], more = {}) {
 	});
 }
 
+/** Opens the dashboard actions menu and picks "Edit layout". */
+async function editLayout(user: ReturnType<typeof renderApp>["user"]) {
+	await user.click(
+		await screen.findByRole("button", { name: "Dashboard actions" }),
+	);
+	await user.click(
+		await screen.findByRole("menuitem", { name: "Edit layout" }),
+	);
+}
+
 async function openEditor(sections: Section[], more = {}) {
 	const api = owner(sections, more);
 	const app = renderApp("/ann/home?edit=true");
@@ -27,7 +37,7 @@ describe("edit mode", () => {
 	it("lets the owner enter edit mode", async () => {
 		owner([section("Links")]);
 		const { user, router } = renderApp("/ann/home");
-		await user.click(await screen.findByRole("button", { name: "Edit" }));
+		await editLayout(user);
 
 		expect(router.state.location.search).toEqual({ edit: true });
 		expect(
@@ -36,7 +46,9 @@ describe("edit mode", () => {
 		expect(
 			screen.getByRole("button", { name: "Cancel editing" }),
 		).toBeVisible();
-		expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Dashboard actions" }),
+		).toBeNull();
 	});
 
 	it("ignores the parameter for visitors", async () => {
@@ -49,7 +61,9 @@ describe("edit mode", () => {
 		expect(
 			await screen.findByRole("heading", { level: 2, name: "Links" }),
 		).toBeVisible();
-		expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Dashboard actions" }),
+		).toBeNull();
 		expect(screen.queryByRole("button", { name: "Save and exit" })).toBeNull();
 		expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
 	});
@@ -65,7 +79,7 @@ describe("edit mode", () => {
 		};
 		owner([], { "GET /api/dashboards": { body: [home] } });
 		const { user, router } = renderApp("/");
-		await user.click(await screen.findByRole("button", { name: "Edit" }));
+		await editLayout(user);
 		expect(
 			await screen.findByRole("button", { name: "Save and exit" }),
 		).toBeVisible();
@@ -226,7 +240,9 @@ describe("saving", () => {
 		expect(
 			await screen.findByRole("heading", { level: 2, name: "News" }),
 		).toBeVisible();
-		expect(screen.getByRole("button", { name: "Edit" })).toBeVisible();
+		expect(
+			screen.getByRole("button", { name: "Dashboard actions" }),
+		).toBeVisible();
 	});
 
 	it("keeps the draft when saving fails", async () => {
@@ -406,5 +422,133 @@ describe("moving sections", () => {
 			screen.getAllByText("Sections can be nested at most 5 levels deep.")
 				.length,
 		).toBeGreaterThan(0);
+	});
+});
+
+describe("dashboard settings", () => {
+	/**
+	 * Ann's "Home" on the server: the list, its view at its current slug
+	 * (`home` or `start`) and PATCH, which changes it.
+	 */
+	function settingsApi(fields: Partial<Dashboard> = {}) {
+		let saved: Dashboard = {
+			id: "d1",
+			slug: "home",
+			title: "Home",
+			isDefault: false,
+			isPublic: false,
+			...defaultColumns,
+			...fields,
+		};
+		const view = (slug: string) => () =>
+			saved.slug === slug
+				? {
+						body: viewData([section("Links")], {
+							dashboard: { slug: saved.slug, title: saved.title },
+							isDefault: saved.isDefault,
+							isPublic: saved.isPublic,
+						}),
+					}
+				: apiError(404, "not_found");
+		return mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/dashboards": () => ({ body: [saved] }),
+			"GET /api/u/ann/home": view("home"),
+			"GET /api/u/ann/start": view("start"),
+			"PATCH /api/dashboards/d1": ({ body }) => {
+				saved = { ...saved, ...(body as Partial<Dashboard>) };
+				return { body: saved };
+			},
+		});
+	}
+
+	async function openSettings(user: ReturnType<typeof renderApp>["user"]) {
+		await user.click(
+			await screen.findByRole("button", { name: "Dashboard actions" }),
+		);
+		await user.click(await screen.findByRole("menuitem", { name: "Settings" }));
+		return screen.findByRole("dialog", { name: "Edit dashboard" });
+	}
+
+	async function changeSlug(
+		user: ReturnType<typeof renderApp>["user"],
+		dialog: HTMLElement,
+	) {
+		const slug = within(dialog).getByLabelText("Address");
+		await user.clear(slug);
+		await user.type(slug, "start");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(
+			within(confirm).getByRole("button", { name: "Change address" }),
+		);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+	}
+
+	it("opens the dialog with the dashboard's values", async () => {
+		settingsApi({ isDefault: true, isPublic: true });
+		const { user } = renderApp("/ann/home");
+		const dialog = await openSettings(user);
+		expect(within(dialog).getByLabelText("Title")).toHaveValue("Home");
+		expect(within(dialog).getByLabelText("Address")).toHaveValue("home");
+		expect(within(dialog).getByLabelText("Default dashboard")).toBeChecked();
+		expect(within(dialog).getByLabelText("Public")).toBeChecked();
+	});
+
+	it("stays on the page after a title change", async () => {
+		const api = settingsApi();
+		const { user, router } = renderApp("/ann/home");
+		const dialog = await openSettings(user);
+		const title = within(dialog).getByLabelText("Title");
+		await user.clear(title);
+		await user.type(title, "Start");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Start" }),
+		).toBeVisible();
+		expect(router.state.location.pathname).toBe("/ann/home");
+		expect(api.callsTo("PATCH", "/api/dashboards/d1")[0].body).toMatchObject({
+			title: "Start",
+		});
+	});
+
+	it("follows a changed slug to the new address", async () => {
+		settingsApi();
+		const { user, router } = renderApp("/ann/home");
+		await changeSlug(user, await openSettings(user));
+
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/ann/start"),
+		);
+		expect(
+			await screen.findByRole("heading", { level: 2, name: "Links" }),
+		).toBeVisible();
+	});
+
+	it("leaves / for the dashboard's address when the default is removed", async () => {
+		settingsApi({ isDefault: true });
+		const { user, router } = renderApp("/");
+		const dialog = await openSettings(user);
+		await user.click(within(dialog).getByLabelText("Default dashboard"));
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/ann/home"),
+		);
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Home" }),
+		).toBeVisible();
+	});
+
+	it("stays on / when only the slug of the default changes", async () => {
+		settingsApi({ isDefault: true });
+		const { user, router } = renderApp("/");
+		await changeSlug(user, await openSettings(user));
+
+		expect(
+			await screen.findByRole("heading", { level: 2, name: "Links" }),
+		).toBeVisible();
+		expect(router.state.location.pathname).toBe("/");
 	});
 });

@@ -28,6 +28,8 @@ export function viewData(
 ): DashboardViewData {
 	return {
 		id: "d1",
+		isDefault: false,
+		isPublic: false,
 		dashboard: { slug: "home", title: "Home" },
 		ownerSlug: "ann",
 		isOwner: true,

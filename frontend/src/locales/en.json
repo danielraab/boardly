@@ -236,7 +236,7 @@
 			"cancel": "Cancel",
 			"layoutLabel": "Layout",
 			"desktopColumnsLabel": "Columns",
-			"mobileColumnsLabel": "Columns on small screens",
+			"mobileColumnsLabel": "Columns (mobile)",
 			"mobileColumnsTooMany": "Use at most as many columns as on large screens.",
 			"breakpointLabel": "Small screens are narrower than",
 			"breakpointOption": "{{px}} px",
@@ -265,10 +265,12 @@
 		"view": {
 			"emptyTitle": "This dashboard is empty",
 			"emptyText": "Nothing has been added to this dashboard yet.",
-			"emptyOwnerText": "Click “Edit” to add the first section."
+			"emptyOwnerText": "Open the ⋯ menu and choose “Edit layout” to add the first section.",
+			"actions": "Dashboard actions",
+			"settings": "Settings"
 		},
 		"editor": {
-			"edit": "Edit",
+			"editLayout": "Edit layout",
 			"saveAndExit": "Save and exit",
 			"saving": "Saving…",
 			"cancel": "Cancel editing",

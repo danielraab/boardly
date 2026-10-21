@@ -318,9 +318,7 @@ describe("column settings", () => {
 		);
 		const dialog = await screen.findByRole("dialog", { name: "New dashboard" });
 		expect(within(dialog).getByLabelText("Columns")).toHaveValue("6");
-		expect(
-			within(dialog).getByLabelText("Columns on small screens"),
-		).toHaveValue("2");
+		expect(within(dialog).getByLabelText("Columns (mobile)")).toHaveValue("2");
 		expect(
 			within(dialog).getByLabelText("Small screens are narrower than"),
 		).toHaveValue("768");
@@ -336,7 +334,7 @@ describe("column settings", () => {
 		await user.type(within(dialog).getByLabelText("Title"), "Narrow");
 		await user.selectOptions(within(dialog).getByLabelText("Columns"), "3");
 		await user.selectOptions(
-			within(dialog).getByLabelText("Columns on small screens"),
+			within(dialog).getByLabelText("Columns (mobile)"),
 			"4",
 		);
 		expect(
