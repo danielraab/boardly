@@ -233,7 +233,14 @@
 			"titleTooLong": "The title can be at most 100 characters long.",
 			"save": "Save",
 			"saving": "Saving…",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"layoutLabel": "Layout",
+			"desktopColumnsLabel": "Columns",
+			"mobileColumnsLabel": "Columns on small screens",
+			"mobileColumnsTooMany": "Use at most as many columns as on large screens.",
+			"breakpointLabel": "Small screens are narrower than",
+			"breakpointOption": "{{px}} px",
+			"invalidColumns": "These column settings aren't possible."
 		},
 		"deleteDialog": {
 			"title": "Delete dashboard?",
@@ -257,7 +264,65 @@
 		},
 		"view": {
 			"emptyTitle": "This dashboard is empty",
-			"emptyText": "Widgets are coming soon. You'll add and arrange them right here."
+			"emptyText": "Nothing has been added to this dashboard yet.",
+			"emptyOwnerText": "Click “Edit” to add the first section."
+		},
+		"editor": {
+			"edit": "Edit",
+			"saveAndExit": "Save and exit",
+			"saving": "Saving…",
+			"cancel": "Cancel editing",
+			"addSection": "Add section",
+			"untitled": "Untitled section",
+			"moveSection": "Move {{title}}",
+			"editSection": "Edit {{title}}",
+			"saveFailed": "The dashboard couldn't be saved. Please try again.",
+			"conflict": "This dashboard was changed elsewhere. Reload it to continue with the current version. Your changes here will be lost.",
+			"reload": "Reload",
+			"tooDeep": "Sections can be nested at most 5 levels deep."
+		},
+		"sectionDialog": {
+			"newTitle": "New section",
+			"editTitle": "Edit section",
+			"titleLabel": "Title",
+			"titleHint": "Optional. Without a title, the section shows no heading.",
+			"titleTooLong": "The title can be at most 100 characters long.",
+			"widthLabel": "Width",
+			"widthOption_one": "{{count}} column",
+			"widthOption_other": "{{count}} columns",
+			"borderLabel": "Border",
+			"borderHint": "Without a border, the section only groups its content.",
+			"heightLabel": "Height",
+			"heightAuto": "Fit the content",
+			"heightRows": "Fixed",
+			"rowsLabel": "Rows",
+			"rowsInvalid": "Use 1 to 50 rows.",
+			"apply": "Apply",
+			"cancel": "Cancel",
+			"delete": "Delete section"
+		},
+		"deleteSection": {
+			"title": "Delete section?",
+			"text": "“{{title}}” will be deleted.",
+			"textWithChildren_one": "“{{title}}” and the section inside it will be deleted.",
+			"textWithChildren_other": "“{{title}}” and the {{count}} sections inside it will be deleted.",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"discard": {
+			"title": "Discard changes?",
+			"text": "Your changes to this dashboard haven't been saved.",
+			"confirm": "Discard",
+			"cancel": "Keep editing"
+		},
+		"dnd": {
+			"instructions": "To move a section, press space or enter on its handle. Choose the new place with the arrow keys, press space or enter to drop it, or escape to cancel.",
+			"pickedUp": "Picked up {{title}}.",
+			"position": "Position {{position}} in {{parent}}.",
+			"tooDeep": "Position {{position}} in {{parent}}. Not possible: sections can be nested at most 5 levels deep.",
+			"dashboard": "the dashboard",
+			"dropped": "{{title}} moved.",
+			"cancelled": "Moving {{title}} cancelled."
 		},
 		"switcher": {
 			"label": "Switch dashboard"

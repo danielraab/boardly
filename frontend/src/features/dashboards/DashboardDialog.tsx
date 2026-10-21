@@ -10,11 +10,15 @@ import {
 import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
 import { ApiError } from "#/lib/api";
 import {
+	breakpoints,
+	type Columns,
 	createDashboard,
 	type Dashboard,
 	type DashboardFields,
 	dashboardsQueryKey,
 	dashboardViewQueryKey,
+	defaultColumns,
+	maxColumns,
 	updateDashboard,
 } from "./api";
 import { ConfirmSlugChangeDialog } from "./ConfirmSlugChangeDialog";
@@ -42,7 +46,9 @@ export function DashboardDialog({
 		>
 			<Dialog.Portal>
 				<Dialog.Backdrop className={dialogBackdrop} />
-				<Dialog.Popup className={dialogPopup}>
+				<Dialog.Popup
+					className={`${dialogPopup} max-h-[calc(100dvh-2rem)] overflow-y-auto`}
+				>
 					{/* Remount per target so the form starts from the dashboard's values. */}
 					{target && (
 						<DashboardForm
@@ -58,7 +64,11 @@ export function DashboardDialog({
 	);
 }
 
-type TitleProblem = "titleRequired" | "titleTooLong" | "generic";
+type TitleProblem =
+	| "titleRequired"
+	| "titleTooLong"
+	| "invalidColumns"
+	| "generic";
 
 function DashboardForm({
 	editing,
@@ -77,13 +87,25 @@ function DashboardForm({
 	const [slugEdited, setSlugEdited] = useState(editing !== null);
 	const [isDefault, setIsDefault] = useState(editing?.isDefault ?? false);
 	const [isPublic, setIsPublic] = useState(editing?.isPublic ?? false);
+	const [columns, setColumns] = useState<Columns>(() => {
+		const { desktopColumns, mobileColumns, mobileBreakpoint } =
+			editing ?? defaultColumns;
+		return { desktopColumns, mobileColumns, mobileBreakpoint };
+	});
+	const mobileTooMany = columns.mobileColumns > columns.desktopColumns;
 	const [problem, setProblem] = useState<TitleProblem | null>(null);
 	const [slugProblem, setSlugProblem] = useState<SlugProblem | null>(null);
 	const [confirming, setConfirming] = useState(false);
 
 	const save = useMutation({
 		mutationFn: () => {
-			const fields: DashboardFields = { title, slug, isDefault, isPublic };
+			const fields: DashboardFields = {
+				title,
+				slug,
+				isDefault,
+				isPublic,
+				...columns,
+			};
 			return editing
 				? updateDashboard(editing.id, fields)
 				: createDashboard(fields);
@@ -99,6 +121,7 @@ function DashboardForm({
 			if (code === "slug_taken") setSlugProblem("taken");
 			else if (code === "invalid_slug") setSlugProblem("invalid");
 			else if (code === "invalid_title") setProblem("titleTooLong");
+			else if (code === "invalid_columns") setProblem("invalidColumns");
 			else {
 				if (code === "not_found") {
 					void queryClient.invalidateQueries({ queryKey: dashboardsQueryKey });
@@ -126,7 +149,7 @@ function DashboardForm({
 					? "titleTooLong"
 					: null;
 		setProblem(found);
-		if (found || slugError(slug)) return;
+		if (found || slugError(slug) || mobileTooMany) return;
 		if (editing && slug !== editing.slug) setConfirming(true);
 		else save.mutate();
 	}
@@ -184,6 +207,11 @@ function DashboardForm({
 					checked={isPublic}
 					onChange={setIsPublic}
 				/>
+				<ColumnFields
+					columns={columns}
+					onChange={(patch) => setColumns((c) => ({ ...c, ...patch }))}
+					mobileTooMany={mobileTooMany}
+				/>
 				{problem && (
 					<p role="alert" className="text-sm text-red-700">
 						{problem === "generic"
@@ -198,7 +226,9 @@ function DashboardForm({
 					<button
 						type="submit"
 						className={`${primaryButton} py-2.5`}
-						disabled={save.isPending || slugError(slug) !== null}
+						disabled={
+							save.isPending || slugError(slug) !== null || mobileTooMany
+						}
 					>
 						{save.isPending
 							? t("dashboards.dialog.saving")
@@ -251,5 +281,94 @@ function Toggle({
 				</p>
 			</div>
 		</div>
+	);
+}
+
+/** The grid settings: desktop and mobile column counts and the breakpoint. */
+function ColumnFields({
+	columns,
+	onChange,
+	mobileTooMany,
+}: {
+	columns: Columns;
+	onChange: (patch: Partial<Columns>) => void;
+	mobileTooMany: boolean;
+}) {
+	const { t } = useTranslation();
+	const counts = Array.from({ length: maxColumns }, (_, i) => i + 1);
+	return (
+		<fieldset className="space-y-3">
+			<legend className="text-sm font-medium">
+				{t("dashboards.dialog.layoutLabel")}
+			</legend>
+			<div className="grid grid-cols-2 gap-3">
+				<div>
+					<label htmlFor="dashboard-desktop-columns" className="block text-sm">
+						{t("dashboards.dialog.desktopColumnsLabel")}
+					</label>
+					<select
+						id="dashboard-desktop-columns"
+						value={columns.desktopColumns}
+						onChange={(e) =>
+							onChange({ desktopColumns: Number(e.target.value) })
+						}
+						className={textInput}
+					>
+						{counts.map((n) => (
+							<option key={n} value={n}>
+								{n}
+							</option>
+						))}
+					</select>
+				</div>
+				<div>
+					<label htmlFor="dashboard-mobile-columns" className="block text-sm">
+						{t("dashboards.dialog.mobileColumnsLabel")}
+					</label>
+					<select
+						id="dashboard-mobile-columns"
+						value={columns.mobileColumns}
+						onChange={(e) =>
+							onChange({ mobileColumns: Number(e.target.value) })
+						}
+						aria-invalid={mobileTooMany}
+						aria-describedby={
+							mobileTooMany ? "dashboard-mobile-columns-hint" : undefined
+						}
+						className={textInput}
+					>
+						{counts.map((n) => (
+							<option key={n} value={n}>
+								{n}
+							</option>
+						))}
+					</select>
+				</div>
+			</div>
+			{mobileTooMany && (
+				<p id="dashboard-mobile-columns-hint" className="text-sm text-red-700">
+					{t("dashboards.dialog.mobileColumnsTooMany")}
+				</p>
+			)}
+			<div>
+				<label htmlFor="dashboard-breakpoint" className="block text-sm">
+					{t("dashboards.dialog.breakpointLabel")}
+				</label>
+				<select
+					id="dashboard-breakpoint"
+					value={columns.mobileBreakpoint}
+					onChange={(e) =>
+						onChange({ mobileBreakpoint: Number(e.target.value) })
+					}
+					className={textInput}
+				>
+					{breakpoints.map((px) => (
+						<option key={px} value={px}>
+							{t("dashboards.dialog.breakpointOption", { px })}
+						</option>
+					))}
+				</select>
+			</div>
+		</fieldset>
 	);
 }

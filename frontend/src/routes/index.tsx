@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useMe } from "#/features/auth/session";
+import { validateDashboardSearch } from "#/features/dashboards/DashboardView";
 import { Home } from "#/features/home/Home";
 import { Landing } from "#/features/landing/Landing";
 
-export const Route = createFileRoute("/")({ component: Index });
+// `edit` opens edit mode when / shows the default dashboard.
+export const Route = createFileRoute("/")({
+	validateSearch: validateDashboardSearch,
+	component: Index,
+});
 
 /** Home for signed-in users, the landing page otherwise; neither while loading. */
 function Index() {
