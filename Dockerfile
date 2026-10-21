@@ -6,7 +6,7 @@
 # the target platform, so multi-arch builds don't run build tools under emulation.
 
 # --- 1. Web app: Vite writes into ../backend/internal/web/dist ----------------
-FROM --platform=$BUILDPLATFORM node:24-slim AS web
+FROM --platform=$BUILDPLATFORM node:26-slim AS web
 ARG PNPM_VERSION=11.1.3
 RUN npm install --global pnpm@${PNPM_VERSION}
 

@@ -80,3 +80,85 @@ describe("settings profile tab", () => {
 		expect(within(document.body).queryByText("Saved.")).toBeNull();
 	});
 });
+
+describe("settings profile slug", () => {
+	it("changes the slug after confirmation and updates the cache", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"PATCH /api/me": ({ body }) =>
+				signedIn({ slug: (body as { slug: string }).slug }),
+		});
+		const { user } = renderApp("/settings");
+		const input = await screen.findByLabelText("Address");
+		expect(input).toHaveValue("ann");
+		await user.clear(input);
+		await user.type(input, "AnnSmith");
+		expect(input).toHaveValue("annsmith");
+		expect(
+			screen.getByText("Links that use the old address will stop working."),
+		).toBeVisible();
+
+		await user.click(screen.getByRole("button", { name: "Save address" }));
+		const confirm = await screen.findByRole("alertdialog", {
+			name: "Change address?",
+		});
+		expect(within(confirm).getByText("/ann/…")).toBeVisible();
+		expect(within(confirm).getByText("/annsmith/…")).toBeVisible();
+		await user.click(
+			within(confirm).getByRole("button", { name: "Change address" }),
+		);
+
+		expect(
+			await screen.findByText("Your dashboards are at /annsmith/…"),
+		).toBeVisible();
+		expect(api.callsTo("PATCH", "/api/me")[0].body).toEqual({
+			slug: "annsmith",
+		});
+	});
+
+	it("saves nothing when the confirmation is cancelled", async () => {
+		const api = mockApi({ "GET /api/me": signedIn() });
+		const { user } = renderApp("/settings");
+		const input = await screen.findByLabelText("Address");
+		await user.type(input, "2");
+		await user.click(screen.getByRole("button", { name: "Save address" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		expect(input).toHaveValue("ann2");
+		expect(api.callsTo("PATCH", "/api/me")).toHaveLength(0);
+	});
+
+	it("blocks reserved words", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user } = renderApp("/settings");
+		const input = await screen.findByLabelText("Address");
+		await user.clear(input);
+		await user.type(input, "login");
+		expect(screen.getByRole("alert")).toHaveTextContent(
+			"This address is reserved by Famodash.",
+		);
+		expect(screen.getByRole("button", { name: "Save address" })).toBeDisabled();
+	});
+
+	it("shows a taken slug at the field", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"PATCH /api/me": apiError(409, "slug_taken"),
+		});
+		const { user } = renderApp("/settings");
+		const input = await screen.findByLabelText("Address");
+		await user.clear(input);
+		await user.type(input, "bob");
+		await user.click(screen.getByRole("button", { name: "Save address" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(
+			within(confirm).getByRole("button", { name: "Change address" }),
+		);
+		expect(
+			await screen.findByText("This address is already taken."),
+		).toBeVisible();
+		expect(input).toHaveValue("bob");
+	});
+});

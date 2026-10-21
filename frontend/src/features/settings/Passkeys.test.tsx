@@ -4,6 +4,7 @@ import type { Passkey } from "#/features/auth/passkey";
 import i18n from "#/i18n";
 import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
+import { setTheme, type ThemeId } from "#/theme";
 
 const webauthn = vi.hoisted(() => ({
 	supported: true,
@@ -119,6 +120,51 @@ describe("passkey list", () => {
 		expect(img).toHaveAttribute("alt", "");
 		expect(item).toHaveTextContent("Added Feb 10, 2026");
 		expect(item).toHaveTextContent("last used Feb 28, 2026");
+	});
+
+	async function providerIcon() {
+		const item = (await screen.findByText("Google Password Manager")).closest(
+			"li",
+		) as HTMLElement;
+		return item.querySelector("img");
+	}
+
+	const lightOnly: Passkey = {
+		...gpm,
+		provider: {
+			name: "Google Password Manager",
+			iconLight: "light.svg",
+			iconDark: null,
+		},
+	};
+
+	it.each<[ThemeId, Passkey, string | null | undefined]>([
+		["white", gpm, gpm.provider?.iconLight],
+		["fjord", gpm, gpm.provider?.iconDark],
+		["black", lightOnly, "light.svg"],
+	])(
+		"in theme %s shows the matching provider icon",
+		async (theme, passkey, src) => {
+			setTheme(theme);
+			mockApi({
+				"GET /api/me": signedIn(),
+				"GET /api/passkeys": { body: [passkey] },
+			});
+			renderApp("/settings?tab=passkeys");
+			expect(await providerIcon()).toHaveAttribute("src", src);
+		},
+	);
+
+	it("switches the provider icon when the theme changes", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/passkeys": { body: [gpm] },
+		});
+		renderApp("/settings?tab=passkeys");
+		const img = await providerIcon();
+		expect(img).toHaveAttribute("src", gpm.provider?.iconLight);
+		act(() => setTheme("dusk"));
+		expect(img).toHaveAttribute("src", gpm.provider?.iconDark);
 	});
 
 	it("shows a generic icon and name for an unknown provider", async () => {

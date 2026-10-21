@@ -2,7 +2,8 @@ import { Menu } from "@base-ui/react/menu";
 import { Check, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { type LanguageCode, languages, setLanguage } from "#/i18n";
-import { headerButton, menuItem, menuPopup } from "./menuStyles";
+import { headerButton } from "./buttonStyles";
+import { menuItem, menuPopup } from "./menuStyles";
 
 export function LanguageSwitcher() {
 	const { t, i18n } = useTranslation();

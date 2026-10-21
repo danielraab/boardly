@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
 import {
 	isCancelled,
@@ -28,12 +29,6 @@ type Problem =
 	| "passkeyUnknown"
 	| "passkeyInvalid"
 	| "generic";
-
-export const primaryButton =
-	"inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 font-medium text-paper hover:bg-ink/85 disabled:cursor-not-allowed disabled:bg-ink/40";
-
-export const secondaryButton =
-	"inline-flex items-center justify-center gap-2 rounded-full border border-line px-6 py-3 font-medium text-ink hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50";
 
 function passkeyProblem(error: unknown): Problem | null {
 	if (isCancelled(error)) return null;
@@ -158,7 +153,7 @@ export function LoginPage() {
 							? t("common.genericError")
 							: null;
 	const alert = message && (
-		<p role="alert" className="mt-4 text-sm text-red-700">
+		<p role="alert" className="mt-4 text-sm text-danger">
 			{message}
 		</p>
 	);

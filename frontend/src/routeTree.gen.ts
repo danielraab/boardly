@@ -10,7 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardsRouteImport } from './routes/dashboards'
+import { Route as FavouritesRouteImport } from './routes/favourites'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as UserSlugIndexRouteImport } from './routes/$userSlug/index'
+import { Route as UserSlugDashboardSlugRouteImport } from './routes/$userSlug/$dashboardSlug'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as LoginVerifyRouteImport } from './routes/login/verify'
 
@@ -19,9 +23,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardsRoute = DashboardsRouteImport.update({
+  id: '/dashboards',
+  path: '/dashboards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavouritesRoute = FavouritesRouteImport.update({
+  id: '/favourites',
+  path: '/favourites',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UserSlugIndexRoute = UserSlugIndexRouteImport.update({
+  id: '/$userSlug/',
+  path: '/$userSlug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UserSlugDashboardSlugRoute = UserSlugDashboardSlugRouteImport.update({
+  id: '/$userSlug/$dashboardSlug',
+  path: '/$userSlug/$dashboardSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginIndexRoute = LoginIndexRouteImport.update({
@@ -37,35 +61,76 @@ const LoginVerifyRoute = LoginVerifyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboards': typeof DashboardsRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/$userSlug/': typeof UserSlugIndexRoute
   '/login/': typeof LoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboards': typeof DashboardsRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/$userSlug': typeof UserSlugIndexRoute
   '/login': typeof LoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboards': typeof DashboardsRoute
+  '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/$userSlug/': typeof UserSlugIndexRoute
   '/login/': typeof LoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/login/verify' | '/login/'
+  fullPaths:
+    | '/'
+    | '/dashboards'
+    | '/favourites'
+    | '/settings'
+    | '/$userSlug/$dashboardSlug'
+    | '/login/verify'
+    | '/$userSlug/'
+    | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/login/verify' | '/login'
-  id: '__root__' | '/' | '/settings' | '/login/verify' | '/login/'
+  to:
+    | '/'
+    | '/dashboards'
+    | '/favourites'
+    | '/settings'
+    | '/$userSlug/$dashboardSlug'
+    | '/login/verify'
+    | '/$userSlug'
+    | '/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboards'
+    | '/favourites'
+    | '/settings'
+    | '/$userSlug/$dashboardSlug'
+    | '/login/verify'
+    | '/$userSlug/'
+    | '/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardsRoute: typeof DashboardsRoute
+  FavouritesRoute: typeof FavouritesRoute
   SettingsRoute: typeof SettingsRoute
+  UserSlugDashboardSlugRoute: typeof UserSlugDashboardSlugRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
+  UserSlugIndexRoute: typeof UserSlugIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
 }
 
@@ -78,11 +143,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboards': {
+      id: '/dashboards'
+      path: '/dashboards'
+      fullPath: '/dashboards'
+      preLoaderRoute: typeof DashboardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favourites': {
+      id: '/favourites'
+      path: '/favourites'
+      fullPath: '/favourites'
+      preLoaderRoute: typeof FavouritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$userSlug/': {
+      id: '/$userSlug/'
+      path: '/$userSlug'
+      fullPath: '/$userSlug/'
+      preLoaderRoute: typeof UserSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$userSlug/$dashboardSlug': {
+      id: '/$userSlug/$dashboardSlug'
+      path: '/$userSlug/$dashboardSlug'
+      fullPath: '/$userSlug/$dashboardSlug'
+      preLoaderRoute: typeof UserSlugDashboardSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login/': {
@@ -104,8 +197,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardsRoute: DashboardsRoute,
+  FavouritesRoute: FavouritesRoute,
   SettingsRoute: SettingsRoute,
+  UserSlugDashboardSlugRoute: UserSlugDashboardSlugRoute,
   LoginVerifyRoute: LoginVerifyRoute,
+  UserSlugIndexRoute: UserSlugIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
 }
 export const routeTree = rootRouteImport

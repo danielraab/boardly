@@ -11,6 +11,8 @@ export type User = {
 	id: string;
 	email: string;
 	name: string | null;
+	/** First part of the user's dashboard addresses: /<slug>/<dashboard-slug>. */
+	slug: string;
 	/** End of the passkey enrollment window (RFC 3339), or null when none is open. */
 	passkeyEnrollmentUntil: string | null;
 };

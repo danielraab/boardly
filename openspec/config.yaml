@@ -2,7 +2,7 @@ schema: spec-driven
 
 context: |
   Famodash ("favourites and more dashboard") is a self-hosted personal start page
-  and bookmark manager: WYSIWYG dashboards (12-column grid, widgets), one favourites
+  and bookmark manager: WYSIWYG dashboards (column grid, 6 columns by default; sections and widgets), one favourites
   tree per user, a Karakeep-compatible API, and passwordless login (magic link, passkeys).
   Anyone may sign up; all data belongs to a single user.
 

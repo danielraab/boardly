@@ -1,23 +1,34 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import i18n from "#/i18n";
 import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
+import { THEME_STORAGE_KEY } from "#/theme";
 
 describe("app shell", () => {
-	it.each(["/", "/login", "/no-such-page"])(
+	it.each(["/", "/login", "/no/such/page"])(
 		"shows the header on %s",
 		async (path) => {
 			renderApp(path);
 			expect(
 				await screen.findByRole("link", { name: "Famodash" }),
 			).toHaveAttribute("href", "/");
+			expect(screen.getByRole("button", { name: "Theme" })).toBeVisible();
 			expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
 			expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();
 		},
 	);
 
+	it("places the theme switcher directly before the language switcher", async () => {
+		renderApp("/");
+		const theme = await screen.findByRole("button", { name: "Theme" });
+		expect(theme.nextElementSibling).toBe(
+			screen.getByRole("button", { name: "Language" }),
+		);
+	});
+
 	it("shows a not-found page with a link home for unknown paths", async () => {
-		renderApp("/no-such-page");
+		renderApp("/no/such/page");
 		expect(
 			await screen.findByRole("heading", { name: "Page not found" }),
 		).toBeVisible();
@@ -70,23 +81,27 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Settings and Sign out in this order", async () => {
+	it("shows name, email, Dashboards, Favourites, Settings and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
-		expect(menu.textContent).toBe("Annann@example.orgSettingsSign out");
+		expect(menu.textContent).toBe(
+			"Annann@example.orgDashboardsFavouritesSettingsSign out",
+		);
 		expect(
 			within(menu)
 				.getAllByRole("menuitem")
 				.map((i) => i.textContent),
-		).toEqual(["Settings", "Sign out"]);
+		).toEqual(["Dashboards", "Favourites", "Settings", "Sign out"]);
 	});
 
 	it("shows the email without an empty name line when there is no name", async () => {
 		mockApi({ "GET /api/me": signedIn() });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
-		expect(menu.textContent).toBe("ann@example.orgSettingsSign out");
+		expect(menu.textContent).toBe(
+			"ann@example.orgDashboardsFavouritesSettingsSign out",
+		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
 		).toBeNull();
@@ -99,6 +114,37 @@ describe("signed-in user menu", () => {
 		const menu = await screen.findByRole("menu");
 		expect(within(menu).getByText("Loading…")).toBeVisible();
 		expect(within(menu).queryAllByRole("menuitem")).toHaveLength(0);
+	});
+
+	it("goes to /dashboards from the Dashboards item and closes the menu", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Dashboards" }),
+		);
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/dashboards"),
+		);
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+	});
+
+	it("goes to /favourites from the Favourites item and closes the menu", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/favourites": {
+				body: { id: "root", kind: "folder", title: null },
+			},
+		});
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Favourites" }),
+		);
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/favourites"),
+		);
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 	});
 
 	it("goes to /settings from the Settings item and closes the menu", async () => {
@@ -147,5 +193,68 @@ describe("language switcher", () => {
 		expect(await screen.findByRole("link", { name: "Anmelden" })).toBeVisible();
 		expect(screen.getByRole("button", { name: "Benutzermenü" })).toBeVisible();
 		expect(document.documentElement.lang).toBe("de");
+	});
+});
+
+describe("theme switcher", () => {
+	const root = document.documentElement;
+
+	async function openMenu(user: ReturnType<typeof renderApp>["user"]) {
+		await user.click(await screen.findByRole("button", { name: "Theme" }));
+		return screen.findByRole("menu");
+	}
+
+	it("lists System and the 7 themes with System selected by default", async () => {
+		const { user } = renderApp("/");
+		const menu = await openMenu(user);
+		const items = within(menu).getAllByRole("menuitemradio");
+		expect(items.map((i) => i.textContent)).toEqual([
+			"System",
+			"White",
+			"Black",
+			"Sand",
+			"Sage",
+			"Fjord",
+			"Dusk",
+			"Ember",
+		]);
+		expect(items[0]).toHaveAttribute("aria-checked", "true");
+	});
+
+	it("applies and stores the chosen theme and closes the menu", async () => {
+		const { user } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(within(menu).getByRole("menuitemradio", { name: "Sage" }));
+
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		expect(root.dataset.theme).toBe("sage");
+		expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("sage");
+
+		const reopened = await openMenu(user);
+		expect(
+			within(reopened).getByRole("menuitemradio", { name: "Sage" }),
+		).toHaveAttribute("aria-checked", "true");
+	});
+
+	it("opens with the keyboard, closes on Escape and returns focus", async () => {
+		const { user } = renderApp("/");
+		const button = await screen.findByRole("button", { name: "Theme" });
+
+		button.focus();
+		await user.keyboard("{Enter}");
+		expect(await screen.findByRole("menu")).toBeVisible();
+
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		expect(button).toHaveFocus();
+	});
+
+	it("shows the theme names in German", async () => {
+		await i18n.changeLanguage("de");
+		const { user } = renderApp("/");
+		await user.click(await screen.findByRole("button", { name: "Farbschema" }));
+		expect(
+			await screen.findByRole("menuitemradio", { name: "Dämmerung" }),
+		).toBeVisible();
 	});
 });

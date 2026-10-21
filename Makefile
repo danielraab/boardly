@@ -2,6 +2,7 @@
 
 # Run the Go server on :8080 (API + last frontend build) with the dev compose
 # services (mailpit, sqlite-web); they stop again when the server stops.
+# Press r to rebuild and restart only the server.
 dev-backend:
 	./scripts/dev-backend.sh
 

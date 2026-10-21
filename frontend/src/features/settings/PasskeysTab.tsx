@@ -5,7 +5,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
+import {
+	dangerButton,
+	iconButton,
+	primaryButton,
+	secondaryButton,
+} from "#/components/buttonStyles";
+import {
+	dialogBackdrop as backdrop,
+	dialogPopup as popup,
+	textInput,
+} from "#/components/dialogStyles";
 import {
 	deletePasskey,
 	isCancelled,
@@ -17,15 +27,9 @@ import {
 } from "#/features/auth/passkey";
 import { meQueryKey, type User } from "#/features/auth/session";
 import { ApiError, api } from "#/lib/api";
+import { useThemeMode } from "#/theme";
 
 const MAX_LABEL = 64;
-
-const backdrop =
-	"fixed inset-0 bg-ink/30 transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none";
-const popup =
-	"fixed top-1/2 left-1/2 w-[28rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line bg-surface p-6 text-ink shadow-[0_8px_24px_-12px_rgb(29_39_51/0.35)] transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none";
-const dangerButton =
-	"inline-flex items-center justify-center rounded-full bg-red-700 px-6 py-2.5 font-medium text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Seconds until the RFC 3339 time `until`; ticks every second while above zero. */
 function useRemainingSeconds(until: string | null) {
@@ -82,7 +86,7 @@ export function PasskeysTab({ user }: { user: User }) {
 				{passkeys.isPending ? (
 					<p className="text-muted">{t("common.loading")}</p>
 				) : passkeys.isError ? (
-					<p role="alert" className="text-sm text-red-700">
+					<p role="alert" className="text-sm text-danger">
 						{t("common.genericError")}
 					</p>
 				) : passkeys.data.length === 0 ? (
@@ -153,7 +157,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 			<div className="mt-3 flex flex-wrap items-center gap-3">
 				<button
 					type="button"
-					className={`${secondaryButton} py-2`}
+					className={secondaryButton}
 					disabled
 					aria-describedby="passkeys-window-closed"
 				>
@@ -162,7 +166,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 				</button>
 				<button
 					type="button"
-					className={`${primaryButton} py-2`}
+					className={primaryButton}
 					disabled={send.isPending || send.isSuccess}
 					onClick={() => send.mutate()}
 				>
@@ -175,7 +179,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 				</output>
 			)}
 			{send.isError && (
-				<p role="alert" className="mt-3 text-sm text-red-700">
+				<p role="alert" className="mt-3 text-sm text-danger">
 					{send.error instanceof ApiError && send.error.code === "rate_limited"
 						? t("passkeys.linkRateLimited")
 						: t("common.genericError")}
@@ -233,7 +237,7 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Trigger
-				className={`${primaryButton} shrink-0 gap-2 py-2`}
+				className={`${primaryButton} shrink-0`}
 				disabled={disabled}
 			>
 				<Plus className="size-4" aria-hidden />
@@ -263,20 +267,20 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 							placeholder={t("passkeys.labelPlaceholder")}
 							value={label}
 							onChange={(e) => setLabel(e.target.value)}
-							className="mt-2 w-full rounded-lg border border-line bg-paper/40 px-4 py-2.5 text-ink outline-none focus-visible:border-ink"
+							className={textInput}
 						/>
 						{message && (
-							<p role="alert" className="mt-3 text-sm text-red-700">
+							<p role="alert" className="mt-3 text-sm text-danger">
 								{message}
 							</p>
 						)}
 						<div className="mt-6 flex justify-end gap-3">
-							<Dialog.Close className={`${secondaryButton} py-2.5`}>
+							<Dialog.Close className={secondaryButton}>
 								{t("passkeys.cancel")}
 							</Dialog.Close>
 							<button
 								type="submit"
-								className={`${primaryButton} py-2.5`}
+								className={primaryButton}
 								disabled={add.isPending}
 							>
 								{add.isPending ? t("passkeys.adding") : t("passkeys.continue")}
@@ -290,8 +294,10 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 }
 
 function ProviderIcon({ passkey }: { passkey: Passkey }) {
-	// The app has a light theme only, so the light variant comes first.
-	const src = passkey.provider?.iconLight ?? passkey.provider?.iconDark;
+	const mode = useThemeMode();
+	const { iconLight, iconDark } = passkey.provider ?? {};
+	const src =
+		mode === "dark" ? (iconDark ?? iconLight) : (iconLight ?? iconDark);
 	if (!src) {
 		return (
 			<KeyRound
@@ -337,7 +343,7 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 			</div>
 			<AlertDialog.Root onOpenChange={(open) => open && remove.reset()}>
 				<AlertDialog.Trigger
-					className="inline-flex size-9 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-red-700"
+					className={`${iconButton} size-8 hover:text-danger`}
 					aria-label={t("passkeys.delete", { name })}
 				>
 					<Trash2 className="size-4" aria-hidden />
@@ -352,12 +358,12 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 							{t("passkeys.deleteText", { name })}
 						</AlertDialog.Description>
 						{remove.isError && (
-							<p role="alert" className="mt-3 text-sm text-red-700">
+							<p role="alert" className="mt-3 text-sm text-danger">
 								{t("common.genericError")}
 							</p>
 						)}
 						<div className="mt-6 flex justify-end gap-3">
-							<AlertDialog.Close className={`${secondaryButton} py-2.5`}>
+							<AlertDialog.Close className={secondaryButton}>
 								{t("passkeys.cancel")}
 							</AlertDialog.Close>
 							<button

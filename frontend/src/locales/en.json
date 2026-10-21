@@ -1,11 +1,24 @@
 {
 	"shell": {
 		"userMenu": "User menu",
+		"theme": "Theme",
 		"signIn": "Sign in",
 		"language": "Language",
 		"loading": "Loading…",
+		"dashboards": "Dashboards",
+		"favourites": "Favourites",
 		"settings": "Settings",
 		"signOut": "Sign out"
+	},
+	"theme": {
+		"system": "System",
+		"white": "White",
+		"black": "Black",
+		"sand": "Sand",
+		"sage": "Sage",
+		"fjord": "Fjord",
+		"dusk": "Dusk",
+		"ember": "Ember"
 	},
 	"notFound": {
 		"title": "Page not found",
@@ -68,8 +81,17 @@
 	},
 	"home": {
 		"greeting": "Welcome, {{name}}",
-		"placeholderTitle": "Your dashboards will appear here",
-		"placeholderText": "Dashboards are coming soon. You'll build and edit them right on this page."
+		"createFirst": {
+			"title": "Create your first dashboard",
+			"text": "Dashboards collect your links and widgets. Your default dashboard is shown right here.",
+			"action": "Create your first dashboard"
+		},
+		"selectDefault": {
+			"title": "Select your default dashboard",
+			"text": "The default dashboard is shown here on your start page.",
+			"label": "Default dashboard",
+			"placeholder": "Choose a dashboard"
+		}
 	},
 	"settings": {
 		"title": "Settings",
@@ -87,7 +109,10 @@
 		"save": "Save",
 		"saving": "Saving…",
 		"saved": "Saved.",
-		"nameTooLong": "The name can be at most 100 characters long."
+		"nameTooLong": "The name can be at most 100 characters long.",
+		"slugLabel": "Address",
+		"slugHint": "Your dashboards are at /{{slug}}/…",
+		"saveSlug": "Save address"
 	},
 	"passkeys": {
 		"intro": "Passkeys let you sign in with your fingerprint, face or device PIN instead of an email link.",
@@ -118,5 +143,189 @@
 		"deleteTitle": "Delete passkey?",
 		"deleteText": "You will no longer be able to sign in with “{{name}}”. You can still sign in with an email link.",
 		"deleteConfirm": "Delete"
+	},
+	"favourites": {
+		"title": "Favourites",
+		"intro": "All your links in one tree. Drag items by their handle to reorder them or move them into another folder.",
+		"addFolder": "Add folder",
+		"addLink": "Add link",
+		"addFolderTo": "Add folder to {{name}}",
+		"addLinkTo": "Add link to {{name}}",
+		"edit": "Edit {{name}}",
+		"delete": "Delete {{name}}",
+		"move": "Move {{name}}",
+		"expand": "Expand {{name}}",
+		"collapse": "Collapse {{name}}",
+		"dropAtEnd": "Drop here to move to the top level",
+		"emptyTitle": "No favourites yet",
+		"emptyText": "Add a folder to group your links, or add your first link right away.",
+		"dialog": {
+			"newFolder": "New folder",
+			"newLink": "New link",
+			"editFolder": "Edit folder",
+			"editLink": "Edit link",
+			"inFolder": "In “{{name}}”",
+			"nameLabel": "Name",
+			"urlLabel": "URL",
+			"urlPlaceholder": "https://example.org",
+			"titleLabel": "Title (optional)",
+			"tagsLabel": "Tags",
+			"tagsPlaceholder": "Add a tag",
+			"createTag": "Add “{{name}}”",
+			"removeTag": "Remove tag {{name}}",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel"
+		},
+		"errors": {
+			"nameRequired": "Enter a name.",
+			"nameTooLong": "The name can be at most 100 characters long.",
+			"urlInvalid": "Enter a web address that starts with http:// or https://.",
+			"urlTooLong": "The URL can be at most 2048 characters long.",
+			"titleTooLong": "The title can be at most 1000 characters long.",
+			"tagTooLong": "Tags can be at most 100 characters long.",
+			"notFound": "This item no longer exists. The list has been refreshed.",
+			"moveFailed": "The item could not be moved. The list has been restored."
+		},
+		"deleteDialog": {
+			"linkTitle": "Delete link?",
+			"folderTitle": "Delete folder?",
+			"linkText": "“{{name}}” will be removed from your favourites.",
+			"emptyFolderText": "The empty folder “{{name}}” will be removed.",
+			"folderText_one": "“{{name}}” contains {{count}} item. What should happen to it?",
+			"folderText_other": "“{{name}}” contains {{count}} items. What should happen to them?",
+			"deleteContents": "Delete the folder and everything in it",
+			"moveContents": "Keep the contents and move them to “{{parent}}”",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"dnd": {
+			"instructions": "To move an item, press space or enter on its handle. Choose the new place with the up and down arrow keys, press space or enter to drop it, or escape to cancel.",
+			"pickedUp": "Picked up {{name}}.",
+			"position": "Position {{position}} in {{folder}}.",
+			"into": "Into the folder {{folder}}.",
+			"dropped": "{{name}} moved.",
+			"cancelled": "Moving {{name}} cancelled."
+		}
+	},
+	"dashboards": {
+		"title": "Dashboards",
+		"intro": "Every dashboard has its own address. Your default dashboard is your start page, and public dashboards can be opened by anyone with the link.",
+		"create": "New dashboard",
+		"default": "Default",
+		"public": "Public",
+		"edit": "Edit {{title}}",
+		"delete": "Delete {{title}}",
+		"empty": {
+			"title": "No dashboards yet",
+			"text": "Create a dashboard to use it as your start page or to share it."
+		},
+		"dialog": {
+			"newTitle": "New dashboard",
+			"editTitle": "Edit dashboard",
+			"titleLabel": "Title",
+			"slugLabel": "Address",
+			"defaultLabel": "Default dashboard",
+			"defaultHint": "Shown on your start page.",
+			"publicLabel": "Public",
+			"publicHint": "Anyone with the address can see it, also without signing in.",
+			"titleRequired": "Enter a title.",
+			"titleTooLong": "The title can be at most 100 characters long.",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel",
+			"layoutLabel": "Layout",
+			"desktopColumnsLabel": "Columns",
+			"mobileColumnsLabel": "Columns on small screens",
+			"mobileColumnsTooMany": "Use at most as many columns as on large screens.",
+			"breakpointLabel": "Small screens are narrower than",
+			"breakpointOption": "{{px}} px",
+			"invalidColumns": "These column settings aren't possible."
+		},
+		"deleteDialog": {
+			"title": "Delete dashboard?",
+			"text": "“{{title}}” will be deleted, and its address will stop working.",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"slug": {
+			"invalid": "Use 1 to 32 characters: a–z, 0–9 and hyphens.",
+			"reserved": "This address is reserved by Famodash. Please choose another one.",
+			"taken": "This address is already taken.",
+			"renameHint": "Links that use the old address will stop working."
+		},
+		"confirmSlug": {
+			"title": "Change address?",
+			"text": "Links that use the old address will stop working. They are not redirected to the new one.",
+			"from": "Old",
+			"to": "New",
+			"confirm": "Change address",
+			"cancel": "Cancel"
+		},
+		"view": {
+			"emptyTitle": "This dashboard is empty",
+			"emptyText": "Nothing has been added to this dashboard yet.",
+			"emptyOwnerText": "Click “Edit” to add the first section."
+		},
+		"editor": {
+			"edit": "Edit",
+			"saveAndExit": "Save and exit",
+			"saving": "Saving…",
+			"cancel": "Cancel editing",
+			"addSection": "Add section",
+			"untitled": "Untitled section",
+			"moveSection": "Move {{title}}",
+			"editSection": "Edit {{title}}",
+			"saveFailed": "The dashboard couldn't be saved. Please try again.",
+			"conflict": "This dashboard was changed elsewhere. Reload it to continue with the current version. Your changes here will be lost.",
+			"reload": "Reload",
+			"tooDeep": "Sections can be nested at most 5 levels deep."
+		},
+		"sectionDialog": {
+			"newTitle": "New section",
+			"editTitle": "Edit section",
+			"titleLabel": "Title",
+			"titleHint": "Optional. Without a title, the section shows no heading.",
+			"titleTooLong": "The title can be at most 100 characters long.",
+			"widthLabel": "Width",
+			"widthOption_one": "{{count}} column",
+			"widthOption_other": "{{count}} columns",
+			"borderLabel": "Border",
+			"borderHint": "Without a border, the section only groups its content.",
+			"heightLabel": "Height",
+			"heightAuto": "Fit the content",
+			"heightRows": "Fixed",
+			"rowsLabel": "Rows",
+			"rowsInvalid": "Use 1 to 50 rows.",
+			"apply": "Apply",
+			"cancel": "Cancel",
+			"delete": "Delete section"
+		},
+		"deleteSection": {
+			"title": "Delete section?",
+			"text": "“{{title}}” will be deleted.",
+			"textWithChildren_one": "“{{title}}” and the section inside it will be deleted.",
+			"textWithChildren_other": "“{{title}}” and the {{count}} sections inside it will be deleted.",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"discard": {
+			"title": "Discard changes?",
+			"text": "Your changes to this dashboard haven't been saved.",
+			"confirm": "Discard",
+			"cancel": "Keep editing"
+		},
+		"dnd": {
+			"instructions": "To move a section, press space or enter on its handle. Choose the new place with the arrow keys, press space or enter to drop it, or escape to cancel.",
+			"pickedUp": "Picked up {{title}}.",
+			"position": "Position {{position}} in {{parent}}.",
+			"tooDeep": "Position {{position}} in {{parent}}. Not possible: sections can be nested at most 5 levels deep.",
+			"dashboard": "the dashboard",
+			"dropped": "{{title}} moved.",
+			"cancelled": "Moving {{title}} cancelled."
+		},
+		"switcher": {
+			"label": "Switch dashboard"
+		}
 	}
 }

@@ -25,28 +25,95 @@ All data (dashboards, favourites, API tokens) belongs to a single user.
 Each user has exactly **one favourites tree**. It is the single source of truth for all bookmarks:
 
 - **Folder nodes** group other nodes and can be nested to any depth.
-- **Link nodes** hold a URL, a title and an optional icon or thumbnail.
+- **Link nodes** hold an `http` or `https` URL, an optional title and any number of **tags**. Icons
+  and thumbnails will follow.
+
+The tree is managed on the **Favourites** page (`/favourites`, linked from the user menu):
+
+- Add, rename and delete folders and links. Links open in a new tab.
+- Drag items by their handle to reorder them or move them into another folder. This also works with
+  the keyboard: focus the handle, press Space, choose the place with the arrow keys and press Space
+  again.
+- Deleting a folder that isn't empty asks whether to delete its contents too or move them to the
+  folder's parent.
+- Tags are created as you type them on a link, and existing tags are suggested. A tag that is no
+  longer on any link is removed.
 
 Dashboards (through navigation trees) and the Karakeep API both read from and write to this tree.
 Neither keeps its own separate copy of the bookmarks.
 
 ### Dashboards
 
-A user can create any number of dashboards. Each dashboard:
+A user can create any number of dashboards on the **Dashboards** page (`/dashboards`, linked from the
+user menu). Each dashboard has a title, an address, and two flags:
 
-- uses a **12-column grid** layout,
-- is edited **WYSIWYG**: you add, drag, resize and configure widgets directly on the page,
-- is made of **widgets** (see below).
+- **Default**: the default dashboard is shown on `/` when you're signed in. You can have at most one.
+  Without one, `/` asks you to create your first dashboard or pick a default.
+- **Public**: anyone with the address can see a public dashboard, also without signing in. Private
+  dashboards are only visible to their owner. Everyone else gets "page not found".
+
+Every dashboard has its own address, `/<user-slug>/<dashboard-slug>`, for example `/ann/home`:
+
+- New accounts get a random **user slug** of 10 characters. You can change it in Settings → Profile.
+  It must be unique across all users and can't be a word Famodash reserves for its own pages
+  (`api`, `login`, `settings`, …).
+- A **dashboard slug** must be unique among your own dashboards. When you create a dashboard, it is
+  derived from the title.
+- Slugs are lowercase, 1–32 characters of `a-z`, `0-9` and `-`.
+- Renaming a slug breaks links that use the old address. They are not redirected, so the app asks for
+  confirmation first.
+- `/<user-slug>` alone redirects to `/`.
+
+With more than one dashboard to choose from, the header shows the current dashboard's title next to
+"Famodash" as a dropdown for switching. Visitors only see the owner's public dashboards there.
+
+#### Layout
+
+A dashboard is made of **sections**, and everything on it lives in a section. Sections sit on a
+**column grid** and fill it left to right, wrapping to the next line when a section doesn't fit.
+Each dashboard has its own grid settings in its dialog on `/dashboards`:
+
+- **Columns**: 6 by default (1–12).
+- **Columns on small screens**: 2 by default (1 up to the columns above).
+- **Small screens are narrower than** 640, 768 (default) or 1024 px. Below that width the dashboard
+  uses the small-screen column count.
+
+A section's width always counts in page columns, also inside another section. A section is never
+shown wider than its parent, so a width-6 section inside a width-3 section is 3 columns wide, and on
+a 2-column phone screen every wider section takes the full width. The stored width is kept, so
+raising the column count again brings the original layout back.
+
+#### Editing
+
+The owner of a dashboard sees an **Edit** button next to its title. It opens edit mode (the address
+gets `?edit=true`), where every section shows a drag handle and a settings button (borderless
+sections also get a dashed outline, so you can see them), and **Add section** buttons appear at the
+top level and inside sections:
+
+- Changes are a draft until you click **Save and exit**, which saves the whole layout at once. The
+  **✕** button leaves without saving. Leaving with unsaved changes (✕, another page, reload or
+  closing the tab) asks first.
+- Drag sections by their handle to reorder them or to move them into another section, with
+  everything inside them. With the keyboard: focus the handle, press Space, choose the place with
+  the arrow keys and press Space again.
+- Sections can be nested at most **5 levels** deep. A move that would go deeper is refused with a
+  message.
+- Deleting a section asks for confirmation and deletes everything inside it.
+- If the dashboard was saved elsewhere (another tab or device) since you started editing, saving is
+  refused instead of overwriting it. **Reload** then loads the current version.
+
+A new dashboard is empty. Sections can only be added in edit mode.
 
 ### Widgets
 
 | Widget | Description |
 |---|---|
 | **Link** | Icon or thumbnail, title and URL. Links always open in a new tab. |
-| **Section** | A container for other widgets, including nested sections. It has an optional icon, a label and a color that is used for its border. Inside, it has its own grid. |
+| **Section** | A container for other widgets, including nested sections (at most 5 levels). It has a width in columns, an optional title, a border that can be turned off, and a height: fitting its content, or a fixed number of rows (4rem each) with a scrollbar when the content is taller. Inside, it has a grid as many columns wide as the section. Widgets other than sections take the full width of their section; use a borderless section to place them side by side. |
 | **Navigation tree** | Shows part of the user's favourites tree. When you add one, you choose a node of the tree as its root, and the widget shows that node and everything below it. A dashboard can have several navigation trees, each with a different root. Changes to the favourites tree show up in the widget right away. |
 
-More widget types can be added later. The widget model is meant to be extended.
+Sections are available now. Link and navigation-tree widgets will follow. More widget types can be
+added later. The widget model is meant to be extended.
 
 ### Karakeep-compatible server
 
@@ -60,6 +127,12 @@ Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep 
   - the client can only see the subtree below its root and nothing outside it.
 - A user can have several tokens with different roots, for example one per device or per purpose.
 
+### Themes
+
+The palette button in the header switches between 7 color themes: **White**, **Black**, **Sand**,
+**Sage** (light) and **Fjord**, **Dusk**, **Ember** (dark). The default, **System**, follows the
+operating system's light or dark setting. The choice is remembered in the browser.
+
 ## Concept overview
 
 ```
@@ -70,7 +143,7 @@ User
 │         ▲                    ▲
 │         │ root node          │ root node
 ├── Dashboards                 │
-│   └── Grid (12 columns)      │
+│   └── Grid (6 columns)       │
 │       ├── Link widget        │
 │       ├── Section widget (nests widgets)
 │       └── Navigation tree widget ──┘ (bound to a node)
@@ -292,6 +365,15 @@ address needs to be typed.
 
 UI texts live in `frontend/src/locales/en.json` and `de.json`. Both files must have the same
 keys; a test checks this.
+
+### Themes
+
+Each theme is a `[data-theme="…"]` block in `frontend/src/styles.css` that sets all color tokens
+(`paper`, `surface`, `ink`, `muted`, `line`, `accent`, `danger`, `on-danger`, `shadow`). Components
+use only these tokens, never raw Tailwind colors. To add a theme, add its block, add it to the list
+in `frontend/src/theme/index.ts` and to the inline script in `frontend/index.html`, and add its name
+to both locale files. Tests check that every theme defines all tokens, meets the WCAG contrast
+minimums, and that the inline script matches the theme list.
 
 ## Status
 

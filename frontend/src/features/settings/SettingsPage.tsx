@@ -3,8 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton } from "#/features/auth/LoginPage";
+import { primaryButton } from "#/components/buttonStyles";
 import { meQueryKey, type User, useMe } from "#/features/auth/session";
+import { dashboardViewQueryKey } from "#/features/dashboards/api";
+import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChangeDialog";
+import { SlugField, type SlugProblem } from "#/features/dashboards/SlugField";
+import { slugError } from "#/features/dashboards/slug";
 import { ApiError, api } from "#/lib/api";
 import { PasskeysTab } from "./PasskeysTab";
 
@@ -117,7 +121,7 @@ function ProfileTab({ user }: { user: User }) {
 						/>
 						<button
 							type="submit"
-							className={`${primaryButton} py-2.5`}
+							className={primaryButton}
 							disabled={unchanged || save.isPending}
 						>
 							{save.isPending ? t("profile.saving") : t("profile.save")}
@@ -127,7 +131,7 @@ function ProfileTab({ user }: { user: User }) {
 						{t("profile.nameHint")}
 					</p>
 					{error && (
-						<p role="alert" className="mt-2 text-sm text-red-700">
+						<p role="alert" className="mt-2 text-sm text-danger">
 							{error}
 						</p>
 					)}
@@ -137,7 +141,96 @@ function ProfileTab({ user }: { user: User }) {
 						</output>
 					)}
 				</form>
+				<SlugForm user={user} />
 			</div>
 		</section>
+	);
+}
+
+function SlugForm({ user }: { user: User }) {
+	const { t } = useTranslation();
+	const queryClient = useQueryClient();
+	const [slug, setSlug] = useState(user.slug);
+	const [confirming, setConfirming] = useState(false);
+
+	const save = useMutation({
+		mutationFn: (value: string) =>
+			api<User>("/api/me", { method: "PATCH", json: { slug: value } }),
+		onSuccess: (updated) => {
+			queryClient.setQueryData(meQueryKey, updated);
+			void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
+			setSlug(updated.slug);
+		},
+		onSettled: () => setConfirming(false),
+	});
+
+	const code = save.error instanceof ApiError ? save.error.code : null;
+	const serverProblem: SlugProblem | null =
+		code === "slug_taken"
+			? "taken"
+			: code === "slug_reserved"
+				? "reserved"
+				: code === "invalid_slug"
+					? "invalid"
+					: null;
+	const unchanged = slug === user.slug;
+
+	function onSubmit(event: FormEvent) {
+		event.preventDefault();
+		if (!unchanged && !slugError(slug, { reserved: true })) setConfirming(true);
+	}
+
+	return (
+		<form className="mt-6" onSubmit={onSubmit}>
+			<div className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-start">
+				<div className="min-w-0 flex-1">
+					<SlugField
+						id="profile-slug"
+						label={t("profile.slugLabel")}
+						prefix="/"
+						value={slug}
+						onChange={(value) => {
+							setSlug(value);
+							save.reset();
+						}}
+						saved={user.slug}
+						reserved
+						serverProblem={serverProblem}
+					/>
+				</div>
+				<button
+					type="submit"
+					className={`${primaryButton} sm:mt-7`}
+					aria-label={t("profile.saveSlug")}
+					disabled={
+						unchanged ||
+						save.isPending ||
+						slugError(slug, { reserved: true }) !== null
+					}
+				>
+					{save.isPending ? t("profile.saving") : t("profile.save")}
+				</button>
+			</div>
+			<p className="mt-2 text-sm text-muted">
+				{t("profile.slugHint", { slug: user.slug })}
+			</p>
+			{save.error && !serverProblem && (
+				<p role="alert" className="mt-2 text-sm text-red-700">
+					{t("common.genericError")}
+				</p>
+			)}
+			{save.isSuccess && unchanged && (
+				<output className="mt-2 block text-sm text-muted">
+					{t("profile.saved")}
+				</output>
+			)}
+			<ConfirmSlugChangeDialog
+				change={
+					confirming ? { from: `/${user.slug}/…`, to: `/${slug}/…` } : null
+				}
+				onConfirm={() => save.mutate(slug)}
+				onCancel={() => setConfirming(false)}
+			/>
+		</form>
 	);
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -192,5 +193,252 @@ func TestPasskeyMigrationOnExistingData(t *testing.T) {
 		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("%s = %d, err %v; want 0 after deleting the user", table, n, err)
 		}
+	}
+}
+
+func TestFavouritesConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	node := `INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 0, ?, ?, '` + ts + `', '` + ts + `')`
+
+	mustExec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?), ('u2', 'b@example.org', ?, ?)`, ts, ts, ts, ts)
+	mustExec(node, "r1", "u1", nil, "folder", nil, nil)
+	mustExec(node, "r2", "u2", nil, "folder", nil, nil)
+	mustExec(node, "f1", "u1", "r1", "folder", "Work", nil)
+	mustExec(node, "l1", "u1", "f1", "link", "Docs", "https://example.org")
+
+	for name, args := range map[string][]any{
+		"link without parent":         {"x1", "u1", nil, "link", nil, "https://example.org"},
+		"folder with url":             {"x2", "u1", "r1", "folder", "F", "https://example.org"},
+		"link without url":            {"x3", "u1", "r1", "link", "L", nil},
+		"second root":                 {"x4", "u1", nil, "folder", nil, nil},
+		"root with title":             {"x5", "u2", nil, "folder", "Root", nil},
+		"node in another user's tree": {"x6", "u2", "f1", "folder", "Foreign", nil},
+		"unknown kind":                {"x7", "u1", "r1", "note", "N", nil},
+	} {
+		if err := exec(node, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	mustExec(`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t1', 'u1', 'Reading', 'reading', ?)`, ts)
+	if err := exec(`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t2', 'u1', 'reading', 'reading', ?)`, ts); err == nil {
+		t.Error("duplicate tag key succeeded, want a constraint error")
+	}
+	mustExec(`INSERT INTO favourite_node_tags (node_id, tag_id) VALUES ('l1', 't1')`)
+
+	// Deleting a folder removes its subtree and the subtree's tag links.
+	mustExec(`DELETE FROM favourite_nodes WHERE id = 'f1'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM favourite_node_tags`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("favourite_node_tags = %d, err %v; want 0 after deleting the folder", n, err)
+	}
+
+	mustExec(`DELETE FROM users WHERE id = 'u1'`)
+	for _, table := range []string{"favourite_nodes WHERE user_id = 'u1'", "tags"} {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("%s = %d, err %v; want 0 after deleting the user", table, n, err)
+		}
+	}
+}
+
+func TestDashboardsMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0005")); err != nil {
+		t.Fatalf("Migrate to 0005: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?), ('u2', 'b@example.org', ?, ?)`, ts, ts, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	rows, err := db.Query(`SELECT slug FROM users`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for rows.Next() {
+		var slug *string
+		if err := rows.Scan(&slug); err != nil {
+			t.Fatal(err)
+		}
+		if slug == nil || len(*slug) != 10 || strings.Trim(*slug, "0123456789abcdef") != "" {
+			t.Fatalf("slug = %v, want 10 lowercase hex characters", slug)
+		}
+		seen[*slug] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 2 {
+		t.Fatalf("slugs = %v, want two distinct slugs", seen)
+	}
+}
+
+func TestDashboardsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dash := `INSERT INTO dashboards (id, user_id, slug, title, is_default, is_public, created_at, updated_at)
+		VALUES (?, ?, ?, 'T', ?, 0, '` + ts + `', '` + ts + `')`
+
+	mustExec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?), ('u2', 'b@example.org', 'bob', ?, ?)`, ts, ts, ts, ts)
+	if err := exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u3', 'c@example.org', 'ann', ?, ?)`, ts, ts); err == nil {
+		t.Error("duplicate user slug succeeded, want a constraint error")
+	}
+	mustExec(dash, "d1", "u1", "home", 1)
+	mustExec(dash, "d2", "u1", "work", 0)
+	mustExec(dash, "d3", "u2", "home", 1)
+
+	for name, args := range map[string][]any{
+		"second default":  {"x1", "u1", "links", 1},
+		"duplicate slug":  {"x2", "u1", "home", 0},
+		"uppercase slug":  {"x3", "u1", "Links", 0},
+		"invalid default": {"x4", "u1", "other", 2},
+	} {
+		if err := exec(dash, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	mustExec(`DELETE FROM users WHERE id = 'u1'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboards WHERE user_id = 'u1'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("dashboards = %d, err %v; want 0 after deleting the user", n, err)
+	}
+}
+
+func TestDashboardLayoutMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0006")); err != nil {
+		t.Fatalf("Migrate to 0006: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'Home', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	var desktop, mobile, breakpoint, version int
+	if err := db.QueryRow(`SELECT desktop_columns, mobile_columns, mobile_breakpoint, layout_version FROM dashboards`).
+		Scan(&desktop, &mobile, &breakpoint, &version); err != nil {
+		t.Fatal(err)
+	}
+	if desktop != 6 || mobile != 2 || breakpoint != 768 || version != 0 {
+		t.Fatalf("columns = %d/%d/%d, version %d; want 6/2/768, version 0", desktop, mobile, breakpoint, version)
+	}
+}
+
+func TestDashboardWidgetsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	widget := `INSERT INTO dashboard_widgets (id, dashboard_id, parent_id, kind, position, width, config)
+		VALUES (?, ?, ?, ?, 0, ?, ?)`
+
+	mustExec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts)
+	mustExec(`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'H', ?, ?), ('d2', 'u1', 'work', 'W', ?, ?)`, ts, ts, ts, ts)
+	mustExec(widget, "s1", "d1", nil, "section", 6, "{}")
+	mustExec(widget, "s2", "d1", "s1", "section", 3, `{"border":true}`)
+	mustExec(widget, "s3", "d1", "s2", "section", 2, "{}")
+	mustExec(widget, "t1", "d2", nil, "section", 6, "{}")
+
+	for name, args := range map[string][]any{
+		"parent in another dashboard": {"x1", "d2", "s1", "section", 6, "{}"},
+		"unknown kind":                {"x2", "d1", nil, "note", 6, "{}"},
+		"width 0":                     {"x3", "d1", nil, "section", 0, "{}"},
+		"width 13":                    {"x4", "d1", nil, "section", 13, "{}"},
+		"invalid config":              {"x5", "d1", nil, "section", 6, "{"},
+	} {
+		if err := exec(widget, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+	if err := exec(`UPDATE dashboards SET mobile_breakpoint = 800 WHERE id = 'd1'`); err == nil {
+		t.Error("breakpoint 800 succeeded, want a constraint error")
+	}
+
+	// Deleting a section removes its subtree; deleting a dashboard removes the rest.
+	mustExec(`DELETE FROM dashboard_widgets WHERE id = 's2'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = 'd1'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("widgets = %d, err %v; want 1 after deleting the middle section", n, err)
+	}
+	mustExec(`DELETE FROM dashboards WHERE id = 'd1'`)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = 'd1'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("widgets = %d, err %v; want 0 after deleting the dashboard", n, err)
 	}
 }

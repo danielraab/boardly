@@ -12,12 +12,19 @@ type Handler =
 	| ((req: {
 			body: unknown;
 			init: RequestInit;
+			url: URL;
 	  }) => MockResponse | Promise<MockResponse>);
 
 /** Routes keyed by "METHOD /path". */
 export type Routes = Record<string, Handler>;
 
-export type Call = { method: string; path: string; body: unknown };
+/** A recorded request; search is the query string including "?", or "". */
+export type Call = {
+	method: string;
+	path: string;
+	search: string;
+	body: unknown;
+};
 
 export const signedOut: MockResponse = {
 	status: 401,
@@ -30,6 +37,7 @@ export function signedIn(user: Partial<User> = {}): MockResponse {
 			id: "u1",
 			email: "ann@example.org",
 			name: null,
+			slug: "ann",
 			passkeyEnrollmentUntil: null,
 			...user,
 		},
@@ -52,6 +60,7 @@ export function mockApi(routes: Routes = {}) {
 	const all: Routes = {
 		"GET /api/me": signedOut,
 		"GET /api/passkeys": { body: [] },
+		"GET /api/dashboards": { body: [] },
 		...routes,
 	};
 	const calls: Call[] = [];
@@ -59,10 +68,11 @@ export function mockApi(routes: Routes = {}) {
 	const fetchMock = vi.fn(
 		async (input: RequestInfo | URL, init: RequestInit = {}) => {
 			const method = (init.method ?? "GET").toUpperCase();
-			const path = new URL(String(input), "http://localhost").pathname;
+			const url = new URL(String(input), "http://localhost");
+			const path = url.pathname;
 			const body =
 				typeof init.body === "string" ? JSON.parse(init.body) : undefined;
-			calls.push({ method, path, body });
+			calls.push({ method, path, search: url.search, body });
 
 			const handler = all[`${method} ${path}`];
 			const res: MockResponse = !handler
@@ -71,7 +81,7 @@ export function mockApi(routes: Routes = {}) {
 						body: { error: { code: "not_found", message: "Not found" } },
 					}
 				: typeof handler === "function"
-					? await handler({ body, init })
+					? await handler({ body, init, url })
 					: handler;
 			const status = res.status ?? 200;
 			return new Response(
