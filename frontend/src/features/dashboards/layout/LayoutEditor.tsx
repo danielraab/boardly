@@ -20,7 +20,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import {
 	type DashboardViewData,
 	dashboardViewQueryKey,
@@ -353,7 +353,7 @@ export function LayoutEditor({
 						type="button"
 						onClick={() => save.mutate()}
 						disabled={save.isPending}
-						className={`${primaryButton} gap-2 px-4 py-2 text-sm`}
+						className={primaryButton}
 					>
 						<Check className="size-4" aria-hidden />
 						{save.isPending
@@ -381,7 +381,7 @@ export function LayoutEditor({
 						<p className="min-w-0 flex-1">{t("dashboards.editor.conflict")}</p>
 						<button
 							type="button"
-							className={`${secondaryButton} px-4 py-1.5 text-sm`}
+							className={secondaryButton}
 							onClick={() => void reload()}
 						>
 							{t("dashboards.editor.reload")}

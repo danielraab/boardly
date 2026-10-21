@@ -5,6 +5,3 @@ export const menuPopup =
 
 export const menuItem =
 	"flex w-full cursor-default items-center gap-2 rounded-md px-3 py-2 select-none outline-none data-[highlighted]:bg-paper";
-
-export const headerButton =
-	"inline-flex size-10 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink data-[popup-open]:bg-surface data-[popup-open]:text-ink";

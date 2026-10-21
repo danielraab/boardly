@@ -1,12 +1,12 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import {
 	dialogBackdrop,
 	dialogPopup,
 	textInput,
 } from "#/components/dialogStyles";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
 import type { Section } from "../api";
 import type { SectionSettings } from "./layoutTree";
 
@@ -221,12 +221,12 @@ function SectionForm({
 							{t("dashboards.sectionDialog.delete")}
 						</button>
 					)}
-					<Dialog.Close className={`${secondaryButton} py-2.5`}>
+					<Dialog.Close className={secondaryButton}>
 						{t("dashboards.sectionDialog.cancel")}
 					</Dialog.Close>
 					<button
 						type="submit"
-						className={`${primaryButton} py-2.5`}
+						className={primaryButton}
 						disabled={fixed && !rowsValid}
 					>
 						{t("dashboards.sectionDialog.apply")}

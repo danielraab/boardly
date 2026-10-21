@@ -1,11 +1,7 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
-import {
-	dangerButton,
-	dialogBackdrop,
-	dialogPopup,
-} from "#/components/dialogStyles";
-import { secondaryButton } from "#/features/auth/LoginPage";
+import { dangerButton, secondaryButton } from "#/components/buttonStyles";
+import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import type { Section } from "../api";
 import { countDescendants } from "./layoutTree";
 
@@ -92,7 +88,7 @@ function Confirm({
 						{text}
 					</AlertDialog.Description>
 					<div className="mt-6 flex justify-end gap-3">
-						<AlertDialog.Close className={`${secondaryButton} py-2.5`}>
+						<AlertDialog.Close className={secondaryButton}>
 							{cancel}
 						</AlertDialog.Close>
 						<button type="button" className={dangerButton} onClick={onConfirm}>
