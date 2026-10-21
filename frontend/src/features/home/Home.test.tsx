@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { Dashboard } from "#/features/dashboards/api";
+import { type Dashboard, defaultColumns } from "#/features/dashboards/api";
 import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
 
@@ -10,6 +10,7 @@ const home: Dashboard = {
 	title: "Home",
 	isDefault: false,
 	isPublic: false,
+	...defaultColumns,
 };
 const work: Dashboard = { ...home, id: "d2", slug: "work", title: "Work" };
 
@@ -19,6 +20,9 @@ const view = (d: Dashboard, all: Dashboard[]) => ({
 		ownerSlug: "ann",
 		isOwner: true,
 		dashboards: all.map(({ slug, title }) => ({ slug, title })),
+		columns: defaultColumns,
+		layoutVersion: 0,
+		sections: [],
 	},
 });
 

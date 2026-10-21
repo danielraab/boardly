@@ -233,7 +233,14 @@
 			"titleTooLong": "Der Titel darf höchstens 100 Zeichen lang sein.",
 			"save": "Speichern",
 			"saving": "Wird gespeichert…",
-			"cancel": "Abbrechen"
+			"cancel": "Abbrechen",
+			"layoutLabel": "Layout",
+			"desktopColumnsLabel": "Spalten",
+			"mobileColumnsLabel": "Spalten auf kleinen Bildschirmen",
+			"mobileColumnsTooMany": "Verwende höchstens so viele Spalten wie auf großen Bildschirmen.",
+			"breakpointLabel": "Kleine Bildschirme sind schmaler als",
+			"breakpointOption": "{{px}} px",
+			"invalidColumns": "Diese Spalteneinstellungen sind nicht möglich."
 		},
 		"deleteDialog": {
 			"title": "Dashboard löschen?",
@@ -257,7 +264,65 @@
 		},
 		"view": {
 			"emptyTitle": "Dieses Dashboard ist leer",
-			"emptyText": "Widgets kommen bald. Du wirst sie direkt hier hinzufügen und anordnen."
+			"emptyText": "Zu diesem Dashboard wurde noch nichts hinzugefügt.",
+			"emptyOwnerText": "Klicke auf „Bearbeiten“, um den ersten Abschnitt hinzuzufügen."
+		},
+		"editor": {
+			"edit": "Bearbeiten",
+			"saveAndExit": "Speichern und beenden",
+			"saving": "Wird gespeichert…",
+			"cancel": "Bearbeiten abbrechen",
+			"addSection": "Abschnitt hinzufügen",
+			"untitled": "Abschnitt ohne Titel",
+			"moveSection": "{{title}} verschieben",
+			"editSection": "{{title}} bearbeiten",
+			"saveFailed": "Das Dashboard konnte nicht gespeichert werden. Bitte versuche es noch einmal.",
+			"conflict": "Dieses Dashboard wurde an anderer Stelle geändert. Lade es neu, um mit der aktuellen Version weiterzumachen. Deine Änderungen hier gehen dabei verloren.",
+			"reload": "Neu laden",
+			"tooDeep": "Abschnitte können höchstens 5 Ebenen tief verschachtelt werden."
+		},
+		"sectionDialog": {
+			"newTitle": "Neuer Abschnitt",
+			"editTitle": "Abschnitt bearbeiten",
+			"titleLabel": "Titel",
+			"titleHint": "Optional. Ohne Titel zeigt der Abschnitt keine Überschrift.",
+			"titleTooLong": "Der Titel darf höchstens 100 Zeichen lang sein.",
+			"widthLabel": "Breite",
+			"widthOption_one": "{{count}} Spalte",
+			"widthOption_other": "{{count}} Spalten",
+			"borderLabel": "Rahmen",
+			"borderHint": "Ohne Rahmen gruppiert der Abschnitt nur seinen Inhalt.",
+			"heightLabel": "Höhe",
+			"heightAuto": "An den Inhalt anpassen",
+			"heightRows": "Fest",
+			"rowsLabel": "Zeilen",
+			"rowsInvalid": "Verwende 1 bis 50 Zeilen.",
+			"apply": "Übernehmen",
+			"cancel": "Abbrechen",
+			"delete": "Abschnitt löschen"
+		},
+		"deleteSection": {
+			"title": "Abschnitt löschen?",
+			"text": "„{{title}}“ wird gelöscht.",
+			"textWithChildren_one": "„{{title}}“ und der Abschnitt darin werden gelöscht.",
+			"textWithChildren_other": "„{{title}}“ und die {{count}} Abschnitte darin werden gelöscht.",
+			"confirm": "Löschen",
+			"cancel": "Abbrechen"
+		},
+		"discard": {
+			"title": "Änderungen verwerfen?",
+			"text": "Deine Änderungen an diesem Dashboard wurden noch nicht gespeichert.",
+			"confirm": "Verwerfen",
+			"cancel": "Weiter bearbeiten"
+		},
+		"dnd": {
+			"instructions": "Um einen Abschnitt zu verschieben, drücke die Leertaste oder Enter auf seinem Griff. Wähle den neuen Platz mit den Pfeiltasten, drücke Leertaste oder Enter zum Ablegen oder Escape zum Abbrechen.",
+			"pickedUp": "{{title}} aufgenommen.",
+			"position": "Position {{position}} in {{parent}}.",
+			"tooDeep": "Position {{position}} in {{parent}}. Nicht möglich: Abschnitte können höchstens 5 Ebenen tief verschachtelt werden.",
+			"dashboard": "dem Dashboard",
+			"dropped": "{{title}} verschoben.",
+			"cancelled": "Verschieben von {{title}} abgebrochen."
 		},
 		"switcher": {
 			"label": "Dashboard wechseln"

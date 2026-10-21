@@ -6,12 +6,16 @@ import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-	dialogBackdrop as backdrop,
 	dangerButton,
+	iconButton,
+	primaryButton,
+	secondaryButton,
+} from "#/components/buttonStyles";
+import {
+	dialogBackdrop as backdrop,
 	dialogPopup as popup,
 	textInput,
 } from "#/components/dialogStyles";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
 import {
 	deletePasskey,
 	isCancelled,
@@ -153,7 +157,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 			<div className="mt-3 flex flex-wrap items-center gap-3">
 				<button
 					type="button"
-					className={`${secondaryButton} py-2`}
+					className={secondaryButton}
 					disabled
 					aria-describedby="passkeys-window-closed"
 				>
@@ -162,7 +166,7 @@ function EnrollmentClosed({ user }: { user: User }) {
 				</button>
 				<button
 					type="button"
-					className={`${primaryButton} py-2`}
+					className={primaryButton}
 					disabled={send.isPending || send.isSuccess}
 					onClick={() => send.mutate()}
 				>
@@ -233,7 +237,7 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Trigger
-				className={`${primaryButton} shrink-0 gap-2 py-2`}
+				className={`${primaryButton} shrink-0`}
 				disabled={disabled}
 			>
 				<Plus className="size-4" aria-hidden />
@@ -271,12 +275,12 @@ function AddPasskeyDialog({ disabled }: { disabled: boolean }) {
 							</p>
 						)}
 						<div className="mt-6 flex justify-end gap-3">
-							<Dialog.Close className={`${secondaryButton} py-2.5`}>
+							<Dialog.Close className={secondaryButton}>
 								{t("passkeys.cancel")}
 							</Dialog.Close>
 							<button
 								type="submit"
-								className={`${primaryButton} py-2.5`}
+								className={primaryButton}
 								disabled={add.isPending}
 							>
 								{add.isPending ? t("passkeys.adding") : t("passkeys.continue")}
@@ -339,7 +343,7 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 			</div>
 			<AlertDialog.Root onOpenChange={(open) => open && remove.reset()}>
 				<AlertDialog.Trigger
-					className="inline-flex size-9 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-danger"
+					className={`${iconButton} size-8 hover:text-danger`}
 					aria-label={t("passkeys.delete", { name })}
 				>
 					<Trash2 className="size-4" aria-hidden />
@@ -359,7 +363,7 @@ function PasskeyItem({ passkey }: { passkey: Passkey }) {
 							</p>
 						)}
 						<div className="mt-6 flex justify-end gap-3">
-							<AlertDialog.Close className={`${secondaryButton} py-2.5`}>
+							<AlertDialog.Close className={secondaryButton}>
 								{t("passkeys.cancel")}
 							</AlertDialog.Close>
 							<button

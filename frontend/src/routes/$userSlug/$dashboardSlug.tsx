@@ -3,11 +3,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { NotFound } from "#/components/NotFound";
 import { useMe } from "#/features/auth/session";
 import { dashboardViewQueryOptions } from "#/features/dashboards/api";
-import { DashboardView } from "#/features/dashboards/DashboardView";
+import {
+	DashboardView,
+	validateDashboardSearch,
+} from "#/features/dashboards/DashboardView";
 
 // Static routes such as /login/verify rank above this one, so the app's own
 // pages always win over a user slug.
 export const Route = createFileRoute("/$userSlug/$dashboardSlug")({
+	validateSearch: validateDashboardSearch,
 	component: DashboardRoute,
 });
 

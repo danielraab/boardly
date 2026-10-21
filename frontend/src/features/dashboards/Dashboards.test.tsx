@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { apiError, mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
-import type { Dashboard, DashboardEntry } from "./api";
+import { type Dashboard, type DashboardEntry, defaultColumns } from "./api";
 
 const home: Dashboard = {
 	id: "d1",
@@ -10,6 +10,7 @@ const home: Dashboard = {
 	title: "Home",
 	isDefault: true,
 	isPublic: true,
+	...defaultColumns,
 };
 const work: Dashboard = {
 	id: "d2",
@@ -17,6 +18,7 @@ const work: Dashboard = {
 	title: "Work",
 	isDefault: false,
 	isPublic: false,
+	...defaultColumns,
 };
 
 function view(
@@ -30,6 +32,9 @@ function view(
 			ownerSlug: "ann",
 			isOwner,
 			dashboards,
+			columns: defaultColumns,
+			layoutVersion: 0,
+			sections: [],
 		},
 	};
 }
@@ -102,6 +107,7 @@ describe("dashboards page", () => {
 			slug: "kueche-haus",
 			isDefault: false,
 			isPublic: true,
+			...defaultColumns,
 		});
 	});
 
@@ -300,5 +306,89 @@ describe("dashboard address", () => {
 		expect(
 			screen.queryByRole("button", { name: /Switch dashboard/ }),
 		).toBeNull();
+	});
+});
+
+describe("column settings", () => {
+	it("starts a new dashboard with the default columns", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user } = renderApp("/dashboards");
+		await user.click(
+			await screen.findByRole("button", { name: "New dashboard" }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "New dashboard" });
+		expect(within(dialog).getByLabelText("Columns")).toHaveValue("6");
+		expect(
+			within(dialog).getByLabelText("Columns on small screens"),
+		).toHaveValue("2");
+		expect(
+			within(dialog).getByLabelText("Small screens are narrower than"),
+		).toHaveValue("768");
+	});
+
+	it("blocks more mobile than desktop columns", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		const { user } = renderApp("/dashboards");
+		await user.click(
+			await screen.findByRole("button", { name: "New dashboard" }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "New dashboard" });
+		await user.type(within(dialog).getByLabelText("Title"), "Narrow");
+		await user.selectOptions(within(dialog).getByLabelText("Columns"), "3");
+		await user.selectOptions(
+			within(dialog).getByLabelText("Columns on small screens"),
+			"4",
+		);
+		expect(
+			within(dialog).getByText(
+				"Use at most as many columns as on large screens.",
+			),
+		).toBeVisible();
+		expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+	});
+
+	it("sends changed column settings when editing", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/dashboards": { body: [home] },
+			"PATCH /api/dashboards/d1": ({ body }) => ({
+				body: { ...home, ...(body as object) },
+			}),
+		});
+		const { user } = renderApp("/dashboards");
+		await user.click(await screen.findByRole("button", { name: "Edit Home" }));
+		const dialog = await screen.findByRole("dialog", {
+			name: "Edit dashboard",
+		});
+		await user.selectOptions(within(dialog).getByLabelText("Columns"), "8");
+		await user.selectOptions(
+			within(dialog).getByLabelText("Small screens are narrower than"),
+			"1024",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(api.callsTo("PATCH", "/api/dashboards/d1")[0].body).toMatchObject({
+			desktopColumns: 8,
+			mobileColumns: 2,
+			mobileBreakpoint: 1024,
+		});
+	});
+
+	it("shows a server column error in the dialog", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"POST /api/dashboards": apiError(400, "invalid_columns"),
+		});
+		const { user } = renderApp("/dashboards");
+		await user.click(
+			await screen.findByRole("button", { name: "New dashboard" }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "New dashboard" });
+		await user.type(within(dialog).getByLabelText("Title"), "Home");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+			"These column settings aren't possible.",
+		);
 	});
 });

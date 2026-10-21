@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMe, useSignOut } from "#/features/auth/session";
-import { headerButton, menuItem, menuPopup } from "./menuStyles";
+import { headerButton } from "./buttonStyles";
+import { menuItem, menuPopup } from "./menuStyles";
 
 export function UserMenu() {
 	const { t } = useTranslation();
