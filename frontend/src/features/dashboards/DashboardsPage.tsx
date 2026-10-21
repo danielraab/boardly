@@ -3,14 +3,11 @@ import { Link, Navigate } from "@tanstack/react-router";
 import { LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { secondaryButton } from "#/features/auth/LoginPage";
+import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { useMe } from "#/features/auth/session";
 import { type Dashboard, dashboardsQueryOptions } from "./api";
 import { DashboardDialog, type DashboardDialogTarget } from "./DashboardDialog";
 import { DeleteDashboardDialog } from "./DeleteDashboardDialog";
-
-const iconButton =
-	"inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-ink";
 
 const badge =
 	"rounded-full border border-line px-2 py-0.5 text-xs font-medium text-muted";
@@ -43,7 +40,7 @@ export function DashboardsPage({
 	const createButton = (
 		<button
 			type="button"
-			className={`${secondaryButton} py-2`}
+			className={secondaryButton}
 			onClick={() => setEditing({ dashboard: null })}
 		>
 			<Plus className="size-4" aria-hidden />

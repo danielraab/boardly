@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton } from "#/features/auth/LoginPage";
+import { primaryButton } from "#/components/buttonStyles";
 import { meQueryKey, type User, useMe } from "#/features/auth/session";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChangeDialog";
@@ -121,7 +121,7 @@ function ProfileTab({ user }: { user: User }) {
 						/>
 						<button
 							type="submit"
-							className={`${primaryButton} py-2.5`}
+							className={primaryButton}
 							disabled={unchanged || save.isPending}
 						>
 							{save.isPending ? t("profile.saving") : t("profile.save")}
@@ -200,7 +200,7 @@ function SlugForm({ user }: { user: User }) {
 				</div>
 				<button
 					type="submit"
-					className={`${primaryButton} py-2.5 sm:mt-7`}
+					className={`${primaryButton} sm:mt-7`}
 					aria-label={t("profile.saveSlug")}
 					disabled={
 						unchanged ||

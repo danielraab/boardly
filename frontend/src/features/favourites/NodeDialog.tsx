@@ -2,12 +2,12 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import {
 	dialogBackdrop,
 	dialogPopup,
 	textInput,
 } from "#/components/dialogStyles";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
 import { ApiError } from "#/lib/api";
 import {
 	createFavourite,
@@ -207,12 +207,12 @@ function NodeForm({
 					</p>
 				)}
 				<div className="flex justify-end gap-3 pt-2">
-					<Dialog.Close className={`${secondaryButton} py-2.5`}>
+					<Dialog.Close className={secondaryButton}>
 						{t("favourites.dialog.cancel")}
 					</Dialog.Close>
 					<button
 						type="submit"
-						className={`${primaryButton} py-2.5`}
+						className={primaryButton}
 						disabled={save.isPending}
 					>
 						{save.isPending

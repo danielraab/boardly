@@ -1,7 +1,7 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
-import { primaryButton, secondaryButton } from "#/features/auth/LoginPage";
 
 /** Asks before a slug change that breaks links to the old address. */
 export function ConfirmSlugChangeDialog({
@@ -38,14 +38,10 @@ export function ConfirmSlugChangeDialog({
 						</dl>
 					)}
 					<div className="mt-6 flex justify-end gap-3">
-						<AlertDialog.Close className={`${secondaryButton} py-2.5`}>
+						<AlertDialog.Close className={secondaryButton}>
 							{t("dashboards.confirmSlug.cancel")}
 						</AlertDialog.Close>
-						<button
-							type="button"
-							className={`${primaryButton} py-2.5`}
-							onClick={onConfirm}
-						>
+						<button type="button" className={primaryButton} onClick={onConfirm}>
 							{t("dashboards.confirmSlug.confirm")}
 						</button>
 					</div>

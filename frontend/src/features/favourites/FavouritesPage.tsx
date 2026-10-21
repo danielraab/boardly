@@ -32,7 +32,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { secondaryButton } from "#/features/auth/LoginPage";
+import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { useMe } from "#/features/auth/session";
 import {
 	type FavouriteNode,
@@ -60,9 +60,6 @@ import {
 } from "./tree";
 
 const INDENT_REM = 1.5;
-
-const iconButton =
-	"inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-ink";
 
 type Actions = {
 	add: (kind: "folder" | "link", parent: FavouriteNode) => void;
@@ -109,7 +106,7 @@ export function FavouritesPage() {
 					<div className="flex shrink-0 gap-2">
 						<button
 							type="button"
-							className={`${secondaryButton} py-2`}
+							className={secondaryButton}
 							onClick={() => actions.add("folder", root)}
 						>
 							<FolderPlus className="size-4" aria-hidden />
@@ -117,7 +114,7 @@ export function FavouritesPage() {
 						</button>
 						<button
 							type="button"
-							className={`${secondaryButton} py-2`}
+							className={secondaryButton}
 							onClick={() => actions.add("link", root)}
 						>
 							<Plus className="size-4" aria-hidden />

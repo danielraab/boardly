@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { primaryButton } from "#/components/buttonStyles";
 import { features } from "./features";
 
 const tile = "rounded-md border border-line bg-paper/70";
@@ -28,10 +29,7 @@ export function Landing() {
 				<p className="mt-5 max-w-[34ch] text-xl text-muted sm:text-2xl">
 					{t("landing.hero.tagline")}
 				</p>
-				<Link
-					to="/login"
-					className="mt-8 inline-flex items-center rounded-full bg-ink px-6 py-3 font-medium text-paper hover:bg-ink/85"
-				>
+				<Link to="/login" className={`${primaryButton} mt-8`}>
 					{t("landing.hero.cta")}
 				</Link>
 			</section>

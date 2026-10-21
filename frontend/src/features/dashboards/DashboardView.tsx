@@ -2,7 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, Pencil } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { secondaryButton } from "#/features/auth/LoginPage";
+import { secondaryButton } from "#/components/buttonStyles";
 import type { DashboardViewData } from "./api";
 import { useShowDashboard } from "./currentDashboard";
 import { LayoutEditor } from "./layout/LayoutEditor";
@@ -53,7 +53,7 @@ export function DashboardView({ view }: { view: DashboardViewData }) {
 					<button
 						type="button"
 						onClick={() => setEditing(true)}
-						className={`${secondaryButton} px-4 py-2 text-sm`}
+						className={secondaryButton}
 					>
 						<Pencil className="size-4" aria-hidden />
 						{t("dashboards.editor.edit")}
