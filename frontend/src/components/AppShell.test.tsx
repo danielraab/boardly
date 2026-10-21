@@ -4,18 +4,17 @@ import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
 
 describe("app shell", () => {
-	it.each([
-		"/",
-		"/login",
-		"/no-such-page",
-	])("shows the header on %s", async (path) => {
-		renderApp(path);
-		expect(
-			await screen.findByRole("link", { name: "Famodash" }),
-		).toHaveAttribute("href", "/");
-		expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
-		expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();
-	});
+	it.each(["/", "/login", "/no-such-page"])(
+		"shows the header on %s",
+		async (path) => {
+			renderApp(path);
+			expect(
+				await screen.findByRole("link", { name: "Famodash" }),
+			).toHaveAttribute("href", "/");
+			expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
+			expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();
+		},
+	);
 
 	it("shows a not-found page with a link home for unknown paths", async () => {
 		renderApp("/no-such-page");
