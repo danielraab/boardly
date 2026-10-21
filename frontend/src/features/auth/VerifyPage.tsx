@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { primaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
-import { primaryButton } from "./LoginPage";
 import { meQueryKey, resetToSignedOut, type User } from "./session";
 
 /** Reads the token from a location hash like "token=…" (with or without "#"). */

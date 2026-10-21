@@ -3,8 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { LayoutGrid } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { primaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
-import { primaryButton } from "#/features/auth/LoginPage";
 import type { User } from "#/features/auth/session";
 import {
 	type Dashboard,
@@ -39,7 +39,7 @@ export function Home({ user }: { user: User }) {
 					<Link
 						to="/dashboards"
 						search={{ create: true }}
-						className={`${primaryButton} mt-6 py-2.5`}
+						className={`${primaryButton} mt-6`}
 					>
 						{t("home.createFirst.action")}
 					</Link>

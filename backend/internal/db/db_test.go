@@ -352,3 +352,93 @@ func TestDashboardsConstraints(t *testing.T) {
 		t.Fatalf("dashboards = %d, err %v; want 0 after deleting the user", n, err)
 	}
 }
+
+func TestDashboardLayoutMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0006")); err != nil {
+		t.Fatalf("Migrate to 0006: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'Home', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	var desktop, mobile, breakpoint, version int
+	if err := db.QueryRow(`SELECT desktop_columns, mobile_columns, mobile_breakpoint, layout_version FROM dashboards`).
+		Scan(&desktop, &mobile, &breakpoint, &version); err != nil {
+		t.Fatal(err)
+	}
+	if desktop != 6 || mobile != 2 || breakpoint != 768 || version != 0 {
+		t.Fatalf("columns = %d/%d/%d, version %d; want 6/2/768, version 0", desktop, mobile, breakpoint, version)
+	}
+}
+
+func TestDashboardWidgetsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	widget := `INSERT INTO dashboard_widgets (id, dashboard_id, parent_id, kind, position, width, config)
+		VALUES (?, ?, ?, ?, 0, ?, ?)`
+
+	mustExec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts)
+	mustExec(`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'H', ?, ?), ('d2', 'u1', 'work', 'W', ?, ?)`, ts, ts, ts, ts)
+	mustExec(widget, "s1", "d1", nil, "section", 6, "{}")
+	mustExec(widget, "s2", "d1", "s1", "section", 3, `{"border":true}`)
+	mustExec(widget, "s3", "d1", "s2", "section", 2, "{}")
+	mustExec(widget, "t1", "d2", nil, "section", 6, "{}")
+
+	for name, args := range map[string][]any{
+		"parent in another dashboard": {"x1", "d2", "s1", "section", 6, "{}"},
+		"unknown kind":                {"x2", "d1", nil, "note", 6, "{}"},
+		"width 0":                     {"x3", "d1", nil, "section", 0, "{}"},
+		"width 13":                    {"x4", "d1", nil, "section", 13, "{}"},
+		"invalid config":              {"x5", "d1", nil, "section", 6, "{"},
+	} {
+		if err := exec(widget, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+	if err := exec(`UPDATE dashboards SET mobile_breakpoint = 800 WHERE id = 'd1'`); err == nil {
+		t.Error("breakpoint 800 succeeded, want a constraint error")
+	}
+
+	// Deleting a section removes its subtree; deleting a dashboard removes the rest.
+	mustExec(`DELETE FROM dashboard_widgets WHERE id = 's2'`)
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = 'd1'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("widgets = %d, err %v; want 1 after deleting the middle section", n, err)
+	}
+	mustExec(`DELETE FROM dashboards WHERE id = 'd1'`)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = 'd1'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("widgets = %d, err %v; want 0 after deleting the dashboard", n, err)
+	}
+}

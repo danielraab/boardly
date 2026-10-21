@@ -8,7 +8,8 @@ import {
 	themes,
 	useTheme,
 } from "#/theme";
-import { headerButton, menuItem, menuPopup } from "./menuStyles";
+import { headerButton } from "./buttonStyles";
+import { menuItem, menuPopup } from "./menuStyles";
 
 const swatch =
 	"flex size-5 shrink-0 overflow-hidden rounded-full border border-line";
