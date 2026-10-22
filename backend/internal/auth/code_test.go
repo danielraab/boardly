@@ -43,7 +43,7 @@ func TestNormalizeCode(t *testing.T) {
 }
 
 func TestFormatCode(t *testing.T) {
-	if got := FormatCode("K7Q4MZ"); got != "K7Q 4MZ" {
+	if got := FormatCode("K7Q4MZ"); got != "K7Q-4MZ" {
 		t.Fatalf("FormatCode = %q", got)
 	}
 }

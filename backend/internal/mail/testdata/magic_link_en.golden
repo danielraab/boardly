@@ -9,7 +9,7 @@ https://dash.example.org/login/verify#token=TOKEN
 
 Or enter this one-time code on the sign-in page where you requested this email:
 
-    K7Q 4MZ
+    K7Q-4MZ
 
 The link and the code are valid for 15 minutes and can be used only once.
 
@@ -28,7 +28,7 @@ If you didn't request this email, you can ignore it. Nobody can sign in without 
 <p style="margin:0 0 24px;">Use this button to sign in to Famodash. It opens Famodash in this browser.</p>
 <p style="margin:0 0 24px;"><a href="https://dash.example.org/login/verify#token=TOKEN" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#1d2733;color:#eef1f4;text-decoration:none;font-weight:500;">Sign in to Famodash</a></p>
 <p style="margin:0 0 8px;">Or enter this one-time code on the sign-in page where you requested this email:</p>
-<p style="margin:0 0 24px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;font-weight:600;letter-spacing:4px;">K7Q 4MZ</p>
+<p style="margin:0 0 24px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;font-weight:600;letter-spacing:4px;">K7Q-4MZ</p>
 <p style="margin:0 0 8px;font-size:14px;color:#5a6878;">The link and the code are valid for 15 minutes and can be used only once.</p>
 <p style="margin:0 0 24px;font-size:14px;color:#5a6878;">If you didn't request this email, you can ignore it. Nobody can sign in without the link or the code.</p>
 <p style="margin:0;font-size:12px;color:#5a6878;word-break:break-all;">If the button doesn't work, copy this link into your browser:<br>https://dash.example.org/login/verify#token=TOKEN</p>

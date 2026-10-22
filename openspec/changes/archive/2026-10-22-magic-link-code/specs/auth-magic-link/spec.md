@@ -3,11 +3,11 @@
 ## ADDED Requirements
 
 ### Requirement: One-time code
-Each sign-in email SHALL carry, besides its link, a one-time code of 6 characters from the set `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, chosen at random. The code belongs to the link: it SHALL expire with it, and redeeming either the link or the code SHALL use up both. The server SHALL store only a hash of the code.
+Each sign-in email SHALL carry, besides its link, a one-time code of 6 characters from the set `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, chosen at random. Wherever the code is shown, it SHALL be written as two groups of three characters separated by a hyphen, such as `K7Q-4MZ`. The code belongs to the link: it SHALL expire with it, and redeeming either the link or the code SHALL use up both. The server SHALL store only a hash of the code.
 
 #### Scenario: Code format
 - **WHEN** a sign-in email is sent
-- **THEN** it contains a code of 6 characters from the allowed set
+- **THEN** it contains a code of 6 characters from the allowed set, written like `K7Q-4MZ`
 
 #### Scenario: Link used first
 - **WHEN** the link of an email was redeemed and its code is entered afterwards
@@ -25,7 +25,7 @@ Each sign-in email SHALL carry, besides its link, a one-time code of 6 character
 `POST /api/auth/magic-link/code` with `{"email": "...", "code": "..."}` SHALL, for a valid unused and unexpired code that was sent to that address and requested by the browser making this request (identified by the login-request cookie), use up the code and its link, create the account for the address if none exists, start a session and respond 200 with the user. The email is trimmed and lowercased. The code is compared case-insensitively, ignoring spaces and hyphens. In every other case, including a missing login-request cookie, the server SHALL respond 400 with `error.code` `invalid_code`, start no session, and not reveal which case applies.
 
 #### Scenario: Correct code
-- **WHEN** a browser requests a sign-in email for `ann@example.org` and posts its code in lower case with a space in the middle
+- **WHEN** a browser requests a sign-in email for `ann@example.org` and posts its code in lower case without the hyphen
 - **THEN** the server responds 200 with the user and sets a session cookie
 
 #### Scenario: Other browser
@@ -65,11 +65,15 @@ The sign-in email SHALL be written in the requested locale. It SHALL contain the
 - **THEN** its HTML and plain-text parts both contain the link, followed by the alternative of the one-time code
 
 ### Requirement: Login page email form
-`/login` SHALL offer an email field and a submit button. After submission, it shows a translated confirmation with the address, a field to enter the one-time code from the email with a button to sign in with it, and a resend action that is disabled for 60 seconds. On 429 it shows how long to wait. A correct code SHALL sign the visitor in on this page. A rejected code SHALL show a translated message that the code is wrong or expired, and keep the field for another try.
+`/login` SHALL offer an email field and a submit button. After submission, it shows a translated confirmation with the address, a field to enter the one-time code from the email with a button to sign in with it, and a resend action that is disabled for 60 seconds. On 429 it shows how long to wait. The code field SHALL consist of 6 single-character slots in two groups of three with a hyphen between them, accept only letters and digits, show letters in upper case, and accept a pasted code with or without the hyphen. A correct code SHALL sign the visitor in on this page. A rejected code SHALL show a translated message that the code is wrong or expired, and keep the field for another try.
 
 #### Scenario: Submit
 - **WHEN** a visitor enters their email on `/login` and submits
 - **THEN** the page shows "Check your inbox" with that address, a field for the one-time code, and the resend action is disabled for 60 seconds
+
+#### Scenario: Paste the code
+- **WHEN** the visitor pastes `k7q-4mz` into the first slot
+- **THEN** the slots show `K`, `7`, `Q`, `4`, `M`, `Z`
 
 #### Scenario: Sign in with the code
 - **WHEN** the visitor enters the code from the email and submits it

@@ -337,7 +337,7 @@ Anyone can sign up: the first sign-in with an email address creates the account.
    link never uses it up. After sign-in the browser has an HttpOnly session cookie
    (`famodash_session`) that expires after 30 days without use.
 4. Instead of the link, the visitor can type the one-time code from the email (for example
-   `K7Q 4MZ`) into the login page that is still waiting for it. This helps when the link opens in
+   `K7Q-4MZ`) into the login page that is still waiting for it. This helps when the link opens in
    another browser or outside the installed app. The code only works in the browser that requested
    the email and for that address. Link and code expire together, and using either one uses up
    both. After 5 wrong codes, that browser's codes for the address stop working, while the link

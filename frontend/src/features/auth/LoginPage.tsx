@@ -12,6 +12,7 @@ import {
 import { Trans, useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
+import { CODE_LENGTH, CodeField } from "./CodeField";
 import {
 	isCancelled,
 	signInWithPasskey,
@@ -211,25 +212,23 @@ export function LoginPage({ next }: { next: string }) {
 					/>
 				</p>
 				<form className="mt-8 text-left" onSubmit={onSubmitCode} noValidate>
-					<label htmlFor="login-code" className="block text-sm font-medium">
+					<label
+						id="login-code-label"
+						htmlFor="login-code"
+						className="block text-sm font-medium"
+					>
 						{t("login.codeLabel")}
 					</label>
-					<input
+					<CodeField
 						id="login-code"
-						name="code"
-						autoComplete="one-time-code"
-						autoCapitalize="characters"
-						spellCheck={false}
-						maxLength={12}
-						required
 						value={code}
-						onChange={(e) => setCode(e.target.value)}
-						className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-3 font-mono text-lg tracking-widest text-ink uppercase outline-none focus-visible:border-ink"
+						onChange={setCode}
+						disabled={redeemCode.isPending}
 					/>
 					<button
 						type="submit"
 						className={`${primaryButton} mt-4 w-full`}
-						disabled={redeemCode.isPending || code.trim() === ""}
+						disabled={redeemCode.isPending || code.length < CODE_LENGTH}
 					>
 						{redeemCode.isPending
 							? t("login.codeChecking")

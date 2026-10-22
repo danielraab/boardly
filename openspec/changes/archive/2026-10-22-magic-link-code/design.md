@@ -18,7 +18,11 @@
 ## Decisions
 
 ### Code alphabet and format
-6 characters from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (31 symbols, without 0/O, 1/I/L), drawn with `crypto/rand` without modulo bias. That is about 8.9 × 10⁸ codes. The email shows it as `ABC 123` (a space after the third character) in a monospace font. Input is case-insensitive and ignores spaces and hyphens. The field uses `autocomplete="one-time-code"`, `autocapitalize="characters"` and `maxlength` large enough for the separators.
+6 characters from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (31 symbols, without 0/O, 1/I/L), drawn with `crypto/rand` without modulo bias. That is about 8.9 × 10⁸ codes. The email and the dev log show it as `ABC-123` (a hyphen after the third character) in a monospace font. The server compares case-insensitively and ignores spaces and hyphens.
+
+### Code input: Base UI OTP Field
+The login page uses Base UI's `OTPField` (`@base-ui/react/otp-field`): 6 single-character slots in two groups of three with an `OTPField.Separator` (shown as a hyphen) between them, matching the email. `validationType="alphanumeric"` drops anything else, including the hyphen when a code like `ABC-123` is pasted, and `normalizeValue` upper-cases. The field keeps OTP Field's default `autocomplete="one-time-code"` on the first slot, is labelled by a `<label>` for the root's `id`, and gives the other slots translated "Character n of 6" labels. Submitting stays an explicit button press, so a mistyped last character doesn't immediately count as a wrong attempt.
+*Alternative*: a single text input: simpler, but the user asked for segmented entry that mirrors the code's format.
 *Alternative*: 6 digits (10⁶): rejected, as it gives a thousand times fewer combinations for the same length.
 
 ### Storage: same row as the link

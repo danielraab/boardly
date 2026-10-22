@@ -3,7 +3,7 @@
 ## 1. Storage and generation
 
 - [x] 1.1 Add migration `0010_magic_link_code.sql` (`code_hash BLOB`, `code_attempts INTEGER NOT NULL DEFAULT 0`) and verify the migration test passes on a fresh and an existing database
-- [x] 1.2 Add code generation (31-symbol alphabet, `crypto/rand`, no modulo bias), normalization (upper case, strip spaces and hyphens) and display formatting (`ABC 123`), with unit tests
+- [x] 1.2 Add code generation (31-symbol alphabet, `crypto/rand`, no modulo bias), normalization (upper case, strip spaces and hyphens) and display formatting (`ABC-123`), with unit tests
 - [x] 1.3 Generate and store the code hash in `RequestLink` and pass the code to the mail data; verify with a test that the stored row contains no plain code
 
 ## 2. Redemption
@@ -24,3 +24,8 @@
 ## 5. Verification
 
 - [x] 5.1 Without SMTP, request an email, take the code from the log, enter it on the login page and verify the sign-in; then verify the same email's link no longer works; run `make check` and `make test`
+
+## 6. Code format and OTP input
+
+- [x] 6.1 Show the code as `ABC-123` in the emails and the dev log; update `FormatCode`, the golden files and the Go tests, and verify `go test ./...` passes
+- [x] 6.2 Replace the code input with Base UI's OTP Field (6 slots, separator after the third, alphanumeric, upper-cased, translated slot labels); verify with Testing Library tests for typing, pasting `k7q-4mz` and submitting

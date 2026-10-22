@@ -834,7 +834,7 @@ func TestMeEnrollmentWindowAfterMagicLink(t *testing.T) {
 
 // --- magic-link-code: one-time codes ---
 
-var codeRE = regexp.MustCompile(`\n    ([A-Z0-9]{3} [A-Z0-9]{3})\n`)
+var codeRE = regexp.MustCompile(`\n    ([A-Z0-9]{3}-[A-Z0-9]{3})\n`)
 
 // requestCode requests an email from a browser and returns the token, the
 // code as printed in the mail, and the login-request cookie value.
@@ -862,7 +862,7 @@ func wantInvalidCode(t *testing.T, rec *httptest.ResponseRecorder) {
 func TestCodeInMail(t *testing.T) {
 	s := newServer(t)
 	_, code, _ := s.requestCode(t, "ann@example.org")
-	for _, r := range strings.ReplaceAll(code, " ", "") {
+	for _, r := range strings.ReplaceAll(code, "-", "") {
 		if !strings.ContainsRune(auth.CodeAlphabet, r) {
 			t.Fatalf("code %q contains %q", code, r)
 		}
@@ -872,7 +872,7 @@ func TestCodeInMail(t *testing.T) {
 func TestCodeNotStoredInPlainText(t *testing.T) {
 	s := newServer(t)
 	_, code, _ := s.requestCode(t, "ann@example.org")
-	plain := strings.ReplaceAll(code, " ", "")
+	plain := strings.ReplaceAll(code, "-", "")
 
 	var n int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM magic_link_tokens
@@ -891,8 +891,8 @@ func TestCodeNotStoredInPlainText(t *testing.T) {
 func TestCodeSignsIn(t *testing.T) {
 	s := newServer(t)
 	_, code, browser := s.requestCode(t, "ann@example.org")
-	// Lower case, with the space moved: still the same code.
-	entered := strings.ToLower(strings.ReplaceAll(code, " ", "")[:2] + " " + strings.ReplaceAll(code, " ", "")[2:])
+	// Lower case and without the hyphen: still the same code.
+	entered := strings.ToLower(strings.ReplaceAll(code, "-", ""))
 
 	rec := s.postCode(" Ann@Example.org ", entered, withLoginRequest(browser))
 	if rec.Code != http.StatusOK || sessionCookie(rec) == nil {
@@ -966,7 +966,7 @@ func TestCodeLockedAfterFiveWrongAttempts(t *testing.T) {
 	s := newServer(t)
 	token, code, browser := s.requestCode(t, "ann@example.org")
 	wrong := "AAAAAA"
-	if strings.ReplaceAll(code, " ", "") == wrong {
+	if strings.ReplaceAll(code, "-", "") == wrong {
 		wrong = "BBBBBB"
 	}
 	for range 5 {

@@ -45,10 +45,10 @@ func NormalizeCode(s string) string {
 	}, s)
 }
 
-// FormatCode splits a code in two halves for reading, such as "ABC 123".
+// FormatCode splits a code in two halves for reading, such as "ABC-123".
 func FormatCode(code string) string {
 	half := len(code) / 2
-	return code[:half] + " " + code[half:]
+	return code[:half] + "-" + code[half:]
 }
 
 // codeHash ties a normalized code to its sign-in link's token hash.

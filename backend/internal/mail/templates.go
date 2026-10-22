@@ -18,7 +18,7 @@ const DefaultLocale = "en"
 // MagicLinkData fills the magic-link templates.
 type MagicLinkData struct {
 	Link string
-	// Code is the one-time code as shown to the reader, such as "K7Q 4MZ".
+	// Code is the one-time code as shown to the reader, such as "K7Q-4MZ".
 	Code         string
 	ValidMinutes int
 }

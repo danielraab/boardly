@@ -22,4 +22,4 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Install the app on an Android device, share a page from Chrome or another app to Famodash and verify the "Save link" page is prefilled and saves into the chosen folder; long-press the icon and verify the three shortcuts; run `make check` and `make test`
+- [x] 5.1 Install the app on an Android device, share a page from Chrome or another app to Famodash and verify the "Save link" page is prefilled and saves into the chosen folder; long-press the icon and verify the three shortcuts; run `make check` and `make test`

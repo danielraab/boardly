@@ -44,14 +44,14 @@ func TestNewWithHostReturnsSMTPSender(t *testing.T) {
 func TestLogSenderWritesLinkAndCode(t *testing.T) {
 	buf := captureLog(t)
 	link := "http://localhost:3000/login/verify#token=abc_DEF-123"
-	m, err := RenderMagicLink("en", "ann@example.org", MagicLinkData{Link: link, Code: "K7Q 4MZ", ValidMinutes: 15})
+	m, err := RenderMagicLink("en", "ann@example.org", MagicLinkData{Link: link, Code: "K7Q-4MZ", ValidMinutes: 15})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := (LogSender{}).Send(context.Background(), m); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{link, "K7Q 4MZ", "ann@example.org"} {
+	for _, want := range []string{link, "K7Q-4MZ", "ann@example.org"} {
 		if !strings.Contains(buf.String(), want) {
 			t.Fatalf("log %q does not contain %q", buf.String(), want)
 		}
@@ -59,7 +59,7 @@ func TestLogSenderWritesLinkAndCode(t *testing.T) {
 }
 
 func TestRenderMagicLinkGolden(t *testing.T) {
-	data := MagicLinkData{Link: "https://dash.example.org/login/verify#token=TOKEN", Code: "K7Q 4MZ", ValidMinutes: 15}
+	data := MagicLinkData{Link: "https://dash.example.org/login/verify#token=TOKEN", Code: "K7Q-4MZ", ValidMinutes: 15}
 	for _, tt := range []struct{ locale, golden string }{
 		{"en", "en"},
 		{"de", "de"},
@@ -110,12 +110,12 @@ func TestRenderMagicLinkMentionsValidity(t *testing.T) {
 
 func TestRenderMagicLinkOffersLinkThenCode(t *testing.T) {
 	for _, locale := range []string{"en", "de"} {
-		m, err := RenderMagicLink(locale, "a@example.org", MagicLinkData{Link: "https://x/login/verify#token=T", Code: "K7Q 4MZ", ValidMinutes: 15})
+		m, err := RenderMagicLink(locale, "a@example.org", MagicLinkData{Link: "https://x/login/verify#token=T", Code: "K7Q-4MZ", ValidMinutes: 15})
 		if err != nil {
 			t.Fatal(err)
 		}
 		for name, part := range map[string]string{"text": m.Text, "html": m.HTML} {
-			link, code := strings.Index(part, "#token=T"), strings.Index(part, "K7Q 4MZ")
+			link, code := strings.Index(part, "#token=T"), strings.Index(part, "K7Q-4MZ")
 			if link < 0 || code < 0 || code < link {
 				t.Errorf("%s %s: link at %d, code at %d; want the link before the code", locale, name, link, code)
 			}

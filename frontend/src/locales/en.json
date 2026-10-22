@@ -45,7 +45,8 @@
 		"codeLabel": "One-time code from the email",
 		"codeSubmit": "Sign in with code",
 		"codeChecking": "Signing in…",
-		"invalidCode": "This code is wrong or has expired. Check the latest email or request a new one."
+		"invalidCode": "This code is wrong or has expired. Check the latest email or request a new one.",
+		"codeSlot": "Character {{index}} of {{total}}"
 	},
 	"landing": {
 		"hero": {
