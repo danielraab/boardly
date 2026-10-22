@@ -31,6 +31,9 @@ type Node struct {
 	URL      *string  `json:"url,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
 	Children []*Node  `json:"children,omitempty"`
+	// IconImageID is the favicon of a link's origin, when one is known. The
+	// store doesn't set it; favicons are resolved by origin when serving.
+	IconImageID *string `json:"iconImageId,omitempty"`
 }
 
 // Tag is a tag of a user.
@@ -178,6 +181,61 @@ func (s *Store) Tree(ctx context.Context, userID string) (*Node, error) {
 		return nil, err
 	}
 	return nodes[rootID], nil
+}
+
+// Subtree returns the user's folder folderID with everything inside it, in
+// their order, without tags. It returns ErrNotFound when the user has no
+// folder with that ID.
+func (s *Store) Subtree(ctx context.Context, userID, folderID string) (*Node, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`WITH RECURSIVE sub (id, parent_id, kind, position, title, url, depth) AS (
+			SELECT id, parent_id, kind, position, title, url, 0 FROM favourite_nodes
+			WHERE id = ? AND user_id = ? AND kind = 'folder'
+			UNION ALL
+			SELECT n.id, n.parent_id, n.kind, n.position, n.title, n.url, sub.depth + 1
+			FROM favourite_nodes n JOIN sub ON n.parent_id = sub.id
+		 )
+		 SELECT id, parent_id, kind, position, title, url FROM sub ORDER BY depth, position`,
+		folderID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var root *Node
+	nodes := map[string]*Node{}
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url); err != nil {
+			return nil, err
+		}
+		n := r.node()
+		nodes[r.id] = n
+		if root == nil {
+			root = n
+		} else if parent := nodes[r.parentID.String]; parent != nil {
+			parent.Children = append(parent.Children, n)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if root == nil {
+		return nil, ErrNotFound
+	}
+	return root, nil
+}
+
+// Link returns the user's link with the given ID, without tags. It returns
+// ErrNotFound when the user has no link with that ID.
+func (s *Store) Link(ctx context.Context, userID, id string) (*Node, error) {
+	r, err := load(ctx, s.DB, userID, id)
+	if err != nil {
+		return nil, err
+	}
+	if r.kind != KindLink {
+		return nil, ErrNotFound
+	}
+	return r.node(), nil
 }
 
 // Create adds a node at the end of its parent folder and returns it.

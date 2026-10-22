@@ -4,13 +4,13 @@ import {
 	type KeyboardEvent,
 	useContext,
 } from "react";
-import type { Section } from "../api";
+import type { Widget } from "../api";
 
 /** Where a pointer drag into another grid would drop, while dragging. */
 export type DropTarget = {
 	parentId: string | null;
 	index: number;
-	/** The section the drop goes in front of, or null for the end of the grid. */
+	/** The widget the drop goes in front of, or null for the end of the grid. */
 	overId: string | null;
 	/** The drop would nest too deep. */
 	blocked: boolean;
@@ -19,12 +19,13 @@ export type DropTarget = {
 /** What the section grid needs from the editor; absent in view mode. */
 export type Editor = {
 	onAdd: (parentId: string | null) => void;
+	onAddWidget: (parentId: string) => void;
 	onEdit: (id: string) => void;
-	/** The section picked up with the keyboard, if any. */
+	/** The widget picked up with the keyboard, if any. */
 	pickedId: string | null;
 	dropTarget: DropTarget | null;
-	onHandleKeyDown: (event: KeyboardEvent, section: Section) => void;
-	onHandleBlur: (event: FocusEvent, section: Section) => void;
+	onHandleKeyDown: (event: KeyboardEvent, widget: Widget) => void;
+	onHandleBlur: (event: FocusEvent, widget: Widget) => void;
 	registerHandle: (id: string, el: HTMLButtonElement | null) => void;
 };
 

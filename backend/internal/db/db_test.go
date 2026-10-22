@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -418,7 +419,6 @@ func TestDashboardWidgetsConstraints(t *testing.T) {
 
 	for name, args := range map[string][]any{
 		"parent in another dashboard": {"x1", "d2", "s1", "section", 6, "{}"},
-		"unknown kind":                {"x2", "d1", nil, "note", 6, "{}"},
 		"width 0":                     {"x3", "d1", nil, "section", 0, "{}"},
 		"width 13":                    {"x4", "d1", nil, "section", 13, "{}"},
 		"invalid config":              {"x5", "d1", nil, "section", 6, "{"},
@@ -440,5 +440,115 @@ func TestDashboardWidgetsConstraints(t *testing.T) {
 	mustExec(`DELETE FROM dashboards WHERE id = 'd1'`)
 	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = 'd1'`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("widgets = %d, err %v; want 0 after deleting the dashboard", n, err)
+	}
+}
+
+func TestWidgetKindsMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0007")); err != nil {
+		t.Fatalf("Migrate to 0007: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	widget := `INSERT INTO dashboard_widgets (id, dashboard_id, parent_id, kind, position, width, config)
+		VALUES (?, 'd1', ?, ?, ?, ?, ?)`
+	for _, q := range []struct {
+		query string
+		args  []any
+	}{
+		{`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, []any{ts, ts}},
+		{`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'Home', ?, ?)`, []any{ts, ts}},
+		{widget, []any{"s1", nil, "section", 0, 6, `{"title":"Work","border":true}`}},
+		{widget, []any{"s2", "s1", "section", 1, 3, `{"border":false}`}},
+	} {
+		if _, err := db.Exec(q.query, q.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	var parent, config string
+	var width, position int
+	if err := db.QueryRow(`SELECT parent_id, position, width, config FROM dashboard_widgets WHERE id = 's2'`).
+		Scan(&parent, &position, &width, &config); err != nil {
+		t.Fatal(err)
+	}
+	if parent != "s1" || position != 1 || width != 3 || config != `{"border":false}` {
+		t.Fatalf("s2 = %s/%d/%d/%s after the migration", parent, position, width, config)
+	}
+
+	// Any kind is accepted now, and the composite foreign key still holds.
+	if _, err := db.Exec(widget, "n1", "s1", "note", 2, 2, "{}"); err != nil {
+		t.Fatalf("kind note: %v", err)
+	}
+	if _, err := db.Exec(widget, "n2", "missing", "note", 3, 2, "{}"); err == nil {
+		t.Fatal("unknown parent accepted")
+	}
+	if _, err := db.Exec(`DELETE FROM dashboard_widgets WHERE id = 's1'`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM dashboard_widgets`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("widgets = %d, err %v; want 0 after deleting the parent", n, err)
+	}
+}
+
+func TestImagesConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	image := `INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES (?, ?, ?, 'image/png', ?, ?)`
+	if _, err := db.Exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]any{{"up", "upload", "u1", 10, ts}, {"fav", "favicon", nil, 10, ts}} {
+		if _, err := db.Exec(image, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, args := range map[string][]any{
+		"upload without user": {"x1", "upload", nil, 10, ts},
+		"favicon with user":   {"x2", "favicon", "u1", 10, ts},
+		"unknown source":      {"x3", "thumbnail", nil, 10, ts},
+		"empty":               {"x4", "favicon", nil, 0, ts},
+	} {
+		if _, err := db.Exec(image, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	// Deleting the image keeps the origin's row, without an image.
+	if _, err := db.Exec(`INSERT INTO favicons (origin, image_id, fetched_at) VALUES ('https://example.org', 'fav', ?)`, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM images WHERE id = 'fav'`); err != nil {
+		t.Fatal(err)
+	}
+	var imageID sql.NullString
+	if err := db.QueryRow(`SELECT image_id FROM favicons`).Scan(&imageID); err != nil || imageID.Valid {
+		t.Fatalf("image_id = %v, err %v; want NULL", imageID, err)
+	}
+
+	// Deleting a user deletes their uploads.
+	if _, err := db.Exec(`DELETE FROM users WHERE id = 'u1'`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM images`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("images = %d, err %v; want 0", n, err)
 	}
 }

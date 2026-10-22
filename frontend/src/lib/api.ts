@@ -26,24 +26,28 @@ export function setUnauthorizedHandler(handler: () => void) {
 	onUnauthorized = handler;
 }
 
-type ApiInit = Omit<RequestInit, "body"> & { json?: unknown };
+type ApiInit = Omit<RequestInit, "body"> & { json?: unknown; file?: Blob };
 
 /**
- * Calls the API. It always sends a JSON content type (the server's cross-site
- * check requires it on every state-changing request), returns the parsed JSON
- * body (undefined for 204) and throws an ApiError for error responses.
+ * Calls the API. It sends a JSON content type, or `application/octet-stream`
+ * with a raw `file` body (the server's cross-site check requires one of them
+ * on every state-changing request), returns the parsed JSON body (undefined
+ * for 204) and throws an ApiError for error responses.
  */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
-	const { json, ...rest } = init;
+	const { json, file, ...rest } = init;
 	const headers = new Headers(rest.headers);
-	headers.set("Content-Type", "application/json");
+	headers.set(
+		"Content-Type",
+		file ? "application/octet-stream" : "application/json",
+	);
 	headers.set("Accept", "application/json");
 
 	const res = await fetch(path, {
 		...rest,
 		headers,
 		credentials: "same-origin",
-		body: json === undefined ? undefined : JSON.stringify(json),
+		body: file ?? (json === undefined ? undefined : JSON.stringify(json)),
 	});
 
 	if (!res.ok) {

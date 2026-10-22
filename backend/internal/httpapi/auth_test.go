@@ -17,8 +17,10 @@ import (
 	"famodash/internal/dashboards"
 	"famodash/internal/dbtest"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 	"famodash/internal/mail"
 	"famodash/internal/users"
+	"famodash/internal/widgets"
 )
 
 const testOrigin = "https://dash.example.org"
@@ -69,10 +71,12 @@ func (o *outbox) last(t *testing.T) mail.Message {
 }
 
 type server struct {
-	h     http.Handler
-	db    *sql.DB
-	clock *clock
-	mail  *outbox
+	h        http.Handler
+	db       *sql.DB
+	clock    *clock
+	mail     *outbox
+	images   *images.Store
+	favicons *images.Favicons
 }
 
 func newServer(t *testing.T) *server {
@@ -92,11 +96,22 @@ func newServer(t *testing.T) *server {
 	}
 	svc.Providers = testProviders(t)
 
+	imageStore, err := images.NewStore(database, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageStore.Now = c.Now
+	favicons := images.NewFavicons(imageStore, false)
+	favicons.Now = c.Now
+	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
+	widgets.Register(dashboardStore, favouriteStore, favicons)
+
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favourites.NewStore(database), Dashboards: dashboards.NewStore(database),
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore,
+		Images: imageStore, Favicons: favicons,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, clock: c, mail: box}
+	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

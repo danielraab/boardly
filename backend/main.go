@@ -22,9 +22,11 @@ import (
 	"famodash/internal/db"
 	"famodash/internal/favourites"
 	"famodash/internal/httpapi"
+	"famodash/internal/images"
 	"famodash/internal/mail"
 	"famodash/internal/users"
 	"famodash/internal/web"
+	"famodash/internal/widgets"
 )
 
 func main() {
@@ -73,6 +75,23 @@ func run() error {
 	}
 	go authService.RunJanitor(ctx, time.Hour)
 
+	imageStore, err := images.NewStore(database, cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	favicons := images.NewFavicons(imageStore, cfg.FetchAllowPrivate)
+	go favicons.Run(ctx)
+	go func() {
+		if err := favicons.Backfill(ctx); err != nil && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "queueing missing favicons failed", "error", err)
+		}
+	}()
+	go imageStore.RunCleanup(ctx, time.Hour)
+
+	favouriteStore := favourites.NewStore(database)
+	dashboardStore := dashboards.NewStore(database)
+	widgets.Register(dashboardStore, favouriteStore, favicons)
+
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
 		Handler: httpapi.New(httpapi.Deps{
@@ -80,8 +99,10 @@ func run() error {
 			Web:               web.Handler(),
 			Auth:              authService,
 			Users:             userStore,
-			Favourites:        favourites.NewStore(database),
-			Dashboards:        dashboards.NewStore(database),
+			Favourites:        favouriteStore,
+			Dashboards:        dashboardStore,
+			Images:            imageStore,
+			Favicons:          favicons,
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,
@@ -91,7 +112,7 @@ func run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath, "base_url", cfg.BaseURL.String(), "webauthn_rp_id", cfg.WebAuthnRPID)
+		slog.Info("listening", "addr", srv.Addr, "db", cfg.DBPath, "data_dir", cfg.DataDir, "base_url", cfg.BaseURL.String(), "webauthn_rp_id", cfg.WebAuthnRPID)
 		errCh <- srv.ListenAndServe()
 	}()
 

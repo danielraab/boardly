@@ -9,9 +9,9 @@ import {
 } from "#/components/dialogStyles";
 import type { Section } from "../api";
 import type { SectionSettings } from "./layoutTree";
+import { SizeFields, useSizeState } from "./SizeFields";
 
 export const maxSectionTitle = 100;
-export const maxRows = 50;
 
 /** Add a section (section null) or edit one. */
 export type SectionDialogTarget = { section: Section | null };
@@ -67,36 +67,23 @@ function SectionForm({
 }) {
 	const { t } = useTranslation();
 	const [title, setTitle] = useState(editing?.title ?? "");
-	const [width, setWidth] = useState(editing?.width ?? desktopColumns);
 	const [border, setBorder] = useState(editing?.border ?? true);
-	const [fixed, setFixed] = useState(
-		editing !== null && editing.height !== "auto",
-	);
-	const [rows, setRows] = useState(
-		editing && editing.height !== "auto" ? String(editing.height) : "4",
+	const size = useSizeState(
+		editing ?? { width: desktopColumns, height: "auto" },
+		desktopColumns,
 	);
 	const [titleTooLong, setTitleTooLong] = useState(false);
-
-	const rowCount = Number(rows);
-	const rowsValid =
-		Number.isInteger(rowCount) && rowCount >= 1 && rowCount <= maxRows;
-	// A width above the desktop count (after lowering it) stays selectable.
-	const widths = Array.from(
-		{ length: Math.max(desktopColumns, width) },
-		(_, i) => i + 1,
-	);
 
 	function onSubmit(event: FormEvent) {
 		event.preventDefault();
 		const trimmed = title.trim();
 		const tooLong = [...trimmed].length > maxSectionTitle;
 		setTitleTooLong(tooLong);
-		if (tooLong || (fixed && !rowsValid)) return;
+		if (tooLong || !size.valid) return;
 		onApply({
 			title: trimmed === "" ? null : trimmed,
-			width,
 			border,
-			height: fixed ? rowCount : "auto",
+			...size.value(),
 		});
 	}
 
@@ -125,23 +112,6 @@ function SectionForm({
 						{t("dashboards.sectionDialog.titleHint")}
 					</p>
 				</div>
-				<div>
-					<label htmlFor="section-width" className="block text-sm font-medium">
-						{t("dashboards.sectionDialog.widthLabel")}
-					</label>
-					<select
-						id="section-width"
-						value={width}
-						onChange={(e) => setWidth(Number(e.target.value))}
-						className={textInput}
-					>
-						{widths.map((n) => (
-							<option key={n} value={n}>
-								{t("dashboards.sectionDialog.widthOption", { count: n })}
-							</option>
-						))}
-					</select>
-				</div>
 				<div className="flex items-start gap-3">
 					<input
 						id="section-border"
@@ -160,52 +130,7 @@ function SectionForm({
 						</p>
 					</div>
 				</div>
-				<fieldset>
-					<legend className="text-sm font-medium">
-						{t("dashboards.sectionDialog.heightLabel")}
-					</legend>
-					<div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-						<label className="inline-flex items-center gap-2">
-							<input
-								type="radio"
-								name="section-height"
-								checked={!fixed}
-								onChange={() => setFixed(false)}
-								className="size-4 accent-ink"
-							/>
-							{t("dashboards.sectionDialog.heightAuto")}
-						</label>
-						<label className="inline-flex items-center gap-2">
-							<input
-								type="radio"
-								name="section-height"
-								checked={fixed}
-								onChange={() => setFixed(true)}
-								className="size-4 accent-ink"
-							/>
-							{t("dashboards.sectionDialog.heightRows")}
-						</label>
-						{fixed && (
-							<label className="inline-flex items-center gap-2">
-								<span>{t("dashboards.sectionDialog.rowsLabel")}</span>
-								<input
-									type="number"
-									min={1}
-									max={maxRows}
-									value={rows}
-									onChange={(e) => setRows(e.target.value)}
-									aria-invalid={!rowsValid}
-									className="w-20 rounded-lg border border-line bg-paper/40 px-3 py-1.5 text-ink outline-none focus-visible:border-ink"
-								/>
-							</label>
-						)}
-					</div>
-					{fixed && !rowsValid && (
-						<p role="alert" className="mt-1 text-sm text-red-700">
-							{t("dashboards.sectionDialog.rowsInvalid")}
-						</p>
-					)}
-				</fieldset>
+				<SizeFields state={size} idPrefix="section" />
 				{titleTooLong && (
 					<p role="alert" className="text-sm text-red-700">
 						{t("dashboards.sectionDialog.titleTooLong")}
@@ -227,7 +152,7 @@ function SectionForm({
 					<button
 						type="submit"
 						className={primaryButton}
-						disabled={fixed && !rowsValid}
+						disabled={!size.valid}
 					>
 						{t("dashboards.sectionDialog.apply")}
 					</button>
