@@ -487,6 +487,26 @@
 					"removed": "Kein Icon",
 					"done": "Fertig"
 				}
+			},
+			"linkList": {
+				"name": "Linkliste",
+				"description": "Zeigt die Links eines Ordners deiner Favoriten als Liste oder Kacheln.",
+				"addTitle": "Linkliste hinzufügen",
+				"editTitle": "Linkliste bearbeiten",
+				"folderLabel": "Ordner",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Links angezeigt.",
+				"subfoldersLabel": "Einträge aus Unterordnern zeigen",
+				"layoutLabel": "Layout",
+				"layout": {
+					"list": "Liste",
+					"compact": "Kompakt",
+					"tiles": "Kacheln"
+				},
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen diese Links. Sonst siehst nur du das Widget.",
+				"empty": "Keine Links in diesem Ordner",
+				"missing": "Dieser Ordner existiert nicht mehr"
 			}
 		}
 	},
