@@ -68,7 +68,11 @@ describe("settings tabs", () => {
 		mockApi({ "GET /api/me": signedIn() });
 		renderApp("/settings");
 		const tabs = await screen.findAllByRole("tab");
-		expect(tabs.map((tab) => tab.textContent)).toEqual(["Profile", "Passkeys"]);
+		expect(tabs.map((tab) => tab.textContent)).toEqual([
+			"Profile",
+			"Passkeys",
+			"Connected apps",
+		]);
 		await waitFor(() =>
 			expect(tabs[0]).toHaveAttribute("aria-selected", "true"),
 		);

@@ -1,16 +1,20 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dangerButton, secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
+import {
+	appTokensQueryKey,
+	appTokensQueryOptions,
+} from "#/features/settings/appTokens/api";
 import {
 	type DeleteMode,
 	deleteFavourite,
 	type FavouriteNode,
 	favouritesQueryKey,
 } from "./api";
-import { label } from "./tree";
+import { label, removedFolders } from "./tree";
 
 export type DeleteTarget = { node: FavouriteNode; parentLabel: string };
 
@@ -56,6 +60,18 @@ function DeleteForm({
 	const count = node.children?.length ?? 0;
 	// A non-empty folder has no default: the user has to choose what happens to its contents.
 	const [mode, setMode] = useState<DeleteMode | null>(null);
+	// Active app tokens rooted in a removed folder are revoked by the delete.
+	const tokens = useQuery({
+		...appTokensQueryOptions,
+		enabled: node.kind === "folder",
+	});
+	const removed = removedFolders(node, mode);
+	const affectedApps = (tokens.data ?? []).filter(
+		(token) =>
+			token.status === "active" &&
+			token.rootId !== null &&
+			removed.has(token.rootId),
+	).length;
 
 	const remove = useMutation({
 		mutationFn: () =>
@@ -63,6 +79,7 @@ function DeleteForm({
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: ["tags"] });
+			void queryClient.invalidateQueries({ queryKey: appTokensQueryKey });
 			onClose();
 		},
 	});
@@ -108,6 +125,11 @@ function DeleteForm({
 						</label>
 					))}
 				</fieldset>
+			)}
+			{affectedApps > 0 && (
+				<p className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm">
+					{t("favourites.deleteDialog.appsWarning", { count: affectedApps })}
+				</p>
 			)}
 			{remove.isError && (
 				<p role="alert" className="mt-3 text-sm text-danger">

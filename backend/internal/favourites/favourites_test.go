@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"famodash/internal/apptokens"
 	"famodash/internal/dbtest"
 	"famodash/internal/users"
 )
@@ -464,5 +465,72 @@ func TestSuggestTags(t *testing.T) {
 	otherTags, err := f.s.SuggestTags(f.ctx, f.other, "")
 	if err != nil || len(otherTags) != 0 {
 		t.Fatalf("other user's tags = %+v, %v", otherTags, err)
+	}
+}
+
+func TestDeleteRevokesAppTokens(t *testing.T) {
+	f := newFixture(t)
+	tokens := apptokens.NewStore(f.s.DB)
+	token := func(root string) string {
+		t.Helper()
+		tok, _, err := tokens.Create(f.ctx, f.user, apptokens.NewToken{Name: "t", App: apptokens.AppKarakeep, RootID: root})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tok.ID
+	}
+	status := func(id string) (apptokens.Status, *string) {
+		t.Helper()
+		list, err := tokens.List(f.ctx, f.user)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tok := range list {
+			if tok.ID == id {
+				return tok.Status, tok.RootID
+			}
+		}
+		t.Fatalf("token %s not listed", id)
+		return "", nil
+	}
+
+	// Keep the contents: only tokens rooted at the deleted folder are revoked.
+	work := f.folder("", "Work")
+	tools := f.folder(work, "Tools")
+	atWork, atTools := token(work), token(tools)
+	if err := f.s.Delete(f.ctx, f.user, work, DeleteMoveChildren); err != nil {
+		t.Fatal(err)
+	}
+	if s, root := status(atWork); s != apptokens.StatusRevoked || root != nil {
+		t.Errorf("token at deleted folder: %s, root %v; want revoked without root", s, root)
+	}
+	if s, root := status(atTools); s != apptokens.StatusActive || root == nil || *root != tools {
+		t.Errorf("token at moved folder: %s, root %v; want active at Tools", s, root)
+	}
+
+	// Delete with contents: tokens anywhere in the subtree are revoked, but not
+	// expired ones, and tokens outside stay active.
+	reading := f.folder("", "Reading")
+	later := f.folder(reading, "Later")
+	other := f.folder("", "Other")
+	atReading, atLater, expired, outside := token(reading), token(later), token(later), token(other)
+	if _, err := f.s.DB.Exec(`UPDATE app_tokens SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?`, expired); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.Delete(f.ctx, f.user, reading, DeleteWithChildren); err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		id   string
+		want apptokens.Status
+	}{
+		"at deleted folder": {atReading, apptokens.StatusRevoked},
+		"below it":          {atLater, apptokens.StatusRevoked},
+		"expired below it":  {expired, apptokens.StatusExpired},
+		"outside":           {outside, apptokens.StatusActive},
+	} {
+		if s, _ := status(tc.id); s != tc.want {
+			t.Errorf("%s: status %s, want %s", name, s, tc.want)
+		}
 	}
 }

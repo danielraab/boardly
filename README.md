@@ -6,7 +6,7 @@ real user accounts.
 
 - **Dashboards** like Homepage, but built and edited visually in the browser (WYSIWYG) instead of YAML files.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
-- **Karakeep-compatible API**, so the existing Karakeep browser extensions and mobile apps can save straight into Famodash.
+- **Karakeep-compatible server**, so the Karakeep browser extension and mobile app can save straight into Famodash.
 - **Passwordless login** with magic links and passkeys.
 
 ## Features
@@ -121,15 +121,49 @@ added later. The widget model is meant to be extended.
 
 ### Karakeep-compatible server
 
-Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep clients (browser extensions, iOS/Android apps, CLI) can connect to it as if it were a Karakeep server.
+The Karakeep browser extension and the Karakeep mobile app (iOS/Android) can connect to Famodash as
+if it were a Karakeep server. These two clients talk Karakeep's internal tRPC API, and Famodash
+implements only the parts of it that they call. Karakeep's REST API (`/api/v1`) and other clients
+such as the CLI aren't supported.
 
-- The user creates a **Karakeep API token** in the Famodash settings.
-- When creating the token, the user must pick a **Karakeep root node** in their favourites tree.
-- Everything the client sees and saves goes through that node:
-  - bookmarks saved from a client become link nodes below the root,
-  - Karakeep lists map to folder nodes below the root,
-  - the client can only see the subtree below its root and nothing outside it.
-- A user can have several tokens with different roots, for example one per device or per purpose.
+Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
+
+- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep; Linkwarden
+  will follow), a **folder** of the favourites tree (the top-level folder gives access to everything)
+  and an expiry: 30 days, 90 days (default), 1 year, never or a date.
+- The key (`famo_…`) is shown **once**, together with the server address to enter in the app:
+  `<FAMODASH_BASE_URL>/api/karakeep`. Famodash stores only a hash of it. In the app, enter the
+  server address and log in with **API key**; email and password login isn't available, because
+  Famodash has no passwords.
+- Keys can't be edited. An active key can be **revoked**, which is final. Only revoked or expired
+  keys can be deleted from the list.
+- Everything the client sees and saves goes through its folder, and it can't see or change anything
+  outside it:
+  - **Bookmarks** are all links in the folder, at any depth. A page saved from the extension or
+    the app becomes a link at the **top** of the folder; saving a URL that's already there returns
+    the existing bookmark.
+  - **Lists** are the folders below it, nested like the folders. A bookmark is in the list whose
+    folder it's directly in, so it is in at most one list: adding it to a list **moves** the link
+    into that folder, and removing it moves the link back to the top of the app's folder.
+    Deleting a list keeps its links and subfolders by moving them to the parent folder.
+  - **Tags** are the tags on the folder's links. Deleting a tag in the app removes it only from
+    links in the folder. A tag that links outside the folder also have can't be renamed from the
+    app, and tags are created by adding them to a bookmark, not on their own.
+- Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
+  contents", only keys for the deleted folder itself are revoked.
+- A user can have several keys with different folders, for example one per device or per purpose.
+
+In the extension you can save the current page, see whether a page is already saved, and edit its
+title, tags and list. In the app you can browse, search, save, edit and delete bookmarks, and
+manage lists and tags. Tapping a bookmark opens the page. Karakeep features Famodash doesn't have
+answer with an error in the apps: notes and text bookmarks, file bookmarks and assets, archiving,
+favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
+icons and descriptions, and list sharing.
+
+Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
+the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. The
+procedures and data shapes follow the Karakeep source at commit `85054d9` (October 2026); a later
+client release that renames a procedure shows up as a "not found" error.
 
 ### Themes
 
@@ -164,7 +198,7 @@ User
 │       ├── Link widget        │
 │       ├── Section widget (nests widgets)
 │       └── Navigation tree widget ──┘ (bound to a node)
-└── Karakeep API tokens ───────┘ (each bound to a node)
+└── Connected apps (API keys) ─┘ (each bound to a folder)
 ```
 
 ## Tech stack

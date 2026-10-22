@@ -103,7 +103,68 @@
 		"tabs": {
 			"label": "Settings sections",
 			"profile": "Profile",
-			"passkeys": "Passkeys"
+			"passkeys": "Passkeys",
+			"apps": "Connected apps"
+		},
+		"apps": {
+			"intro": "Connect apps such as the Karakeep browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it.",
+			"connect": "Connect app",
+			"emptyTitle": "No connected apps yet",
+			"emptyText": "Connect a Karakeep app to save links straight into a folder of your favourites. The app only sees that folder and what's inside it.",
+			"deletedFolder": "Deleted folder",
+			"status": {
+				"active": "Active",
+				"expired": "Expired",
+				"revoked": "Revoked"
+			},
+			"created": "created {{date}}",
+			"lastUsed": "last used {{date}}",
+			"neverUsed": "never used",
+			"expires": "expires {{date}}",
+			"expired": "expired {{date}}",
+			"revokedAt": "revoked {{date}}",
+			"noExpiry": "no expiry",
+			"revoke": "Revoke {{name}}",
+			"revokeTitle": "Revoke access?",
+			"revokeText": "“{{name}}” will stop working right away. This can't be undone; to connect the app again, create a new key.",
+			"revokeConfirm": "Revoke",
+			"delete": "Delete {{name}}",
+			"deleteTitle": "Remove from the list?",
+			"deleteText": "“{{name}}” will be removed from your connected apps.",
+			"deleteConfirm": "Delete",
+			"cancel": "Cancel",
+			"form": {
+				"title": "Connect app",
+				"text": "The app gets an API key that only works for the folder you choose. You can't change these settings later.",
+				"name": "Name",
+				"namePlaceholder": "e.g. Phone",
+				"app": "App",
+				"root": "Folder",
+				"rootHint": "The app sees and saves only into this folder and the folders inside it.",
+				"rootInvalid": "Choose one of your folders.",
+				"expiry": "Expires",
+				"expiryOptions": {
+					"30d": "In 30 days",
+					"90d": "In 90 days",
+					"1y": "In 1 year",
+					"never": "Never",
+					"custom": "On a date"
+				},
+				"expiryDate": "Expiry date",
+				"expiryInvalid": "Choose a date in the future.",
+				"create": "Create key",
+				"creating": "Creating…"
+			},
+			"secret": {
+				"title": "App connected",
+				"text": "Enter the server address and the API key in the app for “{{name}}”.",
+				"server": "Server address",
+				"key": "API key",
+				"copy": "Copy {{label}}",
+				"copied": "Copied",
+				"once": "Copy the API key now. It won't be shown again.",
+				"done": "Done"
+			}
 		}
 	},
 	"profile": {
@@ -202,6 +263,8 @@
 			"folderText_other": "“{{name}}” contains {{count}} items. What should happen to them?",
 			"deleteContents": "Delete the folder and everything in it",
 			"moveContents": "Keep the contents and move them to “{{parent}}”",
+			"appsWarning_one": "1 connected app uses this folder. It will be revoked and stop working.",
+			"appsWarning_other": "{{count}} connected apps use this folder. They will be revoked and stop working.",
 			"confirm": "Delete",
 			"cancel": "Cancel"
 		},

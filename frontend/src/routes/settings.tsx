@@ -10,6 +10,7 @@ type SettingsSearch = { tab?: SettingsTab };
 const tabs: readonly unknown[] = [
 	"profile",
 	"passkeys",
+	"apps",
 ] satisfies SettingsTab[];
 
 export const Route = createFileRoute("/settings")({

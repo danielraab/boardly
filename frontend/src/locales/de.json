@@ -103,7 +103,68 @@
 		"tabs": {
 			"label": "Einstellungsbereiche",
 			"profile": "Profil",
-			"passkeys": "Passkeys"
+			"passkeys": "Passkeys",
+			"apps": "Verbundene Apps"
+		},
+		"apps": {
+			"intro": "Verbinde Apps wie die Karakeep-Browsererweiterung oder die Karakeep-App mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst.",
+			"connect": "App verbinden",
+			"emptyTitle": "Noch keine verbundenen Apps",
+			"emptyText": "Verbinde eine Karakeep-App, um Links direkt in einem Ordner deiner Favoriten zu speichern. Die App sieht nur diesen Ordner und seinen Inhalt.",
+			"deletedFolder": "Gelöschter Ordner",
+			"status": {
+				"active": "Aktiv",
+				"expired": "Abgelaufen",
+				"revoked": "Widerrufen"
+			},
+			"created": "erstellt am {{date}}",
+			"lastUsed": "zuletzt verwendet am {{date}}",
+			"neverUsed": "nie verwendet",
+			"expires": "läuft ab am {{date}}",
+			"expired": "abgelaufen am {{date}}",
+			"revokedAt": "widerrufen am {{date}}",
+			"noExpiry": "läuft nicht ab",
+			"revoke": "{{name}} widerrufen",
+			"revokeTitle": "Zugriff widerrufen?",
+			"revokeText": "„{{name}}“ funktioniert sofort nicht mehr. Das kann nicht rückgängig gemacht werden; um die App wieder zu verbinden, erstelle einen neuen Schlüssel.",
+			"revokeConfirm": "Widerrufen",
+			"delete": "{{name}} löschen",
+			"deleteTitle": "Aus der Liste entfernen?",
+			"deleteText": "„{{name}}“ wird aus deinen verbundenen Apps entfernt.",
+			"deleteConfirm": "Löschen",
+			"cancel": "Abbrechen",
+			"form": {
+				"title": "App verbinden",
+				"text": "Die App bekommt einen API-Schlüssel, der nur für den gewählten Ordner gilt. Diese Einstellungen kannst du später nicht mehr ändern.",
+				"name": "Name",
+				"namePlaceholder": "z. B. Handy",
+				"app": "App",
+				"root": "Ordner",
+				"rootHint": "Die App sieht und speichert nur in diesem Ordner und den Ordnern darin.",
+				"rootInvalid": "Wähle einen deiner Ordner.",
+				"expiry": "Läuft ab",
+				"expiryOptions": {
+					"30d": "In 30 Tagen",
+					"90d": "In 90 Tagen",
+					"1y": "In 1 Jahr",
+					"never": "Nie",
+					"custom": "An einem Datum"
+				},
+				"expiryDate": "Ablaufdatum",
+				"expiryInvalid": "Wähle ein Datum in der Zukunft.",
+				"create": "Schlüssel erstellen",
+				"creating": "Wird erstellt…"
+			},
+			"secret": {
+				"title": "App verbunden",
+				"text": "Gib die Serveradresse und den API-Schlüssel in der App für „{{name}}“ ein.",
+				"server": "Serveradresse",
+				"key": "API-Schlüssel",
+				"copy": "{{label}} kopieren",
+				"copied": "Kopiert",
+				"once": "Kopiere den API-Schlüssel jetzt. Er wird nicht noch einmal angezeigt.",
+				"done": "Fertig"
+			}
 		}
 	},
 	"profile": {
@@ -202,6 +263,8 @@
 			"folderText_other": "„{{name}}“ enthält {{count}} Einträge. Was soll damit passieren?",
 			"deleteContents": "Den Ordner mit allem darin löschen",
 			"moveContents": "Den Inhalt behalten und nach „{{parent}}“ verschieben",
+			"appsWarning_one": "1 verbundene App verwendet diesen Ordner. Sie wird widerrufen und funktioniert nicht mehr.",
+			"appsWarning_other": "{{count}} verbundene Apps verwenden diesen Ordner. Sie werden widerrufen und funktionieren nicht mehr.",
 			"confirm": "Löschen",
 			"cancel": "Abbrechen"
 		},
