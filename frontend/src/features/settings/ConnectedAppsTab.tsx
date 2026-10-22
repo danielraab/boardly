@@ -11,6 +11,7 @@ import {
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { favouritesQueryOptions } from "#/features/favourites/api";
 import { pathsOf } from "#/features/favourites/tree";
+import { AppLogo } from "./appTokens/AppLogo";
 import {
 	type AppToken,
 	type AppTokenStatus,
@@ -105,6 +106,7 @@ function AppTokenItem({
 
 	return (
 		<li className="flex items-start gap-4 px-4 py-3">
+			<AppLogo app={token.app} />
 			<div className="min-w-0 flex-1">
 				<p className="flex flex-wrap items-center gap-2">
 					<span className="truncate font-medium">{token.name}</span>

@@ -85,7 +85,7 @@ A token's name, app, root folder and expiry date SHALL NOT be changeable after c
 - **THEN** the server responds 204 and the token is no longer listed
 
 ### Requirement: Connected apps tab
-The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the user's tokens with name, app, root folder path (or "Deleted folder" / "Gelöschter Ordner"), prefix, creation date, last-used date (or "Never used" / "Nie verwendet"), expiry date (or "No expiry" / "Läuft nicht ab") and a status badge "Active" / "Aktiv", "Expired" / "Abgelaufen" or "Revoked" / "Widerrufen". Active tokens have a "Revoke" / "Widerrufen" action, and expired and revoked tokens have a "Delete" / "Löschen" action. Both actions ask for confirmation. With no tokens, the tab explains what connected apps are. A "Connect app" / "App verbinden" action opens the create dialog.
+The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the user's tokens with name, app, root folder path (or "Deleted folder" / "Gelöschter Ordner"), prefix, creation date, last-used date (or "Never used" / "Nie verwendet"), expiry date (or "No expiry" / "Läuft nicht ab") and a status badge "Active" / "Aktiv", "Expired" / "Abgelaufen" or "Revoked" / "Widerrufen". Each token SHALL show the official logo of its app, in its original colors, in front of the token's details. The logo is decorative: the app name stays in the text, and the logo has no text alternative of its own. The logos SHALL be served by Boardly itself, not loaded from a third-party site. Where an app's logo comes in a light and a dark variant, the variant follows the theme mode (see "Images follow the theme mode" in `theming`). Active tokens have a "Revoke" / "Widerrufen" action, and expired and revoked tokens have a "Delete" / "Löschen" action. Both actions ask for confirmation. With no tokens, the tab explains what connected apps are. A "Connect app" / "App verbinden" action opens the create dialog.
 
 #### Scenario: Empty
 - **WHEN** a user without tokens opens the tab
@@ -98,6 +98,18 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 #### Scenario: Cancel revoke
 - **WHEN** the user clicks "Revoke" and cancels the confirmation
 - **THEN** the token stays active
+
+#### Scenario: Logo per app
+- **WHEN** the list has a Karakeep token and a Linkwarden token
+- **THEN** the Karakeep token shows the Karakeep logo and the Linkwarden token shows the Linkwarden logo, and both still show their app name as text
+
+#### Scenario: Logo in a dark theme
+- **WHEN** the theme `black` is active and the list has a Karakeep token
+- **THEN** the token shows the dark variant of the Karakeep logo
+
+#### Scenario: Logo without a dark variant
+- **WHEN** the theme `black` is active and the list has a Linkwarden token
+- **THEN** the token shows the Linkwarden logo, which has only one variant
 
 ### Requirement: Create dialog
 The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Linkwarden"), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<BOARDLY_BASE_URL>/api/karakeep` for Karakeep, `<BOARDLY_BASE_URL>/api/linkwarden` for Linkwarden) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
