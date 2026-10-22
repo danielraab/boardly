@@ -17,7 +17,7 @@ import (
 // be nil, and then links have no favicons.
 func Register(d *dashboards.Store, fav *favourites.Store, icons *images.Favicons) {
 	d.Kinds[KindFavouriteExplorer] = FavouriteExplorer(fav, icons)
-	d.Kinds[KindLink] = Link(fav)
+	d.Kinds[KindLink] = Link(fav, icons)
 }
 
 // Limits shared by the kinds' configs.

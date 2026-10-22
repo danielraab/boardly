@@ -393,11 +393,6 @@
 				"urlLabel": "URL",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Without one, the favourite's title is shown, or only the URL.",
-				"imageLabel": "Image",
-				"upload": "Upload image",
-				"removeImage": "Remove image",
-				"iconLabel": "Icon",
-				"iconNone": "None",
 				"icons": {
 					"book-open": "Book",
 					"bookmark": "Bookmark",
@@ -454,7 +449,41 @@
 					"image_too_large": "The image is larger than 1 MB.",
 					"uploadFailed": "The image couldn't be uploaded. Please try again."
 				},
-				"newFavourite": "New favourite…"
+				"newFavourite": "New favourite…",
+				"iconChooser": {
+					"label": "Icon",
+					"button": "Icon: {{name}}",
+					"tabs": {
+						"favicon": "Website icon",
+						"image": "Own image",
+						"symbol": "Symbol",
+						"none": "None"
+					},
+					"favicon": {
+						"noUrl": "Choose a favourite or enter a URL first.",
+						"loading": "Looking for the website icon…",
+						"none": "No website icon found for {{host}}. A globe is shown instead.",
+						"found": "The website icon of {{host}}. It follows the link to other sites.",
+						"use": "Use the website icon"
+					},
+					"image": {
+						"hint": "PNG, JPEG, WebP, GIF or ICO, at most 1 MB.",
+						"upload": "Upload image",
+						"replace": "Upload another image",
+						"use": "Use this image"
+					},
+					"symbol": {
+						"filter": "Filter symbols",
+						"group": "Symbols",
+						"noMatches": "No symbol matches."
+					},
+					"none": {
+						"text": "The widget shows a globe.",
+						"use": "Show a globe"
+					},
+					"inUse": "In use",
+					"done": "Done"
+				}
 			}
 		}
 	}

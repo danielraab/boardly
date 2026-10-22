@@ -7,6 +7,7 @@
 - [x] 1.3 Implement `Resolve` (live `url`/`title` for favourites, copies when missing, nothing extra for visitors). Verify with lookup tests for owner and visitor, a renamed favourite and a deleted favourite
 - [x] 1.4 Add a test that an uploaded image referenced by a link widget's `imageId` survives the `image-store` cleanup sweep
 - [x] 1.5 Add `FitContent` to `dashboards.Kind`, set it for `link`, and store such widgets with height auto. Verify with a layout test that a link widget saved with height 3 comes back with height auto
+- [x] 1.6 Add `iconSource` to the link config (favicon/image/symbol/none, keeping only the matching field, reading old configs), and resolve `data.iconImageId` for website icons from the current URL's origin, queueing a fetch when none is known. Verify with tests for each source, the rejected combinations, an old config, a favourite moved to another site, and a URL link's favicon for a visitor
 
 ## 2. Frontend
 
@@ -17,6 +18,7 @@
 - [x] 2.5 Register the kind (icon `Link`, labels, defaults, view: `data` in view mode, favourites query in edit mode), and verify with an editor test that adds a link widget through the picker
 - [x] 2.6 Add the en/de keys (kind, sources, fields, targets, errors), and verify that the i18n check passes
 - [x] 2.7 Add a `fitContent` prop to `WidgetSettingsForm` (and a `height` prop to `SizeFields`) that leaves out the height choice and applies height auto, and set it in the link settings. Verify with a test that the link dialog has no height choice and applies height auto
+- [x] 2.8 Replace the image and icon fields with the icon chooser (button, popover with tabs, upload, searchable symbol grid, Done), add `useFavicon`, and drop the pre-fill. Verify with tests: the default website icon in the dialog and the draft, choosing a symbol by filter and arrow keys, uploading and an upload error, None, and the saved config
 
 ## 3. Verification
 

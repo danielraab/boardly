@@ -18,12 +18,12 @@ func link(config string) dashboards.Widget {
 
 // urlLink is the config of a plain URL link with the given extra fields.
 func urlLink(extra string) string {
-	return `{"source":"url","url":"https://example.org/","title":null,"imageId":null,"icon":null,"target":"_blank","size":"M"` + extra + `}`
+	return `{"source":"url","url":"https://example.org/","title":null,"iconSource":"favicon","imageId":null,"icon":null,"target":"_blank","size":"M"` + extra + `}`
 }
 
 // favLink is the config of a link to the favourite id.
 func favLink(id, extra string) string {
-	return `{"source":"favourite","favouriteId":"` + id + `","url":"https://old.example.org/","favouriteTitle":"Old","title":null,"imageId":null,"icon":null,"target":"_blank","size":"M"` + extra + `}`
+	return `{"source":"favourite","favouriteId":"` + id + `","url":"https://old.example.org/","favouriteTitle":"Old","title":null,"iconSource":"favicon","imageId":null,"icon":null,"target":"_blank","size":"M"` + extra + `}`
 }
 
 // savedConfigs saves the widgets and returns their stored configs.
@@ -42,13 +42,13 @@ func (f *fixture) savedConfigs(widgets ...dashboards.Widget) []map[string]any {
 func TestLinkConfig(t *testing.T) {
 	f := newFixture(t)
 
-	got := f.savedConfigs(link(strings.Replace(urlLink(`,"icon":"mail"`), `"title":null`, `"title":"  Mail "`, 1)))[0]
-	want := map[string]any{"source": "url", "url": "https://example.org/", "title": "Mail", "imageId": nil, "icon": "mail", "target": "_blank", "size": "M"}
+	got := f.savedConfigs(link(strings.Replace(urlLink(`,"iconSource":"symbol","icon":"mail"`), `"title":null`, `"title":"  Mail "`, 1)))[0]
+	want := map[string]any{"source": "url", "url": "https://example.org/", "title": "Mail", "iconSource": "symbol", "imageId": nil, "icon": "mail", "target": "_blank", "size": "M"}
 	if raw, _ := json.Marshal(got); string(raw) != canonical(t, mustJSON(t, want)) {
 		t.Fatalf("config = %s", raw)
 	}
 	// An empty title is no title, and favourite fields are dropped from a URL link.
-	got = f.savedConfigs(link(`{"source":"url","favouriteId":"x","favouriteTitle":"T","url":"https://example.org/","title":"  ","imageId":"img","icon":null,"target":"_self","size":"S"}`))[0]
+	got = f.savedConfigs(link(`{"source":"url","favouriteId":"x","favouriteTitle":"T","url":"https://example.org/","title":"  ","iconSource":"image","imageId":"img","icon":null,"target":"_self","size":"S"}`))[0]
 	if got["title"] != nil || got["favouriteId"] != nil || got["favouriteTitle"] != nil || got["imageId"] != "img" {
 		t.Fatalf("config = %v", got)
 	}
@@ -59,9 +59,12 @@ func TestLinkConfig(t *testing.T) {
 		"relative":      strings.Replace(urlLink(""), "https://example.org/", "/docs", 1),
 		"long url":      strings.Replace(urlLink(""), "https://example.org/", "https://example.org/"+strings.Repeat("a", 2048), 1),
 		"long title":    strings.Replace(urlLink(""), `"title":null`, `"title":"`+strings.Repeat("a", 201)+`"`, 1),
-		"empty image":   strings.Replace(urlLink(""), `"imageId":null`, `"imageId":""`, 1),
-		"long image":    strings.Replace(urlLink(""), `"imageId":null`, `"imageId":"`+strings.Repeat("a", 65)+`"`, 1),
-		"unknown icon":  strings.Replace(urlLink(""), `"icon":null`, `"icon":"github"`, 1),
+		"empty image":   urlLink(`,"iconSource":"image","imageId":""`),
+		"long image":    urlLink(`,"iconSource":"image","imageId":"` + strings.Repeat("a", 65) + `"`),
+		"no image":      urlLink(`,"iconSource":"image"`),
+		"unknown icon":  urlLink(`,"iconSource":"symbol","icon":"github"`),
+		"no icon":       urlLink(`,"iconSource":"symbol"`),
+		"icon source":   urlLink(`,"iconSource":"emoji"`),
 		"target":        strings.Replace(urlLink(""), `"_blank"`, `"_top"`, 1),
 		"size":          strings.Replace(urlLink(""), `"size":"M"`, `"size":"XL"`, 1),
 		"unknown field": urlLink(`,"color":"red"`),
@@ -74,6 +77,87 @@ func TestLinkConfig(t *testing.T) {
 	// 200 characters are fine.
 	if err := f.save(link(strings.Replace(urlLink(""), `"title":null`, `"title":"`+strings.Repeat("ä", 200)+`"`, 1))); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLinkIconSources(t *testing.T) {
+	f := newFixture(t)
+	got := f.savedConfigs(
+		// Only the field of the source is kept.
+		link(urlLink(`,"iconSource":"favicon","imageId":"img","icon":"mail"`)),
+		link(urlLink(`,"iconSource":"none","imageId":"img","icon":"mail"`)),
+		link(urlLink(`,"iconSource":"image","imageId":"img","icon":"mail"`)),
+		link(urlLink(`,"iconSource":"symbol","imageId":"img","icon":"mail"`)),
+		// Saved before icon sources existed.
+		link(`{"source":"url","url":"https://example.org/","title":null,"imageId":"img","icon":"mail","target":"_blank","size":"M"}`),
+		link(`{"source":"url","url":"https://example.org/","title":null,"imageId":null,"icon":"mail","target":"_blank","size":"M"}`),
+		link(`{"source":"url","url":"https://example.org/","title":null,"imageId":null,"icon":null,"target":"_blank","size":"M"}`),
+	)
+	want := []string{"favicon - -", "none - -", "image img -", "symbol - mail", "image img -", "symbol - mail", "favicon - -"}
+	for i, c := range got {
+		str := func(v any) string {
+			if v == nil {
+				return "-"
+			}
+			return v.(string)
+		}
+		if g := c["iconSource"].(string) + " " + str(c["imageId"]) + " " + str(c["icon"]); g != want[i] {
+			t.Errorf("widget %d: %s, want %s", i, g, want[i])
+		}
+	}
+}
+
+// addFavicon makes id the known favicon of origin.
+func (f *fixture) addFavicon(origin, id string) {
+	f.t.Helper()
+	if _, err := f.fav.DB.Exec(`INSERT INTO images (id, source, content_type, size, created_at) VALUES (?, 'favicon', 'image/png', 1, '2026-01-01T00:00:00Z')`, id); err != nil {
+		f.t.Fatal(err)
+	}
+	if _, err := f.fav.DB.Exec(`INSERT INTO favicons (origin, image_id, fetched_at) VALUES (?, ?, '2026-01-01T00:00:00Z')`, origin, id); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func TestLinkWebsiteIcon(t *testing.T) {
+	f := newFixture(t)
+	f.addFavicon("https://example.org", "11111111-1111-1111-1111-111111111111")
+	f.addFavicon("https://github.com", "22222222-2222-2222-2222-222222222222")
+	f.addFavicon("https://gitlab.com", "33333333-3333-3333-3333-333333333333")
+	repo := f.node(f.ann, "", favourites.KindLink, "Repo", "https://gitlab.com/ann")
+	if err := f.save(
+		link(urlLink("")),
+		link(urlLink(`,"iconSource":"symbol","icon":"mail"`)),
+		link(strings.Replace(urlLink(""), "https://example.org/", "https://unknown.example.net/", 1)),
+		link(favLink(repo, "")),
+		link(favLink(repo, `,"iconSource":"none"`)),
+	); err != nil {
+		t.Fatal(err)
+	}
+	data := func() []string {
+		var out []string
+		for _, w := range f.lookup("") {
+			out = append(out, mustJSON(t, w["data"]))
+		}
+		return out
+	}
+	want := []string{
+		`{"iconImageId":"11111111-1111-1111-1111-111111111111"}`,
+		"null",
+		"null",
+		`{"iconImageId":"33333333-3333-3333-3333-333333333333","title":"Repo","url":"https://gitlab.com/ann"}`,
+		`{"title":"Repo","url":"https://gitlab.com/ann"}`,
+	}
+	if got := data(); strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("visitor data =\n%s", strings.Join(got, "\n"))
+	}
+
+	// The favourite moves to another site: its icon follows without a save.
+	newURL := "https://github.com/ann"
+	if _, err := f.fav.Update(f.ctx, f.ann, repo, favourites.Patch{URL: &newURL}); err != nil {
+		t.Fatal(err)
+	}
+	if got := data()[3]; got != `{"iconImageId":"22222222-2222-2222-2222-222222222222","title":"Repo","url":"https://github.com/ann"}` {
+		t.Fatalf("moved favourite data = %s", got)
 	}
 }
 
@@ -189,7 +273,7 @@ func TestLinkImageSurvivesCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.save(link(strings.Replace(urlLink(""), `"imageId":null`, `"imageId":"`+used.ID+`"`, 1))); err != nil {
+	if err := f.save(link(urlLink(`,"iconSource":"image","imageId":"` + used.ID + `"`))); err != nil {
 		t.Fatal(err)
 	}
 

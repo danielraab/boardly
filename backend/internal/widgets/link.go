@@ -10,6 +10,7 @@ import (
 
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 )
 
 // KindLink shows one link, from the owner's favourites or a plain URL.
@@ -20,6 +21,15 @@ const KindLink = "link"
 const (
 	SourceFavourite = "favourite"
 	SourceURL       = "url"
+)
+
+// Icon sources: the favicon of the link's current URL, an uploaded image, a
+// symbol from linkIcons, or none (a globe).
+const (
+	IconFavicon = "favicon"
+	IconImage   = "image"
+	IconSymbol  = "symbol"
+	IconNone    = "none"
 )
 
 // Limits of a link widget's config.
@@ -51,26 +61,56 @@ type linkConfig struct {
 	URL            string  `json:"url"`
 	FavouriteTitle *string `json:"favouriteTitle,omitempty"`
 	Title          *string `json:"title"`
+	IconSource     string  `json:"iconSource"`
 	ImageID        *string `json:"imageId"`
 	Icon           *string `json:"icon"`
 	Target         string  `json:"target"`
 	Size           Size    `json:"size"`
 }
 
-// linkData is the current URL and title of a link widget's favourite.
+// linkData is the current URL and title of a link widget's favourite, and
+// the favicon of its site for a website icon.
 type linkData struct {
-	URL   string  `json:"url"`
-	Title *string `json:"title"`
+	URL         string  `json:"url"`
+	Title       *string `json:"title"`
+	IconImageID *string `json:"iconImageId,omitempty"`
+}
+
+// faviconData is the data of a plain URL link with a known website icon.
+type faviconData struct {
+	IconImageID string `json:"iconImageId"`
 }
 
 // favouriteKey caches a favourite link within one lookup.
 type favouriteKey struct{ ownerID, id string }
 
+// faviconKey caches the favicon of an origin within one lookup.
+type faviconKey struct{ origin string }
+
 // Link returns the link kind. On every save, a favourite's URL and title are
 // copied into the config, and a widget whose favourite no longer exists is
 // stored as a plain URL with the last copies.
-func Link(fav *favourites.Store) dashboards.Kind {
+func Link(fav *favourites.Store, icons *images.Favicons) dashboards.Kind {
 	invalid := func(msg string) error { return fmt.Errorf("%w: %s", dashboards.ErrInvalidLayout, msg) }
+	// favicon returns the known favicon of the URL's site, or nil after
+	// queueing a fetch for a later visit.
+	favicon := func(ctx context.Context, rawURL string) (*string, error) {
+		origin, err := images.Origin(rawURL)
+		if icons == nil || err != nil {
+			return nil, nil
+		}
+		return dashboards.Cached(ctx, faviconKey{origin}, func() (*string, error) {
+			ids, err := icons.Lookup(ctx, []string{origin})
+			if err != nil {
+				return nil, err
+			}
+			if id, ok := ids[origin]; ok {
+				return &id, nil
+			}
+			icons.Queue(rawURL)
+			return nil, nil
+		})
+	}
 	return dashboards.Kind{
 		// A link is one or two lines; a fixed height only adds space or cuts it off.
 		FitContent: true,
@@ -113,11 +153,32 @@ func Link(fav *favourites.Store) dashboards.Kind {
 			if c.Title, err = normalizeTitle(c.Title); err != nil {
 				return nil, err
 			}
-			if c.ImageID != nil && (*c.ImageID == "" || len(*c.ImageID) > maxIDLength) {
-				return nil, invalid("invalid image")
+			if c.IconSource == "" {
+				// Saved before icon sources existed.
+				switch {
+				case c.ImageID != nil:
+					c.IconSource = IconImage
+				case c.Icon != nil:
+					c.IconSource = IconSymbol
+				default:
+					c.IconSource = IconFavicon
+				}
 			}
-			if c.Icon != nil && !linkIcons[*c.Icon] {
-				return nil, invalid("unknown icon")
+			switch c.IconSource {
+			case IconFavicon, IconNone:
+				c.ImageID, c.Icon = nil, nil
+			case IconImage:
+				if c.ImageID == nil || *c.ImageID == "" || len(*c.ImageID) > maxIDLength {
+					return nil, invalid("invalid image")
+				}
+				c.Icon = nil
+			case IconSymbol:
+				if c.Icon == nil || !linkIcons[*c.Icon] {
+					return nil, invalid("unknown icon")
+				}
+				c.ImageID = nil
+			default:
+				return nil, invalid("icon source must be favicon, image, symbol or none")
 			}
 			if c.Target != "_blank" && c.Target != "_self" {
 				return nil, invalid("target must be _blank or _self")
@@ -133,7 +194,17 @@ func Link(fav *favourites.Store) dashboards.Kind {
 				return nil, false, err
 			}
 			if c.Source != SourceFavourite {
-				return nil, true, nil
+				if c.IconSource != IconFavicon {
+					return nil, true, nil
+				}
+				id, err := favicon(ctx, c.URL)
+				switch {
+				case err != nil:
+					return nil, false, err
+				case id == nil:
+					return nil, true, nil
+				}
+				return faviconData{IconImageID: *id}, true, nil
 			}
 			n, err := dashboards.Cached(ctx, favouriteKey{viewer.OwnerID, c.FavouriteID}, func() (*favourites.Node, error) {
 				n, err := fav.Link(ctx, viewer.OwnerID, c.FavouriteID)
@@ -145,10 +216,16 @@ func Link(fav *favourites.Store) dashboards.Kind {
 			if err != nil {
 				return nil, false, err
 			}
-			if n == nil {
-				return linkData{URL: c.URL, Title: c.FavouriteTitle}, true, nil
+			data := linkData{URL: c.URL, Title: c.FavouriteTitle}
+			if n != nil {
+				data = linkData{URL: *n.URL, Title: n.Title}
 			}
-			return linkData{URL: *n.URL, Title: n.Title}, true, nil
+			if c.IconSource == IconFavicon {
+				if data.IconImageID, err = favicon(ctx, data.URL); err != nil {
+					return nil, false, err
+				}
+			}
+			return data, true, nil
 		},
 	}
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
@@ -12,14 +12,13 @@ import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { NodeDialog } from "#/features/favourites/NodeDialog";
 import { findNode } from "#/features/favourites/tree";
 import { checkUrl } from "#/features/favourites/validate";
-import { ApiError } from "#/lib/api";
+import { useDebounced } from "#/lib/useDebounced";
 import type { SectionHeight } from "../../api";
 import type { WidgetSettingsProps } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
-import { faviconFor, uploadImage } from "./api";
-import { type LinkIconKey, linkIcons } from "./icons";
-import { LinkIcon } from "./LinkView";
+import { type IconChoice, IconChooser, type IconSource } from "./IconChooser";
+import { useFavicon } from "./useFavicon";
 
 export type LinkConfig = {
 	source: "favourite" | "url";
@@ -29,7 +28,11 @@ export type LinkConfig = {
 	/** The URL, or the favourite's last known URL. */
 	url: string;
 	title: string | null;
+	/** Missing in configs saved before icon sources; see iconSourceOf. */
+	iconSource?: IconSource;
+	/** Only for iconSource "image". */
 	imageId: string | null;
+	/** Only for iconSource "symbol": a key of linkIcons. */
 	icon: string | null;
 	target: "_blank" | "_self";
 	size: WidgetSize;
@@ -38,7 +41,12 @@ export type LinkConfig = {
 /** How long the URL has to stay unchanged before its favicon is looked up. */
 export const faviconDelayMs = 500;
 
-const imageTypes = "image/png,image/jpeg,image/webp,image/gif,image/x-icon";
+/** The icon source of a config, also of one saved before sources existed. */
+export function iconSourceOf(config: LinkConfig): IconSource {
+	if (config.iconSource) return config.iconSource;
+	if (config.imageId) return "image";
+	return config.icon ? "symbol" : "favicon";
+}
 
 export function LinkSettings(props: WidgetSettingsProps) {
 	const { t } = useTranslation();
@@ -52,12 +60,13 @@ export function LinkSettings(props: WidgetSettingsProps) {
 	const [created, setCreated] = useState<FavouriteNode | null>(null);
 	const [creating, setCreating] = useState(false);
 	const [title, setTitle] = useState(config.title ?? "");
-	// auto: filled with the URL's favicon, so a new URL may replace it.
-	const [image, setImage] = useState({ id: config.imageId, auto: false });
-	const [icon, setIcon] = useState(config.icon ?? "");
+	const [icon, setIcon] = useState<IconChoice>({
+		source: iconSourceOf(config),
+		imageId: config.imageId,
+		icon: config.icon,
+	});
 	const [target, setTarget] = useState(config.target);
 	const [size, setSize] = useState(config.size);
-	const [uploadError, setUploadError] = useState<string | null>(null);
 
 	const found = favourites.data && findNode(favourites.data, favouriteId);
 	const favourite =
@@ -71,64 +80,25 @@ export function LinkSettings(props: WidgetSettingsProps) {
 	let linkUrl: string | null = null;
 	if (source === "favourite") linkUrl = favourite?.url ?? null;
 	else if (url.trim() && !urlError) linkUrl = url.trim();
+	// The website icon: a favourite's known one, or looked up once the URL
+	// stops changing (until then, it is still being looked for).
 	const known = source === "favourite" ? favourite?.iconImageId : undefined;
-
-	// Fill an empty or auto-filled image with the favicon of a newly chosen URL.
-	const imageRef = useRef(image);
-	imageRef.current = image;
-	const openedUrl = useRef(props.isNew ? null : config.url);
-	useEffect(() => {
-		if (!linkUrl || linkUrl === openedUrl.current) return;
-		openedUrl.current = null;
-		const current = imageRef.current;
-		if (current.id && !current.auto) return;
-		if (known) {
-			setImage({ id: known, auto: true });
-			return;
-		}
-		let cancelled = false;
-		const timer = setTimeout(() => {
-			faviconFor(linkUrl).then(
-				(id) => {
-					if (!cancelled) setImage({ id, auto: true });
-				},
-				() => {
-					// No favicon (or a blocked address): an old auto-filled one doesn't fit.
-					if (!cancelled && imageRef.current.auto)
-						setImage({ id: null, auto: false });
-				},
-			);
-		}, faviconDelayMs);
-		return () => {
-			cancelled = true;
-			clearTimeout(timer);
-		};
-	}, [linkUrl, known]);
-
-	async function onUpload(event: ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0];
-		event.target.value = "";
-		if (!file) return;
-		setUploadError(null);
-		try {
-			setImage({ id: await uploadImage(file), auto: false });
-		} catch (err) {
-			const code = err instanceof ApiError ? err.code : "";
-			setUploadError(
-				code === "unsupported_image" || code === "image_too_large"
-					? t(`dashboards.widgets.link.errors.${code}`)
-					: t("dashboards.widgets.link.errors.uploadFailed"),
-			);
-		}
-	}
+	const settledUrl = useDebounced(linkUrl, faviconDelayMs);
+	const lookedUp = useFavicon(settledUrl, known);
+	const favicon =
+		known || settledUrl === linkUrl
+			? lookedUp
+			: { id: null, loading: linkUrl !== null };
+	const host = linkUrl ? new URL(linkUrl).host : null;
 
 	const valid = linkUrl !== null;
 
 	function apply(dims: { width: number; height: SectionHeight }) {
 		const common = {
 			title: title.trim() || null,
-			imageId: image.id,
-			icon: icon || null,
+			iconSource: icon.source,
+			imageId: icon.source === "image" ? icon.imageId : null,
+			icon: icon.source === "symbol" ? icon.icon : null,
 			target,
 			size,
 		};
@@ -232,66 +202,14 @@ export function LinkSettings(props: WidgetSettingsProps) {
 				</p>
 			</div>
 
-			<div>
-				<span className="block text-sm font-medium">
-					{t("dashboards.widgets.link.imageLabel")}
-				</span>
-				<div className="mt-1 flex flex-wrap items-center gap-3">
-					<span
-						className="inline-flex size-10 items-center justify-center rounded-lg border border-line"
-						data-testid="link-image-preview"
-					>
-						<LinkIcon
-							imageId={image.id}
-							icon={icon || null}
-							className="size-6"
-						/>
-					</span>
-					<label className={`${secondaryButton} cursor-pointer`}>
-						{t("dashboards.widgets.link.upload")}
-						<input
-							type="file"
-							accept={imageTypes}
-							onChange={(e) => void onUpload(e)}
-							className="sr-only"
-						/>
-					</label>
-					{image.id && (
-						<button
-							type="button"
-							onClick={() => setImage({ id: null, auto: false })}
-							className={secondaryButton}
-						>
-							{t("dashboards.widgets.link.removeImage")}
-						</button>
-					)}
-				</div>
-				{uploadError && (
-					<p role="alert" className="mt-1 text-sm text-red-700">
-						{uploadError}
-					</p>
-				)}
-			</div>
+			<IconChooser
+				value={icon}
+				onChange={setIcon}
+				favicon={favicon}
+				host={host}
+			/>
 
-			<div className="grid gap-4 sm:grid-cols-3">
-				<div>
-					<label htmlFor="link-icon" className="block text-sm font-medium">
-						{t("dashboards.widgets.link.iconLabel")}
-					</label>
-					<select
-						id="link-icon"
-						value={icon}
-						onChange={(e) => setIcon(e.target.value)}
-						className={textInput}
-					>
-						<option value="">{t("dashboards.widgets.link.iconNone")}</option>
-						{(Object.keys(linkIcons) as LinkIconKey[]).map((key) => (
-							<option key={key} value={key}>
-								{t(`dashboards.widgets.link.icons.${key}`)}
-							</option>
-						))}
-					</select>
-				</div>
+			<div className="grid gap-4 sm:grid-cols-2">
 				<div>
 					<label htmlFor="link-target" className="block text-sm font-medium">
 						{t("dashboards.widgets.link.targetLabel")}

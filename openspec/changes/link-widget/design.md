@@ -26,8 +26,9 @@
   "url": "https://…",               // always: the URL, or the favourite's last known URL
   "favouriteTitle": "Mail" | null,  // source = favourite only: last known title
   "title": "…" | null,              // the widget's own title
-  "imageId": "<image id>" | null,
-  "icon": "mail" | null,            // key from the curated list
+  "iconSource": "favicon" | "image" | "symbol" | "none",
+  "imageId": "<image id>" | null,   // iconSource = image only
+  "icon": "mail" | null,            // iconSource = symbol only: key from the curated list
   "target": "_blank" | "_self",
   "size": "S" | "M" | "L"
 }
@@ -50,17 +51,29 @@ The kind is `widgets.Link(fav)` in `internal/widgets`, next to the favourite exp
 A link is one or two lines, so a fixed height only adds empty space or cuts the link off. `dashboards.Kind` gets a `FitContent` flag. For such a kind, `normalizeContent` sets the widget's height to "auto" instead of rejecting other heights, so older drafts still save. In the web app, `WidgetSettingsForm` gets a `fitContent` prop: the link settings set it, and the form then leaves out the height choice (`SizeFields` with `height={false}`) and applies "auto".
 
 ### Resolve
-For `source: "favourite"`, `data = { url, title }` with the favourite's current values, or the copies when it's missing. For `source: "url"`, `data` is empty. The view uses `data` over `config` in view mode. In edit mode it uses the favourites query, as the explorer does, so a draft widget renders right away. Visitors get only these fields: no tags and no favourite ID beyond what is in `config`.
+For `source: "favourite"`, `data = { url, title }` with the favourite's current values, or the copies when it's missing. With `iconSource: "favicon"`, `data.iconImageId` is the favicon of the current URL's origin, when one is known (see "Icon"). Otherwise a URL link has no `data`. The view uses `data` over `config` in view mode. In edit mode it uses the favourites query, as the explorer does, so a draft widget renders right away. Visitors get only these fields: no tags and no favourite ID beyond what is in `config`.
 
 Should `config.favouriteId` reach visitors? It's an opaque UUID that grants nothing, because favourites need the owner's session. It's left in, to keep one config shape.
 
-### Favicon pre-fill
-When the dialog's URL changes (debounced 500 ms, only for a valid URL) and the image is empty, or still holds the favicon that was filled automatically for the previous URL, the dialog calls `POST /api/favicons`. For a favourite with `iconImageId`, that ID is used directly. A 404 or `blocked_address` leaves the image empty with no error. The dialog tracks "auto-filled" in local state only, and stores just `imageId`. When a new URL has no favicon, an auto-filled image from the previous URL is cleared. Opening the settings of an existing widget doesn't fill anything until its URL changes, so an image the owner removed stays removed.
+### Icon
+The icon is one explicit choice, `iconSource`, so there is no precedence rule between an image and a symbol. `Normalize` keeps only the field that belongs to the source: `imageId` for `image` (required, ≤ 64 characters), `icon` for `symbol` (required, from the allowed set), neither for `favicon` and `none`. A config without `iconSource`, saved before it existed, is read as `image` when it has an `imageId`, `symbol` when it has an `icon`, and `favicon` otherwise.
 
-A favourite's URL can later change to another origin while the widget keeps the old favicon. That's accepted: the owner set or accepted that image. Refreshes keep the image ID, so the icon stays current for the same origin.
+The website icon isn't stored. `Resolve` looks up the favicon of the origin of the link's current URL (the favourite's live URL, or the plain URL) with `images.Favicons.Lookup`, cached per origin within one lookup with `dashboards.Cached`. When none is known, it queues a background fetch with `Favicons.Queue`, so a plain URL link gets its favicon on a later visit, as favourites do. This replaces the earlier pre-fill of `imageId` with the favicon, and with it the 500 ms pre-fill logic and the "auto-filled" tracking in the dialog. It also removes the old trade-off that a favourite moved to another site kept the old site's favicon.
 
-### Image field UI
-The field shows a preview (`ImageIcon`), an "Upload" button (a file input with `accept` for the allowed types, posting to `/api/images`, with errors `unsupported_image`/`image_too_large` shown translated) and a "Remove" button. Next to it, an icon select over the curated list (44 common lucide icons: Mail, Calendar, Cloud, Server, Database, Film, Music, Home, Settings, …), with "None" and translated names. lucide 1.x has no brand icons, so there is no GitHub or YouTube icon. The list lives in `widgets/link/icons.ts` and is mirrored as an allowed set in `internal/widgets/link.go`. The upload sends the file through `api()` with a new `file` option, which sets `Content-Type: application/octet-stream`.
+In the web app, a `useFavicon(url, knownId)` hook gives the favicon of a URL for the dialog's preview and for draft widgets in edit mode: a favourite's `iconImageId` when it is known, otherwise `POST /api/favicons` through React Query, keyed by origin, without retries, and treating 404 and `blocked_address` as "none". The dialog passes the URL debounced by 500 ms. In view mode, the widget uses `data.iconImageId`.
+
+### Icon chooser
+The settings dialog shows one "Icon" field: a button with the current icon and the name of its kind (for a symbol, the symbol's name), with a chevron. It opens a Base UI `Popover` (inside the settings dialog) with Base UI `Tabs` for the four kinds, starting on the current kind, and a "Done" button:
+- **Website icon**: the favicon found for the URL at a larger size, or a globe with "No website icon found for <host>", "Enter a URL first" or "Looking for the website icon…". A "Use the website icon" button.
+- **Own image**: the current own image, if any, and an "Upload image" button (a file input with `accept` for the allowed types, posting to `/api/images` through `api()` with its `file` option, which sends `Content-Type: application/octet-stream`). A successful upload makes it the icon. `unsupported_image` and `image_too_large` are shown translated, and the icon stays as it was.
+- **Symbol**: a filter field over the translated names and a grid of tiles. The tiles are native radio buttons (one group), so arrow keys move between them and screen readers read their names. Choosing one makes it the icon.
+- **None**: a globe and a "Show a globe" button.
+
+Choices take effect right away, but the popover stays open until "Done", Escape or a click outside, because arrow keys in the symbol grid change the choice as they move. The trigger's accessible name is "Icon: <kind or symbol name>".
+
+The curated list has 44 lucide icons (Mail, Calendar, Cloud, Server, Database, Film, Music, Home, Settings, …) with translated names. lucide 1.x has no brand icons, so there is no GitHub or YouTube icon. It lives in `widgets/link/icons.ts` and is mirrored as an allowed set in `internal/widgets/link.go`.
+
+*Alternatives*: separate image and icon fields with a precedence rule (as first built), which was confusing; the four kinds as radio buttons inline in the dialog, which made the dialog long.
 
 ### Rendering
 The whole widget is one `<a>` (`rel="noopener noreferrer"` for `_blank`) with `min-w-0`, so `truncate` works. The icon box is fixed by size, followed by a column of `truncate` lines (title `font-medium`, URL `text-muted` one step smaller) and `title=` for the tooltip. In edit mode the anchor gets `onClick` → `preventDefault` and `aria-disabled`, so drag and the settings button stay usable.
@@ -79,3 +92,4 @@ Validation, tags, errors and the favourites query refresh stay the dialog's own.
 - [The stored URL copy goes stale between saves] → It's only used after deletion, and `Resolve` serves live values until then.
 - [Orphaned favourites when the edit is cancelled] → Intended (agreed). They are ordinary favourites the user can delete.
 - [Upload during a draft that's never saved] → Covered by the 24 h cleanup in `image-store`.
+- [A favicon lookup per link widget on every dashboard view] → One indexed query per origin, cached within the lookup; links to the same site share it.

@@ -196,7 +196,11 @@ describe("the link widget on a dashboard", () => {
 									favouriteTitle: "Mail",
 									url: "https://mail.example.org/",
 								},
-								{ url: "https://webmail.example.org/", title: "Webmail" },
+								{
+									url: "https://webmail.example.org/",
+									title: "Webmail",
+									iconImageId: "webmailicon",
+								},
 							),
 						),
 					],
@@ -207,9 +211,13 @@ describe("the link widget on a dashboard", () => {
 		renderApp("/ann/home");
 		const link = await screen.findByRole("link", { name: /Webmail/ });
 		expect(link).toHaveAttribute("href", "https://webmail.example.org/");
+		expect(link.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/webmailicon",
+		);
 	});
 
-	it("adds a favourite through the picker, with its favicon", async () => {
+	it("adds a favourite through the picker, with its website icon", async () => {
 		const { api, user, router } = await openEditor([section("Work")]);
 		const dialog = await openNewLink(user);
 		const add = within(dialog).getByRole("button", { name: "Add" });
@@ -226,31 +234,36 @@ describe("the link widget on a dashboard", () => {
 			within(picker).getByRole("button", { name: "Expand Work" }),
 		);
 		await user.click(within(picker).getByRole("radio", { name: "Mail" }));
-		// The favourite's known favicon fills the image without a request.
-		await waitFor(() =>
-			expect(
-				within(dialog).getByTestId("link-image-preview").querySelector("img"),
-			).toHaveAttribute("src", "/api/images/mailicon"),
-		);
+		// The favourite's known favicon is shown without a request.
+		expect(
+			within(dialog)
+				.getByRole("button", { name: "Icon: Website icon" })
+				.querySelector("img"),
+		).toHaveAttribute("src", "/api/images/mailicon");
 		expect(api.callsTo("POST", "/api/favicons")).toHaveLength(0);
 		await user.click(add);
 
-		expect(await screen.findByText("Mail")).toBeVisible();
+		const link = await screen.findByRole("link", { name: /Mail/ });
+		expect(link.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/mailicon",
+		);
 		expect(await savedConfig(user, api, router)).toEqual({
 			source: "favourite",
 			favouriteId: "mail",
 			favouriteTitle: "Mail",
 			url: "https://mail.example.org/",
 			title: null,
-			imageId: "mailicon",
+			iconSource: "favicon",
+			imageId: null,
 			icon: null,
 			target: "_blank",
 			size: "M",
 		});
 	});
 
-	it("validates a URL and fills in its favicon", async () => {
-		const { api, user, router } = await openEditor([section("Work")], {
+	it("validates a URL and looks up its website icon", async () => {
+		const { api, user } = await openEditor([section("Work")], {
 			"POST /api/favicons": ({ body }: { body: unknown }) =>
 				(body as { url: string }).url === "https://github.com"
 					? { body: { id: "gh" } }
@@ -273,44 +286,88 @@ describe("the link widget on a dashboard", () => {
 
 		await user.clear(url);
 		await user.paste("https://github.com");
-		const preview = within(dialog).getByTestId("link-image-preview");
+		const trigger = within(dialog).getByRole("button", {
+			name: "Icon: Website icon",
+		});
 		await waitFor(() =>
-			expect(preview.querySelector("img")).toHaveAttribute(
+			expect(trigger.querySelector("img")).toHaveAttribute(
 				"src",
 				"/api/images/gh",
 			),
 		);
-		// Only the URL that stayed unchanged was looked up.
-		expect(api.callsTo("POST", "/api/favicons")).toHaveLength(1);
-
-		// A URL without a favicon removes the one filled in automatically.
-		await user.paste("/x");
+		await user.clear(url);
+		await user.paste("https://nothing.example/");
+		// Only URLs that stayed unchanged are looked up.
 		await waitFor(() =>
-			expect(preview.querySelector("[data-icon='globe']")).not.toBeNull(),
+			expect(api.callsTo("POST", "/api/favicons")).toHaveLength(2),
 		);
+		expect(trigger.querySelector("[data-icon='globe']")).not.toBeNull();
 
-		await user.type(within(dialog).getByLabelText("Title"), "Code");
-		await user.selectOptions(within(dialog).getByLabelText("Icon"), "Code");
+		await user.click(trigger);
+		const chooser = await screen.findByRole("dialog", { name: "Icon" });
+		expect(
+			within(chooser).getByRole("tab", { name: "Website icon" }),
+		).toHaveAttribute("aria-selected", "true");
+		expect(
+			within(chooser).getByText(
+				"No website icon found for nothing.example. A globe is shown instead.",
+			),
+		).toBeVisible();
+	});
+
+	it("chooses a symbol by filter and with arrow keys", async () => {
+		const { api, user, router } = await openEditor([
+			section("Work", {}, linkWidget({ url: "https://nothing.example/" })),
+		]);
+		await user.click(screen.getByRole("button", { name: "Edit Link" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
+		await user.click(
+			within(dialog).getByRole("button", { name: "Icon: Website icon" }),
+		);
+		const chooser = await screen.findByRole("dialog", { name: "Icon" });
+		await user.click(within(chooser).getByRole("tab", { name: "Symbol" }));
+		const filter = within(chooser).getByRole("searchbox");
+		await user.click(filter);
+		await user.paste("cod");
+		const symbols = within(chooser).getByRole("radiogroup", {
+			name: "Symbols",
+		});
+		expect(within(symbols).getAllByRole("radio")).toHaveLength(1);
+		await user.click(within(symbols).getByRole("radio", { name: "Code" }));
+		expect(
+			within(dialog).getByRole("button", { name: "Icon: Code" }),
+		).toBeVisible();
+		// Arrow keys move through the grid and choose as they go.
+		await user.clear(filter);
+		within(symbols).getByRole("radio", { name: "Code" }).focus();
+		await user.keyboard("{ArrowRight}");
+		expect(
+			within(symbols).getByRole("radio", { name: "Processor" }),
+		).toBeChecked();
+		await user.click(within(chooser).getByRole("button", { name: "Done" }));
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog", { name: "Icon" })).toBeNull(),
+		);
 		await user.selectOptions(
 			within(dialog).getByLabelText("Open in"),
 			"Same tab",
 		);
-		await user.click(add);
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
 		expect(await savedConfig(user, api, router)).toEqual({
 			source: "url",
-			url: "https://github.com/x",
-			title: "Code",
+			url: "https://nothing.example/",
+			title: null,
+			iconSource: "symbol",
 			imageId: null,
-			icon: "code",
+			icon: "cpu",
 			target: "_self",
 			size: "M",
 		});
-		expect(api.callsTo("POST", "/api/favourites")).toHaveLength(0);
 	});
 
-	it("uploads an image, shows upload errors, and removes the image", async () => {
+	it("uploads an own image, shows upload errors, and switches to none", async () => {
 		let uploads = 0;
-		const { user } = await openEditor([section("Work")], {
+		const { api, user, router } = await openEditor([section("Work")], {
 			"POST /api/images": ({ init }: { init: RequestInit }) => {
 				uploads++;
 				expect(new Headers(init.headers).get("Content-Type")).toBe(
@@ -322,8 +379,15 @@ describe("the link widget on a dashboard", () => {
 			},
 		});
 		const dialog = await openNewLink(user);
-		const input = within(dialog).getByLabelText("Upload image");
-		const preview = within(dialog).getByTestId("link-image-preview");
+		await user.click(within(dialog).getByLabelText("URL"));
+		await user.click(within(dialog).getByRole("textbox", { name: "URL" }));
+		await user.paste("https://example.org/");
+		await user.click(
+			within(dialog).getByRole("button", { name: "Icon: Website icon" }),
+		);
+		const chooser = await screen.findByRole("dialog", { name: "Icon" });
+		await user.click(within(chooser).getByRole("tab", { name: "Own image" }));
+		const input = within(chooser).getByLabelText("Upload image");
 
 		// The server sniffs the content, so an SVG named like a PNG is rejected.
 		await user.upload(
@@ -331,25 +395,50 @@ describe("the link widget on a dashboard", () => {
 			new File(["<svg/>"], "logo.png", { type: "image/png" }),
 		);
 		expect(
-			await within(dialog).findByText(
+			await within(chooser).findByText(
 				"This file type isn't supported. Use PNG, JPEG, WebP, GIF or ICO.",
 			),
 		).toBeVisible();
+		expect(
+			within(dialog).getByRole("button", { name: "Icon: Website icon" }),
+		).toBeVisible();
 
 		await user.upload(
-			input,
+			within(chooser).getByLabelText("Upload image"),
 			new File(["png"], "logo.png", { type: "image/png" }),
 		);
-		await waitFor(() =>
-			expect(preview.querySelector("img")).toHaveAttribute(
-				"src",
-				"/api/images/up1",
-			),
+		const trigger = await within(dialog).findByRole("button", {
+			name: "Icon: Own image",
+		});
+		expect(trigger.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/up1",
 		);
+
+		await user.click(within(chooser).getByRole("tab", { name: "None" }));
 		await user.click(
-			within(dialog).getByRole("button", { name: "Remove image" }),
+			within(chooser).getByRole("button", { name: "Show a globe" }),
 		);
-		expect(preview.querySelector("[data-icon='globe']")).not.toBeNull();
+		expect(
+			within(dialog).getByRole("button", { name: "Icon: None" }),
+		).toBeVisible();
+		// The image is kept, so it can be chosen again.
+		await user.click(within(chooser).getByRole("tab", { name: "Own image" }));
+		await user.click(
+			within(chooser).getByRole("button", { name: "Use this image" }),
+		);
+		expect(within(chooser).getByText("In use")).toBeVisible();
+		await user.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog", { name: "Icon" })).toBeNull(),
+		);
+		// Escape closed only the chooser.
+		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		expect(await savedConfig(user, api, router)).toMatchObject({
+			iconSource: "image",
+			imageId: "up1",
+			icon: null,
+		});
 	});
 
 	it("creates a new favourite in its own dialog and chooses it", async () => {

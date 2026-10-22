@@ -44,19 +44,40 @@ When the favourite behind a link widget no longer exists, the widget SHALL work 
 - **THEN** the widget's settings show the source "URL" with that URL and the title "Mail"
 
 ### Requirement: Link widget settings
-Besides its source and the common width, a link widget SHALL have an optional title (at most 200 characters after trimming; empty means none), an optional image, an optional icon from a fixed set of icons, a target ("New tab" / "Neuer Tab", the default, or "Same tab" / "Gleicher Tab") and a size (`S`, `M` or `L`, default `M`). When a URL or favourite is chosen and the image is empty, the image SHALL be filled with the favicon of the URL's origin, if one is found. The owner can replace the image with an uploaded one or remove it. Values outside these rules are rejected with 400 and `invalid_layout`.
+Besides its source and the common width, a link widget SHALL have an optional title (at most 200 characters after trimming; empty means none), an icon, a target ("New tab" / "Neuer Tab", the default, or "Same tab" / "Gleicher Tab") and a size (`S`, `M` or `L`, default `M`). Values outside these rules are rejected with 400 and `invalid_layout`.
 
-#### Scenario: Favicon pre-filled
-- **WHEN** Ann enters `https://github.com` as the URL in a new link widget
-- **THEN** the image field shows GitHub's favicon
+#### Scenario: Defaults
+- **WHEN** Ann picks "Link" in the widget picker
+- **THEN** the settings show the icon "Website icon", the target "New tab" and the size M
 
-#### Scenario: Upload an image
-- **WHEN** Ann uploads a PNG as the widget's image and confirms
-- **THEN** the widget shows that image instead of the favicon
+### Requirement: Link widget icon
+A link widget's icon SHALL be one of:
+- "Website icon" / "Website-Icon" (the default): the favicon of the origin of the link's current URL, looked up when the dashboard is served. It follows the link: when a favourite's URL moves to another site, the widget shows that site's favicon.
+- "Own image" / "Eigenes Bild": an image the owner uploaded (PNG, JPEG, WebP, GIF or ICO, at most 1 MB).
+- "Symbol": one of a fixed set of symbols.
+- "None" / "Keines": a globe.
 
-#### Scenario: Remove the image
-- **WHEN** Ann removes the image, chooses the icon "Mail" and confirms
-- **THEN** the widget shows the "Mail" icon
+The settings dialog SHALL show the current icon and its kind on one button, and that button SHALL open a chooser with the four kinds as tabs, starting on the current one. The "Website icon" tab shows the favicon found for the URL, or says that none was found. The "Own image" tab uploads an image and shows upload errors translated. The "Symbol" tab shows the symbols as a grid with their translated names, which can be filtered by name and moved through with the arrow keys. A choice takes effect in the dialog right away; the chooser closes with "Done", Escape or a click outside. A layout whose icon is "Own image" without an image, or "Symbol" with an unknown symbol, is rejected with 400 and `invalid_layout`.
+
+#### Scenario: Website icon
+- **WHEN** Ann enters `https://github.com` as the URL of a new link widget
+- **THEN** the icon button shows GitHub's favicon, and so does the widget once she confirms
+
+#### Scenario: Website icon follows the favourite
+- **WHEN** the favourite behind a widget with the icon "Website icon" changes its URL from `https://gitlab.com` to `https://github.com`
+- **THEN** the widget shows GitHub's favicon
+
+#### Scenario: Own image
+- **WHEN** Ann opens the icon chooser, switches to "Own image", uploads a PNG and confirms the settings
+- **THEN** the widget shows that image
+
+#### Scenario: Unsupported upload
+- **WHEN** Ann uploads an SVG in the "Own image" tab
+- **THEN** the tab shows a translated message that the file type isn't supported, and the icon stays as it was
+
+#### Scenario: Symbol
+- **WHEN** Ann switches to "Symbol", types "mail" in the filter and chooses "Mail"
+- **THEN** the icon button and the widget show the Mail symbol
 
 ### Requirement: Link widget height
 A link widget SHALL always be as tall as its content. Its settings dialog SHALL NOT offer a height choice, and the server SHALL store a link widget with the height "auto", whatever height a layout sends for it.
@@ -70,7 +91,7 @@ A link widget SHALL always be as tall as its content. Its settings dialog SHALL 
 - **THEN** the widget is stored and returned with the height "auto"
 
 ### Requirement: Link widget rendering
-A link widget SHALL show its image if it has one, otherwise its icon, otherwise a globe icon. Next to it, it shows its title on the first line and its URL on the second, or only its URL when it has no title. Each line uses the available width and is cut off with "…" when it doesn't fit. The full title and URL are available as a tooltip. The size sets the icon size, the font size and the padding, on the same scale as the favourite explorer. Activating the widget opens the URL in a new tab or in the same tab, as set. In edit mode, activating it doesn't open the link.
+A link widget SHALL show its icon as chosen, and a globe for "None", for a website without a known favicon, or when an image can't be loaded. Next to it, it shows its title on the first line and its URL on the second, or only its URL when it has no title. Each line uses the available width and is cut off with "…" when it doesn't fit. The full title and URL are available as a tooltip. The size sets the icon size, the font size and the padding, on the same scale as the favourite explorer. Activating the widget opens the URL in a new tab or in the same tab, as set. In edit mode, activating it doesn't open the link.
 
 #### Scenario: With title
 - **WHEN** a widget has the title "Mail" and the URL `https://mail.example.org`
@@ -85,7 +106,7 @@ A link widget SHALL show its image if it has one, otherwise its icon, otherwise 
 - **THEN** the title fills the width and ends with "…"
 
 #### Scenario: Fallback icon
-- **WHEN** a widget has neither an image nor an icon
+- **WHEN** a widget's icon is "Website icon" and no favicon is known for its site
 - **THEN** it shows a globe icon
 
 #### Scenario: Same tab

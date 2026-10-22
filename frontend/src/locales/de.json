@@ -393,11 +393,6 @@
 				"urlLabel": "URL",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Ohne Titel wird der Titel des Favoriten gezeigt, oder nur die URL.",
-				"imageLabel": "Bild",
-				"upload": "Bild hochladen",
-				"removeImage": "Bild entfernen",
-				"iconLabel": "Symbol",
-				"iconNone": "Keines",
 				"icons": {
 					"book-open": "Buch",
 					"bookmark": "Lesezeichen",
@@ -454,7 +449,41 @@
 					"image_too_large": "Das Bild ist größer als 1 MB.",
 					"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal."
 				},
-				"newFavourite": "Neuer Favorit…"
+				"newFavourite": "Neuer Favorit…",
+				"iconChooser": {
+					"label": "Icon",
+					"button": "Icon: {{name}}",
+					"tabs": {
+						"favicon": "Website-Icon",
+						"image": "Eigenes Bild",
+						"symbol": "Symbol",
+						"none": "Keines"
+					},
+					"favicon": {
+						"noUrl": "Wähle zuerst einen Favoriten oder gib eine URL ein.",
+						"loading": "Website-Icon wird gesucht…",
+						"none": "Für {{host}} wurde kein Website-Icon gefunden. Stattdessen wird ein Globus gezeigt.",
+						"found": "Das Website-Icon von {{host}}. Es folgt dem Link, wenn er auf eine andere Website zeigt.",
+						"use": "Website-Icon verwenden"
+					},
+					"image": {
+						"hint": "PNG, JPEG, WebP, GIF oder ICO, höchstens 1 MB.",
+						"upload": "Bild hochladen",
+						"replace": "Anderes Bild hochladen",
+						"use": "Dieses Bild verwenden"
+					},
+					"symbol": {
+						"filter": "Symbole filtern",
+						"group": "Symbole",
+						"noMatches": "Kein Symbol passt."
+					},
+					"none": {
+						"text": "Das Widget zeigt einen Globus.",
+						"use": "Globus zeigen"
+					},
+					"inUse": "Wird verwendet",
+					"done": "Fertig"
+				}
 			}
 		}
 	}
