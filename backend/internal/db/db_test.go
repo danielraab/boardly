@@ -607,6 +607,9 @@ func TestAppTokensConstraints(t *testing.T) {
 	if _, err := db.Exec(token, "t1", "karakeep", []byte{1}, ts); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(token, "t4", "linkwarden", []byte{4}, ts); err != nil {
+		t.Fatal(err)
+	}
 	for name, args := range map[string][]any{
 		"unknown app":    {"t2", "pocket", []byte{2}, ts},
 		"duplicate hash": {"t3", "karakeep", []byte{1}, ts},
@@ -632,5 +635,78 @@ func TestAppTokensConstraints(t *testing.T) {
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM app_tokens`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("app_tokens = %d, err %v; want 0", n, err)
+	}
+}
+
+func TestIntIDsMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0011")); err != nil {
+		t.Fatalf("Migrate to 0011: %v", err)
+	}
+
+	const t1, t2 = "2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z"
+	node := `INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, created_at, updated_at)
+		VALUES (?, 'u1', ?, ?, 0, ?, ?, ?, ?)`
+	for _, q := range [][]any{
+		{`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?)`, t1, t1},
+		{node, "root", nil, "folder", nil, nil, t1, t1},
+		{node, "b", "root", "link", "B", "https://b.example", t2, t2},
+		{node, "a", "root", "folder", "A", nil, t1, t1},
+		{`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t2', 'u1', 'Two', 'two', ?), ('t1', 'u1', 'One', 'one', ?)`, t2, t1},
+	} {
+		if _, err := db.Exec(q[0].(string), q[1:]...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	nums := func(query string) map[string]int64 {
+		t.Helper()
+		rows, err := db.Query(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		out := map[string]int64{}
+		for rows.Next() {
+			var id string
+			var n int64
+			if err := rows.Scan(&id, &n); err != nil {
+				t.Fatal(err)
+			}
+			out[id] = n
+		}
+		return out
+	}
+	// Creation order, then ID for equal times.
+	if got := nums(`SELECT id, num FROM favourite_nodes`); got["a"] != 1 || got["root"] != 2 || got["b"] != 3 {
+		t.Fatalf("node nums = %v, want a=1 root=2 b=3", got)
+	}
+	if got := nums(`SELECT id, num FROM tags`); got["t1"] != 1 || got["t2"] != 2 {
+		t.Fatalf("tag nums = %v, want t1=1 t2=2", got)
+	}
+
+	// New rows continue after the highest number, also after it was deleted.
+	if _, err := db.Exec(`DELETE FROM favourite_nodes WHERE id = 'b'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(node, "c", "root", "folder", "C", nil, t2, t2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES ('t3', 'u1', 'Three', 'three', ?)`, t2); err != nil {
+		t.Fatal(err)
+	}
+	if got := nums(`SELECT id, num FROM favourite_nodes WHERE id = 'c'`); got["c"] != 4 {
+		t.Fatalf("new node num = %v, want 4", got)
+	}
+	if got := nums(`SELECT id, num FROM tags WHERE id = 't3'`); got["t3"] != 3 {
+		t.Fatalf("new tag num = %v, want 3", got)
 	}
 }

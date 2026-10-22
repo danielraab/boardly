@@ -93,3 +93,21 @@ func TestNormalizeTags(t *testing.T) {
 		t.Errorf("100 characters: %v", err)
 	}
 }
+
+func TestSameURL(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		want bool
+	}{
+		{"https://example.org/docs/", "https://example.org/docs#intro", true},
+		{"https://Example.org", "https://example.org/", true},
+		{"HTTPS://example.org/a", "https://example.org/a/", true},
+		{"https://example.org/a", "https://example.org/b", false},
+		{"https://example.org/a?x=1", "https://example.org/a?x=2", false},
+		{"http://example.org", "https://example.org", false},
+	} {
+		if got := SameURL(tc.a, tc.b); got != tc.want {
+			t.Errorf("SameURL(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}

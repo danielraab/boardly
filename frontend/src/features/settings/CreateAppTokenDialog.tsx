@@ -17,6 +17,7 @@ import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { ApiError } from "#/lib/api";
 import {
 	type AppTokenApp,
+	appNames,
 	appTokensQueryKey,
 	type CreatedAppToken,
 	createAppToken,
@@ -182,7 +183,11 @@ function FormStep({
 						onChange={(e) => setApp(e.target.value as AppTokenApp)}
 						className={textInput}
 					>
-						<option value="karakeep">Karakeep</option>
+						{(Object.keys(appNames) as AppTokenApp[]).map((id) => (
+							<option key={id} value={id}>
+								{appNames[id]}
+							</option>
+						))}
 					</select>
 				</div>
 				<div>

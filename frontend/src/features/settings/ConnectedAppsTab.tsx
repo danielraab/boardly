@@ -14,14 +14,13 @@ import { pathsOf } from "#/features/favourites/tree";
 import {
 	type AppToken,
 	type AppTokenStatus,
+	appNames,
 	appTokensQueryKey,
 	appTokensQueryOptions,
 	deleteAppToken,
 	revokeAppToken,
 } from "./appTokens/api";
 import { CreateAppTokenDialog } from "./CreateAppTokenDialog";
-
-export const appNames = { karakeep: "Karakeep" } as const;
 
 const badgeClass: Record<AppTokenStatus, string> = {
 	active: "bg-accent/15 text-ink",

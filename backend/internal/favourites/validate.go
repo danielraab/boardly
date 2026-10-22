@@ -56,6 +56,31 @@ func NormalizeURL(raw string) (string, error) {
 	return trimmed, nil
 }
 
+// SameURL reports whether a and b are the same page: they are compared without
+// the fragment and without a trailing slash of the path, and with the scheme
+// and host in lower case. Karakeep and Linkwarden clients use this to check
+// whether a page is already saved.
+func SameURL(a, b string) bool {
+	return comparableURL(a) == comparableURL(b)
+}
+
+func comparableURL(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return raw
+	}
+	u.Fragment, u.RawFragment = "", ""
+	u.Scheme, u.Host = strings.ToLower(u.Scheme), strings.ToLower(u.Host)
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	if len(u.Path) > 1 {
+		u.Path = strings.TrimSuffix(u.Path, "/")
+		u.RawPath = strings.TrimSuffix(u.RawPath, "/")
+	}
+	return u.String()
+}
+
 // NormalizeTags trims every name and drops later duplicates that differ only
 // in case. Empty names and names longer than MaxTagNameLength return ErrInvalidTag.
 func NormalizeTags(names []string) ([]string, error) {

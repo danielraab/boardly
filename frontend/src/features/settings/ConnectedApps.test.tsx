@@ -250,6 +250,51 @@ describe("create dialog", () => {
 		// Waiting for the copy button's 3 seconds needs more than the default timeout.
 	}, 15_000);
 
+	it("offers Linkwarden and shows its server address", async () => {
+		const { panel, user, api } = await openTab([]);
+		api.set({
+			"POST /api/app-tokens": ({ body }) => ({
+				status: 201,
+				body: {
+					...active,
+					...(body as object),
+					status: "active",
+					expiresAt: null,
+					secret: "famo_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+				},
+			}),
+		});
+		await user.click(
+			await within(panel).findByRole("button", { name: "Connect app" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		const appSelect = within(dialog).getByLabelText("App");
+		expect(
+			within(appSelect)
+				.getAllByRole("option")
+				.map((o) => o.textContent),
+		).toEqual(["Karakeep", "Linkwarden"]);
+
+		await user.selectOptions(appSelect, "linkwarden");
+		await user.type(within(dialog).getByLabelText("Name"), "Phone");
+		await user.click(
+			await within(dialog).findByRole("radio", { name: "Reading" }),
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Create key" }),
+		);
+
+		expect(
+			await within(dialog).findByRole("heading", { name: "App connected" }),
+		).toBeVisible();
+		expect(api.callsTo("POST", "/api/app-tokens")[0].body).toMatchObject({
+			app: "linkwarden",
+		});
+		expect(within(dialog).getByLabelText("Server address")).toHaveValue(
+			`${window.location.origin}/api/linkwarden`,
+		);
+	});
+
 	it("sends a preset expiry as a time in the future", async () => {
 		const { panel, user, api } = await openTab([]);
 		api.set({

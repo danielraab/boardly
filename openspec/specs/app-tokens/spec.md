@@ -1,16 +1,20 @@
 # app-tokens Specification
 
 ## Purpose
-App tokens let external apps such as the Karakeep browser extension and mobile app (and later Linkwarden clients) connect to Famodash with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
+App tokens let external apps such as the Karakeep browser extension and mobile app and the Linkwarden mobile app and browser extension connect to Famodash with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
 
 ## Requirements
 
 ### Requirement: App token properties
-An app token SHALL belong to one user and have a name, an app, a root folder, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder. A token's secret starts with `famo_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
+An app token SHALL belong to one user and have a name, an app, a root folder, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep` or `linkwarden`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder. A token's secret starts with `famo_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
 
 #### Scenario: Secret format
 - **WHEN** a token is created
 - **THEN** its secret starts with `famo_` and its prefix equals the first 12 characters of the secret
+
+#### Scenario: Linkwarden token
+- **WHEN** the user creates a token for the app `linkwarden`
+- **THEN** the server responds 201 and the token is listed with the app `linkwarden`
 
 ### Requirement: App token status
 A token's status SHALL be `revoked` when it has a revocation date, else `expired` when its expiry date has been reached, and `active` otherwise. Only active tokens authenticate requests.
@@ -98,7 +102,7 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 - **THEN** the token stays active
 
 ### Requirement: Create dialog
-The create dialog SHALL ask for a name, the app (only "Karakeep" for now, preselected), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<FAMODASH_BASE_URL>/api/karakeep`) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
+The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Linkwarden"), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<FAMODASH_BASE_URL>/api/karakeep` for Karakeep, `<FAMODASH_BASE_URL>/api/linkwarden` for Linkwarden) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
 
 #### Scenario: Show secret once
 - **WHEN** the user creates a token and closes the dialog
@@ -111,6 +115,10 @@ The create dialog SHALL ask for a name, the app (only "Karakeep" for now, presel
 #### Scenario: Default expiry
 - **WHEN** the user opens the create dialog
 - **THEN** "90 days" is selected as the expiry
+
+#### Scenario: Server address for Linkwarden
+- **WHEN** the user creates a token for "Linkwarden"
+- **THEN** the dialog shows the server address `<FAMODASH_BASE_URL>/api/linkwarden`
 
 ### Requirement: Karakeep tRPC transport
 The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchLink`, `superjson` transformer) to `<server address>/api/trpc`. Famodash SHALL answer these calls at `/api/karakeep/api/trpc/<procedures>?batch=1`, where `<procedures>` is a comma-separated list of procedure names such as `apiKeys.validate`. Queries are sent with `GET` and their inputs in the `input` query parameter; mutations are sent with `POST` and their inputs in the JSON body. In both cases the inputs are a JSON object keyed by the call's index (`"0"`, `"1"`, …), each value a superjson envelope `{"json": <value>, "meta"?: …}`; a missing key means no input. Dates in an input arrive as ISO 8601 strings in `json`, and Famodash SHALL accept them as such; `meta` is not needed to read an input. The response SHALL be a JSON array with one entry per procedure, in the request's order: `{"result": {"data": {"json": <output>}}}` on success, or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus", "path"}}}}` on failure, where `code` is the JSON-RPC number of the tRPC error code (for example `-32001` for `UNAUTHORIZED`, `-32004` for `NOT_FOUND`). When an output contains dates or maps, the result SHALL also carry superjson's `meta` (`{"json": …, "meta": {"values": {<path>: ["Date"] | ["map"]}}}`), with dates as ISO 8601 strings and maps as arrays of `[key, value]` pairs in `json`, so the clients get real `Date` and `Map` values. The HTTP status SHALL be the common status of all entries, or 207 when they differ. Only the procedures named in this and later changes are implemented; any other procedure answers with a `NOT_FOUND` error entry. A query sent with `POST`, or a mutation sent with `GET`, answers with a `METHOD_NOT_SUPPORTED` error entry. A request without `batch=1`, or whose `input` isn't valid JSON, answers 400 with a single `BAD_REQUEST` error entry.
@@ -132,7 +140,7 @@ The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchL
 - **THEN** the result's `json.createdAt` is `"2026-03-01T12:00:00.000Z"` and `meta.values` maps `createdAt` to `["Date"]`
 
 ### Requirement: Bearer authentication for app endpoints
-Requests to `/api/karakeep/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. The cross-site request check of the web app's API does not apply to these paths. Procedures and endpoints marked as public in this spec work without a token; every other procedure requires an active token for the Karakeep app. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL fail such a procedure with an `UNAUTHORIZED` error entry (HTTP status 401) with the same message in every case. A request authenticated by a token records the token's last use, at most once per minute.
+Requests to `/api/karakeep/` and `/api/linkwarden/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. The cross-site request check of the web app's API does not apply to these paths. Procedures and endpoints marked as public in this spec or in the app's spec work without a token; every other procedure or endpoint requires an active token for the app of its path: `karakeep` under `/api/karakeep/`, `linkwarden` under `/api/linkwarden/`. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL fail such a procedure with an `UNAUTHORIZED` error entry (HTTP status 401), and such a Linkwarden endpoint with 401 and `{"response": "You must be logged in."}`, with the same message in every case. A request authenticated by a token records the token's last use, at most once per minute.
 
 #### Scenario: Valid token
 - **WHEN** a client calls `users.whoami` with an active Karakeep token
@@ -154,12 +162,24 @@ Requests to `/api/karakeep/` SHALL be authenticated only by the header `Authoriz
 - **WHEN** a client makes its first request with a new token
 - **THEN** the token's last-used date in the list is set to about that time
 
+#### Scenario: Linkwarden endpoint with a Linkwarden token
+- **WHEN** the Linkwarden app calls `GET /api/linkwarden/api/v1/users/me` with an active Linkwarden token
+- **THEN** the call succeeds
+
+#### Scenario: Token for another app
+- **WHEN** a client calls `GET /api/linkwarden/api/v1/users/me` with an active Karakeep token
+- **THEN** the server responds 401 with `{"response": "You must be logged in."}`
+
 ### Requirement: CORS for app endpoints
-Responses on `/api/karakeep/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`. Preflight `OPTIONS` requests SHALL be answered with 204 before authentication, with the allowed methods `GET, POST` and the request headers the preflight asks for (`Access-Control-Request-Headers`), because the extension can add user-configured headers. The web app's other `/api/` endpoints are unchanged.
+Responses on `/api/karakeep/` and `/api/linkwarden/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`. Preflight `OPTIONS` requests SHALL be answered with 204 before authentication, with the allowed methods `GET, POST, PUT, DELETE` and the request headers the preflight asks for (`Access-Control-Request-Headers`), because the extensions can add user-configured headers. The web app's other `/api/` endpoints are unchanged.
 
 #### Scenario: Preflight from an extension
 - **WHEN** a request `OPTIONS /api/karakeep/api/trpc/users.whoami?batch=1` arrives with `Origin: chrome-extension://abc` and `Access-Control-Request-Headers: authorization,content-type`
 - **THEN** the server responds 204 with `Access-Control-Allow-Origin: *` and allows the headers `authorization,content-type`
+
+#### Scenario: Preflight for an update
+- **WHEN** a request `OPTIONS /api/linkwarden/api/v1/links/7` arrives with `Access-Control-Request-Method: PUT`
+- **THEN** the server responds 204 and allows the methods `GET, POST, PUT, DELETE`
 
 ### Requirement: Karakeep login procedures
 Famodash SHALL implement the procedures the extension and the mobile app need to log in:
@@ -197,7 +217,7 @@ Famodash SHALL implement the procedures the extension and the mobile app need to
 - **THEN** the server responds 404
 
 ### Requirement: Token subtree scope
-A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it. Nodes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. This applies to every procedure and endpoint under `/api/karakeep/`.
+A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it. Nodes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. This applies to every procedure and endpoint under `/api/karakeep/` and `/api/linkwarden/`.
 
 #### Scenario: Node outside the subtree
 - **WHEN** a token rooted at "Reading" asks for a link in "Work"

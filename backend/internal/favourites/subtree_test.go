@@ -1,6 +1,7 @@
 package favourites
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"testing"
@@ -132,5 +133,65 @@ func TestRenameAndDetachTag(t *testing.T) {
 	}
 	if _, err := f.s.TagLinkCount(f.ctx, f.user, dev); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unused tag still exists: %v", err)
+	}
+}
+
+func TestIntegerIDs(t *testing.T) {
+	f := newFixture(t)
+	reading := f.folder("", "Reading")
+	work := f.folder("", "Work")
+	goLink := f.link(reading, "Go", "dev")
+	nums := func() (map[string]int64, map[string]int64) {
+		t.Helper()
+		nodes, err := f.s.SubtreeNodes(f.ctx, Scope{UserID: f.user, RootID: f.tree().ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		byNode, byTag := map[string]int64{}, map[string]int64{}
+		for _, n := range nodes {
+			if n.Num <= 0 {
+				t.Errorf("%s has num %d", f.name(n.ID), n.Num)
+			}
+			byNode[n.ID] = n.Num
+			for _, tag := range n.Tags {
+				byTag[tag.Name] = tag.Num
+				if tag.CreatedAt.IsZero() {
+					t.Errorf("tag %s has no creation time", tag.Name)
+				}
+			}
+		}
+		return byNode, byTag
+	}
+	before, tags := nums()
+	if tags["dev"] <= 0 {
+		t.Fatalf("tag nums = %v", tags)
+	}
+
+	// Moving and renaming keeps the number.
+	if err := f.s.Move(f.ctx, f.user, goLink, work, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Update(f.ctx, f.user, goLink, Patch{Title: ptr("Golang")}); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := nums()
+	if after[goLink] != before[goLink] {
+		t.Errorf("num after move and rename = %d, want %d", after[goLink], before[goLink])
+	}
+
+	// Numbers aren't reused after the highest one is deleted.
+	if err := f.s.Delete(f.ctx, f.user, goLink, DeleteKeepNone); err != nil {
+		t.Fatal(err)
+	}
+	next := f.link(reading, "Rust")
+	latest, _ := nums()
+	if latest[next] <= before[goLink] {
+		t.Errorf("new num %d, want more than the deleted %d", latest[next], before[goLink])
+	}
+
+	// The web API doesn't show integer IDs.
+	data, err := json.Marshal(Tag{ID: "t", Name: "dev", Num: 3})
+	if err != nil || string(data) != `{"id":"t","name":"dev"}` {
+		t.Errorf("tag JSON = %s, err %v", data, err)
 	}
 }
