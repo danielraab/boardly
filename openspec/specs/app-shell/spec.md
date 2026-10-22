@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines the global frame around every Boardly page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
+
 ## Requirements
+
 ### Requirement: Global header
 Every page SHALL show a header with the app icon and the product name "Boardly" on the left, together linking to `/`, and on the right, in this order, the theme switcher, the language switcher and the user avatar. The app icon comes directly before the product name, is drawn in the theme's text colour with the rose star as its only other colour, and is hidden from assistive technology so the link's accessible name stays "Boardly". On dashboard pages, the dashboard switcher (see the `dashboards` capability) appears right after the product name, separated from it by a slash.
 
@@ -108,3 +110,33 @@ Every page SHALL declare the app icon as its favicon, as an SVG file served by t
 - **WHEN** the browser uses a dark colour scheme
 - **THEN** the favicon's outline is drawn in a light colour and remains visible on the dark tab bar
 
+### Requirement: Document title
+The document title (shown in the browser tab) SHALL be `<page title> - Boardly` on every page that has a page title, where the page title is the translated text of the page's main heading. On dashboard pages, including `/` when it shows the default dashboard, the page title SHALL be the dashboard's title. Pages without a page title of their own (the landing page, the signed-in start page without a default dashboard, and pages while they load) SHALL have the title "Boardly". The title SHALL update when the visitor navigates, when the language changes and when the shown dashboard's title changes.
+
+#### Scenario: App page
+- **WHEN** a signed-in user opens `/settings` in English
+- **THEN** the document title is "Settings - Boardly"
+
+#### Scenario: Dashboard page
+- **WHEN** a user opens `/<user-slug>/work` for the dashboard "Work"
+- **THEN** the document title is "Work - Boardly"
+
+#### Scenario: Default dashboard on the start page
+- **WHEN** a signed-in user whose default dashboard is "Home" opens `/`
+- **THEN** the document title is "Home - Boardly"
+
+#### Scenario: Landing page
+- **WHEN** a signed-out visitor opens `/`
+- **THEN** the document title is "Boardly"
+
+#### Scenario: Navigation
+- **WHEN** a signed-in user on `/favourites` follows a link to `/dashboards`
+- **THEN** the document title changes from "Favourites - Boardly" to "Dashboards - Boardly"
+
+#### Scenario: Language change
+- **WHEN** a user on `/favourites` switches the language from English to German
+- **THEN** the document title changes to "Favoriten - Boardly"
+
+#### Scenario: Not-found page
+- **WHEN** a visitor opens `/no/such/page` in English
+- **THEN** the document title is "Page not found - Boardly"

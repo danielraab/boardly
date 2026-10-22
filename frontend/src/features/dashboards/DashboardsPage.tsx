@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { useMe } from "#/features/auth/session";
+import { usePageTitle } from "#/lib/usePageTitle";
 import { type Dashboard, dashboardsQueryOptions } from "./api";
 import { DashboardDialog, type DashboardDialogTarget } from "./DashboardDialog";
 import { DeleteDashboardDialog } from "./DeleteDashboardDialog";
@@ -21,6 +22,7 @@ export function DashboardsPage({
 	onCreateOpened: () => void;
 }) {
 	const { t } = useTranslation();
+	usePageTitle(t("dashboards.title"));
 	const { data: me } = useMe();
 	const list = useQuery({ ...dashboardsQueryOptions, enabled: !!me });
 	const [editing, setEditing] = useState<DashboardDialogTarget | null>(null);

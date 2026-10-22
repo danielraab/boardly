@@ -10,6 +10,7 @@ import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChange
 import { SlugField, type SlugProblem } from "#/features/dashboards/SlugField";
 import { slugError } from "#/features/dashboards/slug";
 import { ApiError, api } from "#/lib/api";
+import { usePageTitle } from "#/lib/usePageTitle";
 import { ConnectedAppsTab } from "./ConnectedAppsTab";
 import { PasskeysTab } from "./PasskeysTab";
 
@@ -26,6 +27,7 @@ export function SettingsPage({
 	onTabChange: (tab: SettingsTab) => void;
 }) {
 	const { t } = useTranslation();
+	usePageTitle(t("settings.title"));
 	const { data: me } = useMe();
 	// The session can end while the page is open (401 from any request).
 	if (me === null) return <Navigate to="/login" />;
