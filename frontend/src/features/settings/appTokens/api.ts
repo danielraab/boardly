@@ -1,7 +1,13 @@
 import { queryOptions } from "@tanstack/react-query";
 import { api } from "#/lib/api";
 
-export type AppTokenApp = "karakeep";
+export type AppTokenApp = "karakeep" | "linkwarden";
+
+/** The apps' product names, which aren't translated. */
+export const appNames: Record<AppTokenApp, string> = {
+	karakeep: "Karakeep",
+	linkwarden: "Linkwarden",
+};
 
 export type AppTokenStatus = "active" | "expired" | "revoked";
 

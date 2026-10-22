@@ -310,3 +310,30 @@ func (d *fakePublic) DialContext(ctx context.Context, network, addr string) (net
 	}
 	return d.guard.DialContext(ctx, network, addr)
 }
+
+func TestLookupImages(t *testing.T) {
+	ctx := context.Background()
+	f, _ := newFavicons(t, true)
+	pngSite := newSite(t, map[string]func(http.ResponseWriter, *http.Request){"/favicon.ico": file(pngData)})
+	icoSite := newSite(t, map[string]func(http.ResponseWriter, *http.Request){"/favicon.ico": file(icoData)})
+	pngID, err := f.Get(ctx, pngSite.URL+"/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	icoID, err := f.Get(ctx, icoSite.URL+"/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := f.LookupImages(ctx, []string{pngSite.URL, icoSite.URL, "https://unknown.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]FaviconImage{
+		pngSite.URL: {ID: pngID, ContentType: "image/png"},
+		icoSite.URL: {ID: icoID, ContentType: "image/x-icon"},
+	}
+	if len(got) != len(want) || got[pngSite.URL] != want[pngSite.URL] || got[icoSite.URL] != want[icoSite.URL] {
+		t.Fatalf("LookupImages = %v, want %v", got, want)
+	}
+}

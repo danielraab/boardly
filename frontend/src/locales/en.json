@@ -68,8 +68,8 @@
 			"description": "Keep all your bookmarks in one tree of folders and links."
 		},
 		"karakeep": {
-			"title": "Karakeep apps",
-			"description": "Save links from the Karakeep browser extensions and mobile apps."
+			"title": "Karakeep and Linkwarden apps",
+			"description": "Save links from the Karakeep and Linkwarden browser extensions and mobile apps."
 		}
 	},
 	"common": {
@@ -107,10 +107,10 @@
 			"apps": "Connected apps"
 		},
 		"apps": {
-			"intro": "Connect apps such as the Karakeep browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it.",
+			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it.",
 			"connect": "Connect app",
 			"emptyTitle": "No connected apps yet",
-			"emptyText": "Connect a Karakeep app to save links straight into a folder of your favourites. The app only sees that folder and what's inside it.",
+			"emptyText": "Connect a Karakeep or Linkwarden app to save links straight into a folder of your favourites. The app only sees that folder and what's inside it.",
 			"deletedFolder": "Deleted folder",
 			"status": {
 				"active": "Active",

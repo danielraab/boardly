@@ -68,8 +68,8 @@
 			"description": "Alle Lesezeichen in einem Baum aus Ordnern und Links."
 		},
 		"karakeep": {
-			"title": "Karakeep-Apps",
-			"description": "Speichere Links aus den Karakeep-Browsererweiterungen und Mobil-Apps."
+			"title": "Karakeep- und Linkwarden-Apps",
+			"description": "Speichere Links aus den Browsererweiterungen und Mobil-Apps von Karakeep und Linkwarden."
 		}
 	},
 	"common": {
@@ -107,10 +107,10 @@
 			"apps": "Verbundene Apps"
 		},
 		"apps": {
-			"intro": "Verbinde Apps wie die Karakeep-Browsererweiterung oder die Karakeep-App mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst.",
+			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst.",
 			"connect": "App verbinden",
 			"emptyTitle": "Noch keine verbundenen Apps",
-			"emptyText": "Verbinde eine Karakeep-App, um Links direkt in einem Ordner deiner Favoriten zu speichern. Die App sieht nur diesen Ordner und seinen Inhalt.",
+			"emptyText": "Verbinde eine Karakeep- oder Linkwarden-App, um Links direkt in einem Ordner deiner Favoriten zu speichern. Die App sieht nur diesen Ordner und seinen Inhalt.",
 			"deletedFolder": "Gelöschter Ordner",
 			"status": {
 				"active": "Aktiv",

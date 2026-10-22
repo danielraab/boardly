@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -193,32 +192,13 @@ func matches(l *favourites.ScopedNode, term string) bool {
 	return slices.ContainsFunc(l.Tags, func(t favourites.Tag) bool { return strings.Contains(strings.ToLower(t.Name), term) })
 }
 
-// normalizeURL drops the fragment and a trailing slash of the path, as
-// Karakeep does when it checks whether a URL is already saved.
-func normalizeURL(raw string) string {
-	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil {
-		return raw
-	}
-	u.Fragment, u.RawFragment = "", ""
-	u.Scheme, u.Host = strings.ToLower(u.Scheme), strings.ToLower(u.Host)
-	if u.Path == "" {
-		u.Path = "/"
-	}
-	if len(u.Path) > 1 {
-		u.Path = strings.TrimSuffix(u.Path, "/")
-		u.RawPath = strings.TrimSuffix(u.RawPath, "/")
-	}
-	return u.String()
-}
-
-// findURL returns a link of the subtree with the same normalized URL, or nil.
+// findURL returns a link of the subtree with the same URL (see
+// favourites.SameURL), or nil.
 func (t *tree) findURL(raw string) *favourites.ScopedNode {
-	want := normalizeURL(raw)
 	links := t.links()
 	sortLinks(links, false)
 	for _, l := range links {
-		if normalizeURL(*l.URL) == want {
+		if favourites.SameURL(*l.URL, raw) {
 			return l
 		}
 	}

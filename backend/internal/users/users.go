@@ -22,6 +22,9 @@ type User struct {
 	Email string  `json:"email"`
 	Name  *string `json:"name"`
 	Slug  string  `json:"slug"`
+	// CreatedAt and UpdatedAt are for connected apps; the web API leaves them out.
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
 }
 
 // ErrNotFound is returned when no user matches.
@@ -53,7 +56,7 @@ func NewStore(database *sql.DB) *Store {
 	return &Store{DB: database, Now: time.Now, GenerateSlug: slugs.Generate}
 }
 
-const columns = `id, email, name, slug`
+const columns = `id, email, name, slug, created_at, updated_at`
 
 // EnsureByEmail returns the user with the (already normalized) email,
 // creating the account first if none exists. q may be a transaction.
@@ -178,10 +181,18 @@ func NormalizeName(name *string) (*string, error) {
 func scan(row *sql.Row) (User, error) {
 	var u User
 	var name, slug sql.NullString
-	if err := row.Scan(&u.ID, &u.Email, &name, &slug); err != nil {
+	var created, updated string
+	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, ErrNotFound
 		}
+		return User{}, err
+	}
+	var err error
+	if u.CreatedAt, err = db.ParseTime(created); err != nil {
+		return User{}, err
+	}
+	if u.UpdatedAt, err = db.ParseTime(updated); err != nil {
 		return User{}, err
 	}
 	if name.Valid {
