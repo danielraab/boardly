@@ -1,8 +1,8 @@
-{{define "subject"}}Your Famodash sign-in link{{end}}
+{{define "subject"}}Your Boardly sign-in link{{end}}
 {{define "body"}}
 Hello,
 
-use this link to sign in to Famodash. It opens Famodash in this browser:
+use this link to sign in to Boardly. It opens Boardly in this browser:
 
 {{.Link}}
 
@@ -14,5 +14,5 @@ The link and the code are valid for {{.ValidMinutes}} minutes and can be used on
 
 If you didn't request this email, you can ignore it. Nobody can sign in without the link or the code.
 
-– Famodash
+– Boardly
 {{end}}

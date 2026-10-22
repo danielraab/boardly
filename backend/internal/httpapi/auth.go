@@ -10,22 +10,22 @@ import (
 	"strconv"
 	"time"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/auth"
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/ratelimit"
-	"famodash/internal/users"
+	"boardly/internal/apptokens"
+	"boardly/internal/auth"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/ratelimit"
+	"boardly/internal/users"
 )
 
 // SessionCookie is the name of the session cookie.
-const SessionCookie = "famodash_session"
+const SessionCookie = "boardly_session"
 
 // LoginRequestCookie binds sign-in links to the browser that requested them.
 // It is only sent to the magic-link endpoints.
 const (
-	LoginRequestCookie = "famodash_login_request"
+	LoginRequestCookie = "boardly_login_request"
 	loginRequestPath   = "/api/auth/magic-link"
 )
 

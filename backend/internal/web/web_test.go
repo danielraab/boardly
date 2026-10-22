@@ -11,7 +11,7 @@ var built = fstest.MapFS{
 	"index.html":              {Data: []byte("<html>app</html>")},
 	"assets/app-abc.js":       {Data: []byte("console.log(1)")},
 	"favicon.ico":             {Data: []byte("ico")},
-	"manifest.en.webmanifest": {Data: []byte(`{"name":"Famodash"}`)},
+	"manifest.en.webmanifest": {Data: []byte(`{"name":"Boardly"}`)},
 	"assets/nested/x.js":      {Data: []byte("x")},
 }
 
@@ -46,7 +46,7 @@ func TestServesAssetWithLongCache(t *testing.T) {
 
 func TestServesManifestAsManifestJSON(t *testing.T) {
 	rec := get(NewHandler(built), http.MethodGet, "/manifest.en.webmanifest")
-	if rec.Code != http.StatusOK || rec.Body.String() != `{"name":"Famodash"}` {
+	if rec.Code != http.StatusOK || rec.Body.String() != `{"name":"Boardly"}` {
 		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
 	}
 	if ct := rec.Header().Get("Content-Type"); ct != "application/manifest+json" {

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 // KindFavouriteExplorer shows a folder of the owner's favourites as a tree.

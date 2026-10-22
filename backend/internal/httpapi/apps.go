@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"famodash/internal/apptokens"
+	"boardly/internal/apptokens"
 )
 
 type appTokenKey struct{}

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"famodash/internal/images"
+	"boardly/internal/images"
 )
 
 // Cache lifetimes of served images. An upload's bytes never change; a

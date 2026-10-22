@@ -75,9 +75,9 @@ func TestRunHealthcheckNeedsOnlyPort(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Only FAMODASH_PORT is set; FAMODASH_BASE_URL is missing on purpose.
+	// Only BOARDLY_PORT is set; BOARDLY_BASE_URL is missing on purpose.
 	lookup := func(k string) (string, bool) {
-		if k == "FAMODASH_PORT" {
+		if k == "BOARDLY_PORT" {
 			return u.Port(), true
 		}
 		return "", false
@@ -89,7 +89,7 @@ func TestRunHealthcheckNeedsOnlyPort(t *testing.T) {
 
 func TestRunHealthcheckInvalidPort(t *testing.T) {
 	lookup := func(k string) (string, bool) {
-		if k == "FAMODASH_PORT" {
+		if k == "BOARDLY_PORT" {
 			return "abc", true
 		}
 		return "", false

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 export function storageKey(widgetId: string) {
-	return `famodash.explorer.${widgetId}`;
+	return `boardly.explorer.${widgetId}`;
 }
 
 function read(widgetId: string): Set<string> {

@@ -432,7 +432,7 @@ describe("delete with connected apps", () => {
 		id,
 		name: id,
 		app: "karakeep",
-		prefix: "famo_ABCDEFG",
+		prefix: "bdly_ABCDEFG",
 		rootId,
 		createdAt: "2026-02-01T10:00:00Z",
 		lastUsedAt: null,

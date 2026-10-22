@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"time"
 
-	"famodash/internal/db"
-	famomail "famodash/internal/mail"
-	"famodash/internal/users"
+	"boardly/internal/db"
+	boardlymail "boardly/internal/mail"
+	"boardly/internal/users"
 )
 
 // LinkTTL is how long a sign-in link stays valid.
@@ -54,7 +54,7 @@ var ErrConfirmationRequired = errors.New("confirmation required")
 // secret to set as the cookie (the given one, or a new one).
 func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, browserSecret string) (string, error) {
 	if !supportedLocales[locale] {
-		locale = famomail.DefaultLocale
+		locale = boardlymail.DefaultLocale
 	}
 	now := s.Now()
 
@@ -89,7 +89,7 @@ func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, brow
 		return "", fmt.Errorf("storing token: %w", err)
 	}
 
-	msg, err := famomail.RenderMagicLink(locale, email, famomail.MagicLinkData{
+	msg, err := boardlymail.RenderMagicLink(locale, email, boardlymail.MagicLinkData{
 		Link:         s.BaseURL.String() + "/login/verify#token=" + token,
 		Code:         FormatCode(code),
 		ValidMinutes: int(LinkTTL / time.Minute),

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 // KindLinkList shows the links of a folder of the owner's favourites as a list.

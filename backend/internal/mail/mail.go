@@ -9,7 +9,7 @@ import (
 
 	gomail "github.com/wneessen/go-mail"
 
-	"famodash/internal/config"
+	"boardly/internal/config"
 )
 
 // Message is a plain-text email with an HTML alternative.
@@ -29,7 +29,7 @@ type Sender interface {
 // In that case it logs a warning that mail delivery is disabled.
 func New(cfg config.SMTP) Sender {
 	if cfg.Host == "" {
-		slog.Warn("mail delivery is disabled (FAMODASH_SMTP_HOST is not set); sign-in links are written to the log")
+		slog.Warn("mail delivery is disabled (BOARDLY_SMTP_HOST is not set); sign-in links are written to the log")
 		return LogSender{}
 	}
 	return &SMTPSender{cfg: cfg}

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // Session lifetime: it expires after SessionTTL without use, and use extends

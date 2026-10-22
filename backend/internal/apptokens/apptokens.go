@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // App is the kind of client a token is for. It decides which endpoints accept it.
@@ -39,7 +39,7 @@ const (
 )
 
 // SecretPrefix starts every secret, so leaked tokens are easy to recognise.
-const SecretPrefix = "famo_"
+const SecretPrefix = "bdly_"
 
 // PrefixLength is how many characters of the secret are kept as the token's
 // public prefix.

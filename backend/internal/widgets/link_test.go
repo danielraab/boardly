@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 func link(config string) dashboards.Widget {

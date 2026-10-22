@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 // KindLink shows one link, from the owner's favourites or a plain URL.

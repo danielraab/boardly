@@ -1,4 +1,4 @@
-// Package config reads the server configuration from FAMODASH_* environment variables.
+// Package config reads the server configuration from BOARDLY_* environment variables.
 package config
 
 import (
@@ -54,7 +54,7 @@ type SMTP struct {
 }
 
 // Load builds a Config from the given environment lookup (usually os.LookupEnv).
-// Unset optional variables get their defaults; a missing FAMODASH_BASE_URL or an
+// Unset optional variables get their defaults; a missing BOARDLY_BASE_URL or an
 // invalid value returns an error naming the variable.
 func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	getenv := func(key string) string {
@@ -62,12 +62,12 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		return v
 	}
 	cfg := Config{
-		DBPath:    "./data/famodash.db",
+		DBPath:    "./data/boardly.db",
 		LogFormat: "json",
 		DataDir:   "./data",
 		SMTP: SMTP{
 			Port: 587,
-			From: "Famodash <noreply@localhost>",
+			From: "Boardly <noreply@localhost>",
 			TLS:  "starttls",
 		},
 	}
@@ -78,80 +78,80 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.Port = port
 
-	if v := getenv("FAMODASH_DB_PATH"); v != "" {
+	if v := getenv("BOARDLY_DB_PATH"); v != "" {
 		cfg.DBPath = v
 	}
 
-	if v := getenv("FAMODASH_DATA_DIR"); v != "" {
+	if v := getenv("BOARDLY_DATA_DIR"); v != "" {
 		cfg.DataDir = v
 	}
 
-	if v := getenv("FAMODASH_LOG_FORMAT"); v != "" {
+	if v := getenv("BOARDLY_LOG_FORMAT"); v != "" {
 		if v != "json" && v != "text" {
-			return Config{}, fmt.Errorf("FAMODASH_LOG_FORMAT: %q must be \"json\" or \"text\"", v)
+			return Config{}, fmt.Errorf("BOARDLY_LOG_FORMAT: %q must be \"json\" or \"text\"", v)
 		}
 		cfg.LogFormat = v
 	}
 
-	baseURL := getenv("FAMODASH_BASE_URL")
+	baseURL := getenv("BOARDLY_BASE_URL")
 	if baseURL == "" {
-		return Config{}, fmt.Errorf("FAMODASH_BASE_URL: required, set it to the public URL of the web app (e.g. https://dash.example.org)")
+		return Config{}, fmt.Errorf("BOARDLY_BASE_URL: required, set it to the public URL of the web app (e.g. https://dash.example.org)")
 	}
 	u, err := parseBaseURL(baseURL)
 	if err != nil {
-		return Config{}, fmt.Errorf("FAMODASH_BASE_URL: %w", err)
+		return Config{}, fmt.Errorf("BOARDLY_BASE_URL: %w", err)
 	}
 	cfg.BaseURL = u
 
-	cfg.SMTP.Host = getenv("FAMODASH_SMTP_HOST")
-	if v := getenv("FAMODASH_SMTP_PORT"); v != "" {
+	cfg.SMTP.Host = getenv("BOARDLY_SMTP_HOST")
+	if v := getenv("BOARDLY_SMTP_PORT"); v != "" {
 		port, err := parsePort(v)
 		if err != nil {
-			return Config{}, fmt.Errorf("FAMODASH_SMTP_PORT: %w", err)
+			return Config{}, fmt.Errorf("BOARDLY_SMTP_PORT: %w", err)
 		}
 		cfg.SMTP.Port = port
 	}
-	cfg.SMTP.Username = getenv("FAMODASH_SMTP_USERNAME")
-	cfg.SMTP.Password = getenv("FAMODASH_SMTP_PASSWORD")
-	if v := getenv("FAMODASH_SMTP_FROM"); v != "" {
+	cfg.SMTP.Username = getenv("BOARDLY_SMTP_USERNAME")
+	cfg.SMTP.Password = getenv("BOARDLY_SMTP_PASSWORD")
+	if v := getenv("BOARDLY_SMTP_FROM"); v != "" {
 		cfg.SMTP.From = v
 	}
-	if v := getenv("FAMODASH_SMTP_TLS"); v != "" {
+	if v := getenv("BOARDLY_SMTP_TLS"); v != "" {
 		if v != "starttls" && v != "tls" && v != "none" {
-			return Config{}, fmt.Errorf("FAMODASH_SMTP_TLS: %q must be \"starttls\", \"tls\" or \"none\"", v)
+			return Config{}, fmt.Errorf("BOARDLY_SMTP_TLS: %q must be \"starttls\", \"tls\" or \"none\"", v)
 		}
 		cfg.SMTP.TLS = v
 	}
 
-	if v := getenv("FAMODASH_TRUST_PROXY_HEADERS"); v != "" {
+	if v := getenv("BOARDLY_TRUST_PROXY_HEADERS"); v != "" {
 		b, err := strconv.ParseBool(v)
 		if err != nil {
-			return Config{}, fmt.Errorf("FAMODASH_TRUST_PROXY_HEADERS: %q must be \"true\" or \"false\"", v)
+			return Config{}, fmt.Errorf("BOARDLY_TRUST_PROXY_HEADERS: %q must be \"true\" or \"false\"", v)
 		}
 		cfg.TrustProxyHeaders = b
 	}
 
-	if v := getenv("FAMODASH_FETCH_ALLOW_PRIVATE"); v != "" {
+	if v := getenv("BOARDLY_FETCH_ALLOW_PRIVATE"); v != "" {
 		b, err := strconv.ParseBool(v)
 		if err != nil {
-			return Config{}, fmt.Errorf("FAMODASH_FETCH_ALLOW_PRIVATE: %q must be \"true\" or \"false\"", v)
+			return Config{}, fmt.Errorf("BOARDLY_FETCH_ALLOW_PRIVATE: %q must be \"true\" or \"false\"", v)
 		}
 		cfg.FetchAllowPrivate = b
 	}
 
 	cfg.WebAuthnRPID = cfg.BaseURL.Hostname()
-	if v := getenv("FAMODASH_WEBAUTHN_RP_ID"); v != "" {
+	if v := getenv("BOARDLY_WEBAUTHN_RP_ID"); v != "" {
 		if !isRegistrableSuffix(cfg.BaseURL.Hostname(), v) {
-			return Config{}, fmt.Errorf("FAMODASH_WEBAUTHN_RP_ID: %q must be the host name of FAMODASH_BASE_URL or a parent domain of it", v)
+			return Config{}, fmt.Errorf("BOARDLY_WEBAUTHN_RP_ID: %q must be the host name of BOARDLY_BASE_URL or a parent domain of it", v)
 		}
 		cfg.WebAuthnRPID = v
 	}
 
 	cfg.AAGUIDListURL = DefaultAAGUIDListURL
-	if v, ok := lookupEnv("FAMODASH_AAGUID_LIST_URL"); ok {
+	if v, ok := lookupEnv("BOARDLY_AAGUID_LIST_URL"); ok {
 		if v != "" {
 			if u, err := url.Parse(v); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-				return Config{}, fmt.Errorf("FAMODASH_AAGUID_LIST_URL: %q must be an absolute http(s) URL or empty", v)
+				return Config{}, fmt.Errorf("BOARDLY_AAGUID_LIST_URL: %q must be an absolute http(s) URL or empty", v)
 			}
 		}
 		cfg.AAGUIDListURL = v
@@ -160,16 +160,16 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	return cfg, nil
 }
 
-// LoadPort reads only FAMODASH_PORT (default 8080), for commands that don't
+// LoadPort reads only BOARDLY_PORT (default 8080), for commands that don't
 // need the full configuration, such as the health check.
 func LoadPort(lookupEnv func(string) (string, bool)) (int, error) {
-	v, _ := lookupEnv("FAMODASH_PORT")
+	v, _ := lookupEnv("BOARDLY_PORT")
 	if v == "" {
 		return 8080, nil
 	}
 	port, err := parsePort(v)
 	if err != nil {
-		return 0, fmt.Errorf("FAMODASH_PORT: %w", err)
+		return 0, fmt.Errorf("BOARDLY_PORT: %w", err)
 	}
 	return port, nil
 }

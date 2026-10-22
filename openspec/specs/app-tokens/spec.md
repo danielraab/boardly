@@ -1,7 +1,7 @@
 # app-tokens Specification
 
 ## Purpose
-App tokens let external apps such as the Karakeep browser extension and mobile app and the Linkwarden mobile app and browser extension connect to Famodash with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
+App tokens let external apps such as the Karakeep browser extension and mobile app and the Linkwarden mobile app and browser extension connect to Boardly with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
 
 ## Requirements
 

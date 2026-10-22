@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // MaxSize is the largest image in bytes, for uploads and favicons alike.

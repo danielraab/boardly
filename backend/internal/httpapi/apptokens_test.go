@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/apptokens"
+	"boardly/internal/apptokens"
 )
 
 type createdToken struct {

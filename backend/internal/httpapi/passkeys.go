@@ -6,12 +6,12 @@ import (
 	"io"
 	"net/http"
 
-	"famodash/internal/auth"
+	"boardly/internal/auth"
 )
 
 // WebAuthnCookie carries the challenge of a running passkey ceremony.
 const (
-	WebAuthnCookie = "famodash_webauthn"
+	WebAuthnCookie = "boardly_webauthn"
 	webAuthnPath   = "/api"
 )
 

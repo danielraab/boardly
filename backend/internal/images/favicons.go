@@ -17,8 +17,8 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/sync/singleflight"
 
-	"famodash/internal/db"
-	"famodash/internal/favourites"
+	"boardly/internal/db"
+	"boardly/internal/favourites"
 )
 
 // Limits of the favicon fetcher.
@@ -424,7 +424,7 @@ func (f *Favicons) get(ctx context.Context, rawURL, accept string) (*http.Respon
 		return nil, err
 	}
 	req.Header.Set("Accept", accept)
-	req.Header.Set("User-Agent", "Famodash favicon fetcher")
+	req.Header.Set("User-Agent", "Boardly favicon fetcher")
 	return f.Client.Do(req)
 }
 

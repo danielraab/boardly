@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 func decodeJSONBody[T any](t *testing.T, rec *httptest.ResponseRecorder) T {

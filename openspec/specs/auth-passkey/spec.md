@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets users sign in to Famodash with passkeys (WebAuthn discoverable credentials) and manage them: adding a passkey within a short window after an email sign-in, seeing which provider holds it, and deleting it.
+Lets users sign in to Boardly with passkeys (WebAuthn discoverable credentials) and manage them: adding a passkey within a short window after an email sign-in, seeing which provider holds it, and deleting it.
 
 ## Requirements
 

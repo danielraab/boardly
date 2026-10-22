@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"famodash/internal/aaguid"
-	"famodash/internal/auth"
-	"famodash/internal/webauthntest"
+	"boardly/internal/aaguid"
+	"boardly/internal/auth"
+	"boardly/internal/webauthntest"
 )
 
 // gpmAAGUID is Google Password Manager in the aaguid test fixture.

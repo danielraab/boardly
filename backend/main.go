@@ -1,5 +1,5 @@
-// Command famodash runs the Famodash server: the REST API and the embedded web app.
-// `famodash healthcheck` checks a running server and exits 0 if it is healthy.
+// Command boardly runs the Boardly server: the REST API and the embedded web app.
+// `boardly healthcheck` checks a running server and exits 0 if it is healthy.
 package main
 
 import (
@@ -15,19 +15,19 @@ import (
 	"syscall"
 	"time"
 
-	"famodash/internal/aaguid"
-	"famodash/internal/apptokens"
-	"famodash/internal/auth"
-	"famodash/internal/config"
-	"famodash/internal/dashboards"
-	"famodash/internal/db"
-	"famodash/internal/favourites"
-	"famodash/internal/httpapi"
-	"famodash/internal/images"
-	"famodash/internal/mail"
-	"famodash/internal/users"
-	"famodash/internal/web"
-	"famodash/internal/widgets"
+	"boardly/internal/aaguid"
+	"boardly/internal/apptokens"
+	"boardly/internal/auth"
+	"boardly/internal/config"
+	"boardly/internal/dashboards"
+	"boardly/internal/db"
+	"boardly/internal/favourites"
+	"boardly/internal/httpapi"
+	"boardly/internal/images"
+	"boardly/internal/mail"
+	"boardly/internal/users"
+	"boardly/internal/web"
+	"boardly/internal/widgets"
 )
 
 func main() {

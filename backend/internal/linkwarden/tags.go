@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // Sort orders of tags (Linkwarden's TagSort).
@@ -129,6 +129,6 @@ func (s *Service) DeleteTag(ctx context.Context, sc favourites.Scope, num int64)
 	return info.tag(), nil
 }
 
-// CreateTag is POST /api/v1/tags, which Famodash refuses: a tag only exists
+// CreateTag is POST /api/v1/tags, which Boardly refuses: a tag only exists
 // while a link has it.
 func (s *Service) CreateTag() error { return ErrTagCreate }

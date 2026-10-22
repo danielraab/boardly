@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"famodash/internal/config"
+	"boardly/internal/config"
 )
 
 const healthcheckTimeout = 3 * time.Second
 
-// runHealthcheck checks the server on the local host at FAMODASH_PORT. It reads
+// runHealthcheck checks the server on the local host at BOARDLY_PORT. It reads
 // no other setting, so an unrelated configuration problem doesn't turn into a
 // misleading health result.
 func runHealthcheck(lookupEnv func(string) (string, bool)) error {

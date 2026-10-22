@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // UnusedUploadAge is how long an upload may stay unused, so one made for a

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"famodash/internal/favourites"
-	"famodash/internal/trpc"
+	"boardly/internal/favourites"
+	"boardly/internal/trpc"
 )
 
 // Paging limits, as in Karakeep.
@@ -116,7 +116,7 @@ func (s *Service) Bookmarks(ctx context.Context, sc favourites.Scope, in Bookmar
 			return !slices.ContainsFunc(l.Tags, func(tag favourites.Tag) bool { return tag.ID == in.TagID })
 		})
 	}
-	// Nothing in Famodash is archived or favourited.
+	// Nothing in Boardly is archived or favourited.
 	if (in.Archived != nil && *in.Archived) || (in.Favourited != nil && *in.Favourited) {
 		links = nil
 	}
@@ -223,7 +223,7 @@ func (s *Service) GetBookmark(ctx context.Context, sc favourites.Scope, id strin
 }
 
 // CreateBookmarkInput is the input of bookmarks.createBookmark. Fields that
-// Famodash ignores (source, crawlPriority, createdAt, …) aren't decoded.
+// Boardly ignores (source, crawlPriority, createdAt, …) aren't decoded.
 type CreateBookmarkInput struct {
 	Type       string  `json:"type"`
 	URL        string  `json:"url"`
@@ -244,7 +244,7 @@ type CreatedBookmark struct {
 // token's root folder, or the existing bookmark with the same URL.
 func (s *Service) CreateBookmark(ctx context.Context, sc favourites.Scope, in CreateBookmarkInput) (CreatedBookmark, error) {
 	if in.Type != "link" {
-		return CreatedBookmark{}, &InputError{"Famodash only stores links, not " + in.Type + " bookmarks"}
+		return CreatedBookmark{}, &InputError{"Boardly only stores links, not " + in.Type + " bookmarks"}
 	}
 	if err := checkUnsupported(map[string]bool{
 		"archiving":  isTrue(in.Archived),

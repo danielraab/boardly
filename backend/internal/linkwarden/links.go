@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // pageSize is Linkwarden's default PAGINATION_TAKE_COUNT.
@@ -230,7 +230,7 @@ func (t *tree) tagNames(refs []TagRef) ([]string, error) {
 // CreateLink is POST /api/v1/links: a new link first in the chosen collection.
 func (s *Service) CreateLink(ctx context.Context, sc favourites.Scope, in CreateLinkInput) (Link, error) {
 	if in.Type != nil && *in.Type != "" && *in.Type != "url" {
-		return Link{}, &InputError{"Famodash only stores links, not " + *in.Type + " files."}
+		return Link{}, &InputError{"Boardly only stores links, not " + *in.Type + " files."}
 	}
 	if err := checkUnsupported(map[string]bool{"descriptions": nonEmpty(in.Description)}); err != nil {
 		return Link{}, err

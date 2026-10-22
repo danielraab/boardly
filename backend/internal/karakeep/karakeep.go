@@ -10,9 +10,9 @@ import (
 	"slices"
 	"time"
 
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/trpc"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/trpc"
 )
 
 // Errors returned by the service, besides favourites' validation errors and
@@ -25,14 +25,14 @@ var (
 	ErrTagCreate = errors.New("tags are created by adding them to a bookmark")
 )
 
-// InputError is an input that Famodash can't handle, such as a field it
+// InputError is an input that Boardly can't handle, such as a field it
 // doesn't support. Its message is shown to the user by the clients.
 type InputError struct{ Message string }
 
 func (e *InputError) Error() string { return e.Message }
 
 func unsupported(field string) error {
-	return &InputError{"Famodash doesn't support " + field}
+	return &InputError{"Boardly doesn't support " + field}
 }
 
 // Favicons looks up and fetches favicons by origin (images.Favicons).
@@ -45,7 +45,7 @@ type Favicons interface {
 type Service struct {
 	Favourites *favourites.Store
 	Favicons   Favicons
-	// Origin is Famodash's origin, for favicon URLs.
+	// Origin is Boardly's origin, for favicon URLs.
 	Origin string
 	Now    func() time.Time
 }

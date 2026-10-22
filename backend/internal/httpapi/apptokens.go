@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"famodash/internal/apptokens"
+	"boardly/internal/apptokens"
 )
 
 // appTokensError maps store errors to API errors; other errors pass through.

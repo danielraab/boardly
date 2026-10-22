@@ -12,7 +12,7 @@ import (
 
 func openTemp(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(t.TempDir(), "nested", "famodash.db")
+	return filepath.Join(t.TempDir(), "nested", "boardly.db")
 }
 
 func TestOpenCreatesDirectoryAndSetsPragmas(t *testing.T) {
@@ -603,7 +603,7 @@ func TestAppTokensConstraints(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	token := `INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at) VALUES (?, 'u1', 'Phone', ?, 'f1', ?, 'famo_abcdefg', ?)`
+	token := `INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at) VALUES (?, 'u1', 'Phone', ?, 'f1', ?, 'bdly_abcdefg', ?)`
 	if _, err := db.Exec(token, "t1", "karakeep", []byte{1}, ts); err != nil {
 		t.Fatal(err)
 	}

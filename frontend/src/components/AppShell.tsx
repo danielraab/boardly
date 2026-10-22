@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 							className="flex items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
 						>
 							<AppIcon className="size-6" />
-							Famodash
+							Boardly
 						</Link>
 						<DashboardSwitcher />
 					</div>

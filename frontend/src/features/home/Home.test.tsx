@@ -33,7 +33,7 @@ describe("home page", () => {
 		expect(
 			await screen.findByRole("heading", { level: 1, name: "Welcome, Ann" }),
 		).toBeVisible();
-		expect(screen.queryByRole("heading", { name: "Famodash" })).toBeNull();
+		expect(screen.queryByRole("heading", { name: "Boardly" })).toBeNull();
 		expect(screen.queryByText("Screenshot coming soon")).toBeNull();
 
 		await user.click(
