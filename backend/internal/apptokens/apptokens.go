@@ -23,7 +23,10 @@ import (
 type App string
 
 // Apps.
-const AppKarakeep App = "karakeep"
+const (
+	AppKarakeep   App = "karakeep"
+	AppLinkwarden App = "linkwarden"
+)
 
 // Status is derived from a token's revocation and expiry dates.
 type Status string
@@ -104,7 +107,7 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	if name == "" || utf8.RuneCountInString(name) > MaxNameLength {
 		return Token{}, "", ErrInvalidName
 	}
-	if n.App != AppKarakeep {
+	if n.App != AppKarakeep && n.App != AppLinkwarden {
 		return Token{}, "", ErrInvalidApp
 	}
 	now := s.Now()

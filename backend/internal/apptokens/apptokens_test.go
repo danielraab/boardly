@@ -97,6 +97,7 @@ func TestCreate(t *testing.T) {
 		want error
 	}{
 		"top-level root":   {NewToken{Name: "All", App: AppKarakeep, RootID: annRoot}, nil},
+		"linkwarden":       {NewToken{Name: "Tablet", App: AppLinkwarden, RootID: f.folder}, nil},
 		"future expiry":    {NewToken{Name: "Soon", App: AppKarakeep, RootID: f.folder, ExpiresAt: &future}, nil},
 		"trimmed empty":    {NewToken{Name: "   ", App: AppKarakeep, RootID: f.folder}, ErrInvalidName},
 		"too long":         {NewToken{Name: strings.Repeat("x", 101), App: AppKarakeep, RootID: f.folder}, ErrInvalidName},
@@ -230,7 +231,7 @@ func TestAuthenticate(t *testing.T) {
 			t.Errorf("%s: err = %v, want ErrInvalidToken", name, err)
 		}
 	}
-	if _, err := f.s.Authenticate(f.ctx, secret, "linkwarden"); !errors.Is(err, ErrInvalidToken) {
+	if _, err := f.s.Authenticate(f.ctx, secret, AppLinkwarden); !errors.Is(err, ErrInvalidToken) {
 		t.Errorf("wrong app: err = %v, want ErrInvalidToken", err)
 	}
 

@@ -6,7 +6,7 @@ real user accounts.
 
 - **Dashboards** like Homepage, but built and edited visually in the browser (WYSIWYG) instead of YAML files.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
-- **Karakeep-compatible server**, so the Karakeep browser extension and mobile app can save straight into Famodash.
+- **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Famodash.
 - **Passwordless login** with magic links and passkeys.
 
 ## Features
@@ -42,8 +42,8 @@ The tree is managed on the **Favourites** page (`/favourites`, linked from the u
 - Tags are created as you type them on a link, and existing tags are suggested. A tag that is no
   longer on any link is removed.
 
-Dashboards (through navigation trees) and the Karakeep API both read from and write to this tree.
-Neither keeps its own separate copy of the bookmarks.
+Dashboards (through navigation trees) and the Karakeep and Linkwarden APIs all read from and write to
+this tree. None of them keeps its own separate copy of the bookmarks.
 
 ### Dashboards
 
@@ -128,8 +128,8 @@ such as the CLI aren't supported.
 
 Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
-- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep; Linkwarden
-  will follow), a **folder** of the favourites tree (the top-level folder gives access to everything)
+- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep or
+  [Linkwarden](#linkwarden-compatible-server)), a **folder** of the favourites tree (the top-level folder gives access to everything)
   and an expiry: 30 days, 90 days (default), 1 year, never or a date.
 - The key (`famo_…`) is shown **once**, together with the server address to enter in the app:
   `<FAMODASH_BASE_URL>/api/karakeep`. Famodash stores only a hash of it. In the app, enter the
@@ -164,6 +164,49 @@ Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer
 the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. The
 procedures and data shapes follow the Karakeep source at commit `85054d9` (October 2026); a later
 client release that renames a procedure shows up as a "not found" error.
+
+### Linkwarden-compatible server
+
+The Linkwarden mobile app (iOS/Android) and the Linkwarden browser extension can connect to Famodash
+as if it were a Linkwarden server. Famodash implements only the parts of Linkwarden's REST API that
+these two clients call.
+
+Keys are created on **Settings → Connected apps** as for Karakeep, with the app **Linkwarden**. The
+server address is `<FAMODASH_BASE_URL>/api/linkwarden`. In the mobile app, enter it as the server and
+log in with an **access token**; in the extension, choose the method **API Key**. Username and
+password login answers with a message to use an access token, because Famodash has no passwords.
+
+Everything goes through the key's folder, as for Karakeep, with these differences:
+
+- **Collections** are the key's folder **and** the folders below it, because every Linkwarden link
+  is in a collection. The key's folder is the top collection; the user's top-level folder, which has
+  no name, is called "Unorganized". A link is in the collection of the folder it's directly in.
+- A link saved from the extension or the app goes to the **top** of its collection. The extension's
+  default collection "Unorganized" is the key's folder; another collection name that doesn't exist
+  yet creates that folder in the key's folder. Saving a URL that's already there saves it again, as
+  in Linkwarden. The extension's "already saved" badge works.
+- Moving a link to another collection moves it to the top of that folder. Deleting a collection
+  keeps its links and subfolders by moving them to the parent folder (Linkwarden would delete the
+  links). The key's folder itself can't be deleted.
+- **Tags** work as for Karakeep: deleting a tag in the app removes it only from links in the folder,
+  and tags are created by adding them to a link, not on their own.
+- Link **previews** in the app are the favicon of the link's site, when Famodash knows one in PNG,
+  JPEG, GIF or WebP. Famodash stores no screenshots, PDFs or readable copies, so tapping a link opens
+  the page.
+- The app's dashboard shows statistics and the 16 newest links. Its layout can't be changed.
+
+Linkwarden features Famodash doesn't have answer with an error or "not found" in the clients:
+descriptions, preserved formats (screenshot, PDF, readable view, single file) and re-preserving,
+file uploads, highlights, pinned links, collection sharing, public collections and RSS feeds, link
+and collection icons and colors, bulk actions, tag merging, SSO and registration. In the extension,
+turn off **upload screenshot**: the link is still saved, but the screenshot upload fails with a
+message.
+
+Requests under `/api/linkwarden/` are authenticated only by `Authorization: Bearer <key>` and allow
+cross-origin calls, as for Karakeep. IDs are numbers, because the Linkwarden clients expect them:
+every folder, link and tag has a stable integer ID next to its internal one. The endpoints and data
+shapes follow Linkwarden v2.16.3 (commit `952ac45`, September 2026), and Famodash reports that
+version to the clients.
 
 ### Themes
 

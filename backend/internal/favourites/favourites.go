@@ -40,6 +40,9 @@ type Node struct {
 type Tag struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	// Num is the integer ID for apps; CreatedAt is set by SubtreeNodes only.
+	Num       int64     `json:"-"`
+	CreatedAt time.Time `json:"-"`
 }
 
 // DeleteMode says what happens to the contents of a folder that is deleted.

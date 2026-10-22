@@ -17,6 +17,8 @@ var ErrTagExists = errors.New("tag name already exists")
 // ScopedNode is a node of a scope's subtree, as SubtreeNodes returns it.
 type ScopedNode struct {
 	ID string
+	// Num is the node's integer ID for apps.
+	Num int64
 	// ParentID is empty for the scope's root.
 	ParentID  string
 	Kind      Kind
@@ -42,7 +44,7 @@ const subtreeCTE = `WITH RECURSIVE sub (id) AS (
 // of the user's folders.
 func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error) {
 	rows, err := s.DB.QueryContext(ctx, subtreeCTE+`
-		SELECT n.id, n.parent_id, n.kind, n.position, n.title, n.url, n.created_at, n.updated_at
+		SELECT n.id, n.num, n.parent_id, n.kind, n.position, n.title, n.url, n.created_at, n.updated_at
 		FROM favourite_nodes n JOIN sub ON n.id = sub.id
 		ORDER BY n.parent_id, n.position`, sc.RootID, sc.UserID)
 	if err != nil {
@@ -55,7 +57,7 @@ func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error
 		var n ScopedNode
 		var parentID, title, link sql.NullString
 		var created, updated string
-		if err := rows.Scan(&n.ID, &parentID, &n.Kind, &n.Position, &title, &link, &created, &updated); err != nil {
+		if err := rows.Scan(&n.ID, &n.Num, &parentID, &n.Kind, &n.Position, &title, &link, &created, &updated); err != nil {
 			return nil, err
 		}
 		if n.ID != sc.RootID {
@@ -79,7 +81,7 @@ func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error
 	}
 
 	tags, err := s.DB.QueryContext(ctx, subtreeCTE+`
-		SELECT nt.node_id, t.id, t.name
+		SELECT nt.node_id, t.id, t.num, t.name, t.created_at
 		FROM favourite_node_tags nt JOIN sub ON nt.node_id = sub.id JOIN tags t ON t.id = nt.tag_id
 		ORDER BY t.name_key`, sc.RootID, sc.UserID)
 	if err != nil {
@@ -89,7 +91,11 @@ func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error
 	for tags.Next() {
 		var nodeID string
 		var t Tag
-		if err := tags.Scan(&nodeID, &t.ID, &t.Name); err != nil {
+		var created string
+		if err := tags.Scan(&nodeID, &t.ID, &t.Num, &t.Name, &created); err != nil {
+			return nil, err
+		}
+		if t.CreatedAt, err = db.ParseTime(created); err != nil {
 			return nil, err
 		}
 		n := &nodes[index[nodeID]]

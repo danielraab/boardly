@@ -28,7 +28,7 @@ func (a *api) appAPI(app apptokens.App, mux *http.ServeMux) http.Handler {
 		h := w.Header()
 		h.Set("Access-Control-Allow-Origin", "*")
 		if r.Method == http.MethodOptions {
-			h.Set("Access-Control-Allow-Methods", "GET, POST")
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 			// Clients let users add their own headers (e.g. for a reverse
 			// proxy), so allow whatever the preflight asks for.
 			h.Set("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))

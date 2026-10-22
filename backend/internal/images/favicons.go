@@ -171,7 +171,27 @@ func (f *Favicons) SetIcons(ctx context.Context, roots ...*favourites.Node) erro
 
 // Lookup returns the known favicon image IDs of origins, without fetching.
 func (f *Favicons) Lookup(ctx context.Context, origins []string) (map[string]string, error) {
-	out := map[string]string{}
+	images, err := f.LookupImages(ctx, origins)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(images))
+	for origin, img := range images {
+		out[origin] = img.ID
+	}
+	return out, nil
+}
+
+// FaviconImage is a known favicon: its image ID and content type.
+type FaviconImage struct {
+	ID          string
+	ContentType string
+}
+
+// LookupImages is Lookup with each favicon's content type, for clients that
+// can only show some image types.
+func (f *Favicons) LookupImages(ctx context.Context, origins []string) (map[string]FaviconImage, error) {
+	out := map[string]FaviconImage{}
 	if len(origins) == 0 {
 		return out, nil
 	}
@@ -180,18 +200,19 @@ func (f *Favicons) Lookup(ctx context.Context, origins []string) (map[string]str
 		args[i] = o
 	}
 	rows, err := f.Images.DB.QueryContext(ctx,
-		`SELECT origin, image_id FROM favicons WHERE image_id IS NOT NULL AND origin IN (?`+
-			strings.Repeat(",?", len(origins)-1)+`)`, args...)
+		`SELECT f.origin, i.id, i.content_type FROM favicons f JOIN images i ON i.id = f.image_id
+		 WHERE f.origin IN (?`+strings.Repeat(",?", len(origins)-1)+`)`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var origin, id string
-		if err := rows.Scan(&origin, &id); err != nil {
+		var origin string
+		var img FaviconImage
+		if err := rows.Scan(&origin, &img.ID, &img.ContentType); err != nil {
 			return nil, err
 		}
-		out[origin] = id
+		out[origin] = img
 	}
 	return out, rows.Err()
 }
