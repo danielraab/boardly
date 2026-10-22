@@ -443,6 +443,7 @@
 				"missing": "This folder no longer exists",
 				"expandAll": "Expand all",
 				"collapseAll": "Collapse all",
+				"addFavourite": "Add favourite",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Shown above the tree."
 			},

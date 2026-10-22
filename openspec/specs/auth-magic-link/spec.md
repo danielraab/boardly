@@ -3,9 +3,7 @@
 ## Purpose
 
 Lets anyone sign in to Boardly without a password, by receiving a one-time link at their email address. It creates the account on the first successful sign-in.
-
 ## Requirements
-
 ### Requirement: Request a sign-in link
 `POST /api/auth/magic-link` with `{"email": "...", "locale": "en"|"de"}` SHALL send a sign-in link to that address and respond with status 202. The email is trimmed and lowercased first. An unsupported or missing locale falls back to `en`.
 
@@ -129,7 +127,7 @@ The server SHALL limit sign-in link requests to one per 60 seconds and five per 
 When no SMTP host is configured, the server SHALL write each sign-in link and its one-time code to its log instead of sending email, and SHALL log a warning at startup that mail delivery is disabled.
 
 #### Scenario: No SMTP configured
-- **WHEN** the server runs without `FAMODASH_SMTP_HOST` and a link is requested
+- **WHEN** the server runs without `BOARDLY_SMTP_HOST` and a link is requested
 - **THEN** the full link and the one-time code appear in the server log and the request still responds 202
 
 ### Requirement: One-time code
@@ -180,3 +178,4 @@ A wrong code SHALL count as a failed attempt against every unused, unexpired cod
 #### Scenario: Link still works
 - **WHEN** the code of an email is locked and the email's link is opened in the requesting browser
 - **THEN** the visitor is signed in
+

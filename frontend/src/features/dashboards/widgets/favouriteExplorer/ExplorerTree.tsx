@@ -3,6 +3,7 @@ import {
 	ChevronsDownUp,
 	ChevronsUpDown,
 	Folder,
+	Plus,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ function folderIds(nodes: FavouriteNode[]): string[] {
 /**
  * The children of an explorer's folder as a file tree, below its title as a
  * heading of headingLevel when it has one. In edit mode, links don't navigate.
+ * With onAdd, a button left of the expand-all button calls it.
  */
 export function ExplorerTree({
 	widgetId,
@@ -33,6 +35,7 @@ export function ExplorerTree({
 	editing,
 	title = null,
 	headingLevel = 2,
+	onAdd,
 }: {
 	widgetId: string;
 	size: WidgetSize;
@@ -40,6 +43,7 @@ export function ExplorerTree({
 	editing: boolean;
 	title?: string | null;
 	headingLevel?: number;
+	onAdd?: () => void;
 }) {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useExpanded(widgetId);
@@ -154,7 +158,25 @@ export function ExplorerTree({
 		</button>
 	);
 
-	// With a title, the button is on the title's line; without, beside the tree.
+	const addLabel = t("dashboards.widgets.favouriteExplorer.addFavourite");
+	const buttons = (
+		<>
+			{onAdd && (
+				<button
+					type="button"
+					onClick={onAdd}
+					aria-label={addLabel}
+					title={addLabel}
+					className={iconButton}
+				>
+					<Plus className="size-4" aria-hidden />
+				</button>
+			)}
+			{toggleAll}
+		</>
+	);
+
+	// With a title, the buttons are on the title's line; without, beside the tree.
 	if (title) {
 		const Heading = `h${headingLevel}` as "h2";
 		return (
@@ -163,7 +185,7 @@ export function ExplorerTree({
 					<Heading className="min-w-0 flex-1 truncate font-medium">
 						{title}
 					</Heading>
-					{toggleAll}
+					{buttons}
 				</div>
 				{body}
 			</div>
@@ -172,7 +194,7 @@ export function ExplorerTree({
 	return (
 		<div className={`flex items-start gap-1 ${style.text}`}>
 			<div className="min-w-0 flex-1">{body}</div>
-			{toggleAll}
+			{buttons}
 		</div>
 	);
 }

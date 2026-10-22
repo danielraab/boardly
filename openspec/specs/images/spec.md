@@ -2,11 +2,9 @@
 
 ## Purpose
 Stores and serves images for favourites and widgets: uploaded images, and favicons that the server fetches and shares between all users.
-
 ## Requirements
-
 ### Requirement: Image storage
-The server SHALL store each image as a file under `<data dir>/images/` and keep its ID, content type, size, source (`favicon` or `upload`) and, for uploads, the uploading user. Image IDs SHALL be random and unguessable. The data directory is set by `FAMODASH_DATA_DIR` and defaults to `./data`.
+The server SHALL store each image as a file under `<data dir>/images/` and keep its ID, content type, size, source (`favicon` or `upload`) and, for uploads, the uploading user. Image IDs SHALL be random and unguessable. The data directory is set by `BOARDLY_DATA_DIR` and defaults to `./data`.
 
 #### Scenario: Stored on disk
 - **WHEN** a user uploads an image
@@ -76,7 +74,7 @@ Favicons SHALL be stored once per origin (scheme, host and port) and shared by a
 - **THEN** the server responds 400 with `blocked_address` and makes no request to that address
 
 ### Requirement: Private address protection
-Unless `FAMODASH_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons. The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. `FAMODASH_FETCH_ALLOW_PRIVATE` defaults to `false`.
+Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons. The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
 
 #### Scenario: Name that resolves to a private address
 - **WHEN** private addresses are not allowed and a link's host name resolves to `10.0.0.5`
@@ -87,7 +85,7 @@ Unless `FAMODASH_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to
 - **THEN** the redirect isn't followed
 
 #### Scenario: Allowed
-- **WHEN** `FAMODASH_FETCH_ALLOW_PRIVATE=true` and a link points to `http://192.168.1.10:8096`
+- **WHEN** `BOARDLY_FETCH_ALLOW_PRIVATE=true` and a link points to `http://192.168.1.10:8096`
 - **THEN** the server fetches that site's favicon
 
 ### Requirement: Cleanup of unused uploads
@@ -100,3 +98,4 @@ An uploaded image that no favourite and no dashboard widget refers to SHALL be d
 #### Scenario: Recent upload
 - **WHEN** Ann uploaded an image 1 hour ago for a draft she hasn't saved yet
 - **THEN** the image is kept
+

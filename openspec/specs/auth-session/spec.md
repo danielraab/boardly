@@ -3,15 +3,13 @@
 ## Purpose
 
 Defines how a signed-in user stays signed in. It covers the session cookie, its lifetime, the current-user lookup, signing out, protection against cross-site requests, and how the web app protects pages that need a user.
-
 ## Requirements
-
 ### Requirement: Session cookie
-A successful sign-in SHALL set a cookie `famodash_session` that holds a random session identifier of at least 256 bits, with `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` when the base URL uses HTTPS. The server SHALL store only a hash of the identifier.
+A successful sign-in SHALL set a cookie `boardly_session` that holds a random session identifier of at least 256 bits, with `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` when the base URL uses HTTPS. The server SHALL store only a hash of the identifier.
 
 #### Scenario: Cookie attributes
 - **WHEN** a sign-in succeeds on a server whose base URL starts with `https://`
-- **THEN** the response sets `famodash_session` with `HttpOnly`, `Secure`, `SameSite=Lax` and `Path=/`
+- **THEN** the response sets `boardly_session` with `HttpOnly`, `Secure`, `SameSite=Lax` and `Path=/`
 
 ### Requirement: Session lifetime
 A session SHALL expire after 30 days without use. Using it extends the expiry, at most once per hour. Requests with an expired or unknown session are treated as unauthenticated.
@@ -83,3 +81,4 @@ The login page SHALL accept a `redirect` query parameter. After a sign-in comple
 #### Scenario: Foreign redirect
 - **WHEN** a visitor opens `/login?redirect=https%3A%2F%2Fevil.example` or `/login?redirect=%2F%2Fevil.example` and signs in
 - **THEN** the browser shows `/`
+

@@ -3,15 +3,13 @@
 ## Purpose
 
 The public page at `/` that introduces Boardly to visitors who are not signed in. For now it shows placeholders for a product screenshot and feature descriptions.
-
 ## Requirements
-
 ### Requirement: Landing page for signed-out visitors
 When no user is signed in, `/` SHALL show the landing page: a hero area with the product name, a one-line translated tagline and a call to action that goes to `/login`.
 
 #### Scenario: Visitor opens root
 - **WHEN** a signed-out visitor opens `/`
-- **THEN** the page shows "Famodash", the tagline and a sign-in call to action
+- **THEN** the page shows "Boardly", the tagline and a sign-in call to action
 
 #### Scenario: Call to action
 - **WHEN** the visitor activates the call to action
@@ -37,3 +35,4 @@ The landing page SHALL be usable at widths from 320px upwards without horizontal
 #### Scenario: Narrow viewport
 - **WHEN** the landing page is shown at 320px width
 - **THEN** all content is visible without horizontal scrolling and the feature cards stack in one column
+

@@ -205,6 +205,26 @@ describe("collapse state", () => {
 		expect(screen.queryByRole("button")).toBeNull();
 	});
 
+	it("shows an add button left of expand all, in the same size", async () => {
+		const user = userEvent.setup();
+		const onAdd = vi.fn();
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="M"
+				data={{ children: [tools, mail] }}
+				editing={false}
+				onAdd={onAdd}
+			/>,
+		);
+		const add = screen.getByRole("button", { name: "Add favourite" });
+		const expand = screen.getByRole("button", { name: "Expand all" });
+		expect(add.nextElementSibling).toBe(expand);
+		expect(add.className).toBe(expand.className);
+		await user.click(add);
+		expect(onAdd).toHaveBeenCalledOnce();
+	});
+
 	it("works with blocked storage", async () => {
 		const user = userEvent.setup();
 		vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
@@ -383,5 +403,84 @@ describe("the favourite explorer on a dashboard", () => {
 		await user.click(tools);
 		await user.click(apply);
 		expect(await screen.findByText("GitLab")).toBeVisible();
+	});
+});
+
+describe("adding a favourite from the explorer", () => {
+	const viewRoutes = (sections: Widget[], fields = {}) => ({
+		"GET /api/me": signedIn(),
+		"GET /api/u/ann/home": { body: viewData(sections, fields) },
+		"GET /api/favourites": { body: favourites },
+		"GET /api/tags": { body: [] },
+	});
+
+	it("adds a link to the explorer's folder and refreshes the dashboard", async () => {
+		const api = mockApi({
+			...viewRoutes([
+				section("Work", {}, explorer("e1", {}, { children: [mail] })),
+			]),
+			"POST /api/favourites": ({ body }) => ({
+				status: 201,
+				body: { id: "new", ...(body as object) },
+			}),
+		});
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Add favourite" }),
+		);
+
+		const dialog = await screen.findByRole("dialog", { name: "New link" });
+		const folder = within(dialog).getByRole("radiogroup", { name: "Folder" });
+		expect(within(folder).getByRole("radio", { name: "Work" })).toBeChecked();
+		await user.click(within(dialog).getByRole("textbox", { name: "URL" }));
+		await user.paste("https://example.com/");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog", { name: "New link" })).toBeNull(),
+		);
+		expect(api.callsTo("POST", "/api/favourites").at(-1)?.body).toEqual({
+			parentId: "work",
+			kind: "link",
+			url: "https://example.com/",
+			title: "",
+			tags: [],
+		});
+		await waitFor(() =>
+			expect(api.callsTo("GET", "/api/u/ann/home")).toHaveLength(2),
+		);
+	});
+
+	it("has no add button for visitors", async () => {
+		mockApi(
+			viewRoutes(
+				[section("Work", {}, explorer("e1", {}, { children: [mail] }))],
+				{ isOwner: false, id: undefined },
+			),
+		);
+		renderApp("/ann/home");
+		await screen.findByRole("link", { name: "https://mail.example.org/inbox" });
+		expect(screen.queryByRole("button", { name: "Add favourite" })).toBeNull();
+	});
+
+	it("has no add button for a deleted folder", async () => {
+		mockApi(
+			viewRoutes([
+				section(
+					"Work",
+					{},
+					explorer("e1", { rootFolderId: "gone" }, { missing: true }),
+				),
+			]),
+		);
+		renderApp("/ann/home");
+		await screen.findByText("This folder no longer exists");
+		expect(screen.queryByRole("button", { name: "Add favourite" })).toBeNull();
+	});
+
+	it("has no add button in edit mode", async () => {
+		await openEditor([section("Work", {}, explorer("e1", {}))]);
+		await screen.findByText("https://mail.example.org/inbox");
+		expect(screen.queryByRole("button", { name: "Add favourite" })).toBeNull();
 	});
 });
