@@ -6,7 +6,7 @@ real user accounts.
 
 - **Dashboards** like Homepage, but built and edited visually in the browser (WYSIWYG) instead of YAML files.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
-- **Karakeep-compatible API**, so the existing Karakeep browser extensions and mobile apps can save straight into Famodash.
+- **Karakeep-compatible server**, so the Karakeep browser extension and mobile app can save straight into Famodash.
 - **Passwordless login** with magic links and passkeys.
 
 ## Features
@@ -121,7 +121,10 @@ added later. The widget model is meant to be extended.
 
 ### Karakeep-compatible server
 
-Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep clients (browser extensions, iOS/Android apps, CLI) can connect to it as if it were a Karakeep server.
+The Karakeep browser extension and the Karakeep mobile app (iOS/Android) can connect to Famodash as
+if it were a Karakeep server. These two clients talk Karakeep's internal tRPC API, and Famodash
+implements only the parts of it that they call. Karakeep's REST API (`/api/v1`) and other clients
+such as the CLI aren't supported.
 
 Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
@@ -129,7 +132,9 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
   will follow), a **folder** of the favourites tree (the top-level folder gives access to everything)
   and an expiry: 30 days, 90 days (default), 1 year, never or a date.
 - The key (`famo_…`) is shown **once**, together with the server address to enter in the app:
-  `<FAMODASH_BASE_URL>/api/karakeep`. Famodash stores only a hash of it.
+  `<FAMODASH_BASE_URL>/api/karakeep`. Famodash stores only a hash of it. In the app, enter the
+  server address and log in with **API key**; email and password login isn't available, because
+  Famodash has no passwords.
 - Keys can't be edited. An active key can be **revoked**, which is final. Only revoked or expired
   keys can be deleted from the list.
 - Everything the client sees and saves goes through its folder:
@@ -142,7 +147,10 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
 Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
 the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. So far
-only `GET /api/karakeep/api/v1/users/me` is implemented; bookmarks, lists and tags follow.
+the apps can only log in (tRPC `apiKeys.validate`, `users.whoami`, `config.clientConfig`, plus
+`api/health` and `api/version`); bookmarks, lists and tags follow. Karakeep features Famodash
+doesn't have, such as highlights, reading progress, AI summaries, file assets and list sharing,
+will answer with an error in the apps.
 
 ### Themes
 

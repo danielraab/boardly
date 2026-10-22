@@ -247,7 +247,8 @@ describe("create dialog", () => {
 		const again = await screen.findByRole("dialog");
 		expect(within(again).getByLabelText("Name")).toHaveValue("");
 		expect(screen.queryByDisplayValue(secret)).toBeNull();
-	});
+		// Waiting for the copy button's 3 seconds needs more than the default timeout.
+	}, 15_000);
 
 	it("sends a preset expiry as a time in the future", async () => {
 		const { panel, user, api } = await openTab([]);

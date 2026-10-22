@@ -2,7 +2,7 @@
 
 ## Purpose
 
-App tokens let external apps such as Karakeep clients (and later Linkwarden clients) connect to Famodash with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
+App tokens let external apps such as the Karakeep browser extension and mobile app (and later Linkwarden clients) connect to Famodash with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
 
 ## ADDED Requirements
 
@@ -113,41 +113,88 @@ The create dialog SHALL ask for a name, the app (only "Karakeep" for now, presel
 - **WHEN** the user opens the create dialog
 - **THEN** "90 days" is selected as the expiry
 
+### Requirement: Karakeep tRPC transport
+The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchLink`, `superjson` transformer) to `<server address>/api/trpc`. Famodash SHALL answer these calls at `/api/karakeep/api/trpc/<procedures>?batch=1`, where `<procedures>` is a comma-separated list of procedure names such as `apiKeys.validate`. Queries are sent with `GET` and their inputs in the `input` query parameter; mutations are sent with `POST` and their inputs in the JSON body. In both cases the inputs are a JSON object keyed by the call's index (`"0"`, `"1"`, …), each value a superjson envelope `{"json": <value>, "meta"?: …}`; a missing key means no input. The response SHALL be a JSON array with one entry per procedure, in the request's order: `{"result": {"data": {"json": <output>}}}` on success, or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus", "path"}}}}` on failure, where `code` is the JSON-RPC number of the tRPC error code (for example `-32001` for `UNAUTHORIZED`, `-32004` for `NOT_FOUND`). The HTTP status SHALL be the common status of all entries, or 207 when they differ. Only the procedures named in this and later changes are implemented; any other procedure answers with a `NOT_FOUND` error entry. A query sent with `POST`, or a mutation sent with `GET`, answers with a `METHOD_NOT_SUPPORTED` error entry. A request without `batch=1`, or whose `input` isn't valid JSON, answers 400 with a single `BAD_REQUEST` error entry.
+
+#### Scenario: Batched call
+- **WHEN** a client sends `GET /api/karakeep/api/trpc/users.whoami,config.clientConfig?batch=1&input={}` with a valid token
+- **THEN** the server responds 200 with an array of two `result` entries, the user first and the configuration second
+
+#### Scenario: Unknown procedure
+- **WHEN** a client calls `bookmarks.summarizeBookmark`
+- **THEN** its entry is an error with `data.code` `NOT_FOUND`, `code` `-32004` and `data.path` `bookmarks.summarizeBookmark`
+
+#### Scenario: Mixed results
+- **WHEN** one call of a batch succeeds and another fails with `NOT_FOUND`
+- **THEN** the server responds 207 and each entry carries its own result or error
+
 ### Requirement: Bearer authentication for app endpoints
-Requests to `/api/karakeep/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL be rejected with 401, error code `unauthenticated` and the same message in every case. A successful request records the token's last use, at most once per minute. The cross-site request check of the web app's API does not apply to these paths.
+Requests to `/api/karakeep/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. The cross-site request check of the web app's API does not apply to these paths. Procedures and endpoints marked as public in this spec work without a token; every other procedure requires an active token for the Karakeep app. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL fail such a procedure with an `UNAUTHORIZED` error entry (HTTP status 401) with the same message in every case. A request authenticated by a token records the token's last use, at most once per minute.
 
 #### Scenario: Valid token
-- **WHEN** a client sends `GET /api/karakeep/api/v1/users/me` with an active Karakeep token
-- **THEN** the server responds 200
+- **WHEN** a client calls `users.whoami` with an active Karakeep token
+- **THEN** the call succeeds
 
 #### Scenario: Cookie only
-- **WHEN** a signed-in browser sends `GET /api/karakeep/api/v1/users/me` with its session cookie and no `Authorization` header
-- **THEN** the server responds 401
+- **WHEN** a signed-in browser calls `users.whoami` with its session cookie and no `Authorization` header
+- **THEN** the call fails with `UNAUTHORIZED` and HTTP status 401
 
 #### Scenario: Revoked token
-- **WHEN** a client uses a revoked token
-- **THEN** the server responds 401 with the same body as for an unknown token
+- **WHEN** a client calls `users.whoami` with a revoked token
+- **THEN** the call fails with the same error entry as for an unknown token
+
+#### Scenario: Public procedure without a token
+- **WHEN** a client calls `config.clientConfig` without an `Authorization` header
+- **THEN** the call succeeds
 
 #### Scenario: Last used
 - **WHEN** a client makes its first request with a new token
 - **THEN** the token's last-used date in the list is set to about that time
 
 ### Requirement: CORS for app endpoints
-Responses on `/api/karakeep/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`, and preflight `OPTIONS` requests are answered with 204, the allowed methods `GET, POST, PUT, PATCH, DELETE` and the allowed headers `Authorization, Content-Type`. The web app's other `/api/` endpoints are unchanged.
+Responses on `/api/karakeep/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`. Preflight `OPTIONS` requests SHALL be answered with 204 before authentication, with the allowed methods `GET, POST` and the request headers the preflight asks for (`Access-Control-Request-Headers`), because the extension can add user-configured headers. The web app's other `/api/` endpoints are unchanged.
 
 #### Scenario: Preflight from an extension
-- **WHEN** a request `OPTIONS /api/karakeep/api/v1/users/me` arrives with `Origin: chrome-extension://abc` and `Access-Control-Request-Headers: authorization`
-- **THEN** the server responds 204 with `Access-Control-Allow-Origin: *` and allows the `Authorization` header
+- **WHEN** a request `OPTIONS /api/karakeep/api/trpc/users.whoami?batch=1` arrives with `Origin: chrome-extension://abc` and `Access-Control-Request-Headers: authorization,content-type`
+- **THEN** the server responds 204 with `Access-Control-Allow-Origin: *` and allows the headers `authorization,content-type`
 
-### Requirement: Karakeep user endpoint
-`GET /api/karakeep/api/v1/users/me` SHALL respond 200 with the token owner's `id`, `name` (the display name, or `null`) and `email`. Clients use it to check the connection. Unknown paths under `/api/karakeep/` respond 404 in the API's JSON error format after authentication.
+### Requirement: Karakeep login procedures
+Famodash SHALL implement the procedures the extension and the mobile app need to log in:
+
+- `apiKeys.validate` (public mutation, input `{"apiKey"}`): succeeds with `{"success": true}` when the API key is an active Karakeep token, and fails with `UNAUTHORIZED` otherwise. A successful call records the token's last use.
+- `apiKeys.exchange` (public mutation, email and password login): always fails with `UNAUTHORIZED` and the message "Famodash has no passwords. Log in with an API key from Settings → Connected apps.", because Famodash has no passwords.
+- `users.whoami` (query): the token owner's `id`, `name` (the display name, or `null`), `email`, `image` `null` and `localUser` `true`.
+- `config.clientConfig` (public query): a fixed configuration that tells the clients that signups and password login are disabled and that AI features, chat, semantic search, payments, video download and Turnstile are not available, with `publicUrl` and `publicApiUrl` built from `FAMODASH_BASE_URL` and `disableNewReleaseCheck` `true`.
+
+#### Scenario: Log in with an API key
+- **WHEN** the extension calls `apiKeys.validate` with an active Karakeep token as `apiKey` and without an `Authorization` header
+- **THEN** the call succeeds with `{"success": true}`
+
+#### Scenario: Log in with a revoked key
+- **WHEN** `apiKeys.validate` is called with a revoked token
+- **THEN** the call fails with `UNAUTHORIZED`
+
+#### Scenario: Log in with a password
+- **WHEN** a client calls `apiKeys.exchange` with any email and password
+- **THEN** the call fails with `UNAUTHORIZED` and the message explains to use an API key
 
 #### Scenario: Who am I
-- **WHEN** Ann's Karakeep client calls `GET /api/karakeep/api/v1/users/me`
-- **THEN** the response contains Ann's ID, name and email
+- **WHEN** Ann's client calls `users.whoami`
+- **THEN** the result contains Ann's ID, name and email
+
+### Requirement: Karakeep status endpoints
+`GET /api/karakeep/api/health` SHALL respond 200 with `{"status": "ok", "message": …}` and `GET /api/karakeep/api/version` SHALL respond 200 with `{"version": "Famodash"}`. Both are public. The mobile app uses them for its connection indicator and its settings page. Any other path under `/api/karakeep/` outside `api/trpc` responds 404 in the API's JSON error format.
+
+#### Scenario: Health
+- **WHEN** the mobile app calls `GET /api/karakeep/api/health` without a token
+- **THEN** the server responds 200 with `status` `ok`
+
+#### Scenario: Former REST path
+- **WHEN** a client calls `GET /api/karakeep/api/v1/users/me`
+- **THEN** the server responds 404
 
 ### Requirement: Token subtree scope
-A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it. Nodes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. This applies to every endpoint under `/api/karakeep/`.
+A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it. Nodes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. This applies to every procedure and endpoint under `/api/karakeep/`.
 
 #### Scenario: Node outside the subtree
 - **WHEN** a token rooted at "Reading" asks for a link in "Work"

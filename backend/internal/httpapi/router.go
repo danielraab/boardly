@@ -78,12 +78,9 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/app-tokens/{id}/revoke", a.requireUser(a.revokeAppToken))
 	mux.Handle("DELETE /api/app-tokens/{id}", a.requireUser(a.deleteAppToken))
 
-	karakeep := http.NewServeMux()
-	karakeep.Handle("GET /api/karakeep/api/v1/users/me", HandlerFunc(a.karakeepMe))
-
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))
-	root.Handle("/api/karakeep/", a.appAPI(apptokens.AppKarakeep, karakeep))
+	root.Handle(karakeepPrefix+"/", a.appAPI(apptokens.AppKarakeep, a.karakeepAPI()))
 	root.Handle("/", d.Web)
 	return logRequests(root)
 }

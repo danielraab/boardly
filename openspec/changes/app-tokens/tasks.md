@@ -23,7 +23,10 @@
 ## 5. App API (bearer)
 
 - [x] 5.1 Add the `/api/karakeep/` router branch with CORS (preflight 204 before auth) and bearer middleware that ignores cookies and skips `checkCSRF`, with JSON 404/405; verify with httptest: valid token 200, cookie-only 401, revoked/expired/unknown/wrong-app 401 with identical bodies, preflight from `chrome-extension://` origin 204 with the expected headers, and existing `/api/` CSRF behaviour unchanged
-- [x] 5.2 Add `GET /api/karakeep/api/v1/users/me` returning `id`, `name`, `email`; verify with an httptest that checks the response and the updated `last_used_at`
+- [x] 5.2 Add `GET /api/karakeep/api/v1/users/me` returning `id`, `name`, `email` (removed again in 5.5); verify with an httptest that checks the response and the updated `last_used_at`
+- [x] 5.3 Add the `internal/trpc` package (procedure registry, batched `GET`/`POST` parsing, superjson envelope, result array, tRPC errors with JSON-RPC codes and HTTP status, 207 for mixed statuses, `NOT_FOUND`, `METHOD_NOT_SUPPORTED`, `BAD_REQUEST`, `UNAUTHORIZED` for non-public procedures); verify with unit tests that pin the wire format for single, batched, mixed and malformed requests
+- [x] 5.4 Change the bearer middleware to put the token or nothing into the context instead of rejecting requests, and echo `Access-Control-Request-Headers` in preflights; verify with httptest: cookie-only and revoked/unknown/wrong-app tokens get identical `UNAUTHORIZED` entries with status 401 for `users.whoami`, public calls work without a token, and the preflight allows the requested headers
+- [x] 5.5 Add the Karakeep procedures `apiKeys.validate`, `apiKeys.exchange`, `users.whoami`, `config.clientConfig` at `/api/karakeep/api/trpc/` and the status endpoints `api/health` and `api/version`; remove `api/v1/users/me`; verify with httptest using requests shaped like the extension's (`apiKeys.validate` without a header, a batched `GET` of `users.whoami,config.clientConfig`) and that `api/v1/users/me` responds 404
 
 ## 6. Frontend
 
@@ -37,3 +40,5 @@
 
 - [x] 7.1 Update README ("Karakeep-compatible server", "Concept overview", settings tabs) to describe connected apps, the server address `<base>/api/karakeep` and the token lifecycle; verify by reading it against the specs
 - [x] 7.2 Run `make check` and `make test`; verify that both pass
+- [x] 7.3 Update the README's "Karakeep-compatible server" section: supported clients are the browser extension and the mobile app (log in with an API key, password login isn't available), what works after this change (login only) and after `karakeep-api`; verify by reading it against the specs
+- [ ] 7.4 Run `make check` and `make test` again and log in with the Karakeep browser extension against a local server; verify that both pass and the extension reaches its options page
