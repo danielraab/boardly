@@ -1,7 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Plus } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { Check, Copy, Plus, TriangleAlert } from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	primaryButton,
@@ -24,6 +24,8 @@ import {
 } from "./appTokens/api";
 
 const MAX_NAME = 100;
+
+const COPIED_MS = 3000;
 
 type Expiry = "30d" | "90d" | "1y" | "never" | "custom";
 
@@ -294,7 +296,11 @@ function SecretStep({ token }: { token: CreatedAppToken }) {
 					value={token.secret}
 				/>
 			</div>
-			<p className="mt-4 rounded-lg border border-line bg-paper/40 px-3 py-2 text-sm">
+			<p className="mt-4 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium">
+				<TriangleAlert
+					className="mt-0.5 size-4 shrink-0 text-danger"
+					aria-hidden
+				/>
 				{t("settings.apps.secret.once")}
 			</p>
 			<div className="mt-6 flex justify-end">
@@ -317,6 +323,13 @@ function CopyField({
 }) {
 	const { t } = useTranslation();
 	const [copied, setCopied] = useState(false);
+
+	// The button shows the check mark for COPIED_MS after a copy.
+	useEffect(() => {
+		if (!copied) return;
+		const id = setTimeout(() => setCopied(false), COPIED_MS);
+		return () => clearTimeout(id);
+	}, [copied]);
 
 	async function copy() {
 		try {

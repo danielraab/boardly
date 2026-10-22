@@ -99,7 +99,7 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 - **THEN** the token stays active
 
 ### Requirement: Create dialog
-The create dialog SHALL ask for a name, the app (only "Karakeep" for now, preselected), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address to enter in the app (`<FAMODASH_BASE_URL>/api/karakeep`) and a note that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
+The create dialog SHALL ask for a name, the app (only "Karakeep" for now, preselected), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<FAMODASH_BASE_URL>/api/karakeep`) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
 
 #### Scenario: Show secret once
 - **WHEN** the user creates a token and closes the dialog
@@ -107,7 +107,7 @@ The create dialog SHALL ask for a name, the app (only "Karakeep" for now, presel
 
 #### Scenario: Copy
 - **WHEN** the user clicks the copy button in the secret view
-- **THEN** the secret is copied to the clipboard and the button confirms it
+- **THEN** the secret is copied to the clipboard and the button shows a check mark, which turns back into the copy icon after 3 seconds
 
 #### Scenario: Default expiry
 - **WHEN** the user opens the create dialog

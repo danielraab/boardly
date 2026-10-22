@@ -227,6 +227,14 @@ describe("create dialog", () => {
 		expect(
 			within(dialog).getByRole("button", { name: "Copied" }),
 		).toBeVisible();
+		// The check mark turns back into the copy icon after 3 seconds.
+		expect(
+			await within(dialog).findByRole(
+				"button",
+				{ name: "Copy API key" },
+				{ timeout: 4000 },
+			),
+		).toBeVisible();
 
 		await user.click(within(dialog).getByRole("button", { name: "Done" }));
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
