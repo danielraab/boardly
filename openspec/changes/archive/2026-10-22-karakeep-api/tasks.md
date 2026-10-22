@@ -26,4 +26,4 @@
 ## 5. Docs and checks
 
 - [x] 5.1 Update the README's "Karakeep-compatible server" section: what works in the extension and the app, how lists and tags map to folders and tags (move semantics, new links first), what isn't supported, and the Karakeep version the shapes come from; verify by reading it against the spec
-- [ ] 5.2 Run `make check` and `make test`, then save a page with the Karakeep browser extension and browse bookmarks, lists and tags in the mobile app against a local server; verify that both commands pass and the clients work without errors on the supported screens
+- [x] 5.2 Run `make check` and `make test`, then save a page with the Karakeep browser extension and browse bookmarks, lists and tags in the mobile app against a local server; verify that both commands pass and the clients work without errors on the supported screens

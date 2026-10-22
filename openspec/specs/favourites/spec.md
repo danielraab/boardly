@@ -68,7 +68,7 @@ A link SHALL have an absolute `http` or `https` URL of at most 2048 characters a
 - **THEN** the link shows a globe icon
 
 ### Requirement: Sibling order
-The children of a folder SHALL keep the order the user gave them. A new node SHALL be added at the end of its folder.
+The children of a folder SHALL keep the order the user gave them. A new node SHALL be added at the end of its folder, except a link saved through a connected app, which SHALL be added first in the token's root folder.
 
 #### Scenario: New node goes last
 - **WHEN** the user adds a link to a folder that already contains "A" and "B"
@@ -77,6 +77,10 @@ The children of a folder SHALL keep the order the user gave them. A new node SHA
 #### Scenario: Order survives a reload
 - **WHEN** the user reorders the children of a folder and reloads the page
 - **THEN** the folder shows the children in the new order
+
+#### Scenario: Link saved from a connected app goes first
+- **WHEN** the browser extension saves a page with a token rooted at "Reading", which already contains "A" and "B"
+- **THEN** "Reading" shows the new link, then "A" and "B"
 
 ### Requirement: Move nodes with drag and drop
 On `/favourites`, the user SHALL be able to drag any node except the root and drop it before or after another node, which puts it into that node's folder at that position, or onto a folder, which puts it at the end of that folder. A folder SHALL NOT be droppable into itself or into one of its descendants. Moving a folder SHALL move everything inside it. Moving SHALL also be possible with the keyboard.
