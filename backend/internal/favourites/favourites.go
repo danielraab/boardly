@@ -82,12 +82,14 @@ func NewStore(database *sql.DB) *Store {
 
 // NewNode is a node to create. An empty ParentID means the root folder.
 // Folders need a Title and may not have a URL or tags; links need a URL.
+// The node is added at the end of its folder, or first when First is set.
 type NewNode struct {
 	ParentID string
 	Kind     Kind
 	Title    *string
 	URL      *string
 	Tags     []string
+	First    bool
 }
 
 // Patch changes a node. Nil fields stay unchanged. An empty link title clears it.
@@ -294,7 +296,13 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 		return nil, ErrInvalidParent
 	}
 	var position int
-	if err := tx.QueryRowContext(ctx,
+	if n.First {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE favourite_nodes SET position = position + 1 WHERE parent_id = ?`, parentID,
+		); err != nil {
+			return nil, err
+		}
+	} else if err := tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM favourite_nodes WHERE parent_id = ?`, parentID,
 	).Scan(&position); err != nil {
 		return nil, err

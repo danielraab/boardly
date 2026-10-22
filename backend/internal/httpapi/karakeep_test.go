@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"famodash/internal/apptokens"
+	"famodash/internal/favourites"
 )
 
 const trpcPath = karakeepPrefix + "/api/trpc/"
@@ -202,5 +205,189 @@ func TestKarakeepSkipsCSRFAndAllowsCORS(t *testing.T) {
 	rec = s.req("POST", "/api/app-tokens", `{}`, withCookie(ann), fromExtension)
 	if rec.Code != http.StatusForbidden || errorCode(t, rec) != "forbidden_origin" || rec.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Errorf("web API cross-origin: %d %s", rec.Code, rec.Body)
+	}
+}
+
+// trpcData returns the json and meta of a single successful call.
+func trpcData(t *testing.T, rec *httptest.ResponseRecorder) (json.RawMessage, map[string][]string) {
+	t.Helper()
+	var entries []struct {
+		Result *struct {
+			Data struct {
+				JSON json.RawMessage `json:"json"`
+				Meta *struct {
+					Values map[string][]string `json:"values"`
+				} `json:"meta"`
+			} `json:"data"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &entries); err != nil || len(entries) != 1 || entries[0].Result == nil {
+		t.Fatalf("want one result, got %d %s", rec.Code, rec.Body)
+	}
+	data := entries[0].Result.Data
+	if data.Meta == nil {
+		return data.JSON, nil
+	}
+	return data.JSON, data.Meta.Values
+}
+
+func input(v any) string { return `{"0":{"json":` + mustJSON(v) + `}}` }
+
+func TestKarakeepSavePageFromExtension(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	token := s.createToken(t, ann, nil)
+	bearer := withBearer(token.Secret)
+	s.create(t, ann, map[string]any{"kind": "link", "parentId": *token.RootID, "url": "https://example.org/old", "title": "Old"})
+	const page = "https://example.org/article"
+
+	check := func() *string {
+		t.Helper()
+		data, _ := trpcData(t, s.trpcQuery("bookmarks.checkUrl", input(map[string]string{"url": page}), bearer))
+		var out struct {
+			BookmarkID *string `json:"bookmarkId"`
+		}
+		_ = json.Unmarshal(data, &out)
+		return out.BookmarkID
+	}
+	if id := check(); id != nil {
+		t.Fatalf("checkUrl before saving = %v", *id)
+	}
+
+	rec := s.trpcMutation("bookmarks.createBookmark", input(map[string]any{
+		"type": "link", "url": page, "title": "Article", "source": "extension",
+	}), bearer)
+	data, meta := trpcData(t, rec)
+	var created struct {
+		ID            string `json:"id"`
+		AlreadyExists bool   `json:"alreadyExists"`
+	}
+	_ = json.Unmarshal(data, &created)
+	if rec.Code != http.StatusOK || created.ID == "" || created.AlreadyExists {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	for _, path := range []string{"createdAt", "modifiedAt", "content.crawledAt"} {
+		if !reflect.DeepEqual(meta[path], []string{"Date"}) {
+			t.Errorf("meta[%s] = %v (%v)", path, meta[path], meta)
+		}
+	}
+	if id := check(); id == nil || *id != created.ID {
+		t.Errorf("checkUrl after saving = %v", id)
+	}
+
+	// The bookmark page of the extension loads the bookmark and its lists.
+	rec = s.trpcQuery("bookmarks.getBookmark,lists.getListsOfBookmark",
+		`{"0":{"json":{"bookmarkId":"`+created.ID+`","includeContent":false}},"1":{"json":{"bookmarkId":"`+created.ID+`"}}}`, bearer)
+	if entries := trpcEntries(t, rec); rec.Code != http.StatusOK || entries[0].Result == nil || entries[1].Result == nil {
+		t.Fatalf("bookmark page: %d %s", rec.Code, rec.Body)
+	}
+
+	// The link is first in the token's folder.
+	tree := decodeJSONBody[favourites.Node](t, s.req("GET", "/api/favourites", "", withCookie(ann)))
+	reading := tree.Children[0]
+	if len(reading.Children) != 2 || *reading.Children[0].Title != "Article" {
+		t.Errorf("Reading = %+v", reading.Children)
+	}
+
+	// Notes can't be stored; the save fails and adds nothing.
+	rec = s.trpcMutation("bookmarks.createBookmark", input(map[string]any{"type": "text", "text": "hello"}), bearer)
+	if rec.Code != http.StatusBadRequest || trpcErrorCode(t, rec) != "BAD_REQUEST" {
+		t.Errorf("text bookmark: %d %s", rec.Code, rec.Body)
+	}
+	rec = s.trpcMutation("bookmarks.deleteBookmark", input(map[string]string{"bookmarkId": created.ID}), bearer)
+	if rec.Code != http.StatusOK || rec.Body.String() != `[{"result":{"data":{"json":null}}}]`+"\n" {
+		t.Errorf("delete: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestKarakeepBrowseInApp(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	token := s.createToken(t, ann, nil)
+	bearer := withBearer(token.Secret)
+	for _, title := range []string{"One", "Two", "Three"} {
+		s.clock.Advance(time.Minute)
+		s.trpcMutation("bookmarks.createBookmark", input(map[string]any{"type": "link", "url": "https://example.org/" + title, "title": title}), bearer)
+	}
+	outside := s.create(t, ann, map[string]any{"kind": "link", "url": "https://example.org/outside"})
+
+	// First page of two, then the next page with the cursor sent back as the
+	// client does: a superjson Date with its meta.
+	data, meta := trpcData(t, s.trpcQuery("bookmarks.getBookmarks", input(map[string]any{"limit": 2, "useCursorV2": true}), bearer))
+	var first struct {
+		Bookmarks []struct {
+			Title string `json:"title"`
+		} `json:"bookmarks"`
+		NextCursor json.RawMessage `json:"nextCursor"`
+	}
+	_ = json.Unmarshal(data, &first)
+	if len(first.Bookmarks) != 2 || first.Bookmarks[0].Title != "Three" || !reflect.DeepEqual(meta["nextCursor.createdAt"], []string{"Date"}) {
+		t.Fatalf("first page = %s %v", data, meta)
+	}
+	next := `{"0":{"json":{"limit":2,"cursor":` + string(first.NextCursor) + `},"meta":{"values":{"cursor.createdAt":["Date"]}}}}`
+	data, _ = trpcData(t, s.trpcQuery("bookmarks.getBookmarks", next, bearer))
+	var second struct {
+		Bookmarks []struct {
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		} `json:"bookmarks"`
+		NextCursor *json.RawMessage `json:"nextCursor"`
+	}
+	_ = json.Unmarshal(data, &second)
+	if len(second.Bookmarks) != 1 || second.Bookmarks[0].Title != "One" || second.NextCursor != nil {
+		t.Errorf("second page = %s", data)
+	}
+
+	// Lists: create one, add a bookmark, then the app's list screen.
+	data, _ = trpcData(t, s.trpcMutation("lists.create", input(map[string]any{"name": "Later", "icon": "🚀", "type": "manual"}), bearer))
+	var list struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(data, &list)
+	if rec := s.trpcMutation("lists.addToList", input(map[string]string{"listId": list.ID, "bookmarkId": second.Bookmarks[0].ID}), bearer); rec.Code != http.StatusOK {
+		t.Fatalf("addToList: %d %s", rec.Code, rec.Body)
+	}
+	rec := s.trpcQuery("lists.list,lists.stats,lists.getPendingInvitations", `{}`, bearer)
+	var entries []struct {
+		Result struct {
+			Data struct {
+				JSON json.RawMessage `json:"json"`
+				Meta json.RawMessage `json:"meta"`
+			} `json:"data"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &entries); err != nil || rec.Code != http.StatusOK || len(entries) != 3 {
+		t.Fatalf("list screen: %d %s", rec.Code, rec.Body)
+	}
+	if got := string(entries[1].Result.Data.JSON); got != `{"stats":[["`+list.ID+`",1]]}` || string(entries[1].Result.Data.Meta) != `{"values":{"stats":["map"]}}` {
+		t.Errorf("stats = %s %s", got, entries[1].Result.Data.Meta)
+	}
+	if got := string(entries[2].Result.Data.JSON); got != `[]` {
+		t.Errorf("invitations = %s", got)
+	}
+
+	// Tags, settings and stats.
+	s.trpcMutation("bookmarks.updateTags", input(map[string]any{"bookmarkId": second.Bookmarks[0].ID, "attach": []any{map[string]string{"tagName": "dev"}}, "detach": []any{}}), bearer)
+	data, _ = trpcData(t, s.trpcQuery("tags.list", input(map[string]any{"sortBy": "usage"}), bearer))
+	if !strings.Contains(string(data), `"name":"dev","numBookmarks":1`) {
+		t.Errorf("tags = %s", data)
+	}
+	if rec := s.trpcQuery("users.settings,users.stats", `{}`, bearer); rec.Code != http.StatusOK {
+		t.Errorf("settings and stats: %d %s", rec.Code, rec.Body)
+	}
+
+	// Nodes outside the token's folder don't exist for it.
+	if rec := s.trpcQuery("bookmarks.getBookmark", input(map[string]string{"bookmarkId": outside.ID}), bearer); rec.Code != http.StatusNotFound || trpcErrorCode(t, rec) != "NOT_FOUND" {
+		t.Errorf("outside bookmark: %d %s", rec.Code, rec.Body)
+	}
+	// Unsupported features.
+	if rec := s.trpcQuery("highlights.getForBookmark", input(map[string]string{"bookmarkId": second.Bookmarks[0].ID}), bearer); rec.Code != http.StatusNotFound {
+		t.Errorf("highlights: %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.trpcMutation("tags.create", input(map[string]string{"name": "x"}), bearer); rec.Code != http.StatusForbidden || trpcErrorCode(t, rec) != "FORBIDDEN" {
+		t.Errorf("tags.create: %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.trpcMutation("bookmarks.updateBookmark", input(map[string]any{"bookmarkId": second.Bookmarks[0].ID, "favourited": true}), bearer); rec.Code != http.StatusBadRequest {
+		t.Errorf("favourite: %d %s", rec.Code, rec.Body)
 	}
 }

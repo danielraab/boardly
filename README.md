@@ -137,20 +137,33 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
   Famodash has no passwords.
 - Keys can't be edited. An active key can be **revoked**, which is final. Only revoked or expired
   keys can be deleted from the list.
-- Everything the client sees and saves goes through its folder:
-  - bookmarks saved from a client become link nodes below the folder,
-  - Karakeep lists map to folder nodes below the folder,
-  - the client can only see the subtree below its folder and nothing outside it.
+- Everything the client sees and saves goes through its folder, and it can't see or change anything
+  outside it:
+  - **Bookmarks** are all links in the folder, at any depth. A page saved from the extension or
+    the app becomes a link at the **top** of the folder; saving a URL that's already there returns
+    the existing bookmark.
+  - **Lists** are the folders below it, nested like the folders. A bookmark is in the list whose
+    folder it's directly in, so it is in at most one list: adding it to a list **moves** the link
+    into that folder, and removing it moves the link back to the top of the app's folder.
+    Deleting a list keeps its links and subfolders by moving them to the parent folder.
+  - **Tags** are the tags on the folder's links. Deleting a tag in the app removes it only from
+    links in the folder. A tag that links outside the folder also have can't be renamed from the
+    app, and tags are created by adding them to a bookmark, not on their own.
 - Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
   contents", only keys for the deleted folder itself are revoked.
 - A user can have several keys with different folders, for example one per device or per purpose.
 
+In the extension you can save the current page, see whether a page is already saved, and edit its
+title, tags and list. In the app you can browse, search, save, edit and delete bookmarks, and
+manage lists and tags. Tapping a bookmark opens the page. Karakeep features Famodash doesn't have
+answer with an error in the apps: notes and text bookmarks, file bookmarks and assets, archiving,
+favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
+icons and descriptions, and list sharing.
+
 Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
-the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. So far
-the apps can only log in (tRPC `apiKeys.validate`, `users.whoami`, `config.clientConfig`, plus
-`api/health` and `api/version`); bookmarks, lists and tags follow. Karakeep features Famodash
-doesn't have, such as highlights, reading progress, AI summaries, file assets and list sharing,
-will answer with an error in the apps.
+the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. The
+procedures and data shapes follow the Karakeep source at commit `85054d9` (October 2026); a later
+client release that renames a procedure shows up as a "not found" error.
 
 ### Themes
 

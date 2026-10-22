@@ -105,7 +105,8 @@ type errorShape struct {
 
 type result struct {
 	Data struct {
-		JSON any `json:"json"`
+		JSON any            `json:"json"`
+		Meta map[string]any `json:"meta,omitempty"`
 	} `json:"data"`
 }
 
@@ -178,6 +179,7 @@ func (s *Server) call(r *http.Request, name string, input json.RawMessage) entry
 	}
 	res := &result{}
 	res.Data.JSON = out
+	res.Data.Meta = meta(out)
 	return entry{Result: res, status: http.StatusOK}
 }
 
