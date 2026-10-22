@@ -13,6 +13,7 @@ import (
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 	"famodash/internal/ratelimit"
 	"famodash/internal/users"
 )
@@ -34,6 +35,8 @@ type api struct {
 	users         *users.Store
 	favourites    *favourites.Store
 	dashboards    *dashboards.Store
+	images        *images.Store
+	favicons      *images.Favicons
 	origin        string
 	secureCookies bool
 	trustProxy    bool
@@ -286,8 +289,10 @@ func checkCSRF(r *http.Request, origin string) *Error {
 		return nil
 	}
 	forbidden := NewError(http.StatusForbidden, "forbidden_origin", "Cross-site request rejected")
+	// Neither type can be sent cross-site without a CORS preflight, unlike
+	// form types. Image uploads send the raw file as octet-stream.
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" {
+	if err != nil || (mediaType != "application/json" && mediaType != "application/octet-stream") {
 		return forbidden
 	}
 	if o := r.Header.Get("Origin"); o != "" && o != origin {

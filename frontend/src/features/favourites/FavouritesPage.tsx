@@ -18,7 +18,6 @@ import {
 	Folder,
 	FolderPlus,
 	GripVertical,
-	Link2,
 	Pencil,
 	Plus,
 	Star,
@@ -33,6 +32,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
+import { ImageIcon } from "#/components/ImageIcon";
 import { useMe } from "#/features/auth/session";
 import {
 	type FavouriteNode,
@@ -565,7 +565,7 @@ function TreeRow({
 			{isFolder ? (
 				<Folder className="size-4 shrink-0 text-muted" aria-hidden />
 			) : (
-				<Link2 className="size-4 shrink-0 text-muted" aria-hidden />
+				<ImageIcon imageId={node.iconImageId} className="size-4" />
 			)}
 			<div className="ml-1.5 flex min-w-0 flex-1 items-center gap-2">
 				{isFolder ? (

@@ -172,8 +172,8 @@ func TestSaveLayout(t *testing.T) {
 	home := s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
 	path := "/api/dashboards/" + home.ID + "/layout"
 
-	rec := s.req("PUT", path, `{"version":0,"sections":[{"width":3,"title":"Links","border":true,"height":"auto","children":[]},
-		{"width":6,"title":null,"border":false,"height":4,"children":[{"width":2,"title":"Tools","border":true,"height":"auto","children":[]}]}]}`, withCookie(ann))
+	rec := s.req("PUT", path, `{"version":0,"sections":[{"kind":"section","width":3,"title":"Links","border":true,"height":"auto","children":[]},
+		{"kind":"section","width":6,"title":null,"border":false,"height":4,"children":[{"kind":"section","width":2,"title":"Tools","border":true,"height":"auto","children":[]}]}]}`, withCookie(ann))
 	l := decodeJSONBody[dashboards.Layout](t, rec)
 	if rec.Code != http.StatusOK || l.Version != 1 || len(l.Sections) != 2 || len(l.Sections[1].Children) != 1 || l.Sections[1].Height != 4 {
 		t.Fatalf("save: %d %s", rec.Code, rec.Body)
@@ -186,9 +186,11 @@ func TestSaveLayout(t *testing.T) {
 	}{
 		"stale version":   {ann, `{"version":0,"sections":[]}`, http.StatusConflict, "layout_conflict"},
 		"foreign":         {bob, `{"version":1,"sections":[]}`, http.StatusNotFound, "not_found"},
-		"unknown field":   {ann, `{"version":1,"sections":[{"width":3,"color":"red"}]}`, http.StatusBadRequest, "invalid_layout"},
-		"bad height":      {ann, `{"version":1,"sections":[{"width":3,"height":"tall"}]}`, http.StatusBadRequest, "invalid_layout"},
-		"width 13":        {ann, `{"version":1,"sections":[{"width":13}]}`, http.StatusBadRequest, "invalid_layout"},
+		"unknown field":   {ann, `{"version":1,"sections":[{"kind":"section","width":3,"color":"red"}]}`, http.StatusBadRequest, "invalid_layout"},
+		"bad height":      {ann, `{"version":1,"sections":[{"kind":"section","width":3,"height":"tall"}]}`, http.StatusBadRequest, "invalid_layout"},
+		"width 13":        {ann, `{"version":1,"sections":[{"kind":"section","width":13}]}`, http.StatusBadRequest, "invalid_layout"},
+		"missing kind":    {ann, `{"version":1,"sections":[{"width":3}]}`, http.StatusBadRequest, "invalid_layout"},
+		"unknown kind":    {ann, `{"version":1,"sections":[{"kind":"section","width":6,"children":[{"kind":"clock","width":2,"config":{}}]}]}`, http.StatusBadRequest, "invalid_layout"},
 		"missing version": {ann, `{"sections":[]}`, http.StatusBadRequest, "invalid_layout"},
 	} {
 		rec := s.req("PUT", path, r.body, withCookie(r.cookie))
@@ -203,7 +205,8 @@ func TestSaveLayout(t *testing.T) {
 		t.Fatalf("owner view = %+v", owner)
 	}
 	rec = s.req("GET", "/api/u/ann/home", "")
-	if v := decodeJSONBody[dashboards.View](t, rec); v.ID != "" || len(v.Sections) != 2 || strings.Contains(rec.Body.String(), home.ID) {
+	if v := decodeJSONBody[dashboards.View](t, rec); v.ID != "" || len(v.Sections) != 2 || strings.Contains(rec.Body.String(), home.ID) ||
+		!strings.Contains(rec.Body.String(), `"kind":"section"`) {
 		t.Fatalf("visitor view: %s", rec.Body)
 	}
 }

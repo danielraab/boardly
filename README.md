@@ -31,6 +31,8 @@ Each user has exactly **one favourites tree**. It is the single source of truth 
 The tree is managed on the **Favourites** page (`/favourites`, linked from the user menu):
 
 - Add, rename and delete folders and links. Links open in a new tab.
+- Each link shows the favicon of its site, or a globe until one is known. See
+  [Favicons and images](#favicons-and-images).
 - Drag items by their handle to reorder them or move them into another folder. This also works with
   the keyboard: focus the handle, press Space, choose the place with the arrow keys and press Space
   again.
@@ -290,6 +292,7 @@ precedence over the file.
 |---|---|---|
 | `FAMODASH_PORT` | `8080` | Port to listen on |
 | `FAMODASH_DB_PATH` | `./data/famodash.db` | SQLite database file; its directory is created if needed |
+| `FAMODASH_DATA_DIR` | `./data` (`/data` in the container) | Directory for files the server writes itself: favicons and uploaded images go to its `images` folder. It is created if needed. Keep it on the same volume as the database |
 | `FAMODASH_LOG_FORMAT` | `json` | Log format, `json` or `text` |
 | `FAMODASH_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
 | `FAMODASH_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
@@ -299,6 +302,7 @@ precedence over the file.
 | `FAMODASH_SMTP_TLS` | `starttls` | `starttls` (required STARTTLS, usually port 587), `tls` (implicit TLS, usually port 465) or `none` |
 | `FAMODASH_TRUST_PROXY_HEADERS` | `false` | Take the client IP from `X-Forwarded-For` (for rate limiting). Enable it only behind a reverse proxy that sets this header |
 | `FAMODASH_WEBAUTHN_RP_ID` | host name of `FAMODASH_BASE_URL` | Relying party ID that passkeys are bound to. It must be the base URL's host name or a parent domain of it (e.g. `example.org` for `dash.example.org`) |
+| `FAMODASH_FETCH_ALLOW_PRIVATE` | `false` | Let the server fetch favicons from private, loopback and link-local addresses (for example `http://192.168.1.10:8096`). See [Favicons and images](#favicons-and-images) |
 | `FAMODASH_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
@@ -336,6 +340,23 @@ Mailpit instead (http://localhost:8025).
 - Set `FAMODASH_TRUST_PROXY_HEADERS=true` so rate limits apply per real client instead of to
   the proxy as a whole. Don't enable it when the server is reachable without the proxy, because
   clients could then fake their IP.
+
+### Favicons and images
+
+- **Favicons** are fetched by the server when a link is added or its URL changes, and when the
+  server starts for links that have none yet. It loads the page, uses the icon the page declares
+  (or `/favicon.ico`) and keeps one copy per site for all users. PNG, JPEG, WebP, GIF and ICO
+  icons up to 1 MB are used; SVG icons are not. A favicon is fetched again after 30 days. After
+  a failed fetch, the server waits a day before trying that site again. This needs outbound
+  HTTP(S) to the linked sites.
+- **Private addresses are blocked by default.** The server doesn't connect to loopback, private
+  (`10.x`, `172.16–31.x`, `192.168.x`), link-local, unique-local or similar addresses, also
+  not after DNS resolution or a redirect. This keeps users from making the server probe your
+  internal network. On a home server where the links point to local services, set
+  `FAMODASH_FETCH_ALLOW_PRIVATE=true` to get their favicons too; only do that if you trust
+  everyone who can sign up.
+- **Images are stored as files** in `FAMODASH_DATA_DIR/images`, next to the database in the
+  container's `/data` volume. Uploaded images that nothing uses are deleted after 24 hours.
 
 ### Passkeys
 

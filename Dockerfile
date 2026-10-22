@@ -43,6 +43,7 @@ COPY --from=build --chown=65532:65532 /out/data /data
 
 # FAMODASH_BASE_URL is required and deliberately has no default here.
 ENV FAMODASH_DB_PATH=/data/famodash.db
+ENV FAMODASH_DATA_DIR=/data
 VOLUME /data
 EXPOSE 8080
 USER 65532:65532

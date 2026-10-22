@@ -157,6 +157,58 @@ func TestTreeIsNestedAndOrdered(t *testing.T) {
 	}
 }
 
+func TestSubtree(t *testing.T) {
+	f := newFixture(t)
+	work := f.folder("", "Work")
+	tools := f.folder(work, "Tools")
+	f.link(tools, "Git", "code")
+	f.folder(tools, "Empty")
+	f.link(work, "Docs")
+	f.link("", "News")
+
+	sub, err := f.s.Subtree(f.ctx, f.user, work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shape func(n *Node) string
+	shape = func(n *Node) string {
+		out := *n.Title
+		if n.Kind == KindFolder {
+			out += "("
+			for i, c := range n.Children {
+				if i > 0 {
+					out += ","
+				}
+				out += shape(c)
+			}
+			out += ")"
+		}
+		return out
+	}
+	if got := shape(sub); got != "Work(Tools(Git,Empty()),Docs)" {
+		t.Fatalf("subtree = %s", got)
+	}
+	if git := sub.Children[0].Children[0]; *git.URL != "https://example.org/Git" || git.Tags != nil {
+		t.Fatalf("Git = %+v", git)
+	}
+
+	root := f.tree().ID
+	if sub, err := f.s.Subtree(f.ctx, f.user, root); err != nil || len(sub.Children) != 2 {
+		t.Fatalf("root subtree = %+v, %v", sub, err)
+	}
+
+	docs := find(f.tree(), work).Children[1].ID
+	for name, r := range map[string]struct{ user, id string }{
+		"link":           {f.user, docs},
+		"unknown":        {f.user, "nope"},
+		"another user's": {f.other, work},
+	} {
+		if _, err := f.s.Subtree(f.ctx, r.user, r.id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("%s: err = %v, want ErrNotFound", name, err)
+		}
+	}
+}
+
 func TestCreateValidation(t *testing.T) {
 	f := newFixture(t)
 	link := f.link("", "Docs")

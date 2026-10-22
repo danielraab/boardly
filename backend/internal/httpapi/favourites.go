@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -34,10 +35,28 @@ func favouritesError(err error) error {
 	return err
 }
 
+// withIcons sets the known favicon on every link in the trees.
+func (a *api) withIcons(ctx context.Context, roots ...*favourites.Node) error {
+	if a.favicons == nil {
+		return nil
+	}
+	return a.favicons.SetIcons(ctx, roots...)
+}
+
+// queueFavicon asks for the favicon of a link that was created or got a new URL.
+func (a *api) queueFavicon(n *favourites.Node) {
+	if a.favicons != nil && n.Kind == favourites.KindLink && n.URL != nil {
+		a.favicons.Queue(*n.URL)
+	}
+}
+
 func (a *api) getFavourites(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
 	root, err := a.favourites.Tree(r.Context(), user.ID)
 	if err != nil {
+		return err
+	}
+	if err := a.withIcons(r.Context(), root); err != nil {
 		return err
 	}
 	WriteJSON(w, http.StatusOK, root)
@@ -60,6 +79,10 @@ func (a *api) createFavourite(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return favouritesError(err)
 	}
+	a.queueFavicon(node)
+	if err := a.withIcons(r.Context(), node); err != nil {
+		return err
+	}
 	WriteJSON(w, http.StatusCreated, node)
 	return nil
 }
@@ -77,6 +100,12 @@ func (a *api) updateFavourite(w http.ResponseWriter, r *http.Request) error {
 	node, err := a.favourites.Update(r.Context(), user.ID, r.PathValue("id"), favourites.Patch(body))
 	if err != nil {
 		return favouritesError(err)
+	}
+	if body.URL != nil {
+		a.queueFavicon(node)
+	}
+	if err := a.withIcons(r.Context(), node); err != nil {
+		return err
 	}
 	WriteJSON(w, http.StatusOK, node)
 	return nil

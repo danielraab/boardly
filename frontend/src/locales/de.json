@@ -175,7 +175,8 @@
 			"removeTag": "Tag {{name}} entfernen",
 			"save": "Speichern",
 			"saving": "Wird gespeichert…",
-			"cancel": "Abbrechen"
+			"cancel": "Abbrechen",
+			"folderLabel": "Ordner"
 		},
 		"errors": {
 			"nameRequired": "Gib einen Namen ein.",
@@ -206,6 +207,13 @@
 			"into": "In den Ordner {{folder}}.",
 			"dropped": "{{name}} verschoben.",
 			"cancelled": "Verschieben von {{name}} abgebrochen."
+		},
+		"picker": {
+			"search": "Favoriten durchsuchen",
+			"loading": "Favoriten werden geladen…",
+			"noMatches": "Nichts passt zu deiner Suche.",
+			"noLinks": "In deinen Favoriten gibt es noch keine Links.",
+			"selected": "Ausgewählt: {{path}}"
 		}
 	},
 	"dashboards": {
@@ -281,7 +289,10 @@
 			"saveFailed": "Das Dashboard konnte nicht gespeichert werden. Bitte versuche es noch einmal.",
 			"conflict": "Dieses Dashboard wurde an anderer Stelle geändert. Lade es neu, um mit der aktuellen Version weiterzumachen. Deine Änderungen hier gehen dabei verloren.",
 			"reload": "Neu laden",
-			"tooDeep": "Abschnitte können höchstens 5 Ebenen tief verschachtelt werden."
+			"tooDeep": "Abschnitte können höchstens 5 Ebenen tief verschachtelt werden.",
+			"addWidget": "Widget hinzufügen",
+			"editWidget": "{{title}} bearbeiten",
+			"topLevel": "Widgets können nur innerhalb eines Abschnitts platziert werden."
 		},
 		"sectionDialog": {
 			"newTitle": "Neuer Abschnitt",
@@ -306,10 +317,26 @@
 		"deleteSection": {
 			"title": "Abschnitt löschen?",
 			"text": "„{{title}}“ wird gelöscht.",
-			"textWithChildren_one": "„{{title}}“ und der Abschnitt darin werden gelöscht.",
-			"textWithChildren_other": "„{{title}}“ und die {{count}} Abschnitte darin werden gelöscht.",
+			"textWithChildren_one": "„{{title}}“ und das Widget darin werden gelöscht.",
+			"textWithChildren_other": "„{{title}}“ und die {{count}} Widgets darin werden gelöscht.",
 			"confirm": "Löschen",
 			"cancel": "Abbrechen"
+		},
+		"deleteWidget": {
+			"title": "Widget löschen?",
+			"text": "„{{title}}“ wird gelöscht.",
+			"confirm": "Löschen",
+			"cancel": "Abbrechen"
+		},
+		"widgetDialog": {
+			"add": "Hinzufügen",
+			"apply": "Übernehmen",
+			"cancel": "Abbrechen",
+			"delete": "Widget löschen"
+		},
+		"widgetPicker": {
+			"title": "Widget hinzufügen",
+			"text": "Wähle, was das neue Widget zeigt."
 		},
 		"discard": {
 			"title": "Änderungen verwerfen?",
@@ -328,6 +355,136 @@
 		},
 		"switcher": {
 			"label": "Dashboard wechseln"
+		},
+		"widgets": {
+			"sizeLabel": "Größe",
+			"size": {
+				"S": "Klein",
+				"M": "Mittel",
+				"L": "Groß"
+			},
+			"favouriteExplorer": {
+				"name": "Favoriten-Explorer",
+				"description": "Zeigt einen Ordner deiner Favoriten als Baum.",
+				"addTitle": "Favoriten-Explorer hinzufügen",
+				"editTitle": "Favoriten-Explorer bearbeiten",
+				"folderLabel": "Ordner",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Links dieses Ordners. Sonst siehst nur du das Widget.",
+				"empty": "Dieser Ordner ist leer",
+				"missing": "Dieser Ordner existiert nicht mehr",
+				"expandAll": "Alle aufklappen",
+				"collapseAll": "Alle zuklappen",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über dem Baum angezeigt."
+			},
+			"link": {
+				"name": "Link",
+				"description": "Zeigt einen Link, aus deinen Favoriten oder eine beliebige URL.",
+				"addTitle": "Link hinzufügen",
+				"editTitle": "Link bearbeiten",
+				"sourceLabel": "Link",
+				"source": {
+					"favourite": "Favorit",
+					"url": "URL"
+				},
+				"favouriteLabel": "Favorit",
+				"favouriteMissing": "Dieser Favorit existiert nicht mehr. Wähle einen anderen.",
+				"urlLabel": "URL",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Ohne Titel wird der Titel des Favoriten gezeigt, oder nur die URL.",
+				"icons": {
+					"book-open": "Buch",
+					"bookmark": "Lesezeichen",
+					"briefcase": "Aktentasche",
+					"calendar": "Kalender",
+					"camera": "Kamera",
+					"chart-bar": "Diagramm",
+					"cloud": "Cloud",
+					"code": "Code",
+					"cpu": "Prozessor",
+					"database": "Datenbank",
+					"file-text": "Dokument",
+					"film": "Film",
+					"folder": "Ordner",
+					"gamepad": "Gamecontroller",
+					"globe": "Globus",
+					"hard-drive": "Festplatte",
+					"heart": "Herz",
+					"home": "Zuhause",
+					"image": "Bild",
+					"inbox": "Posteingang",
+					"key": "Schlüssel",
+					"lock": "Schloss",
+					"mail": "E-Mail",
+					"map-pin": "Kartenpin",
+					"message-square": "Chat",
+					"monitor": "Bildschirm",
+					"music": "Musik",
+					"network": "Netzwerk",
+					"newspaper": "Zeitung",
+					"phone": "Telefon",
+					"printer": "Drucker",
+					"router": "Router",
+					"rss": "RSS-Feed",
+					"search": "Suche",
+					"server": "Server",
+					"settings": "Einstellungen",
+					"shield": "Schild",
+					"shopping-cart": "Einkaufswagen",
+					"star": "Stern",
+					"terminal": "Terminal",
+					"tv": "Fernseher",
+					"users": "Personen",
+					"wifi": "WLAN",
+					"wrench": "Schraubenschlüssel"
+				},
+				"targetLabel": "Öffnen in",
+				"target": {
+					"_blank": "Neuer Tab",
+					"_self": "Gleicher Tab"
+				},
+				"errors": {
+					"unsupported_image": "Dieser Dateityp wird nicht unterstützt. Verwende PNG, JPEG, WebP, GIF oder ICO.",
+					"image_too_large": "Das Bild ist größer als 1 MB.",
+					"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal."
+				},
+				"newFavourite": "Neuer Favorit…",
+				"iconChooser": {
+					"label": "Icon",
+					"button": "Icon: {{name}}",
+					"tabs": {
+						"favicon": "Website-Icon",
+						"image": "Eigenes Bild",
+						"symbol": "Symbol",
+						"none": "Keines"
+					},
+					"favicon": {
+						"noUrl": "Wähle zuerst einen Favoriten oder gib eine URL ein.",
+						"loading": "Website-Icon wird gesucht…",
+						"none": "Für {{host}} wurde kein Website-Icon gefunden. Stattdessen wird ein Globus gezeigt.",
+						"found": "Das Website-Icon von {{host}}. Es folgt dem Link, wenn er auf eine andere Website zeigt.",
+						"use": "Website-Icon verwenden"
+					},
+					"image": {
+						"hint": "PNG, JPEG, WebP, GIF oder ICO, höchstens 1 MB.",
+						"upload": "Bild hochladen",
+						"replace": "Anderes Bild hochladen",
+						"use": "Dieses Bild verwenden"
+					},
+					"symbol": {
+						"filter": "Symbole filtern",
+						"group": "Symbole",
+						"noMatches": "Kein Symbol passt."
+					},
+					"none": {
+						"text": "Das Widget zeigt einen Globus.",
+						"use": "Globus zeigen"
+					},
+					"inUse": "Wird verwendet",
+					"done": "Fertig"
+				}
+			}
 		}
 	}
 }

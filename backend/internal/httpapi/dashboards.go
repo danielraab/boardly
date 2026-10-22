@@ -111,8 +111,8 @@ const maxLayoutBytes = 256 << 10
 // saveLayout replaces a dashboard's layout if the submitted version is current.
 func (a *api) saveLayout(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
-		Version  *int                 `json:"version"`
-		Sections []dashboards.Section `json:"sections"`
+		Version  *int                `json:"version"`
+		Sections []dashboards.Widget `json:"sections"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxLayoutBytes))
 	dec.DisallowUnknownFields()
