@@ -9,6 +9,7 @@ import (
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 	"famodash/internal/users"
 )
 
@@ -26,6 +27,8 @@ type Deps struct {
 	Users      *users.Store
 	Favourites *favourites.Store
 	Dashboards *dashboards.Store
+	Images     *images.Store
+	Favicons   *images.Favicons
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -37,7 +40,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -64,6 +67,9 @@ func New(d Deps) http.Handler {
 	mux.Handle("DELETE /api/dashboards/{id}", a.requireUser(a.deleteDashboard))
 	mux.Handle("PUT /api/dashboards/{id}/layout", a.requireUser(a.saveLayout))
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
+	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
+	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))
+	mux.Handle("POST /api/favicons", a.requireUser(a.getFavicon))
 
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))

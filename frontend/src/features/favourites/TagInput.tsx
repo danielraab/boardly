@@ -1,21 +1,12 @@
 import { Combobox } from "@base-ui/react/combobox";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { useDebounced } from "#/lib/useDebounced";
 import { suggestTags } from "./api";
 import { MAX_TAG } from "./validate";
-
-/** Waits until value has been stable for delay ms. */
-function useDebounced<T>(value: T, delay: number) {
-	const [debounced, setDebounced] = useState(value);
-	useEffect(() => {
-		const id = setTimeout(() => setDebounced(value), delay);
-		return () => clearTimeout(id);
-	}, [value, delay]);
-	return debounced;
-}
 
 const sameTag = (a: string, b: string) =>
 	a.trim().toLowerCase() === b.trim().toLowerCase();

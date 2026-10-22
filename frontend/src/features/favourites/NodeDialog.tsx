@@ -15,6 +15,7 @@ import {
 	favouritesQueryKey,
 	updateFavourite,
 } from "./api";
+import { FavouritePicker } from "./FavouritePicker";
 import { TagInput } from "./TagInput";
 import {
 	checkFolderName,
@@ -33,12 +34,20 @@ export type NodeDialogTarget =
 	| { kind: "folder" | "link"; parent: FavouriteNode; parentLabel: string }
 	| { node: FavouriteNode };
 
+/**
+ * Creates or edits a favourite. With chooseFolder, a new node's folder can be
+ * chosen, starting at the target's parent. onSaved gets the saved node.
+ */
 export function NodeDialog({
 	target,
 	onClose,
+	chooseFolder = false,
+	onSaved,
 }: {
 	target: NodeDialogTarget | null;
 	onClose: () => void;
+	chooseFolder?: boolean;
+	onSaved?: (node: FavouriteNode) => void;
 }) {
 	return (
 		<Dialog.Root
@@ -54,6 +63,8 @@ export function NodeDialog({
 							key={"node" in target ? target.node.id : `new-${target.kind}`}
 							target={target}
 							onClose={onClose}
+							chooseFolder={chooseFolder}
+							onSaved={onSaved}
 						/>
 					)}
 				</Dialog.Popup>
@@ -65,9 +76,13 @@ export function NodeDialog({
 function NodeForm({
 	target,
 	onClose,
+	chooseFolder,
+	onSaved,
 }: {
 	target: NodeDialogTarget;
 	onClose: () => void;
+	chooseFolder: boolean;
+	onSaved?: (node: FavouriteNode) => void;
 }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
@@ -80,6 +95,9 @@ function NodeForm({
 	const [url, setUrl] = useState(editing?.url ?? "");
 	const [tags, setTags] = useState<string[]>(editing?.tags ?? []);
 	const [problem, setProblem] = useState<FieldError | "generic" | null>(null);
+	const [parentId, setParentId] = useState(
+		"parent" in target ? target.parent.id : "",
+	);
 
 	const save = useMutation({
 		mutationFn: () => {
@@ -89,14 +107,14 @@ function NodeForm({
 					kind === "folder" ? { title } : { title, url, tags },
 				);
 			}
-			const parentId = (target as { parent: FavouriteNode }).parent.id;
 			return createFavourite(
 				kind === "folder"
 					? { parentId, kind, title }
 					: { parentId, kind, title, url, tags },
 			);
 		},
-		onSuccess: () => {
+		onSuccess: (node) => {
+			onSaved?.(node);
 			void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: ["tags"] });
 			onClose();
@@ -136,7 +154,7 @@ function NodeForm({
 	return (
 		<>
 			<Dialog.Title className="text-lg font-semibold">{heading}</Dialog.Title>
-			{!editing && "parentLabel" in target && (
+			{!editing && !chooseFolder && "parentLabel" in target && (
 				<Dialog.Description className="mt-1 text-sm text-muted">
 					{t("favourites.dialog.inFolder", { name: target.parentLabel })}
 				</Dialog.Description>
@@ -197,6 +215,15 @@ function NodeForm({
 							/>
 						</div>
 						<TagInput value={tags} onChange={setTags} />
+						{!editing && chooseFolder && (
+							<FavouritePicker
+								id="favourite-folder"
+								label={t("favourites.dialog.folderLabel")}
+								mode="folder"
+								value={parentId}
+								onChange={setParentId}
+							/>
+						)}
 					</>
 				)}
 				{problem && (

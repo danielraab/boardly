@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "#/lib/api";
-import { isLayoutConflict, type Section } from "../api";
+import {
+	type ContentWidget,
+	isLayoutConflict,
+	isSection,
+	type Section,
+	type Widget,
+} from "../api";
 import {
 	canMove,
 	countDescendants,
 	currentSlot,
 	depthOf,
+	findWidget,
 	isSameTree,
 	keyboardSlots,
 	layoutReducer,
@@ -13,8 +20,9 @@ import {
 	subtreeHeight,
 } from "./layoutTree";
 
-const s = (id: string, ...children: Section[]): Section => ({
+const s = (id: string, ...children: Widget[]): Section => ({
 	id,
+	kind: "section",
 	width: 6,
 	title: id,
 	border: true,
@@ -23,10 +31,24 @@ const s = (id: string, ...children: Section[]): Section => ({
 });
 
 /** Renders a tree as "a(b,c),d". */
-const shape = (tree: Section[]): string =>
+const shape = (tree: Widget[]): string =>
 	tree
-		.map((x) => (x.children.length ? `${x.id}(${shape(x.children)})` : x.id))
+		.map((x) =>
+			isSection(x) && x.children.length
+				? `${x.id}(${shape(x.children)})`
+				: x.id,
+		)
 		.join(",");
+
+/** A content widget of the kind "note". */
+const w = (id: string, data?: unknown): ContentWidget => ({
+	id,
+	kind: "note",
+	width: 2,
+	height: "auto",
+	config: { text: id },
+	...(data === undefined ? {} : { data }),
+});
 
 /** A chain of sections c1 > c2 > … > c<n>. */
 const chain = (n: number, from = 1): Section[] =>
@@ -38,12 +60,12 @@ describe("layoutReducer", () => {
 	it("adds at the end of the top level or a parent", () => {
 		expect(
 			shape(
-				layoutReducer(tree, { type: "add", parentId: null, section: s("x") }),
+				layoutReducer(tree, { type: "add", parentId: null, widget: s("x") }),
 			),
 		).toBe("a(b,c),d,x");
 		expect(
 			shape(
-				layoutReducer(tree, { type: "add", parentId: "d", section: s("x") }),
+				layoutReducer(tree, { type: "add", parentId: "d", widget: s("x") }),
 			),
 		).toBe("a(b,c),d(x)");
 	});
@@ -52,7 +74,7 @@ describe("layoutReducer", () => {
 		const next = layoutReducer(tree, {
 			type: "update",
 			id: "a",
-			settings: { border: false, height: 4 },
+			widget: { ...s("a"), border: false, height: 4, children: [] },
 		});
 		expect(next[0]).toMatchObject({ border: false, height: 4 });
 		expect(shape(next)).toBe("a(b,c),d");
@@ -117,9 +139,47 @@ describe("tree helpers", () => {
 		expect(canMove(tree, "c1", "c2")).toBe("intoItself");
 	});
 
-	it("compares trees", () => {
+	it("compares trees, ignoring resolved data", () => {
 		expect(isSameTree(chain(2), chain(2))).toBe(true);
 		expect(isSameTree(chain(2), chain(3))).toBe(false);
+		expect(isSameTree([s("a", w("n", { tree: 1 }))], [s("a", w("n"))])).toBe(
+			true,
+		);
+	});
+
+	it("treats content widgets as leaves that add no level", () => {
+		const tree = [...chain(5), s("x", w("n"))];
+		expect(subtreeHeight(tree[1])).toBe(1);
+		expect(countDescendants(tree[1])).toBe(1);
+		// A widget fits into a section at level 5, but not at the top level.
+		expect(canMove(tree, "n", "c5")).toBeNull();
+		expect(canMove(tree, "n", null)).toBe("topLevel");
+		expect(
+			shape(
+				layoutReducer(tree, {
+					type: "move",
+					id: "n",
+					parentId: "c5",
+					index: 0,
+				}),
+			),
+		).toBe("c1(c2(c3(c4(c5(n))))),x");
+		expect(
+			layoutReducer(tree, { type: "move", id: "n", parentId: null, index: 0 }),
+		).toBe(tree);
+	});
+
+	it("updates a content widget in place", () => {
+		const tree = [s("a", w("n"))];
+		const next = layoutReducer(tree, {
+			type: "update",
+			id: "n",
+			widget: { ...w("n"), height: 3, config: { text: "new" } },
+		});
+		expect(findWidget(next, "n")).toMatchObject({
+			height: 3,
+			config: { text: "new" },
+		});
 	});
 });
 
@@ -152,5 +212,13 @@ describe("keyboard slots", () => {
 			(x) => `${x.parentId ?? "root"}:${x.index}`,
 		);
 		expect(slots).toEqual(["root:0", "c:0", "root:1"]);
+	});
+
+	it("gives a content widget no places at the top level", () => {
+		const tree = [s("a", w("n"), s("b")), s("c")];
+		const slots = keyboardSlots(tree, "n").map(
+			(x) => `${x.parentId ?? "root"}:${x.index}`,
+		);
+		expect(slots).toEqual(["a:0", "b:0", "a:1", "c:0"]);
 	});
 });

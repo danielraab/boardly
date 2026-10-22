@@ -139,6 +139,21 @@ describe("favourites page", () => {
 		expect(rows()).toEqual(["Work", "Docs", "https://example.org"]);
 	});
 
+	it("shows a link's favicon, or a globe without one", async () => {
+		fakeServer([link("GitHub", { iconImageId: "img-1" }), link("Plain")]);
+		renderApp("/favourites");
+		const github = (await screen.findByRole("link", { name: "GitHub" }))
+			.parentElement?.parentElement as HTMLElement;
+		expect(github.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/img-1",
+		);
+		const plain = screen.getByRole("link", { name: "Plain" }).parentElement
+			?.parentElement as HTMLElement;
+		expect(plain.querySelector("img")).toBeNull();
+		expect(plain.querySelector("[data-icon='globe']")).not.toBeNull();
+	});
+
 	it("collapses and expands a folder", async () => {
 		fakeServer([folder("Work", link("Docs"))]);
 		const { user } = renderApp("/favourites");

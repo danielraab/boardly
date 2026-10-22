@@ -62,10 +62,10 @@ type View struct {
 	IsOwner   bool   `json:"isOwner"`
 	// Dashboards are the switcher entries: all of the owner's dashboards for
 	// the owner, only the public ones for everyone else.
-	Dashboards    []Entry   `json:"dashboards"`
-	Columns       Columns   `json:"columns"`
-	LayoutVersion int       `json:"layoutVersion"`
-	Sections      []Section `json:"sections"`
+	Dashboards    []Entry  `json:"dashboards"`
+	Columns       Columns  `json:"columns"`
+	LayoutVersion int      `json:"layoutVersion"`
+	Sections      []Widget `json:"sections"`
 }
 
 // Errors returned by the store.
@@ -84,11 +84,13 @@ const MaxTitleLength = 100
 type Store struct {
 	DB  *sql.DB
 	Now func() time.Time
+	// Kinds are the content widget kinds besides sections, by name.
+	Kinds map[string]Kind
 }
 
 // NewStore returns a store that uses the real clock.
 func NewStore(database *sql.DB) *Store {
-	return &Store{DB: database, Now: time.Now}
+	return &Store{DB: database, Now: time.Now, Kinds: map[string]Kind{}}
 }
 
 // Fields are the values of a dashboard to create; nil column settings get
@@ -311,7 +313,11 @@ func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID st
 		v.ID = dashboardID
 		v.IsDefault, v.IsPublic = &isDefault, &public
 	}
-	if v.Sections, err = loadSections(ctx, s.DB, dashboardID); err != nil {
+	sections, err := loadWidgets(ctx, s.DB, dashboardID)
+	if err != nil {
+		return View{}, err
+	}
+	if v.Sections, err = s.resolve(ctx, Viewer{OwnerID: ownerID, IsOwner: v.IsOwner}, sections); err != nil {
 		return View{}, err
 	}
 

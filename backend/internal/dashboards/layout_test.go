@@ -1,15 +1,18 @@
 package dashboards
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
 
 // sec builds a section with border on and height auto.
-func sec(width int, title string, children ...Section) Section {
-	s := Section{Width: width, Border: true, Children: children}
+func sec(width int, title string, children ...Widget) Widget {
+	s := Widget{Kind: KindSection, Width: width, Border: true, Children: children}
 	if title != "" {
 		s.Title = &title
 	}
@@ -17,15 +20,15 @@ func sec(width int, title string, children ...Section) Section {
 }
 
 // nested returns a chain of depth sections, one inside the other.
-func nested(depth int) []Section {
+func nested(depth int) []Widget {
 	if depth == 0 {
 		return nil
 	}
-	return []Section{sec(6, "", nested(depth-1)...)}
+	return []Widget{sec(6, "", nested(depth-1)...)}
 }
 
 // titles renders a tree as "A(B,C),D" for comparisons.
-func titles(list []Section) string {
+func titles(list []Widget) string {
 	var out []string
 	for _, s := range list {
 		t := "-"
@@ -58,10 +61,10 @@ func TestLayoutSaveAndLookup(t *testing.T) {
 		t.Fatalf("empty dashboard = %+v", v)
 	}
 
-	saved, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Section{
+	saved, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Widget{
 		sec(3, " Links "),
 		sec(6, "Work", sec(2, "Tools"), sec(2, "Docs")),
-		{Width: 4, Title: ptr("  "), Height: 3},
+		{Kind: KindSection, Width: 4, Title: ptr("  "), Height: 3},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,11 +99,11 @@ func TestLayoutKeepsKnownIDs(t *testing.T) {
 	f := newFixture(t)
 	home := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
 	work := f.create(f.ann, Fields{Title: "Work", Slug: "work"})
-	first, err := f.s.SaveLayout(f.ctx, f.ann, home.ID, 0, []Section{sec(6, "A", sec(3, "B"))})
+	first, err := f.s.SaveLayout(f.ctx, f.ann, home.ID, 0, []Widget{sec(6, "A", sec(3, "B"))})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := f.s.SaveLayout(f.ctx, f.ann, work.ID, 0, []Section{sec(6, "W")})
+	other, err := f.s.SaveLayout(f.ctx, f.ann, work.ID, 0, []Widget{sec(6, "W")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,10 +111,10 @@ func TestLayoutKeepsKnownIDs(t *testing.T) {
 
 	// B moves to the top level and keeps its ID; A's ID is used twice; W's ID
 	// belongs to another dashboard and "x" is unknown.
-	b.Children, a.Children = []Section{}, []Section{}
+	b.Children, a.Children = []Widget{}, []Widget{}
 	dup, foreign, unknown := sec(6, "Dup"), sec(6, "Foreign"), sec(6, "Unknown")
 	dup.ID, foreign.ID, unknown.ID = a.ID, w.ID, "x"
-	saved, err := f.s.SaveLayout(f.ctx, f.ann, home.ID, 1, []Section{b, a, dup, foreign, unknown})
+	saved, err := f.s.SaveLayout(f.ctx, f.ann, home.ID, 1, []Widget{b, a, dup, foreign, unknown})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,16 +139,16 @@ func TestLayoutValidation(t *testing.T) {
 		t.Fatalf("%d levels: %v", MaxDepth, err)
 	}
 
-	many := make([]Section, MaxWidgets+1)
+	many := make([]Widget, MaxWidgets+1)
 	for i := range many {
 		many[i] = sec(1, "")
 	}
-	for name, layout := range map[string][]Section{
+	for name, layout := range map[string][]Widget{
 		"six levels":      nested(MaxDepth + 1),
 		"width 0":         {sec(0, "")},
 		"width 13":        {sec(13, "")},
 		"nested width 13": {sec(6, "", sec(13, ""))},
-		"height 51":       {{Width: 6, Height: MaxHeightRows + 1}},
+		"height 51":       {{Kind: KindSection, Width: 6, Height: MaxHeightRows + 1}},
 		"title 101":       {sec(6, strings.Repeat("ä", MaxSectionTitleLength+1))},
 		"too many":        many,
 	} {
@@ -161,13 +164,13 @@ func TestLayoutValidation(t *testing.T) {
 func TestLayoutConflictAndForeign(t *testing.T) {
 	f := newFixture(t)
 	d := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
-	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Section{sec(6, "First")}); err != nil {
+	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Widget{sec(6, "First")}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Section{sec(6, "Stale")}); !errors.Is(err, ErrLayoutConflict) {
+	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Widget{sec(6, "Stale")}); !errors.Is(err, ErrLayoutConflict) {
 		t.Fatalf("stale save: %v", err)
 	}
-	if _, err := f.s.SaveLayout(f.ctx, f.bob, d.ID, 1, []Section{sec(6, "Bob's")}); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.SaveLayout(f.ctx, f.bob, d.ID, 1, []Widget{sec(6, "Bob's")}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("foreign save: %v", err)
 	}
 	if v := f.lookup("ann", "home", f.ann); v.LayoutVersion != 1 || titles(v.Sections) != "First" {
@@ -176,7 +179,7 @@ func TestLayoutConflictAndForeign(t *testing.T) {
 }
 
 func TestHeightJSON(t *testing.T) {
-	var s Section
+	var s Widget
 	if err := json.Unmarshal([]byte(`{"width":2,"height":4}`), &s); err != nil || s.Height != 4 {
 		t.Fatalf("rows: %+v, %v", s, err)
 	}
@@ -187,5 +190,158 @@ func TestHeightJSON(t *testing.T) {
 		if err := json.Unmarshal([]byte(`{"height":`+bad+`}`), &s); err == nil {
 			t.Errorf("height %s accepted", bad)
 		}
+	}
+}
+
+// noteConfig is the config of the test-only kind "note".
+type noteConfig struct {
+	Text    string `json:"text"`
+	Private bool   `json:"private"`
+}
+
+// withNotes registers "note": the text is trimmed and must not be empty, the
+// data is the text in brackets, and private notes are hidden from visitors.
+func withNotes(f *fixture) {
+	f.s.Kinds["note"] = Kind{
+		Normalize: func(_ context.Context, _ string, raw json.RawMessage) (json.RawMessage, error) {
+			var c noteConfig
+			dec := json.NewDecoder(bytes.NewReader(raw))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&c); err != nil {
+				return nil, fmt.Errorf("%w: %v", ErrInvalidLayout, err)
+			}
+			if c.Text = strings.TrimSpace(c.Text); c.Text == "" {
+				return nil, fmt.Errorf("%w: empty note", ErrInvalidLayout)
+			}
+			return json.Marshal(c)
+		},
+		Resolve: func(_ context.Context, viewer Viewer, raw json.RawMessage) (any, bool, error) {
+			var c noteConfig
+			if err := json.Unmarshal(raw, &c); err != nil {
+				return nil, false, err
+			}
+			if c.Private && !viewer.IsOwner {
+				return nil, false, nil
+			}
+			return "[" + c.Text + "]", true, nil
+		},
+	}
+}
+
+// note builds a note widget with height auto.
+func note(width int, config string) Widget {
+	return Widget{Kind: "note", Width: width, Config: json.RawMessage(config)}
+}
+
+func TestContentWidgets(t *testing.T) {
+	f := newFixture(t)
+	withNotes(f)
+	d := f.create(f.ann, Fields{Title: "Home", Slug: "home", IsPublic: true})
+
+	n := note(2, `{"text":"  hi "}`)
+	n.Height, n.Data = 3, "ignored"
+	saved, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Widget{
+		sec(6, "Work", n, sec(2, "Tools"), note(2, `{"text":"secret","private":true}`)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := saved.Sections[0].Children
+	if len(got) != 3 || got[0].Kind != "note" || got[0].Height != 3 || got[0].Width != 2 ||
+		string(got[0].Config) != `{"text":"hi","private":false}` || got[0].Data != "[hi]" || got[0].Children != nil {
+		t.Fatalf("saved children = %+v", got)
+	}
+	var stored string
+	if err := f.s.DB.QueryRow(`SELECT config FROM dashboard_widgets WHERE id = ?`, got[0].ID).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(stored, "ignored") {
+		t.Fatalf("data was stored: %s", stored)
+	}
+
+	owner := f.lookup("ann", "home", f.ann)
+	if titles(owner.Sections) != "Work(-,Tools,-)" || owner.Sections[0].Children[2].Data != "[secret]" {
+		t.Fatalf("owner view = %+v", owner.Sections)
+	}
+	visitor := f.lookup("ann", "home", "")
+	if len(visitor.Sections[0].Children) != 2 || visitor.LayoutVersion != 1 {
+		t.Fatalf("visitor view = %+v", visitor.Sections)
+	}
+	data, err := json.Marshal(visitor)
+	if err != nil || strings.Contains(string(data), "secret") {
+		t.Fatalf("visitor JSON = %s, %v", data, err)
+	}
+	if !strings.Contains(string(data), `"kind":"note","width":2,"height":3,"config":{"text":"hi","private":false},"data":"[hi]"}`) {
+		t.Fatalf("visitor JSON = %s", data)
+	}
+
+	// A widget at level 5 is allowed, because widgets aren't nesting levels.
+	deep := nested(MaxDepth)
+	inner := &deep[0]
+	for len(inner.Children) > 0 {
+		inner = &inner.Children[0]
+	}
+	inner.Children = []Widget{note(1, `{"text":"deep"}`)}
+	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 1, deep); err != nil {
+		t.Fatalf("widget at level %d: %v", MaxDepth, err)
+	}
+}
+
+func TestContentWidgetValidation(t *testing.T) {
+	f := newFixture(t)
+	withNotes(f)
+	d := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
+
+	withChild := note(2, `{"text":"a"}`)
+	withChild.Children = []Widget{sec(1, "")}
+	withTitle := note(2, `{"text":"a"}`)
+	withTitle.Title = ptr("T")
+	tall := note(2, `{"text":"a"}`)
+	tall.Height = MaxHeightRows + 1
+	sectionConfig := sec(2, "")
+	sectionConfig.Config = json.RawMessage(`{}`)
+	for name, layout := range map[string][]Widget{
+		"unknown kind":   {sec(6, "", Widget{Kind: "clock", Width: 2})},
+		"missing kind":   {sec(6, "", Widget{Width: 2})},
+		"top level":      {note(2, `{"text":"a"}`)},
+		"children":       {sec(6, "", withChild)},
+		"title":          {sec(6, "", withTitle)},
+		"invalid config": {sec(6, "", note(2, `{"text":" "}`))},
+		"unknown field":  {sec(6, "", note(2, `{"text":"a","color":"red"}`))},
+		"width 13":       {sec(6, "", note(13, `{"text":"a"}`))},
+		"height 51":      {sec(6, "", tall)},
+		"section config": {sectionConfig},
+	} {
+		if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, layout); !errors.Is(err, ErrInvalidLayout) {
+			t.Errorf("%s: err = %v, want ErrInvalidLayout", name, err)
+		}
+	}
+	if v := f.lookup("ann", "home", f.ann); v.LayoutVersion != 0 {
+		t.Fatalf("invalid saves changed the layout: %+v", v)
+	}
+}
+
+func TestResolveCache(t *testing.T) {
+	f := newFixture(t)
+	d := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
+	loads := 0
+	f.s.Kinds["counter"] = Kind{
+		Normalize: func(_ context.Context, _ string, raw json.RawMessage) (json.RawMessage, error) { return raw, nil },
+		Resolve: func(ctx context.Context, _ Viewer, raw json.RawMessage) (any, bool, error) {
+			v, err := Cached(ctx, string(raw), func() (int, error) { loads++; return loads, nil })
+			return v, true, err
+		},
+	}
+	w := func(config string) Widget { return Widget{Kind: "counter", Width: 1, Config: json.RawMessage(config)} }
+	if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, []Widget{sec(6, "", w(`"a"`), w(`"b"`), sec(3, "", w(`"a"`)))}); err != nil {
+		t.Fatal(err)
+	}
+	if loads != 2 {
+		t.Fatalf("save loaded %d times, want 2", loads)
+	}
+	v := f.lookup("ann", "home", f.ann)
+	// A new lookup starts with an empty cache.
+	if got := v.Sections[0].Children; got[0].Data != 3 || got[1].Data != 4 || got[2].Children[0].Data != 3 {
+		t.Fatalf("data = %v %v %v", got[0].Data, got[1].Data, got[2].Children[0].Data)
 	}
 }
