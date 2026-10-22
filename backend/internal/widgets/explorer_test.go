@@ -118,8 +118,16 @@ func TestExplorerConfig(t *testing.T) {
 	if err := f.save(explorer(`{"rootFolderId":"` + work + `","size":"L"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if got := f.lookup(f.ann)[0]["config"]; got.(map[string]any)["showIfPublic"] != false {
-		t.Fatalf("config = %v, want showIfPublic filled in as false", got)
+	if got := f.lookup(f.ann)[0]["config"].(map[string]any); got["showIfPublic"] != false || got["title"] != nil {
+		t.Fatalf("config = %v, want showIfPublic false and no title", got)
+	}
+	for title, want := range map[string]any{`"  Work links "`: "Work links", `"   "`: nil, `"` + strings.Repeat("ä", 200) + `"`: strings.Repeat("ä", 200)} {
+		if err := f.save(explorer(`{"rootFolderId":"` + work + `","title":` + title + `,"size":"M"}`)); err != nil {
+			t.Fatal(err)
+		}
+		if got := f.lookup(f.ann)[0]["config"].(map[string]any)["title"]; got != want {
+			t.Errorf("title %s saved as %v, want %v", title, got, want)
+		}
 	}
 
 	for name, config := range map[string]string{
@@ -129,6 +137,7 @@ func TestExplorerConfig(t *testing.T) {
 		"empty folder":   `{"rootFolderId":"","size":"M"}`,
 		"long folder ID": `{"rootFolderId":"` + strings.Repeat("a", 65) + `","size":"M"}`,
 		"unknown field":  `{"rootFolderId":"` + work + `","size":"M","depth":2}`,
+		"long title":     `{"rootFolderId":"` + work + `","title":"` + strings.Repeat("a", 201) + `","size":"M"}`,
 	} {
 		if err := f.save(explorer(config)); !errors.Is(err, dashboards.ErrInvalidLayout) {
 			t.Errorf("%s: err = %v, want ErrInvalidLayout", name, err)

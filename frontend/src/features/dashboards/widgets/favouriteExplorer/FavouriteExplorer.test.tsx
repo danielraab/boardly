@@ -162,6 +162,44 @@ describe("collapse state", () => {
 		expect(screen.getByRole("button", { name: "Expand all" })).toBeVisible();
 	});
 
+	it("shows a title as a heading, with expand all on its line", () => {
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="M"
+				data={{ children: [tools, mail] }}
+				editing={false}
+				title="Work links"
+				headingLevel={4}
+			/>,
+		);
+		const heading = screen.getByRole("heading", {
+			level: 4,
+			name: "Work links",
+		});
+		expect(heading).toHaveClass("truncate");
+		expect(heading.parentElement).toContainElement(
+			screen.getByRole("button", { name: "Expand all" }),
+		);
+	});
+
+	it("shows no heading without a title, and the title with a missing folder", () => {
+		const { unmount } = tree({ children: [tools] });
+		expect(screen.queryByRole("heading")).toBeNull();
+		unmount();
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="M"
+				data={{ missing: true }}
+				editing={false}
+				title="Work links"
+			/>,
+		);
+		expect(screen.getByRole("heading", { name: "Work links" })).toBeVisible();
+		expect(screen.getByText("This folder no longer exists")).toBeVisible();
+	});
+
 	it("has no expand-all button without folders", () => {
 		tree({ children: [mail] });
 		expect(screen.queryByRole("button")).toBeNull();
@@ -271,8 +309,15 @@ describe("the favourite explorer on a dashboard", () => {
 		expect(
 			within(dialog).getByText("Selected: Favourites / Work"),
 		).toBeVisible();
+		expect(within(dialog).getByLabelText("Title")).toHaveValue("");
+		await user.type(within(dialog).getByLabelText("Title"), "  Work links ");
 		await user.selectOptions(within(dialog).getByLabelText("Size"), "Large");
 		await user.click(add);
+
+		// A level below the section "Work", like a section beside it.
+		expect(
+			await screen.findByRole("heading", { level: 3, name: "Work links" }),
+		).toBeVisible();
 
 		// The draft shows the folder from the favourites.
 		const toolsButton = await screen.findByRole("button", { name: "Tools" });
@@ -286,7 +331,12 @@ describe("the favourite explorer on a dashboard", () => {
 			children: [
 				{
 					kind: "favourite_explorer",
-					config: { rootFolderId: "work", size: "L", showIfPublic: false },
+					config: {
+						rootFolderId: "work",
+						title: "Work links",
+						size: "L",
+						showIfPublic: false,
+					},
 				},
 			],
 		});

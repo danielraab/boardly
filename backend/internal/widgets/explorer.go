@@ -15,9 +15,10 @@ import (
 const KindFavouriteExplorer = "favourite_explorer"
 
 type explorerConfig struct {
-	RootFolderID string `json:"rootFolderId"`
-	Size         Size   `json:"size"`
-	ShowIfPublic bool   `json:"showIfPublic"`
+	RootFolderID string  `json:"rootFolderId"`
+	Title        *string `json:"title"`
+	Size         Size    `json:"size"`
+	ShowIfPublic bool    `json:"showIfPublic"`
 }
 
 // explorerData is the data of an explorer whose folder exists.
@@ -46,6 +47,10 @@ func FavouriteExplorer(fav *favourites.Store, icons *images.Favicons) dashboards
 			}
 			if c.RootFolderID == "" || len(c.RootFolderID) > maxIDLength {
 				return nil, fmt.Errorf("%w: invalid root folder", dashboards.ErrInvalidLayout)
+			}
+			var err error
+			if c.Title, err = normalizeTitle(c.Title); err != nil {
+				return nil, err
 			}
 			return json.Marshal(c)
 		},

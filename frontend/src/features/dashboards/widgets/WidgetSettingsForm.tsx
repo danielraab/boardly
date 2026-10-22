@@ -5,6 +5,9 @@ import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import type { ContentWidget, SectionHeight } from "../api";
 import { SizeFields, useSizeState } from "../layout/SizeFields";
 
+/** The most characters of a widget's own title (as the server allows). */
+export const maxWidgetTitle = 200;
+
 /**
  * The frame of a widget kind's settings dialog: its title, the kind's own
  * fields, the shared width and height, and the delete, cancel and apply

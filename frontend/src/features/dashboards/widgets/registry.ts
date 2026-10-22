@@ -9,6 +9,8 @@ export type WidgetViewProps = {
 	widget: ContentWidget;
 	/** In edit mode the widget shows the draft and must not navigate away. */
 	editing: boolean;
+	/** The level of a heading in the widget, as a section's title beside it has. */
+	headingLevel: number;
 };
 
 export type WidgetSettingsProps = {

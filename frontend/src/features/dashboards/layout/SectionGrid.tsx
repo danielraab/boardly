@@ -81,6 +81,7 @@ function SectionList({
 						key={widget.id}
 						widget={widget}
 						parentColumns={columns}
+						level={level}
 					/>
 				),
 			)}
@@ -378,7 +379,12 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 	);
 }
 
-function ContentBlock(props: { widget: ContentWidget; parentColumns: number }) {
+/** level is that of the sections beside the widget. */
+function ContentBlock(props: {
+	widget: ContentWidget;
+	parentColumns: number;
+	level: number;
+}) {
 	return useEditor() ? (
 		<SortableContent {...props} />
 	) : (
@@ -389,6 +395,7 @@ function ContentBlock(props: { widget: ContentWidget; parentColumns: number }) {
 function SortableContent(props: {
 	widget: ContentWidget;
 	parentColumns: number;
+	level: number;
 }) {
 	const editor = useEditor();
 	const {
@@ -433,12 +440,14 @@ function SortableContent(props: {
 function WidgetFrame({
 	widget,
 	parentColumns,
+	level,
 	frameRef,
 	dragStyle,
 	handle,
 }: {
 	widget: ContentWidget;
 	parentColumns: number;
+	level: number;
 	frameRef?: (el: HTMLElement | null) => void;
 	dragStyle?: CSSProperties;
 	handle?: ReactNode;
@@ -489,7 +498,13 @@ function WidgetFrame({
 				</div>
 			)}
 			<div className="min-h-0 min-w-0 flex-1 overflow-auto">
-				{kind && <kind.View widget={widget} editing={editor !== null} />}
+				{kind && (
+					<kind.View
+						widget={widget}
+						editing={editor !== null}
+						headingLevel={Math.min(level + 1, 6)}
+					/>
+				)}
 			</div>
 		</div>
 	);

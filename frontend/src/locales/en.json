@@ -374,7 +374,9 @@
 				"empty": "This folder is empty",
 				"missing": "This folder no longer exists",
 				"expandAll": "Expand all",
-				"collapseAll": "Collapse all"
+				"collapseAll": "Collapse all",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the tree."
 			},
 			"link": {
 				"name": "Link",

@@ -7,11 +7,11 @@ A dashboard widget that shows the contents of one folder of the owner's favourit
 ## ADDED Requirements
 
 ### Requirement: Explorer settings
-A favourite explorer SHALL have a root folder, a size (`S`, `M` or `L`, default `M`) and a "Show on public dashboard" flag (default off), besides the common width and height. The settings dialog SHALL offer every folder of the owner's favourites as the root folder, including the tree's root ("Favourites"), in a tree that can be searched by name, and it SHALL show the path of the chosen folder. It can't be confirmed without a folder. A layout with a size other than `S`, `M` or `L`, or without a root folder ID, is rejected with 400 and `invalid_layout`.
+A favourite explorer SHALL have a root folder, an optional title (at most 200 characters after trimming; empty means none), a size (`S`, `M` or `L`, default `M`) and a "Show on public dashboard" flag (default off), besides the common width and height. The settings dialog SHALL offer every folder of the owner's favourites as the root folder, including the tree's root ("Favourites"), in a tree that can be searched by name, and it SHALL show the path of the chosen folder. It can't be confirmed without a folder. A layout with a size other than `S`, `M` or `L`, a title longer than 200 characters, or without a root folder ID, is rejected with 400 and `invalid_layout`.
 
 #### Scenario: Add an explorer
 - **WHEN** Ann picks "Favourite explorer" in the widget picker
-- **THEN** its settings dialog opens with no folder chosen, size M and "Show on public dashboard" off, and it can't be confirmed until she picks a folder
+- **THEN** its settings dialog opens with no folder chosen, no title, size M and "Show on public dashboard" off, and it can't be confirmed until she picks a folder
 
 #### Scenario: Invalid size
 - **WHEN** a layout is saved with an explorer of size `XL`
@@ -31,6 +31,17 @@ The explorer SHALL show the children of its root folder as a tree, not the root 
 #### Scenario: Favourites change
 - **WHEN** Ann renames a link inside the root folder on `/favourites` and opens the dashboard again
 - **THEN** the explorer shows the new name
+
+### Requirement: Explorer title
+An explorer with a title SHALL show it as a heading at its top, cut off with "…" when it doesn't fit, with the expand-all button on the same line. Its heading level is that of a section's title at the same place in the layout. An explorer without a title shows no heading.
+
+#### Scenario: With title
+- **WHEN** Ann gives an explorer the title "Work links"
+- **THEN** the explorer shows the heading "Work links" above its tree
+
+#### Scenario: Without title
+- **WHEN** an explorer has no title
+- **THEN** the tree starts at the top of the widget
 
 ### Requirement: Explorer size
 The size SHALL set the icon size, the font size and the padding of the rows: S is the smallest, L the largest, and M is in between.

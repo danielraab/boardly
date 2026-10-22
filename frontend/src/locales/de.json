@@ -374,7 +374,9 @@
 				"empty": "Dieser Ordner ist leer",
 				"missing": "Dieser Ordner existiert nicht mehr",
 				"expandAll": "Alle aufklappen",
-				"collapseAll": "Alle zuklappen"
+				"collapseAll": "Alle zuklappen",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über dem Baum angezeigt."
 			},
 			"link": {
 				"name": "Link",

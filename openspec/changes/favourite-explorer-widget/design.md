@@ -21,12 +21,12 @@
 
 ### Config and data
 ```json
-config: { "rootFolderId": "<uuid>", "size": "S" | "M" | "L", "showIfPublic": false }
+config: { "rootFolderId": "<uuid>", "title": "…" | null, "size": "S" | "M" | "L", "showIfPublic": false }
 data:   { "missing": true }
      |  { "children": [ { id, kind: "folder", title, children: [...] }
                       | { id, kind: "link", title, url, iconImageId } ] }
 ```
-`Normalize` checks the size and that `rootFolderId` is a non-empty string of at most 64 characters, and it fills in a missing `showIfPublic` as `false`. It doesn't require the folder to exist, so a layout with a deleted folder can still be saved. A folder ID of another user is never resolved, because `Resolve` only looks in the owner's tree, so it behaves like a deleted folder.
+`Normalize` checks the size and that `rootFolderId` is a non-empty string of at most 64 characters, trims the title (at most 200 characters, empty or missing → `null`, shared with the link widget), and it fills in a missing `showIfPublic` as `false`. It doesn't require the folder to exist, so a layout with a deleted folder can still be saved. A folder ID of another user is never resolved, because `Resolve` only looks in the owner's tree, so it behaves like a deleted folder.
 
 ### Resolve
 `Resolve(owner, viewerIsOwner, config)`:
@@ -42,6 +42,9 @@ The kind lives in a new package `internal/widgets` (`FavouriteExplorer(fav, icon
 
 ### Draft preview from the favourites query
 A widget added in the draft has no `data` until it is saved, and changing the root folder makes the old `data` stale. In edit mode the view therefore builds its tree from `favouritesQueryOptions` (the owner's full tree, already cached by the folder picker) and ignores `data`. In view mode it uses `data`. Both paths feed the same `ExplorerTree` component.
+
+### Title
+With a title, the widget has a header line: the title as a heading (`truncate font-medium`) and the expand-all button at its right; the tree takes the full width below. Without a title, the button sits in a narrow column beside the tree. The heading level comes from a new `headingLevel` prop of every widget view: `SectionGrid` passes `min(level + 1, 6)`, the level a section's title has in the same list.
 
 ### Collapse state
 The key is `famodash.explorer.<widgetId>`, holding a JSON array of expanded folder IDs. It is read once on mount and written on change, inside try/catch, so a blocked storage falls back to everything collapsed. Unknown IDs are ignored on read. The expand-all/collapse-all toggle is a small icon button (`ChevronsUpDown` / `ChevronsDownUp`) at the top right of the widget, in a narrow column beside the tree, so it is level with the first row and never takes a row of its own. (Floating it doesn't work: the full-width rows can't wrap around a float and move below it.) It is shown only when the tree has at least one folder.

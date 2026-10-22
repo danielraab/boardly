@@ -4,6 +4,7 @@ import {
 	ChevronsUpDown,
 	Folder,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
@@ -22,40 +23,30 @@ function folderIds(nodes: FavouriteNode[]): string[] {
 }
 
 /**
- * The children of an explorer's folder as a file tree. In edit mode, links
- * don't navigate.
+ * The children of an explorer's folder as a file tree, below its title as a
+ * heading of headingLevel when it has one. In edit mode, links don't navigate.
  */
 export function ExplorerTree({
 	widgetId,
 	size,
 	data,
 	editing,
+	title = null,
+	headingLevel = 2,
 }: {
 	widgetId: string;
 	size: WidgetSize;
 	data: ExplorerData;
 	editing: boolean;
+	title?: string | null;
+	headingLevel?: number;
 }) {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useExpanded(widgetId);
 	const style = sizeStyles[size];
 
-	if ("missing" in data) {
-		return (
-			<p className={`${style.text} text-muted`}>
-				{t("dashboards.widgets.favouriteExplorer.missing")}
-			</p>
-		);
-	}
-	if (data.children.length === 0) {
-		return (
-			<p className={`${style.text} text-muted`}>
-				{t("dashboards.widgets.favouriteExplorer.empty")}
-			</p>
-		);
-	}
-
-	const folders = folderIds(data.children);
+	const children = "missing" in data ? [] : data.children;
+	const folders = folderIds(children);
 	const anyExpanded = folders.some((id) => expanded.has(id));
 	const toggleAllLabel = t(
 		anyExpanded
@@ -130,26 +121,58 @@ export function ExplorerTree({
 		</ul>
 	);
 
+	let body: ReactNode;
+	if ("missing" in data) {
+		body = (
+			<p className="text-muted">
+				{t("dashboards.widgets.favouriteExplorer.missing")}
+			</p>
+		);
+	} else if (children.length === 0) {
+		body = (
+			<p className="text-muted">
+				{t("dashboards.widgets.favouriteExplorer.empty")}
+			</p>
+		);
+	} else {
+		body = renderNodes(children, 0);
+	}
+
+	const toggleAll = folders.length > 0 && (
+		<button
+			type="button"
+			onClick={() => setExpanded(anyExpanded ? new Set() : new Set(folders))}
+			aria-label={toggleAllLabel}
+			title={toggleAllLabel}
+			className={iconButton}
+		>
+			{anyExpanded ? (
+				<ChevronsDownUp className="size-4" aria-hidden />
+			) : (
+				<ChevronsUpDown className="size-4" aria-hidden />
+			)}
+		</button>
+	);
+
+	// With a title, the button is on the title's line; without, beside the tree.
+	if (title) {
+		const Heading = `h${headingLevel}` as "h2";
+		return (
+			<div className={style.text}>
+				<div className="flex items-center gap-1">
+					<Heading className="min-w-0 flex-1 truncate font-medium">
+						{title}
+					</Heading>
+					{toggleAll}
+				</div>
+				{body}
+			</div>
+		);
+	}
 	return (
 		<div className={`flex items-start gap-1 ${style.text}`}>
-			<div className="min-w-0 flex-1">{renderNodes(data.children, 0)}</div>
-			{folders.length > 0 && (
-				<button
-					type="button"
-					onClick={() =>
-						setExpanded(anyExpanded ? new Set() : new Set(folders))
-					}
-					aria-label={toggleAllLabel}
-					title={toggleAllLabel}
-					className={iconButton}
-				>
-					{anyExpanded ? (
-						<ChevronsDownUp className="size-4" aria-hidden />
-					) : (
-						<ChevronsUpDown className="size-4" aria-hidden />
-					)}
-				</button>
-			)}
+			<div className="min-w-0 flex-1">{body}</div>
+			{toggleAll}
 		</div>
 	);
 }

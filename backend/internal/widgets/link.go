@@ -24,7 +24,6 @@ const (
 
 // Limits of a link widget's config.
 const (
-	maxLinkTitle      = 200
 	maxFavouriteTitle = 1000
 )
 
@@ -111,15 +110,8 @@ func Link(fav *favourites.Store) dashboards.Kind {
 				return nil, invalid("invalid url")
 			}
 			c.URL = url
-			if c.Title != nil {
-				title := strings.TrimSpace(*c.Title)
-				if utf8.RuneCountInString(title) > maxLinkTitle {
-					return nil, invalid("title too long")
-				}
-				c.Title = &title
-				if title == "" {
-					c.Title = nil
-				}
+			if c.Title, err = normalizeTitle(c.Title); err != nil {
+				return nil, err
 			}
 			if c.ImageID != nil && (*c.ImageID == "" || len(*c.ImageID) > maxIDLength) {
 				return nil, invalid("invalid image")

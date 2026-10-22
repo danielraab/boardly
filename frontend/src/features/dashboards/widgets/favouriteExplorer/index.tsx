@@ -12,11 +12,13 @@ import type {
 	WidgetViewProps,
 } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
-import { WidgetSettingsForm } from "../WidgetSettingsForm";
+import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
 import { type ExplorerData, ExplorerTree } from "./ExplorerTree";
 
 export type ExplorerConfig = {
 	rootFolderId: string;
+	/** Shown as a heading above the tree; missing in configs saved before titles. */
+	title?: string | null;
 	size: WidgetSize;
 	showIfPublic: boolean;
 };
@@ -25,7 +27,7 @@ export type ExplorerConfig = {
  * In view mode the server's data; in edit mode the owner's current favourites,
  * since a draft widget has no data yet and its folder may have changed.
  */
-function View({ widget, editing }: WidgetViewProps) {
+function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const config = widget.config as ExplorerConfig;
 	const favourites = useQuery({ ...favouritesQueryOptions, enabled: editing });
 	let data = widget.data as ExplorerData | undefined;
@@ -44,6 +46,8 @@ function View({ widget, editing }: WidgetViewProps) {
 			size={config.size}
 			data={data}
 			editing={editing}
+			title={config.title ?? null}
+			headingLevel={headingLevel}
 		/>
 	);
 }
@@ -55,6 +59,7 @@ function Settings(props: WidgetSettingsProps) {
 	const [folderId, setFolderId] = useState(config.rootFolderId);
 	const [size, setSize] = useState(config.size);
 	const [showIfPublic, setShowIfPublic] = useState(config.showIfPublic);
+	const [title, setTitle] = useState(config.title ?? "");
 	// A deleted folder is no choice; another one has to be picked.
 	const chosen =
 		favourites.data && findNode(favourites.data, folderId)?.kind === "folder"
@@ -78,6 +83,7 @@ function Settings(props: WidgetSettingsProps) {
 					...dims,
 					config: {
 						rootFolderId: chosen,
+						title: title.trim() || null,
 						size,
 						showIfPublic,
 					} satisfies ExplorerConfig,
@@ -85,6 +91,22 @@ function Settings(props: WidgetSettingsProps) {
 			}
 			onDelete={props.onDelete}
 		>
+			<div>
+				<label htmlFor="explorer-title" className="block text-sm font-medium">
+					{t("dashboards.widgets.favouriteExplorer.titleLabel")}
+				</label>
+				<input
+					id="explorer-title"
+					value={title}
+					maxLength={maxWidgetTitle}
+					onChange={(e) => setTitle(e.target.value)}
+					aria-describedby="explorer-title-hint"
+					className={textInput}
+				/>
+				<p id="explorer-title-hint" className="mt-1 text-sm text-muted">
+					{t("dashboards.widgets.favouriteExplorer.titleHint")}
+				</p>
+			</div>
 			<div>
 				<FavouritePicker
 					id="explorer-folder"
@@ -145,6 +167,7 @@ export const favouriteExplorerKind: WidgetKind = {
 	descriptionKey: "dashboards.widgets.favouriteExplorer.description",
 	defaultConfig: (): ExplorerConfig => ({
 		rootFolderId: "",
+		title: null,
 		size: "M",
 		showIfPublic: false,
 	}),

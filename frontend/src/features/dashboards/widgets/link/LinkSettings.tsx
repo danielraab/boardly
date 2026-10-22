@@ -16,7 +16,7 @@ import { ApiError } from "#/lib/api";
 import type { SectionHeight } from "../../api";
 import type { WidgetSettingsProps } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
-import { WidgetSettingsForm } from "../WidgetSettingsForm";
+import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
 import { faviconFor, uploadImage } from "./api";
 import { type LinkIconKey, linkIcons } from "./icons";
 import { LinkIcon } from "./LinkView";
@@ -34,8 +34,6 @@ export type LinkConfig = {
 	target: "_blank" | "_self";
 	size: WidgetSize;
 };
-
-export const maxLinkWidgetTitle = 200;
 
 /** How long the URL has to stay unchanged before its favicon is looked up. */
 export const faviconDelayMs = 500;
@@ -224,7 +222,7 @@ export function LinkSettings(props: WidgetSettingsProps) {
 				<input
 					id="link-title"
 					value={title}
-					maxLength={maxLinkWidgetTitle}
+					maxLength={maxWidgetTitle}
 					onChange={(e) => setTitle(e.target.value)}
 					aria-describedby="link-title-hint"
 					className={textInput}
