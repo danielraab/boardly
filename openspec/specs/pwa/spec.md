@@ -1,7 +1,7 @@
 # pwa Specification
 
 ## Purpose
-Makes the Famodash web app installable as a progressive web app: a web app manifest, home-screen icons, a standalone window that opens the home page, and a title bar coloured like the active theme, without offline support.
+Makes the Boardly web app installable as a progressive web app: a web app manifest, home-screen icons, a standalone window that opens the home page, and a title bar coloured like the active theme, without offline support.
 
 ## Requirements
 

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/images"
+	"boardly/internal/images"
 )
 
 const lwV1 = linkwardenPrefix + "/api/v1"
@@ -251,7 +251,7 @@ func TestLinkwardenAuth(t *testing.T) {
 		"no token":       nil,
 		"cookie only":    {withCookie(ann)},
 		"karakeep token": {withBearer(karakeep.Secret)},
-		"unknown token":  {withBearer("famo_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")},
+		"unknown token":  {withBearer("bdly_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")},
 	} {
 		rec := s.req("GET", lwV1+"/users/me", "", opts...)
 		if rec.Code != http.StatusUnauthorized || strings.TrimSpace(rec.Body.String()) != unauthorized {

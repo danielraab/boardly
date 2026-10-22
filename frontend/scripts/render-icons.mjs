@@ -17,7 +17,7 @@ const icons = [
 	{ source: "app-icon.svg", out: "apple-touch-icon.png", size: 180 },
 ];
 
-const work = mkdtempSync(join(tmpdir(), "famodash-icons-"));
+const work = mkdtempSync(join(tmpdir(), "boardly-icons-"));
 try {
 	for (const { source, out, size } of icons) {
 		const svg = readFileSync(join(root, "icons", source), "utf8");

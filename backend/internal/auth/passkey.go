@@ -16,9 +16,9 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
-	"famodash/internal/aaguid"
-	"famodash/internal/db"
-	"famodash/internal/users"
+	"boardly/internal/aaguid"
+	"boardly/internal/db"
+	"boardly/internal/users"
 )
 
 // MaxPasskeyLabelLength is the longest passkey label, in characters, after trimming.

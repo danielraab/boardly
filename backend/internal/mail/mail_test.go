@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/config"
+	"boardly/internal/config"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files in testdata/")
@@ -124,23 +124,23 @@ func TestRenderMagicLinkOffersLinkThenCode(t *testing.T) {
 }
 
 // TestSMTPSenderIntegration sends a real message. It runs only when
-// FAMODASH_TEST_SMTP_HOST is set, e.g. against the Mailpit dev service:
+// BOARDLY_TEST_SMTP_HOST is set, e.g. against the Mailpit dev service:
 //
-//	FAMODASH_TEST_SMTP_HOST=localhost FAMODASH_TEST_SMTP_PORT=1025 go test ./internal/mail -run Integration
+//	BOARDLY_TEST_SMTP_HOST=localhost BOARDLY_TEST_SMTP_PORT=1025 go test ./internal/mail -run Integration
 func TestSMTPSenderIntegration(t *testing.T) {
-	host := os.Getenv("FAMODASH_TEST_SMTP_HOST")
+	host := os.Getenv("BOARDLY_TEST_SMTP_HOST")
 	if host == "" {
-		t.Skip("FAMODASH_TEST_SMTP_HOST not set")
+		t.Skip("BOARDLY_TEST_SMTP_HOST not set")
 	}
 	cfg, err := config.Load(func(k string) (string, bool) {
 		switch k {
-		case "FAMODASH_BASE_URL":
+		case "BOARDLY_BASE_URL":
 			return "http://localhost:3000", true
-		case "FAMODASH_SMTP_HOST":
+		case "BOARDLY_SMTP_HOST":
 			return host, true
-		case "FAMODASH_SMTP_PORT":
-			return os.LookupEnv("FAMODASH_TEST_SMTP_PORT")
-		case "FAMODASH_SMTP_TLS":
+		case "BOARDLY_SMTP_PORT":
+			return os.LookupEnv("BOARDLY_TEST_SMTP_PORT")
+		case "BOARDLY_SMTP_TLS":
 			return "none", true
 		}
 		return "", false

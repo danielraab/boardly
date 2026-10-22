@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"famodash/internal/dashboards"
+	"boardly/internal/dashboards"
 )
 
 // dashboardsError maps store errors to API errors; other errors pass through.

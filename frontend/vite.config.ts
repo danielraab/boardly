@@ -14,7 +14,7 @@ const outDir = fileURLToPath(
 // emptyOutDir wipes the committed .gitkeep; put it back so `go build` works on a clean checkout.
 function keepGitkeep(): Plugin {
 	return {
-		name: "famodash-keep-gitkeep",
+		name: "boardly-keep-gitkeep",
 		apply: "build",
 		closeBundle() {
 			writeFileSync(`${outDir}/.gitkeep`, "");

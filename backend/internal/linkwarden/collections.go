@@ -3,7 +3,7 @@ package linkwarden
 import (
 	"context"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // Collections is GET /api/v1/collections: every folder of the subtree.

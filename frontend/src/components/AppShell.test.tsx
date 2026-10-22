@@ -10,7 +10,7 @@ describe("app shell", () => {
 		"shows the header on %s",
 		async (path) => {
 			renderApp(path);
-			const home = await screen.findByRole("link", { name: "Famodash" });
+			const home = await screen.findByRole("link", { name: "Boardly" });
 			expect(home).toHaveAttribute("href", "/");
 			expect(home.firstElementChild).toHaveAttribute("data-icon", "app");
 			expect(screen.getByRole("button", { name: "Theme" })).toBeVisible();
@@ -170,7 +170,7 @@ describe("signed-in user menu", () => {
 
 		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
 		expect(
-			await screen.findByRole("heading", { level: 1, name: "Famodash" }),
+			await screen.findByRole("heading", { level: 1, name: "Boardly" }),
 		).toBeVisible();
 		expect(api.callsTo("POST", "/api/auth/logout")).toHaveLength(1);
 

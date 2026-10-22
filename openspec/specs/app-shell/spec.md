@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the global frame around every Famodash page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
+Defines the global frame around every Boardly page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
 
 ## Requirements
 

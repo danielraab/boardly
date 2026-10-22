@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/mail"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/mail"
+	"boardly/internal/users"
 )
 
 type discard struct{}

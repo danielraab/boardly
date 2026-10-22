@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // ErrTagExists is returned when a tag is renamed to the name of another tag

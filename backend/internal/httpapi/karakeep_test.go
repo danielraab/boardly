@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/favourites"
+	"boardly/internal/apptokens"
+	"boardly/internal/favourites"
 )
 
 const trpcPath = karakeepPrefix + "/api/trpc/"
@@ -80,7 +80,7 @@ func TestKarakeepLogin(t *testing.T) {
 	if list := decodeJSONBody[[]apptokens.Token](t, s.req("GET", "/api/app-tokens", "", withCookie(ann))); list[1].LastUsedAt == nil {
 		t.Error("validate didn't record the last use")
 	}
-	for name, key := range map[string]string{"revoked": revoked.Secret, "unknown": "famo_nope", "empty": ""} {
+	for name, key := range map[string]string{"revoked": revoked.Secret, "unknown": "bdly_nope", "empty": ""} {
 		rec := s.trpcMutation("apiKeys.validate", `{"0":{"json":{"apiKey":"`+key+`"}}}`)
 		if rec.Code != http.StatusUnauthorized || trpcErrorCode(t, rec) != "UNAUTHORIZED" {
 			t.Errorf("validate %s: %d %s", name, rec.Code, rec.Body)
@@ -145,7 +145,7 @@ func TestKarakeepBearerAuth(t *testing.T) {
 		"nothing":        nil,
 		"revoked":        {withBearer(revoked.Secret)},
 		"basic scheme":   {func(r *http.Request) { r.Header.Set("Authorization", "Basic "+active.Secret) }},
-		"cookie and bad": {withCookie(ann), withBearer("famo_nope")},
+		"cookie and bad": {withCookie(ann), withBearer("bdly_nope")},
 	} {
 		rec := s.trpcQuery("users.whoami", `{}`, opts...)
 		if rec.Code != http.StatusUnauthorized || rec.Body.String() != unknown.Body.String() {
@@ -157,10 +157,10 @@ func TestKarakeepBearerAuth(t *testing.T) {
 	if rec := s.trpcQuery("config.clientConfig", `{}`); rec.Code != http.StatusOK {
 		t.Errorf("clientConfig without token: %d %s", rec.Code, rec.Body)
 	}
-	if rec := s.req("GET", karakeepPrefix+"/api/health", ""); rec.Code != http.StatusOK || rec.Body.String() != `{"message":"Famodash is working","status":"ok"}`+"\n" {
+	if rec := s.req("GET", karakeepPrefix+"/api/health", ""); rec.Code != http.StatusOK || rec.Body.String() != `{"message":"Boardly is working","status":"ok"}`+"\n" {
 		t.Errorf("health: %d %s", rec.Code, rec.Body)
 	}
-	if rec := s.req("GET", karakeepPrefix+"/api/version", ""); rec.Code != http.StatusOK || rec.Body.String() != `{"version":"Famodash"}`+"\n" {
+	if rec := s.req("GET", karakeepPrefix+"/api/version", ""); rec.Code != http.StatusOK || rec.Body.String() != `{"version":"Boardly"}`+"\n" {
 		t.Errorf("version: %d %s", rec.Code, rec.Body)
 	}
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/users"
 )
 
 func newTestService(t *testing.T) (*Service, *time.Time) {

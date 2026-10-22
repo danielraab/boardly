@@ -15,17 +15,17 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 
-	"famodash/internal/aaguid"
-	famomail "famodash/internal/mail"
-	"famodash/internal/ratelimit"
-	"famodash/internal/users"
+	"boardly/internal/aaguid"
+	boardlymail "boardly/internal/mail"
+	"boardly/internal/ratelimit"
+	"boardly/internal/users"
 )
 
 // Service holds the dependencies of sign-in and sessions.
 type Service struct {
 	DB      *sql.DB
 	Users   *users.Store
-	Mailer  famomail.Sender
+	Mailer  boardlymail.Sender
 	BaseURL *url.URL
 	// IPLimiter limits link requests per client IP.
 	IPLimiter *ratelimit.Limiter
@@ -38,7 +38,7 @@ type Service struct {
 }
 
 // NewService returns a service with the real clock and the default per-IP limit (20/h, burst 5).
-func NewService(database *sql.DB, userStore *users.Store, mailer famomail.Sender, baseURL *url.URL) *Service {
+func NewService(database *sql.DB, userStore *users.Store, mailer boardlymail.Sender, baseURL *url.URL) *Service {
 	return &Service{
 		DB:        database,
 		Users:     userStore,

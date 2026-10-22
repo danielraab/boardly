@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets anyone sign in to Famodash without a password, by receiving a one-time link at their email address. It creates the account on the first successful sign-in.
+Lets anyone sign in to Boardly without a password, by receiving a one-time link at their email address. It creates the account on the first successful sign-in.
 
 ## Requirements
 

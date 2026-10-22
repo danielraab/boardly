@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 var (

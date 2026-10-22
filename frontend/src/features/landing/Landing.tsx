@@ -24,7 +24,7 @@ export function Landing() {
 		<>
 			<section className="pt-12 pb-10 sm:pt-20">
 				<h1 className="text-[clamp(3rem,11vw,7.5rem)] leading-[0.9] font-bold tracking-[-0.04em]">
-					Famodash
+					Boardly
 				</h1>
 				<p className="mt-5 max-w-[34ch] text-xl text-muted sm:text-2xl">
 					{t("landing.hero.tagline")}

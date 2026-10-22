@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // favouritesError maps store errors to API errors; other errors pass through.

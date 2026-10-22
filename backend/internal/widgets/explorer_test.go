@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/dbtest"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/users"
+	"boardly/internal/dashboards"
+	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/users"
 )
 
 type fixture struct {

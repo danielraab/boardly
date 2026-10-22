@@ -18,7 +18,7 @@ CREATE TABLE passkeys (
 
 CREATE INDEX passkeys_user_id ON passkeys (user_id, created_at);
 
--- id_hash is the SHA-256 of the famodash_webauthn cookie. Registration
+-- id_hash is the SHA-256 of the boardly_webauthn cookie. Registration
 -- challenges are bound to the session that started them.
 CREATE TABLE webauthn_challenges (
 	id_hash    BLOB PRIMARY KEY,

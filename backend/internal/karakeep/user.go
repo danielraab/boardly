@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // Settings is Karakeep's user settings shape.
@@ -30,7 +30,7 @@ type Settings struct {
 }
 
 // UserSettings is users.settings. Tapping a bookmark opens the page, since
-// Famodash stores no page content to show instead.
+// Boardly stores no page content to show instead.
 func (s *Service) UserSettings() Settings {
 	return Settings{
 		BookmarkClickAction:     "open_original_link",

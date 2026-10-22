@@ -23,7 +23,7 @@ const active: AppToken = {
 	id: "t1",
 	name: "Phone",
 	app: "karakeep",
-	prefix: "famo_ABCDEFG",
+	prefix: "bdly_ABCDEFG",
 	rootId: "later",
 	createdAt: "2026-02-01T10:00:00Z",
 	lastUsedAt: null,
@@ -100,7 +100,7 @@ describe("connected apps tab", () => {
 		expect(phone).toHaveTextContent("Phone");
 		expect(phone).toHaveTextContent("Active");
 		expect(phone).toHaveTextContent("Karakeep · Favourites / Reading / Later");
-		expect(phone).toHaveTextContent("famo_ABCDEFG…");
+		expect(phone).toHaveTextContent("bdly_ABCDEFG…");
 		expect(phone).toHaveTextContent("never used");
 		expect(phone).toHaveTextContent("no expiry");
 		expect(
@@ -172,7 +172,7 @@ describe("connected apps tab", () => {
 describe("create dialog", () => {
 	it("creates a token and shows its secret once", async () => {
 		const { panel, user, api } = await openTab([]);
-		const secret = "famo_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+		const secret = "bdly_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 		api.set({
 			"POST /api/app-tokens": ({ body }) => ({
 				status: 201,
@@ -260,7 +260,7 @@ describe("create dialog", () => {
 					...(body as object),
 					status: "active",
 					expiresAt: null,
-					secret: "famo_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+					secret: "bdly_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
 				},
 			}),
 		});
@@ -300,7 +300,7 @@ describe("create dialog", () => {
 		api.set({
 			"POST /api/app-tokens": {
 				status: 201,
-				body: { ...active, secret: "famo_X" },
+				body: { ...active, secret: "bdly_X" },
 			},
 		});
 		await user.click(

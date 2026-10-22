@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"famodash/internal/db"
-	"famodash/internal/slugs"
+	"boardly/internal/db"
+	"boardly/internal/slugs"
 )
 
 // Dashboard is a dashboard as its owner sees it.

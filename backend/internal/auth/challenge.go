@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // ChallengeTTL is how long a WebAuthn ceremony may take from options to verify.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how Famodash runs as a single self-hosted binary. The binary serves the JSON REST API and the web app, is configured from the environment, and keeps its data in a local database.
+Defines how Boardly runs as a single self-hosted binary. The binary serves the JSON REST API and the web app, is configured from the environment, and keeps its data in a local database.
 
 ## Requirements
 

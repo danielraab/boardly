@@ -7,7 +7,7 @@ describe("landing page", () => {
 	it("shows the hero with name, tagline and a sign-in call to action", async () => {
 		renderApp("/");
 		expect(
-			await screen.findByRole("heading", { level: 1, name: "Famodash" }),
+			await screen.findByRole("heading", { level: 1, name: "Boardly" }),
 		).toBeVisible();
 		expect(
 			screen.getByText(

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/users"
 )
 
 type fakeFavicons struct{ queued []string }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"famodash/internal/db"
+	"boardly/internal/db"
 )
 
 // Limits of a layout.

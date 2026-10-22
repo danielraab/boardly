@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/favourites"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
+	"boardly/internal/users"
 )
 
 type fixture struct {

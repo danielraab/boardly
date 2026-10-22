@@ -56,7 +56,7 @@
 		"screenshot": {
 			"placeholder": "Screenshot folgt"
 		},
-		"featuresTitle": "Was Famodash kann"
+		"featuresTitle": "Was Boardly kann"
 	},
 	"features": {
 		"dashboards": {
@@ -78,7 +78,7 @@
 	},
 	"verify": {
 		"title": "Anmeldung abschließen",
-		"text": "Bestätige, um dich in diesem Browser bei Famodash anzumelden.",
+		"text": "Bestätige, um dich in diesem Browser bei Boardly anzumelden.",
 		"confirm": "Anmeldung abschließen",
 		"signingIn": "Anmeldung läuft…",
 		"invalid": "Dieser Anmeldelink ist ungültig oder abgelaufen.",
@@ -326,7 +326,7 @@
 		},
 		"slug": {
 			"invalid": "Verwende 1 bis 32 Zeichen: a–z, 0–9 und Bindestriche.",
-			"reserved": "Diese Adresse ist für Famodash reserviert. Bitte wähle eine andere.",
+			"reserved": "Diese Adresse ist für Boardly reserviert. Bitte wähle eine andere.",
 			"taken": "Diese Adresse ist bereits vergeben.",
 			"renameHint": "Links mit der alten Adresse funktionieren dann nicht mehr."
 		},

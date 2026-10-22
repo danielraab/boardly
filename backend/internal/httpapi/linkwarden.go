@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/linkwarden"
-	"famodash/internal/users"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/linkwarden"
+	"boardly/internal/users"
 )
 
 // linkwardenPrefix is the server address that Linkwarden clients are given;
@@ -70,7 +70,7 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		return nil
 	})
 	public("POST "+v1+"/session", func(http.ResponseWriter, *http.Request) error {
-		return &linkwardenFailure{http.StatusUnauthorized, "Famodash has no passwords. Log in with an access token from Settings → Connected apps."}
+		return &linkwardenFailure{http.StatusUnauthorized, "Boardly has no passwords. Log in with an access token from Settings → Connected apps."}
 	})
 	respond("GET "+v1+"/users/me", func(r *http.Request, _ favourites.Scope) (any, error) {
 		token, _ := appToken(r.Context())
@@ -177,7 +177,7 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		return a.linkwardenPreview(w, r, lw, sc, num)
 	}))
 	respond("POST "+v1+"/archives/{id}", func(*http.Request, favourites.Scope) (any, error) {
-		return nil, &linkwardenFailure{http.StatusBadRequest, "Famodash doesn't store screenshots or files. The link was saved without it."}
+		return nil, &linkwardenFailure{http.StatusBadRequest, "Boardly doesn't store screenshots or files. The link was saved without it."}
 	})
 
 	mux.Handle(linkwardenPrefix+"/", linkwardenServe(func(http.ResponseWriter, *http.Request) error {

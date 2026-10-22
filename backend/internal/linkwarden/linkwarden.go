@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"time"
 
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 // Errors returned by the service, besides favourites' validation errors and
@@ -29,17 +29,17 @@ var (
 	// deleted.
 	ErrRootCollection = errors.New("The folder of this connected app can't be deleted.")
 	// ErrTagCreate is returned by CreateTag: tags only exist on links.
-	ErrTagCreate = errors.New("Famodash creates tags when you add them to a link.")
+	ErrTagCreate = errors.New("Boardly creates tags when you add them to a link.")
 )
 
-// InputError is an input that Famodash can't handle, such as a field it
+// InputError is an input that Boardly can't handle, such as a field it
 // doesn't support. Its message is shown to the user by the clients.
 type InputError struct{ Message string }
 
 func (e *InputError) Error() string { return e.Message }
 
 func unsupported(field string) error {
-	return &InputError{"Famodash doesn't support " + field + "."}
+	return &InputError{"Boardly doesn't support " + field + "."}
 }
 
 // checkUnsupported returns an error for the first set field, in name order.

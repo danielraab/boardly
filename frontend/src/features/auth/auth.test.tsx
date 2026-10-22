@@ -35,7 +35,7 @@ describe("route protection", () => {
 		mockApi({ "GET /api/me": never });
 		renderApp("/");
 		expect(await screen.findByText("Loading…")).toBeInTheDocument();
-		expect(screen.queryByRole("heading", { name: "Famodash" })).toBeNull();
+		expect(screen.queryByRole("heading", { name: "Boardly" })).toBeNull();
 		expect(screen.queryByRole("heading", { name: /Welcome/ })).toBeNull();
 	});
 
