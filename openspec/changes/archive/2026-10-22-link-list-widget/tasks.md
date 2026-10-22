@@ -18,4 +18,4 @@
 
 - [x] 3.1 Add the link list to the widget table in `README.md`
 - [x] 3.2 Run `make check` and `make test` and verify that both pass
-- [ ] 3.3 Verify in the browser: add a link list on a folder with subfolders, switch the subfolder flag and all three layouts and sizes, narrow the widget to see tiles wrap, set a fixed height to see it scroll, and open the public dashboard signed out with the flag off (not shown) and on (shown)
+- [x] 3.3 Verify in the browser: add a link list on a folder with subfolders, switch the subfolder flag and all three layouts and sizes, narrow the widget to see tiles wrap, set a fixed height to see it scroll, and open the public dashboard signed out with the flag off (not shown) and on (shown)
