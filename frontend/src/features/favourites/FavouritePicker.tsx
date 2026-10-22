@@ -4,25 +4,12 @@ import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ImageIcon } from "#/components/ImageIcon";
 import { type FavouriteNode, favouritesQueryOptions } from "./api";
-import { label } from "./tree";
+import { label, pathsOf } from "./tree";
 
 /** What can be chosen: a folder (including the root) or a link. */
 export type PickerMode = "folder" | "link";
 
 const INDENT_REM = 1.25;
-
-/** Every node's path from the root, the root named rootName. */
-function pathsOf(root: FavouriteNode, rootName: string) {
-	const paths = new Map<string, string>();
-	const visit = (node: FavouriteNode, path: string) => {
-		paths.set(node.id, path);
-		for (const child of node.children ?? []) {
-			visit(child, `${path} / ${label(child)}`);
-		}
-	};
-	visit(root, rootName);
-	return paths;
-}
 
 /** The IDs of the folders above id, or an empty set when it isn't in the tree. */
 function ancestorsOf(root: FavouriteNode, id: string): Set<string> {

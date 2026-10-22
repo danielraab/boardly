@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { AppToken } from "#/features/settings/appTokens/api";
 import { apiError, mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
 import type { FavouriteNode } from "./api";
@@ -419,5 +420,92 @@ describe("moving with the keyboard", () => {
 			"The item could not be moved. The list has been restored.",
 		);
 		await waitFor(() => expect(rows()).toEqual(["A", "B"]));
+	});
+});
+
+describe("delete with connected apps", () => {
+	const token = (
+		id: string,
+		rootId: string,
+		status: AppToken["status"] = "active",
+	): AppToken => ({
+		id,
+		name: id,
+		app: "karakeep",
+		prefix: "famo_ABCDEFG",
+		rootId,
+		createdAt: "2026-02-01T10:00:00Z",
+		lastUsedAt: null,
+		expiresAt: null,
+		revokedAt: null,
+		status,
+	});
+
+	async function openDelete(tokens: AppToken[], name: string) {
+		const server = fakeServer([
+			folder("Work", folder("Tools", link("Git")), link("Docs")),
+			folder("Other"),
+		]);
+		server.api.set({ "GET /api/app-tokens": { body: tokens } });
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: `Delete ${name}` }),
+		);
+		const dialog = await screen.findByRole("alertdialog");
+		return { user, dialog, server };
+	}
+
+	const warning = /connected apps? uses? this folder/;
+
+	it("warns about the active tokens rooted at the folder", async () => {
+		const { dialog } = await openDelete(
+			[
+				token("a", "Work"),
+				token("b", "Work"),
+				token("c", "Work", "expired"),
+				token("d", "Work", "revoked"),
+				token("e", "Other"),
+			],
+			"Work",
+		);
+		expect(
+			await within(dialog).findByText(
+				"2 connected apps use this folder. They will be revoked and stop working.",
+			),
+		).toBeVisible();
+	});
+
+	it("counts tokens in subfolders only when the contents are deleted", async () => {
+		const { user, dialog } = await openDelete([token("a", "Tools")], "Work");
+		await user.click(
+			within(dialog).getByRole("radio", {
+				name: "Delete the folder and everything in it",
+			}),
+		);
+		expect(
+			await within(dialog).findByText(
+				"1 connected app uses this folder. It will be revoked and stop working.",
+			),
+		).toBeVisible();
+
+		await user.click(
+			within(dialog).getByRole("radio", {
+				name: "Keep the contents and move them to “Favourites”",
+			}),
+		);
+		await waitFor(() => expect(within(dialog).queryByText(warning)).toBeNull());
+	});
+
+	it("shows no warning when no token is affected", async () => {
+		const { dialog, server } = await openDelete(
+			[token("a", "Work", "revoked"), token("b", "Tools")],
+			"Other",
+		);
+		// Wait until the tokens have been loaded before checking the absence.
+		await waitFor(() =>
+			expect(server.api.callsTo("GET", "/api/app-tokens")).not.toHaveLength(0),
+		);
+		await waitFor(() => expect(dialog).toHaveTextContent("Delete folder?"));
+		expect(within(dialog).queryByText(warning)).toBeNull();
 	});
 });

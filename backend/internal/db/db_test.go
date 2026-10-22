@@ -582,3 +582,55 @@ func TestMagicLinkCodeMigrationOnExistingData(t *testing.T) {
 		t.Fatalf("code_hash = %x, code_attempts = %d; want NULL and 0 for existing links", code, attempts)
 	}
 }
+
+func TestAppTokensConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, created_at, updated_at) VALUES ('root', 'u1', NULL, 'folder', 0, '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, created_at, updated_at) VALUES ('f1', 'u1', 'root', 'folder', 0, 'Reading', '` + ts + `', '` + ts + `')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	token := `INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at) VALUES (?, 'u1', 'Phone', ?, 'f1', ?, 'famo_abcdefg', ?)`
+	if _, err := db.Exec(token, "t1", "karakeep", []byte{1}, ts); err != nil {
+		t.Fatal(err)
+	}
+	for name, args := range map[string][]any{
+		"unknown app":    {"t2", "pocket", []byte{2}, ts},
+		"duplicate hash": {"t3", "karakeep", []byte{1}, ts},
+	} {
+		if _, err := db.Exec(token, args...); err == nil {
+			t.Errorf("%s: insert succeeded, want a constraint error", name)
+		}
+	}
+
+	// Deleting the root folder keeps the token without a root.
+	if _, err := db.Exec(`DELETE FROM favourite_nodes WHERE id = 'f1'`); err != nil {
+		t.Fatal(err)
+	}
+	var rootID sql.NullString
+	if err := db.QueryRow(`SELECT root_id FROM app_tokens WHERE id = 't1'`).Scan(&rootID); err != nil || rootID.Valid {
+		t.Fatalf("root_id = %v, err %v; want NULL", rootID, err)
+	}
+
+	// Deleting the user deletes their tokens.
+	if _, err := db.Exec(`DELETE FROM users WHERE id = 'u1'`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM app_tokens`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("app_tokens = %d, err %v; want 0", n, err)
+	}
+}

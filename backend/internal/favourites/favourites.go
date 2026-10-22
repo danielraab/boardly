@@ -82,12 +82,14 @@ func NewStore(database *sql.DB) *Store {
 
 // NewNode is a node to create. An empty ParentID means the root folder.
 // Folders need a Title and may not have a URL or tags; links need a URL.
+// The node is added at the end of its folder, or first when First is set.
 type NewNode struct {
 	ParentID string
 	Kind     Kind
 	Title    *string
 	URL      *string
 	Tags     []string
+	First    bool
 }
 
 // Patch changes a node. Nil fields stay unchanged. An empty link title clears it.
@@ -294,7 +296,13 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 		return nil, ErrInvalidParent
 	}
 	var position int
-	if err := tx.QueryRowContext(ctx,
+	if n.First {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE favourite_nodes SET position = position + 1 WHERE parent_id = ?`, parentID,
+		); err != nil {
+			return nil, err
+		}
+	} else if err := tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM favourite_nodes WHERE parent_id = ?`, parentID,
 	).Scan(&position); err != nil {
 		return nil, err
@@ -488,6 +496,9 @@ func (s *Store) Delete(ctx context.Context, userID, id string, mode DeleteMode) 
 	if children > 0 && mode == DeleteKeepNone {
 		return ErrFolderNotEmpty
 	}
+	if err := s.revokeAppTokens(ctx, tx, id, mode == DeleteWithChildren); err != nil {
+		return err
+	}
 
 	// The node's slot is replaced by its children when they move up, otherwise it closes.
 	shift := -1
@@ -515,6 +526,24 @@ func (s *Store) Delete(ctx context.Context, userID, id string, mode DeleteMode) 
 		return err
 	}
 	return tx.Commit()
+}
+
+// revokeAppTokens revokes the active app tokens whose root folder is removed
+// by deleting id: id itself, and with withChildren every folder below it.
+// Their root_id is cleared by the foreign key when the nodes are deleted.
+func (s *Store) revokeAppTokens(ctx context.Context, q db.Querier, id string, withChildren bool) error {
+	now := db.FormatTime(s.Now())
+	removed := `SELECT ?`
+	if withChildren {
+		removed = `WITH RECURSIVE sub (id) AS (
+			SELECT ? UNION ALL SELECT n.id FROM favourite_nodes n JOIN sub ON n.parent_id = sub.id
+		 ) SELECT id FROM sub`
+	}
+	_, err := q.ExecContext(ctx,
+		`UPDATE app_tokens SET revoked_at = ?
+		 WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) AND root_id IN (`+removed+`)`,
+		now, now, id)
+	return err
 }
 
 // SuggestTags returns up to MaxTagSuggestions of the user's tags whose name

@@ -10,9 +10,10 @@ import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChange
 import { SlugField, type SlugProblem } from "#/features/dashboards/SlugField";
 import { slugError } from "#/features/dashboards/slug";
 import { ApiError, api } from "#/lib/api";
+import { ConnectedAppsTab } from "./ConnectedAppsTab";
 import { PasskeysTab } from "./PasskeysTab";
 
-export type SettingsTab = "profile" | "passkeys";
+export type SettingsTab = "profile" | "passkeys" | "apps";
 
 const tabClass =
 	"-mb-px border-b-2 border-transparent px-3 py-2 font-medium text-muted hover:text-ink data-[active]:border-ink data-[active]:text-ink";
@@ -49,12 +50,18 @@ export function SettingsPage({
 					<Tabs.Tab value="passkeys" className={tabClass}>
 						{t("settings.tabs.passkeys")}
 					</Tabs.Tab>
+					<Tabs.Tab value="apps" className={tabClass}>
+						{t("settings.tabs.apps")}
+					</Tabs.Tab>
 				</Tabs.List>
 				<Tabs.Panel value="profile" className="pt-6">
 					<ProfileTab user={me} />
 				</Tabs.Panel>
 				<Tabs.Panel value="passkeys" className="pt-6">
 					<PasskeysTab user={me} />
+				</Tabs.Panel>
+				<Tabs.Panel value="apps" className="pt-6">
+					<ConnectedAppsTab />
 				</Tabs.Panel>
 			</Tabs.Root>
 		</div>

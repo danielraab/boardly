@@ -75,7 +75,9 @@ func (a *api) createFavourite(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	user, _ := CurrentUser(r.Context())
-	node, err := a.favourites.Create(r.Context(), user.ID, favourites.NewNode(body))
+	node, err := a.favourites.Create(r.Context(), user.ID, favourites.NewNode{
+		ParentID: body.ParentID, Kind: body.Kind, Title: body.Title, URL: body.URL, Tags: body.Tags,
+	})
 	if err != nil {
 		return favouritesError(err)
 	}
