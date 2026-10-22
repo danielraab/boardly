@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"famodash/internal/apptokens"
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/dbtest"
@@ -106,9 +107,12 @@ func newServer(t *testing.T) *server {
 	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
 	widgets.Register(dashboardStore, favouriteStore, favicons)
 
+	appTokens := apptokens.NewStore(database)
+	appTokens.Now = c.Now
+
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore,
-		Images: imageStore, Favicons: favicons,
+		Images: imageStore, Favicons: favicons, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})
 	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons}

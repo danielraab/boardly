@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"famodash/internal/aaguid"
+	"famodash/internal/apptokens"
 	"famodash/internal/auth"
 	"famodash/internal/config"
 	"famodash/internal/dashboards"
@@ -103,6 +104,7 @@ func run() error {
 			Dashboards:        dashboardStore,
 			Images:            imageStore,
 			Favicons:          favicons,
+			AppTokens:         apptokens.NewStore(database),
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,

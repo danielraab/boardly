@@ -123,13 +123,26 @@ added later. The widget model is meant to be extended.
 
 Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep clients (browser extensions, iOS/Android apps, CLI) can connect to it as if it were a Karakeep server.
 
-- The user creates a **Karakeep API token** in the Famodash settings.
-- When creating the token, the user must pick a **Karakeep root node** in their favourites tree.
-- Everything the client sees and saves goes through that node:
-  - bookmarks saved from a client become link nodes below the root,
-  - Karakeep lists map to folder nodes below the root,
-  - the client can only see the subtree below its root and nothing outside it.
-- A user can have several tokens with different roots, for example one per device or per purpose.
+Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
+
+- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep; Linkwarden
+  will follow), a **folder** of the favourites tree (the top-level folder gives access to everything)
+  and an expiry: 30 days, 90 days (default), 1 year, never or a date.
+- The key (`famo_…`) is shown **once**, together with the server address to enter in the app:
+  `<FAMODASH_BASE_URL>/api/karakeep`. Famodash stores only a hash of it.
+- Keys can't be edited. An active key can be **revoked**, which is final. Only revoked or expired
+  keys can be deleted from the list.
+- Everything the client sees and saves goes through its folder:
+  - bookmarks saved from a client become link nodes below the folder,
+  - Karakeep lists map to folder nodes below the folder,
+  - the client can only see the subtree below its folder and nothing outside it.
+- Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
+  contents", only keys for the deleted folder itself are revoked.
+- A user can have several keys with different folders, for example one per device or per purpose.
+
+Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
+the session cookie, and allow cross-origin calls (CORS) so browser extensions can use them. So far
+only `GET /api/karakeep/api/v1/users/me` is implemented; bookmarks, lists and tags follow.
 
 ### Themes
 
@@ -164,7 +177,7 @@ User
 │       ├── Link widget        │
 │       ├── Section widget (nests widgets)
 │       └── Navigation tree widget ──┘ (bound to a node)
-└── Karakeep API tokens ───────┘ (each bound to a node)
+└── Connected apps (API keys) ─┘ (each bound to a folder)
 ```
 
 ## Tech stack

@@ -1,6 +1,6 @@
 // Pure functions over the favourites tree: flattening for rendering, drop
 // slots for drag and drop, and the optimistic move.
-import type { FavouriteNode } from "./api";
+import type { DeleteMode, FavouriteNode } from "./api";
 
 /** A visible row of the tree. Children of the root have depth 0. */
 export type FlatItem = {
@@ -30,6 +30,19 @@ export function label(node: FavouriteNode) {
 	return node.title ?? node.url ?? "";
 }
 
+/** Every node's path from the root, the root named rootName. */
+export function pathsOf(root: FavouriteNode, rootName: string) {
+	const paths = new Map<string, string>();
+	const visit = (node: FavouriteNode, path: string) => {
+		paths.set(node.id, path);
+		for (const child of node.children ?? []) {
+			visit(child, `${path} / ${label(child)}`);
+		}
+	};
+	visit(root, rootName);
+	return paths;
+}
+
 /** The visible rows: everything except the root and the contents of collapsed folders. */
 export function flatten(
 	root: FavouriteNode,
@@ -45,6 +58,27 @@ export function flatten(
 		}
 	};
 	visit(root, 0);
+	return out;
+}
+
+/**
+ * The folders a delete removes: the node itself, and with mode "delete" every
+ * folder below it. Links are left out.
+ */
+export function removedFolders(
+	node: FavouriteNode,
+	mode: DeleteMode | null,
+): Set<string> {
+	const out = new Set<string>();
+	if (node.kind !== "folder") return out;
+	const visit = (folder: FavouriteNode) => {
+		out.add(folder.id);
+		if (mode !== "delete") return;
+		for (const child of folder.children ?? []) {
+			if (child.kind === "folder") visit(child);
+		}
+	};
+	visit(node);
 	return out;
 }
 

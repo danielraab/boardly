@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"famodash/internal/apptokens"
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
@@ -29,6 +30,7 @@ type Deps struct {
 	Dashboards *dashboards.Store
 	Images     *images.Store
 	Favicons   *images.Favicons
+	AppTokens  *apptokens.Store
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -40,7 +42,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -71,9 +73,17 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
 	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))
 	mux.Handle("POST /api/favicons", a.requireUser(a.getFavicon))
+	mux.Handle("GET /api/app-tokens", a.requireUser(a.listAppTokens))
+	mux.Handle("POST /api/app-tokens", a.requireUser(a.createAppToken))
+	mux.Handle("POST /api/app-tokens/{id}/revoke", a.requireUser(a.revokeAppToken))
+	mux.Handle("DELETE /api/app-tokens/{id}", a.requireUser(a.deleteAppToken))
+
+	karakeep := http.NewServeMux()
+	karakeep.Handle("GET /api/karakeep/api/v1/users/me", HandlerFunc(a.karakeepMe))
 
 	root := http.NewServeMux()
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))
+	root.Handle("/api/karakeep/", a.appAPI(apptokens.AppKarakeep, karakeep))
 	root.Handle("/", d.Web)
 	return logRequests(root)
 }

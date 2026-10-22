@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"famodash/internal/apptokens"
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
@@ -37,6 +38,7 @@ type api struct {
 	dashboards    *dashboards.Store
 	images        *images.Store
 	favicons      *images.Favicons
+	appTokens     *apptokens.Store
 	origin        string
 	secureCookies bool
 	trustProxy    bool

@@ -51,7 +51,7 @@ CREATE INDEX app_tokens_root ON app_tokens (root_id);
 
 ### Secrets
 
-`famo_` + 32 characters from `crypto/rand` (`rand.Text()`, base32, ≈160 bits). The store keeps `sha256(secret)` in `token_hash` (unique index, single lookup) and `secret[:12]` as `prefix`. There's no salt or slow hash, because the secret is high-entropy, the same reasoning as for sessions. The fixed `famo_` prefix makes leaked tokens easy to grep for and to recognise in secret scanners.
+`famo_` + 20 bytes from `crypto/rand` as unpadded base32, which is 32 characters and 160 bits (`rand.Text()` has only 26 characters). The store keeps `sha256(secret)` in `token_hash` (unique index, single lookup) and `secret[:12]` as `prefix`. There's no salt or slow hash, because the secret is high-entropy, the same reasoning as for sessions. The fixed `famo_` prefix makes leaked tokens easy to grep for and to recognise in secret scanners.
 
 ### Package layout
 
