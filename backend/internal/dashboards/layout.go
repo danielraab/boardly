@@ -89,10 +89,13 @@ func (w Widget) MarshalJSON() ([]byte, error) {
 // config of userID's widget; it returns an error wrapping ErrInvalidLayout for
 // a config it doesn't accept. Resolve returns the data of a widget for a
 // lookup, or ok=false to leave the widget out of the response. Resolve may
-// be nil when a kind has no data and is shown to everyone.
+// be nil when a kind has no data and is shown to everyone. A FitContent
+// kind is always as tall as its content: its widgets are stored with height
+// "auto", whatever height they are sent with.
 type Kind struct {
-	Normalize func(ctx context.Context, userID string, config json.RawMessage) (json.RawMessage, error)
-	Resolve   func(ctx context.Context, viewer Viewer, config json.RawMessage) (data any, ok bool, err error)
+	Normalize  func(ctx context.Context, userID string, config json.RawMessage) (json.RawMessage, error)
+	Resolve    func(ctx context.Context, viewer Viewer, config json.RawMessage) (data any, ok bool, err error)
+	FitContent bool
 }
 
 // Viewer is who a layout is resolved for.
@@ -283,6 +286,9 @@ func (s *Store) normalizeContent(ctx context.Context, userID string, w *Widget, 
 		return err
 	}
 	w.Config = normalized
+	if kind.FitContent {
+		w.Height = 0
+	}
 	return nil
 }
 

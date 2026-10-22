@@ -8,7 +8,8 @@ import { SizeFields, useSizeState } from "../layout/SizeFields";
 /**
  * The frame of a widget kind's settings dialog: its title, the kind's own
  * fields, the shared width and height, and the delete, cancel and apply
- * buttons. `valid` is whether the kind's fields can be applied.
+ * buttons. `valid` is whether the kind's fields can be applied. A fitContent
+ * widget has no height choice and is always as tall as its content.
  */
 export function WidgetSettingsForm({
 	title,
@@ -16,6 +17,7 @@ export function WidgetSettingsForm({
 	isNew,
 	desktopColumns,
 	valid,
+	fitContent = false,
 	onApply,
 	onDelete,
 	children,
@@ -25,6 +27,7 @@ export function WidgetSettingsForm({
 	isNew: boolean;
 	desktopColumns: number;
 	valid: boolean;
+	fitContent?: boolean;
 	onApply: (size: { width: number; height: SectionHeight }) => void;
 	onDelete: () => void;
 	children: ReactNode;
@@ -34,7 +37,9 @@ export function WidgetSettingsForm({
 
 	function onSubmit(event: FormEvent) {
 		event.preventDefault();
-		if (valid && size.valid) onApply(size.value());
+		if (!valid) return;
+		if (fitContent) onApply({ width: size.width, height: "auto" });
+		else if (size.valid) onApply(size.value());
 	}
 
 	return (
@@ -42,7 +47,7 @@ export function WidgetSettingsForm({
 			<Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
 			<form className="mt-5 space-y-4" onSubmit={onSubmit} noValidate>
 				{children}
-				<SizeFields state={size} idPrefix="widget" />
+				<SizeFields state={size} idPrefix="widget" height={!fitContent} />
 				<div className="flex flex-wrap items-center justify-end gap-3 pt-2">
 					{!isNew && (
 						<button
@@ -59,7 +64,7 @@ export function WidgetSettingsForm({
 					<button
 						type="submit"
 						className={primaryButton}
-						disabled={!valid || !size.valid}
+						disabled={!valid || (!fitContent && !size.valid)}
 					>
 						{isNew
 							? t("dashboards.widgetDialog.add")

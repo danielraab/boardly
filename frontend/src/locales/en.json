@@ -175,7 +175,8 @@
 			"removeTag": "Remove tag {{name}}",
 			"save": "Save",
 			"saving": "Saving…",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"folderLabel": "Folder"
 		},
 		"errors": {
 			"nameRequired": "Enter a name.",
@@ -383,14 +384,11 @@
 				"sourceLabel": "Link",
 				"source": {
 					"favourite": "Favourite",
-					"new": "New favourite",
 					"url": "URL"
 				},
 				"favouriteLabel": "Favourite",
 				"favouriteMissing": "This favourite no longer exists. Choose another one.",
 				"urlLabel": "URL",
-				"newTitleLabel": "Name of the favourite",
-				"folderLabel": "Folder",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Without one, the favourite's title is shown, or only the URL.",
 				"imageLabel": "Image",
@@ -452,9 +450,9 @@
 				"errors": {
 					"unsupported_image": "This file type isn't supported. Use PNG, JPEG, WebP, GIF or ICO.",
 					"image_too_large": "The image is larger than 1 MB.",
-					"uploadFailed": "The image couldn't be uploaded. Please try again.",
-					"createFailed": "The favourite couldn't be created. Please try again."
-				}
+					"uploadFailed": "The image couldn't be uploaded. Please try again."
+				},
+				"newFavourite": "New favourite…"
 			}
 		}
 	}

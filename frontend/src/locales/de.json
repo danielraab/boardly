@@ -175,7 +175,8 @@
 			"removeTag": "Tag {{name}} entfernen",
 			"save": "Speichern",
 			"saving": "Wird gespeichert…",
-			"cancel": "Abbrechen"
+			"cancel": "Abbrechen",
+			"folderLabel": "Ordner"
 		},
 		"errors": {
 			"nameRequired": "Gib einen Namen ein.",
@@ -383,14 +384,11 @@
 				"sourceLabel": "Link",
 				"source": {
 					"favourite": "Favorit",
-					"new": "Neuer Favorit",
 					"url": "URL"
 				},
 				"favouriteLabel": "Favorit",
 				"favouriteMissing": "Dieser Favorit existiert nicht mehr. Wähle einen anderen.",
 				"urlLabel": "URL",
-				"newTitleLabel": "Name des Favoriten",
-				"folderLabel": "Ordner",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Ohne Titel wird der Titel des Favoriten gezeigt, oder nur die URL.",
 				"imageLabel": "Bild",
@@ -452,9 +450,9 @@
 				"errors": {
 					"unsupported_image": "Dieser Dateityp wird nicht unterstützt. Verwende PNG, JPEG, WebP, GIF oder ICO.",
 					"image_too_large": "Das Bild ist größer als 1 MB.",
-					"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal.",
-					"createFailed": "Der Favorit konnte nicht angelegt werden. Bitte versuche es noch einmal."
-				}
+					"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal."
+				},
+				"newFavourite": "Neuer Favorit…"
 			}
 		}
 	}

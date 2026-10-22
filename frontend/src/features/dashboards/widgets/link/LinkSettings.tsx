@@ -1,20 +1,17 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
 import {
-	createFavourite,
-	favouritesQueryKey,
+	type FavouriteNode,
 	favouritesQueryOptions,
 } from "#/features/favourites/api";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { NodeDialog } from "#/features/favourites/NodeDialog";
 import { findNode } from "#/features/favourites/tree";
-import {
-	checkLinkTitle,
-	checkUrl,
-	fieldErrorFromCode,
-} from "#/features/favourites/validate";
+import { checkUrl } from "#/features/favourites/validate";
 import { ApiError } from "#/lib/api";
 import type { SectionHeight } from "../../api";
 import type { WidgetSettingsProps } from "../registry";
@@ -40,8 +37,6 @@ export type LinkConfig = {
 
 export const maxLinkWidgetTitle = 200;
 
-type Source = "favourite" | "new" | "url";
-
 /** How long the URL has to stay unchanged before its favicon is looked up. */
 export const faviconDelayMs = 500;
 
@@ -49,16 +44,15 @@ const imageTypes = "image/png,image/jpeg,image/webp,image/gif,image/x-icon";
 
 export function LinkSettings(props: WidgetSettingsProps) {
 	const { t } = useTranslation();
-	const queryClient = useQueryClient();
 	const config = props.widget.config as LinkConfig;
 	const favourites = useQuery(favouritesQueryOptions);
 
-	const [source, setSource] = useState<Source>(config.source);
+	const [source, setSource] = useState(config.source);
 	const [favouriteId, setFavouriteId] = useState(config.favouriteId ?? "");
 	const [url, setUrl] = useState(config.source === "url" ? config.url : "");
-	const [newUrl, setNewUrl] = useState("");
-	const [newTitle, setNewTitle] = useState("");
-	const [folderId, setFolderId] = useState("");
+	// A favourite created from here, until the refetched tree contains it.
+	const [created, setCreated] = useState<FavouriteNode | null>(null);
+	const [creating, setCreating] = useState(false);
 	const [title, setTitle] = useState(config.title ?? "");
 	// auto: filled with the URL's favicon, so a new URL may replace it.
 	const [image, setImage] = useState({ id: config.imageId, auto: false });
@@ -66,25 +60,19 @@ export function LinkSettings(props: WidgetSettingsProps) {
 	const [target, setTarget] = useState(config.target);
 	const [size, setSize] = useState(config.size);
 	const [uploadError, setUploadError] = useState<string | null>(null);
-	const [createError, setCreateError] = useState<string | null>(null);
-	const [creating, setCreating] = useState(false);
 
 	const found = favourites.data && findNode(favourites.data, favouriteId);
-	const favourite = found?.kind === "link" ? found : undefined;
-	// A new favourite goes into the root folder unless another one is chosen.
-	const folder =
-		(favourites.data && findNode(favourites.data, folderId)?.id) ||
-		favourites.data?.id ||
-		"";
+	const favourite =
+		found?.kind === "link"
+			? found
+			: created?.id === favouriteId
+				? created
+				: undefined;
 
 	const urlError = url.trim() ? checkUrl(url) : null;
-	const newUrlError = newUrl.trim() ? checkUrl(newUrl) : null;
-	const newTitleError = checkLinkTitle(newTitle);
 	let linkUrl: string | null = null;
 	if (source === "favourite") linkUrl = favourite?.url ?? null;
-	else if (source === "url" && url.trim() && !urlError) linkUrl = url.trim();
-	else if (source === "new" && newUrl.trim() && !newUrlError)
-		linkUrl = newUrl.trim();
+	else if (url.trim() && !urlError) linkUrl = url.trim();
 	const known = source === "favourite" ? favourite?.iconImageId : undefined;
 
 	// Fill an empty or auto-filled image with the favicon of a newly chosen URL.
@@ -136,12 +124,9 @@ export function LinkSettings(props: WidgetSettingsProps) {
 		}
 	}
 
-	let valid = false;
-	if (source === "favourite") valid = favourite !== undefined;
-	else if (source === "url") valid = linkUrl !== null;
-	else valid = linkUrl !== null && !newTitleError && folder !== "";
+	const valid = linkUrl !== null;
 
-	async function apply(dims: { width: number; height: SectionHeight }) {
+	function apply(dims: { width: number; height: SectionHeight }) {
 		const common = {
 			title: title.trim() || null,
 			imageId: image.id,
@@ -149,47 +134,16 @@ export function LinkSettings(props: WidgetSettingsProps) {
 			target,
 			size,
 		};
-		let next: LinkConfig;
-		if (source === "url" && linkUrl) {
-			next = { source: "url", url: linkUrl, ...common };
-		} else {
-			let node = favourite;
-			if (source === "new" && linkUrl) {
-				setCreating(true);
-				setCreateError(null);
-				try {
-					node = await createFavourite({
-						parentId: folder,
-						kind: "link",
-						url: linkUrl,
-						title: newTitle.trim(),
-						tags: [],
-					});
-				} catch (err) {
-					const field =
-						err instanceof ApiError
-							? fieldErrorFromCode(err.code, "link")
-							: null;
-					setCreateError(
-						field
-							? t(`favourites.errors.${field}`)
-							: t("dashboards.widgets.link.errors.createFailed"),
-					);
-					return;
-				} finally {
-					setCreating(false);
-				}
-				void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
-			}
-			if (!node?.url) return;
-			next = {
-				source: "favourite",
-				favouriteId: node.id,
-				favouriteTitle: node.title,
-				url: node.url,
-				...common,
-			};
-		}
+		const next: LinkConfig =
+			source === "favourite" && favourite?.url
+				? {
+						source: "favourite",
+						favouriteId: favourite.id,
+						favouriteTitle: favourite.title,
+						url: favourite.url,
+						...common,
+					}
+				: { source: "url", url: linkUrl ?? "", ...common };
 		props.onApply({ ...props.widget, ...dims, config: next });
 	}
 
@@ -203,8 +157,9 @@ export function LinkSettings(props: WidgetSettingsProps) {
 			widget={props.widget}
 			isNew={props.isNew}
 			desktopColumns={props.desktopColumns}
-			valid={valid && !creating}
-			onApply={(dims) => void apply(dims)}
+			valid={valid}
+			fitContent
+			onApply={apply}
 			onDelete={props.onDelete}
 		>
 			<fieldset>
@@ -212,7 +167,7 @@ export function LinkSettings(props: WidgetSettingsProps) {
 					{t("dashboards.widgets.link.sourceLabel")}
 				</legend>
 				<div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-					{(["favourite", "new", "url"] as const).map((s) => (
+					{(["favourite", "url"] as const).map((s) => (
 						<label key={s} className="flex items-center gap-2">
 							<input
 								type="radio"
@@ -241,44 +196,16 @@ export function LinkSettings(props: WidgetSettingsProps) {
 							{t("dashboards.widgets.link.favouriteMissing")}
 						</p>
 					)}
+					<button
+						type="button"
+						onClick={() => setCreating(true)}
+						disabled={!favourites.data}
+						className={`${secondaryButton} mt-2`}
+					>
+						<Plus className="size-4" aria-hidden />
+						{t("dashboards.widgets.link.newFavourite")}
+					</button>
 				</div>
-			)}
-
-			{source === "new" && (
-				<>
-					<UrlField
-						id="link-new-url"
-						value={newUrl}
-						onChange={setNewUrl}
-						error={newUrlError}
-					/>
-					<div>
-						<label
-							htmlFor="link-new-title"
-							className="block text-sm font-medium"
-						>
-							{t("dashboards.widgets.link.newTitleLabel")}
-						</label>
-						<input
-							id="link-new-title"
-							value={newTitle}
-							onChange={(e) => setNewTitle(e.target.value)}
-							className={textInput}
-						/>
-						{newTitleError && (
-							<p role="alert" className="mt-1 text-sm text-red-700">
-								{t(`favourites.errors.${newTitleError}`)}
-							</p>
-						)}
-					</div>
-					<FavouritePicker
-						id="link-folder"
-						label={t("dashboards.widgets.link.folderLabel")}
-						mode="folder"
-						value={folder}
-						onChange={setFolderId}
-					/>
-				</>
 			)}
 
 			{source === "url" && (
@@ -403,11 +330,23 @@ export function LinkSettings(props: WidgetSettingsProps) {
 					</select>
 				</div>
 			</div>
-			{createError && (
-				<p role="alert" className="text-sm text-red-700">
-					{createError}
-				</p>
-			)}
+			<NodeDialog
+				target={
+					creating && favourites.data
+						? {
+								kind: "link",
+								parent: favourites.data,
+								parentLabel: t("favourites.title"),
+							}
+						: null
+				}
+				chooseFolder
+				onSaved={(node) => {
+					setCreated(node);
+					setFavouriteId(node.id);
+				}}
+				onClose={() => setCreating(false)}
+			/>
 		</WidgetSettingsForm>
 	);
 }

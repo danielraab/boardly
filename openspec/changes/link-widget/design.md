@@ -14,7 +14,6 @@
 
 **Non-Goals:**
 - Arbitrary lucide icons (the full set is large; a curated list keeps the bundle and the picker small).
-- Tags for a new favourite created from the dialog (they can be added on `/favourites`).
 - Showing the URL's host instead of the full URL.
 
 ## Decisions
@@ -33,7 +32,7 @@
   "size": "S" | "M" | "L"
 }
 ```
-"New favourite" is a frontend flow only. After `createFavourite` it stores `source: "favourite"`.
+Creating a new favourite is a frontend flow only. Afterwards the widget stores `source: "favourite"`.
 
 ### Conversion and copy refresh in `Normalize`
 On every save, for `source: "favourite"`, `Normalize` looks the ID up in the owner's tree:
@@ -46,6 +45,9 @@ This implements "converted on the next save" without a write when the favourite 
 
 ### Where it lives
 The kind is `widgets.Link(fav)` in `internal/widgets`, next to the favourite explorer, and `widgets.Register` adds it. A new `favourites.Store.Link(ctx, userID, id)` returns one of the user's links, or `ErrNotFound` for a missing node, a folder or another user's node. `Resolve` caches it per lookup with `dashboards.Cached`.
+
+### Height
+A link is one or two lines, so a fixed height only adds empty space or cuts the link off. `dashboards.Kind` gets a `FitContent` flag. For such a kind, `normalizeContent` sets the widget's height to "auto" instead of rejecting other heights, so older drafts still save. In the web app, `WidgetSettingsForm` gets a `fitContent` prop: the link settings set it, and the form then leaves out the height choice (`SizeFields` with `height={false}`) and applies "auto".
 
 ### Resolve
 For `source: "favourite"`, `data = { url, title }` with the favourite's current values, or the copies when it's missing. For `source: "url"`, `data` is empty. The view uses `data` over `config` in view mode. In edit mode it uses the favourites query, as the explorer does, so a draft widget renders right away. Visitors get only these fields: no tags and no favourite ID beyond what is in `config`.
@@ -63,8 +65,14 @@ The field shows a preview (`ImageIcon`), an "Upload" button (a file input with `
 ### Rendering
 The whole widget is one `<a>` (`rel="noopener noreferrer"` for `_blank`) with `min-w-0`, so `truncate` works. The icon box is fixed by size, followed by a column of `truncate` lines (title `font-medium`, URL `text-muted` one step smaller) and `title=` for the tooltip. In edit mode the anchor gets `onClick` → `preventDefault` and `aria-disabled`, so drag and the settings button stay usable.
 
-### New favourite in the dialog
-The three sources are a radio group (like the height choice in the shared size fields), not tabs. The "Favourite" choice uses `FavouritePicker` in link mode (see the favourite explorer's design). The "New favourite" choice has a URL, a title and the same picker in folder mode, starting at the root folder. Confirming the widget dialog first calls `createFavourite`, then confirms the widget with the returned ID, and invalidates the favourites query. If creation fails, the dialog stays open with the error.
+### New favourite in its own dialog
+The two sources are a radio group (like the height choice in the shared size fields), not tabs. The "Favourite" choice uses `FavouritePicker` in link mode (see the favourite explorer's design). Below it, a "New favourite…" button opens the favourites page's `NodeDialog` for a new link, nested on top of the settings dialog. That dialog gets two optional props:
+- `chooseFolder`: it shows a `FavouritePicker` in folder mode, starting at the given parent (the root), instead of the fixed "In: …" folder line.
+- `onSaved(node)`: it is called with the created node.
+
+Validation, tags, errors and the favourites query refresh stay the dialog's own. The link settings choose the returned node. Until the refetched tree contains it, they keep the node in local state, so the dialog can be confirmed right away. Creating the favourite isn't tied to confirming the widget, so it stays when the widget or the edit is cancelled.
+
+*Alternative*: fields for a new favourite inside the settings dialog, as first built. That made the settings dialog long, duplicated the favourites form without tags, and mixed two kinds of saving in one dialog.
 
 ## Risks / Trade-offs
 

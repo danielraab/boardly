@@ -7,15 +7,15 @@ A dashboard widget that shows one link, either one of the owner's favourites or 
 ## ADDED Requirements
 
 ### Requirement: Link sources
-The settings dialog of a link widget SHALL offer three sources: "Favourite" / "Favorit" (pick an existing link from the owner's favourites), "New favourite" / "Neuer Favorit" (create a link with a URL and an optional title in a chosen folder and use it) and "URL" (an absolute `http` or `https` URL of at most 2048 characters that isn't stored as a favourite). The dialog can't be confirmed without a link. A new favourite SHALL be created as soon as it is confirmed in the dialog, and it stays when the widget dialog or the dashboard edit is cancelled. A layout with a link widget without a valid URL or favourite is rejected with 400 and `invalid_layout`.
+The settings dialog of a link widget SHALL offer two sources: "Favourite" / "Favorit" (pick an existing link from the owner's favourites) and "URL" (an absolute `http` or `https` URL of at most 2048 characters that isn't stored as a favourite). The dialog can't be confirmed without a link. With the source "Favourite", a "New favourite…" / "Neuer Favorit…" button SHALL open the same "New link" dialog as on `/favourites`, on top of the settings and with a choice of folder (the root folder unless another is chosen). New favourites are not entered in the settings dialog itself. Saving that dialog SHALL create the favourite and choose it as the widget's link. The favourite stays when the widget dialog or the dashboard edit is cancelled. A layout with a link widget without a valid URL or favourite is rejected with 400 and `invalid_layout`.
 
 #### Scenario: Pick a favourite
 - **WHEN** Ann picks "Link", chooses the source "Favourite", selects "Mail" and confirms
 - **THEN** a link widget for "Mail" is added to the draft
 
 #### Scenario: New favourite
-- **WHEN** Ann chooses "New favourite", enters `https://nas.example.org` and the folder "Home", and confirms
-- **THEN** the link appears in "Home" on `/favourites`, and the widget uses it
+- **WHEN** Ann activates "New favourite…", enters `https://nas.example.org`, chooses the folder "Home" and saves
+- **THEN** the link appears in "Home" on `/favourites`, it is chosen in the link settings, and the widget uses it once she confirms them
 
 #### Scenario: Plain URL
 - **WHEN** Ann chooses "URL", enters `https://example.org` and confirms
@@ -44,7 +44,7 @@ When the favourite behind a link widget no longer exists, the widget SHALL work 
 - **THEN** the widget's settings show the source "URL" with that URL and the title "Mail"
 
 ### Requirement: Link widget settings
-Besides its source and the common width and height, a link widget SHALL have an optional title (at most 200 characters after trimming; empty means none), an optional image, an optional icon from a fixed set of icons, a target ("New tab" / "Neuer Tab", the default, or "Same tab" / "Gleicher Tab") and a size (`S`, `M` or `L`, default `M`). When a URL or favourite is chosen and the image is empty, the image SHALL be filled with the favicon of the URL's origin, if one is found. The owner can replace the image with an uploaded one or remove it. Values outside these rules are rejected with 400 and `invalid_layout`.
+Besides its source and the common width, a link widget SHALL have an optional title (at most 200 characters after trimming; empty means none), an optional image, an optional icon from a fixed set of icons, a target ("New tab" / "Neuer Tab", the default, or "Same tab" / "Gleicher Tab") and a size (`S`, `M` or `L`, default `M`). When a URL or favourite is chosen and the image is empty, the image SHALL be filled with the favicon of the URL's origin, if one is found. The owner can replace the image with an uploaded one or remove it. Values outside these rules are rejected with 400 and `invalid_layout`.
 
 #### Scenario: Favicon pre-filled
 - **WHEN** Ann enters `https://github.com` as the URL in a new link widget
@@ -57,6 +57,17 @@ Besides its source and the common width and height, a link widget SHALL have an 
 #### Scenario: Remove the image
 - **WHEN** Ann removes the image, chooses the icon "Mail" and confirms
 - **THEN** the widget shows the "Mail" icon
+
+### Requirement: Link widget height
+A link widget SHALL always be as tall as its content. Its settings dialog SHALL NOT offer a height choice, and the server SHALL store a link widget with the height "auto", whatever height a layout sends for it.
+
+#### Scenario: No height choice
+- **WHEN** Ann opens the settings of a link widget
+- **THEN** the dialog offers the width but no height
+
+#### Scenario: Fixed height sent
+- **WHEN** a layout with a link widget of height 3 is saved
+- **THEN** the widget is stored and returned with the height "auto"
 
 ### Requirement: Link widget rendering
 A link widget SHALL show its image if it has one, otherwise its icon, otherwise a globe icon. Next to it, it shows its title on the first line and its URL on the second, or only its URL when it has no title. Each line uses the available width and is cut off with "…" when it doesn't fit. The full title and URL are available as a tooltip. The size sets the icon size, the font size and the padding, on the same scale as the favourite explorer. Activating the widget opens the URL in a new tab or in the same tab, as set. In edit mode, activating it doesn't open the link.

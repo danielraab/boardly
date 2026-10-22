@@ -37,13 +37,18 @@ export function useSizeState(
 
 export type SizeState = ReturnType<typeof useSizeState>;
 
-/** The width select and the height choice, shared by every widget dialog. */
+/**
+ * The width select and the height choice, shared by every widget dialog.
+ * Without height, only the width is offered.
+ */
 export function SizeFields({
 	state,
 	idPrefix,
+	height = true,
 }: {
 	state: SizeState;
 	idPrefix: string;
+	height?: boolean;
 }) {
 	const { t } = useTranslation();
 	// A width above the desktop count (after lowering it) stays selectable.
@@ -73,52 +78,54 @@ export function SizeFields({
 					))}
 				</select>
 			</div>
-			<fieldset>
-				<legend className="text-sm font-medium">
-					{t("dashboards.sectionDialog.heightLabel")}
-				</legend>
-				<div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-					<label className="inline-flex items-center gap-2">
-						<input
-							type="radio"
-							name={`${idPrefix}-height`}
-							checked={!state.fixed}
-							onChange={() => state.setFixed(false)}
-							className="size-4 accent-ink"
-						/>
-						{t("dashboards.sectionDialog.heightAuto")}
-					</label>
-					<label className="inline-flex items-center gap-2">
-						<input
-							type="radio"
-							name={`${idPrefix}-height`}
-							checked={state.fixed}
-							onChange={() => state.setFixed(true)}
-							className="size-4 accent-ink"
-						/>
-						{t("dashboards.sectionDialog.heightRows")}
-					</label>
-					{state.fixed && (
+			{height && (
+				<fieldset>
+					<legend className="text-sm font-medium">
+						{t("dashboards.sectionDialog.heightLabel")}
+					</legend>
+					<div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
 						<label className="inline-flex items-center gap-2">
-							<span>{t("dashboards.sectionDialog.rowsLabel")}</span>
 							<input
-								type="number"
-								min={1}
-								max={maxRows}
-								value={state.rows}
-								onChange={(e) => state.setRows(e.target.value)}
-								aria-invalid={!state.rowsValid}
-								className="w-20 rounded-lg border border-line bg-paper/40 px-3 py-1.5 text-ink outline-none focus-visible:border-ink"
+								type="radio"
+								name={`${idPrefix}-height`}
+								checked={!state.fixed}
+								onChange={() => state.setFixed(false)}
+								className="size-4 accent-ink"
 							/>
+							{t("dashboards.sectionDialog.heightAuto")}
 						</label>
+						<label className="inline-flex items-center gap-2">
+							<input
+								type="radio"
+								name={`${idPrefix}-height`}
+								checked={state.fixed}
+								onChange={() => state.setFixed(true)}
+								className="size-4 accent-ink"
+							/>
+							{t("dashboards.sectionDialog.heightRows")}
+						</label>
+						{state.fixed && (
+							<label className="inline-flex items-center gap-2">
+								<span>{t("dashboards.sectionDialog.rowsLabel")}</span>
+								<input
+									type="number"
+									min={1}
+									max={maxRows}
+									value={state.rows}
+									onChange={(e) => state.setRows(e.target.value)}
+									aria-invalid={!state.rowsValid}
+									className="w-20 rounded-lg border border-line bg-paper/40 px-3 py-1.5 text-ink outline-none focus-visible:border-ink"
+								/>
+							</label>
+						)}
+					</div>
+					{state.fixed && !state.rowsValid && (
+						<p role="alert" className="mt-1 text-sm text-red-700">
+							{t("dashboards.sectionDialog.rowsInvalid")}
+						</p>
 					)}
-				</div>
-				{state.fixed && !state.rowsValid && (
-					<p role="alert" className="mt-1 text-sm text-red-700">
-						{t("dashboards.sectionDialog.rowsInvalid")}
-					</p>
-				)}
-			</fieldset>
+				</fieldset>
+			)}
 		</>
 	);
 }

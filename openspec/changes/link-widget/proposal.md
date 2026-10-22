@@ -7,9 +7,8 @@ Besides whole folders, a dashboard needs single prominent links, like a tile for
 ## What Changes
 
 - New widget kind `link` ("Link"), available in the "Add widget" picker. Adding it opens its settings first.
-- The link comes from one of three sources:
-  - **Favourite**: pick a link from the favourites. The widget follows the favourite: when its URL or title changes, the widget shows the new values.
-  - **New favourite**: create a link in a chosen favourites folder right from the dialog and use it. The favourite is created immediately, and it stays even if the dashboard edit is cancelled.
+- The link comes from one of two sources:
+  - **Favourite**: pick a link from the favourites. The widget follows the favourite: when its URL or title changes, the widget shows the new values. A "New favourite…" button opens the favourites' own "New link" dialog, with a folder choice, on top of the settings. The saved favourite is chosen right away, and it stays even if the dashboard edit is cancelled.
   - **URL**: a plain URL that isn't stored as a favourite.
 - Optional title. Without one, a favourite's own title is used. When there is no title at all, the widget shows only the URL. With a title, it shows the title on the first line and the URL on the second. Both lines are cut off with "…" when they don't fit the width.
 - Optional image, pre-filled with the URL's favicon. It can be replaced by an uploaded image or removed. Optional icon from a fixed set of lucide icons. The widget shows the image if set, otherwise the icon, otherwise a globe.

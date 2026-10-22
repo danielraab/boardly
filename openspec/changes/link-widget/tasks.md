@@ -6,15 +6,17 @@
 - [x] 1.2 In `Normalize`, refresh `url`/`favouriteTitle` from an existing favourite of the owner, and convert a missing or foreign favourite to `source: "url"` (title fallback). Verify with tests: refresh, conversion keeping the widget's own title, conversion taking the favourite title, another user's favourite ID
 - [x] 1.3 Implement `Resolve` (live `url`/`title` for favourites, copies when missing, nothing extra for visitors). Verify with lookup tests for owner and visitor, a renamed favourite and a deleted favourite
 - [x] 1.4 Add a test that an uploaded image referenced by a link widget's `imageId` survives the `image-store` cleanup sweep
+- [x] 1.5 Add `FitContent` to `dashboards.Kind`, set it for `link`, and store such widgets with height auto. Verify with a layout test that a link widget saved with height 3 comes back with height auto
 
 ## 2. Frontend
 
 - [x] 2.1 Add `widgets/sizes.ts` if it doesn't exist yet, and `widgets/link/icons.ts` with the curated icon list. Verify that `pnpm tsc` passes
 - [x] 2.2 Build `LinkView` (image → icon → globe, title/URL lines with truncation and tooltip, target, inert in edit mode), and verify with component tests for every scenario of "Link widget rendering"
-- [x] 2.3 Build the settings dialog: source radio group (`FavouritePicker` for the favourite and for the new favourite's folder, URL with validation), title, image field (pre-fill with debounce, upload, remove, translated errors), icon select, target, size, common width/height. Verify with tests: pre-fill, upload error, URL validation, confirm disabled without a link
-- [x] 2.4 Implement the "New favourite" confirm flow (create first, then add the widget, invalidate favourites, keep the dialog open on error), and verify with a test that the favourite exists after cancelling the dashboard edit
+- [x] 2.3 Build the settings dialog: source radio group (`FavouritePicker` for the favourite, URL with validation), title, image field (pre-fill with debounce, upload, remove, translated errors), icon select, target, size, common width/height. Verify with tests: pre-fill, upload error, URL validation, confirm disabled without a link
+- [x] 2.4 Implement "New favourite…": open the favourites' `NodeDialog` (with `chooseFolder` and `onSaved`) on top of the settings, and choose the saved favourite. Verify with tests: the favourite is created in the chosen folder and chosen in the settings, a failed save keeps that dialog open, and the favourite exists after cancelling the dashboard edit
 - [x] 2.5 Register the kind (icon `Link`, labels, defaults, view: `data` in view mode, favourites query in edit mode), and verify with an editor test that adds a link widget through the picker
 - [x] 2.6 Add the en/de keys (kind, sources, fields, targets, errors), and verify that the i18n check passes
+- [x] 2.7 Add a `fitContent` prop to `WidgetSettingsForm` (and a `height` prop to `SizeFields`) that leaves out the height choice and applies height auto, and set it in the link settings. Verify with a test that the link dialog has no height choice and applies height auto
 
 ## 3. Verification
 

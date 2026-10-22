@@ -77,6 +77,18 @@ func TestLinkConfig(t *testing.T) {
 	}
 }
 
+func TestLinkFitsContent(t *testing.T) {
+	f := newFixture(t)
+	tall := link(urlLink(""))
+	tall.Height = 3
+	if err := f.save(tall); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.lookup(f.ann)[0]["height"]; got != "auto" {
+		t.Fatalf("height = %v, want auto", got)
+	}
+}
+
 func mustJSON(t *testing.T, v any) string {
 	t.Helper()
 	raw, err := json.Marshal(v)

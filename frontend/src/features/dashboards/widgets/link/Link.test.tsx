@@ -352,49 +352,62 @@ describe("the link widget on a dashboard", () => {
 		expect(preview.querySelector("[data-icon='globe']")).not.toBeNull();
 	});
 
-	it("creates a new favourite that stays when the edit is cancelled", async () => {
+	it("creates a new favourite in its own dialog and chooses it", async () => {
 		let created = 0;
+		const nas: FavouriteNode = {
+			id: "nas",
+			kind: "link",
+			title: "NAS",
+			url: "https://nas.example.org/",
+		};
+		const withNas: FavouriteNode = {
+			...favourites,
+			children: [
+				{ id: "home", kind: "folder", title: "Home", children: [nas] },
+				...(favourites.children ?? []).slice(1),
+			],
+		};
 		const { api, user } = await openEditor([section("Work")], {
+			"GET /api/favourites": () => ({
+				body: created > 1 ? withNas : favourites,
+			}),
 			"POST /api/favourites": () =>
-				++created === 1
-					? apiError(500, "error")
-					: {
-							status: 201,
-							body: {
-								id: "nas",
-								kind: "link",
-								title: "NAS",
-								url: "https://nas.example.org/",
-							},
-						},
+				++created === 1 ? apiError(500, "error") : { status: 201, body: nas },
 		});
-		const dialog = await openNewLink(user);
-		await user.click(within(dialog).getByLabelText("New favourite"));
+		const settings = await openNewLink(user);
+		// Only two sources: new favourites aren't entered in the settings.
+		expect(
+			within(settings).getAllByRole("radio", { name: /^(Favourite|URL)$/ }),
+		).toHaveLength(2);
+		expect(
+			within(settings).queryByRole("radio", { name: "New favourite" }),
+		).toBeNull();
+		await user.click(
+			await within(settings).findByRole("button", { name: "New favourite…" }),
+		);
+
+		const dialog = await screen.findByRole("dialog", { name: "New link" });
 		await user.click(within(dialog).getByRole("textbox", { name: "URL" }));
 		await user.paste("https://nas.example.org/");
-		await user.type(
-			within(dialog).getByLabelText("Name of the favourite"),
-			"NAS",
-		);
-		const folder = await within(dialog).findByRole("radiogroup", {
-			name: "Folder",
-		});
+		await user.type(within(dialog).getByLabelText("Title (optional)"), "NAS");
+		const folder = within(dialog).getByRole("radiogroup", { name: "Folder" });
 		// The root folder is chosen until another one is.
 		expect(
 			within(folder).getByRole("radio", { name: "Favourites" }),
 		).toBeChecked();
 		await user.click(within(folder).getByRole("radio", { name: "Home" }));
 
-		// A failure keeps the dialog open.
-		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		// A failure keeps the favourite dialog open.
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
 		expect(
 			await within(dialog).findByText(
-				"The favourite couldn't be created. Please try again.",
+				"Something went wrong. Please try again.",
 			),
 		).toBeVisible();
-		await user.click(within(dialog).getByRole("button", { name: "Add" }));
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		expect(screen.getByText("NAS")).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog", { name: "New link" })).toBeNull(),
+		);
 		expect(api.callsTo("POST", "/api/favourites").at(-1)?.body).toEqual({
 			parentId: "home",
 			kind: "link",
@@ -402,6 +415,14 @@ describe("the link widget on a dashboard", () => {
 			title: "NAS",
 			tags: [],
 		});
+
+		// Back in the settings, the new favourite is chosen.
+		expect(
+			await within(settings).findByText("Selected: Favourites / Home / NAS"),
+		).toBeVisible();
+		await user.click(within(settings).getByRole("button", { name: "Add" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(screen.getByText("NAS")).toBeVisible();
 
 		await user.click(screen.getByRole("button", { name: "Cancel editing" }));
 		const confirm = await screen.findByRole("alertdialog", {
@@ -411,6 +432,27 @@ describe("the link widget on a dashboard", () => {
 		await waitFor(() => expect(screen.queryByText("NAS")).toBeNull());
 		// Nothing deletes the favourite.
 		expect(api.calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+	});
+
+	it("has no height choice and always fits its content", async () => {
+		const { api, user, router } = await openEditor([
+			// Stored with a fixed height by an older version.
+			section("Work", {}, { ...linkWidget({}), height: 3 }),
+		]);
+		await user.click(screen.getByRole("button", { name: "Edit Link" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
+		expect(within(dialog).getByLabelText("Width")).toBeVisible();
+		expect(within(dialog).queryByLabelText("Fit the content")).toBeNull();
+		expect(within(dialog).queryByLabelText("Fixed")).toBeNull();
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+
+		await user.click(screen.getByRole("button", { name: "Save and exit" }));
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+		const [call] = api.callsTo("PUT", "/api/dashboards/d1/layout");
+		const sent = (call.body as { sections: Widget[] }).sections[0] as {
+			children: ContentWidget[];
+		};
+		expect(sent.children[0].height).toBe("auto");
 	});
 
 	it("falls back to the copies when the favourite is gone", async () => {
