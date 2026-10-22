@@ -41,4 +41,4 @@
 - [x] 7.1 Update README ("Karakeep-compatible server", "Concept overview", settings tabs) to describe connected apps, the server address `<base>/api/karakeep` and the token lifecycle; verify by reading it against the specs
 - [x] 7.2 Run `make check` and `make test`; verify that both pass
 - [x] 7.3 Update the README's "Karakeep-compatible server" section: supported clients are the browser extension and the mobile app (log in with an API key, password login isn't available), what works after this change (login only) and after `karakeep-api`; verify by reading it against the specs
-- [ ] 7.4 Run `make check` and `make test` again and log in with the Karakeep browser extension against a local server; verify that both pass and the extension reaches its options page
+- [x] 7.4 Run `make check` and `make test` again and log in with the Karakeep browser extension against a local server; verify that both pass and the extension reaches its options page

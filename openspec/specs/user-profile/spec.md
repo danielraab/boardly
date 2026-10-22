@@ -36,7 +36,7 @@ The user SHALL be able to set, change and clear their display name in the "Profi
 - **THEN** the server responds 200 and the user's `name` is `null`
 
 ### Requirement: Settings tabs
-The settings page SHALL show the tabs "Profile" / "Profil" and "Passkeys" / "Passkeys", in this order. "Profile" is selected by default. The selected tab is reflected in the URL (`?tab=profile` or `?tab=passkeys`), so it survives a reload; an unknown value selects "Profile".
+The settings page SHALL show the tabs "Profile" / "Profil", "Passkeys" / "Passkeys" and "Connected apps" / "Verbundene Apps", in this order. "Profile" is selected by default. The selected tab is reflected in the URL (`?tab=profile`, `?tab=passkeys` or `?tab=apps`), so it survives a reload; an unknown value selects "Profile".
 
 #### Scenario: Default tab
 - **WHEN** a signed-in user opens `/settings`
@@ -45,6 +45,10 @@ The settings page SHALL show the tabs "Profile" / "Profil" and "Passkeys" / "Pas
 #### Scenario: Passkeys tab after reload
 - **WHEN** a signed-in user selects "Passkeys" and reloads the page
 - **THEN** the URL contains `?tab=passkeys` and the "Passkeys" tab is still selected
+
+#### Scenario: Connected apps tab after reload
+- **WHEN** a signed-in user selects "Connected apps" and reloads the page
+- **THEN** the URL contains `?tab=apps` and the "Connected apps" tab is still selected
 
 ### Requirement: Passkeys tab content
 The Passkeys tab SHALL list the user's passkeys with provider icon, display name (label, else provider name, else "Passkey"), creation date and last-used date, each with a delete action. With no passkeys, it shows a short explanation of passkeys instead.
