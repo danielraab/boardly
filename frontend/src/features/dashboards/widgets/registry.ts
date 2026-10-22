@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { type ContentWidget, isSection, type Widget } from "../api";
 import { favouriteExplorerKind } from "./favouriteExplorer";
 import { linkKind } from "./link";
+import { linkListKind } from "./linkList";
 
 export type WidgetViewProps = {
 	widget: ContentWidget;
@@ -36,7 +37,11 @@ export type WidgetKind = {
 };
 
 /** Every kind that can be added, in the order the picker lists them. */
-export const widgetKinds: WidgetKind[] = [favouriteExplorerKind, linkKind];
+export const widgetKinds: WidgetKind[] = [
+	favouriteExplorerKind,
+	linkKind,
+	linkListKind,
+];
 
 export function findKind(kind: string): WidgetKind | undefined {
 	return widgetKinds.find((k) => k.kind === kind);

@@ -161,7 +161,9 @@ async function openEditor(sections: Widget[], more = {}) {
 async function openNewLink(user: UserEvent) {
 	await user.click(screen.getByRole("button", { name: "Add widget" }));
 	const picker = await screen.findByRole("dialog", { name: "Add widget" });
-	await user.click(within(picker).getByRole("button", { name: /^Link/ }));
+	await user.click(
+		within(picker).getByRole("button", { name: /^Link(?! list)/ }),
+	);
 	return screen.findByRole("dialog", { name: "Add link" });
 }
 

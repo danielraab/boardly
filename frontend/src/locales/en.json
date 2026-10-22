@@ -487,6 +487,26 @@
 					"removed": "No icon",
 					"done": "Done"
 				}
+			},
+			"linkList": {
+				"name": "Link list",
+				"description": "Shows the links of a folder of your favourites as a list or tiles.",
+				"addTitle": "Add link list",
+				"editTitle": "Edit link list",
+				"folderLabel": "Folder",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the links.",
+				"subfoldersLabel": "Show items from subfolders",
+				"layoutLabel": "Layout",
+				"layout": {
+					"list": "List",
+					"compact": "Compact",
+					"tiles": "Tiles"
+				},
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see these links. Otherwise only you see the widget.",
+				"empty": "No links in this folder",
+				"missing": "This folder no longer exists"
 			}
 		}
 	},

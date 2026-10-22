@@ -32,6 +32,23 @@ var missingFolder = map[string]bool{"missing": true}
 // subtreeKey caches a resolved folder within one lookup.
 type subtreeKey struct{ ownerID, folderID string }
 
+// loadFolder returns the owner's folder with its subtree and favicons, or nil
+// when it doesn't exist. Only the owner's folders are looked up, so another
+// user's folder ID is missing. The result is shared by the widgets of one
+// lookup.
+func loadFolder(ctx context.Context, fav *favourites.Store, icons *images.Favicons, ownerID, folderID string) (*favourites.Node, error) {
+	return dashboards.Cached(ctx, subtreeKey{ownerID, folderID}, func() (*favourites.Node, error) {
+		n, err := fav.Subtree(ctx, ownerID, folderID)
+		if errors.Is(err, favourites.ErrNotFound) {
+			return nil, nil
+		}
+		if err == nil && icons != nil {
+			err = icons.SetIcons(ctx, n)
+		}
+		return n, err
+	})
+}
+
 // FavouriteExplorer returns the favourite explorer kind. The folder doesn't
 // have to exist when the layout is saved, so a deleted folder never blocks a
 // save; it is resolved as missing instead.
@@ -62,17 +79,7 @@ func FavouriteExplorer(fav *favourites.Store, icons *images.Favicons) dashboards
 			if !viewer.IsOwner && !c.ShowIfPublic {
 				return nil, false, nil
 			}
-			// Only the owner's folders are looked up, so another user's folder ID is missing.
-			folder, err := dashboards.Cached(ctx, subtreeKey{viewer.OwnerID, c.RootFolderID}, func() (*favourites.Node, error) {
-				n, err := fav.Subtree(ctx, viewer.OwnerID, c.RootFolderID)
-				if errors.Is(err, favourites.ErrNotFound) {
-					return nil, nil
-				}
-				if err == nil && icons != nil {
-					err = icons.SetIcons(ctx, n)
-				}
-				return n, err
-			})
+			folder, err := loadFolder(ctx, fav, icons, viewer.OwnerID, c.RootFolderID)
 			switch {
 			case err != nil:
 				return nil, false, err
