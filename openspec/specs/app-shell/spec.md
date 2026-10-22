@@ -3,6 +3,7 @@
 ## Purpose
 
 Defines the global frame around every Famodash page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
+
 ## Requirements
 
 ### Requirement: Global header
@@ -21,7 +22,7 @@ Every page SHALL show a header with the product name "Famodash" on the left, lin
 - **THEN** the header shows "Famodash / Work", where "Work" opens the dashboard switcher
 
 ### Requirement: Avatar shows a generic person icon
-The avatar SHALL be a round button that shows a generic person icon. It SHALL have an accessible name that describes it as the user menu.
+The avatar SHALL be an icon button that shows a generic person icon, with the same size and corner radius as the other header buttons. It SHALL have an accessible name that describes it as the user menu.
 
 #### Scenario: Avatar rendering
 - **WHEN** the header is rendered

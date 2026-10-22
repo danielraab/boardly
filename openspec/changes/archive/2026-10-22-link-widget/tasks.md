@@ -23,4 +23,4 @@
 ## 3. Verification
 
 - [x] 3.1 Run `make check` and `make test` and verify that both pass
-- [ ] 3.2 Verify in the browser: add a link from a favourite, from a new favourite and from a URL; check truncation in a narrow column; delete the favourite and check that the widget still works and is stored as a URL after saving
+- [x] 3.2 Verify in the browser: add a link from a favourite, from a new favourite and from a URL; check truncation in a narrow column; delete the favourite and check that the widget still works and is stored as a URL after saving
