@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
+import { setTheme, type ThemeId } from "#/theme";
+import { appLogos } from "./appTokens/AppLogo";
 import type { AppToken } from "./appTokens/api";
 
 const tree: FavouriteNode = {
@@ -115,6 +117,31 @@ describe("connected apps tab", () => {
 		).toBeVisible();
 		expect(within(laptop).queryByRole("button", { name: /Revoke/ })).toBeNull();
 	});
+
+	it.each<[ThemeId, string, string]>([
+		["white", appLogos.karakeep.light, appLogos.linkwarden.light],
+		["black", appLogos.karakeep.dark as string, appLogos.linkwarden.light],
+	])(
+		"in theme %s shows the logo of each token's app",
+		async (theme, karakeepSrc, linkwardenSrc) => {
+			setTheme(theme);
+			const linkwarden: AppToken = {
+				...active,
+				id: "t3",
+				name: "Tablet",
+				app: "linkwarden",
+			};
+			const { panel } = await openTab([active, linkwarden]);
+			const [phone, tablet] = await within(panel).findAllByRole("listitem");
+
+			expect(phone.querySelector("img")).toHaveAttribute("src", karakeepSrc);
+			expect(phone.querySelector("img")).toHaveAttribute("alt", "");
+			expect(phone).toHaveTextContent("Karakeep · Favourites");
+			expect(tablet.querySelector("img")).toHaveAttribute("src", linkwardenSrc);
+			expect(tablet.querySelector("img")).toHaveAttribute("alt", "");
+			expect(tablet).toHaveTextContent("Linkwarden · Favourites");
+		},
+	);
 
 	it("revokes only after confirmation", async () => {
 		const { panel, user, api } = await openTab([active]);
