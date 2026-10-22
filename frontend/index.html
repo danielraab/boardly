@@ -5,19 +5,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Famodash</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.en.webmanifest" />
+    <meta name="theme-color" content="#f4f4f5" />
     <script>
-      // Applies the theme before first paint. Keep ids and key in sync with src/theme.
+      // Applies the theme and its title bar colour and picks the manifest language
+      // before first paint. Keep ids, colours, languages and keys in sync with
+      // src/theme and src/i18n.
       (() => {
         const ids = ["white", "black", "sand", "sage", "fjord", "dusk", "ember"];
-        let choice = null;
-        try {
-          choice = localStorage.getItem("famodash.theme");
-        } catch {}
+        const paper = {"white":"#f4f4f5","black":"#0a0a0a","sand":"#f4efe6","sage":"#edf2ec","fjord":"#242933","dusk":"#1e1a2a","ember":"#1f1b18"};
+        const languages = ["en", "de"];
+        const stored = (key) => {
+          try {
+            return localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        };
+        let choice = stored("famodash.theme");
         if (!ids.includes(choice)) {
           const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
           choice = dark ? "black" : "white";
         }
         document.documentElement.dataset.theme = choice;
+        document.querySelector('meta[name="theme-color"]').content = paper[choice];
+
+        let language = stored("famodash.lang");
+        if (!languages.includes(language)) {
+          const preferred = navigator.languages ?? [navigator.language];
+          language =
+            preferred.map((l) => l?.split("-")[0]).find((l) => languages.includes(l)) ?? "en";
+        }
+        document.querySelector('link[rel="manifest"]').href = `/manifest.${language}.webmanifest`;
       })();
     </script>
   </head>

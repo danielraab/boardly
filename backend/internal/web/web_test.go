@@ -8,10 +8,11 @@ import (
 )
 
 var built = fstest.MapFS{
-	"index.html":         {Data: []byte("<html>app</html>")},
-	"assets/app-abc.js":  {Data: []byte("console.log(1)")},
-	"favicon.ico":        {Data: []byte("ico")},
-	"assets/nested/x.js": {Data: []byte("x")},
+	"index.html":              {Data: []byte("<html>app</html>")},
+	"assets/app-abc.js":       {Data: []byte("console.log(1)")},
+	"favicon.ico":             {Data: []byte("ico")},
+	"manifest.en.webmanifest": {Data: []byte(`{"name":"Famodash"}`)},
+	"assets/nested/x.js":      {Data: []byte("x")},
 }
 
 func get(h http.Handler, method, path string) *httptest.ResponseRecorder {
@@ -40,6 +41,16 @@ func TestServesAssetWithLongCache(t *testing.T) {
 	}
 	if cc := rec.Header().Get("Cache-Control"); cc != "public, max-age=31536000, immutable" {
 		t.Fatalf("Cache-Control = %q", cc)
+	}
+}
+
+func TestServesManifestAsManifestJSON(t *testing.T) {
+	rec := get(NewHandler(built), http.MethodGet, "/manifest.en.webmanifest")
+	if rec.Code != http.StatusOK || rec.Body.String() != `{"name":"Famodash"}` {
+		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/manifest+json" {
+		t.Fatalf("Content-Type = %q", ct)
 	}
 }
 

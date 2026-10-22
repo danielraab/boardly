@@ -93,6 +93,32 @@ func (a *api) verifyLink(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (a *api) redeemCode(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	invalid := NewError(http.StatusBadRequest, "invalid_code", "The code is wrong or has expired")
+	email, err := auth.NormalizeEmail(body.Email)
+	if err != nil {
+		return invalid
+	}
+	user, sess, err := a.auth.RedeemCode(r.Context(), email, body.Code, r.UserAgent(), cookieValue(r, LoginRequestCookie))
+	if errors.Is(err, auth.ErrInvalidCode) {
+		return invalid
+	}
+	if err != nil {
+		return err
+	}
+	a.setSessionCookie(w, sess)
+	http.SetCookie(w, a.loginRequestCookie("", -1))
+	WriteJSON(w, http.StatusOK, me{User: user, PasskeyEnrollmentUntil: sess.EnrollmentUntil})
+	return nil
+}
+
 func (a *api) logout(w http.ResponseWriter, r *http.Request) error {
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		if err := a.auth.DeleteSession(r.Context(), c.Value); err != nil {

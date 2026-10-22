@@ -46,11 +46,16 @@ export function initI18n(instance: i18n = i18next): i18n {
 			},
 		});
 
-	const syncLangAttribute = () => {
-		document.documentElement.lang = instance.resolvedLanguage ?? "en";
+	// The manifest gives the installed app its name and description in this language.
+	const syncDocumentLanguage = () => {
+		const language = instance.resolvedLanguage ?? "en";
+		document.documentElement.lang = language;
+		document
+			.querySelector('link[rel="manifest"]')
+			?.setAttribute("href", `/manifest.${language}.webmanifest`);
 	};
-	syncLangAttribute();
-	instance.on("languageChanged", syncLangAttribute);
+	syncDocumentLanguage();
+	instance.on("languageChanged", syncDocumentLanguage);
 	return instance;
 }
 

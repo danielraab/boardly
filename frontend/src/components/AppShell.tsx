@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard";
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
+import { AppIcon } from "./AppIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { UserMenu } from "./UserMenu";
@@ -14,8 +15,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 					<div className="flex min-w-0 items-center gap-1.5">
 						<Link
 							to="/"
-							className="rounded-md text-lg font-semibold tracking-tight"
+							className="flex items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
 						>
+							<AppIcon className="size-6" />
 							Famodash
 						</Link>
 						<DashboardSwitcher />
