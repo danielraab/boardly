@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines the color themes of the web app: the available themes and their tokens, contrast minimums, the System default that follows the OS color scheme, the theme menu, remembering the choice in the browser, and applying the theme before first paint.
-
 ## Requirements
-
 ### Requirement: Available themes
 The web app SHALL offer exactly these 7 themes, identified by a stable id: `white` (White / Weiß, light), `black` (Black / Schwarz, dark), `sand` (Sand / Sand, light), `sage` (Sage / Salbei, light), `fjord` (Fjord / Fjord, dark), `dusk` (Dusk / Dämmerung, dark) and `ember` (Ember / Glut, dark). Each theme SHALL define every color token used by the UI: `paper`, `surface`, `ink`, `muted`, `line`, `accent`, `danger`, `on-danger` and `shadow`.
 
@@ -54,14 +52,14 @@ The theme choice SHALL be either `system` or one of the 7 theme ids. With `syste
 - **THEN** the Sand theme stays active
 
 ### Requirement: Theme choice is remembered in the browser
-An explicit choice made in the theme menu SHALL be stored in the browser's localStorage under `famodash.theme` and SHALL apply to later visits in the same browser. Choosing System SHALL store `system`. An unknown stored value SHALL be treated as `system`. If localStorage is unavailable, the choice SHALL still apply for the current page view.
+An explicit choice made in the theme menu SHALL be stored in the browser's localStorage under `boardly.theme` and SHALL apply to later visits in the same browser. Choosing System SHALL store `system`. An unknown stored value SHALL be treated as `system`. If localStorage is unavailable, the choice SHALL still apply for the current page view.
 
 #### Scenario: Choice survives a reload
 - **WHEN** a visitor chooses Fjord and reloads the page
 - **THEN** the Fjord theme is shown
 
 #### Scenario: Invalid stored value
-- **WHEN** localStorage contains `famodash.theme` = `neon`
+- **WHEN** localStorage contains `boardly.theme` = `neon`
 - **THEN** the web app behaves as if the choice were `system`
 
 ### Requirement: Theme applied before first paint
@@ -103,3 +101,4 @@ All buttons SHALL use a compact, consistent size and SHALL have rounded corners 
 #### Scenario: No pill-shaped buttons
 - **WHEN** any page or dialog is rendered
 - **THEN** no button is fully rounded; its corners are rounded but its sides are straight
+

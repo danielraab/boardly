@@ -1,11 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderTree } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
+import { dashboardViewQueryKey } from "#/features/dashboards/api";
+import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
 import { favouritesQueryOptions } from "#/features/favourites/api";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
-import { findNode } from "#/features/favourites/tree";
+import { NodeDialog } from "#/features/favourites/NodeDialog";
+import { findNode, label } from "#/features/favourites/tree";
 import type {
 	WidgetKind,
 	WidgetSettingsProps,
@@ -25,30 +28,65 @@ export type ExplorerConfig = {
 
 /**
  * In view mode the server's data; in edit mode the owner's current favourites,
- * since a draft widget has no data yet and its folder may have changed.
+ * since a draft widget has no data yet and its folder may have changed. In
+ * view mode the owner can add a link, to the explorer's folder by default.
  */
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
+	const { t } = useTranslation();
+	const queryClient = useQueryClient();
 	const config = widget.config as ExplorerConfig;
-	const favourites = useQuery({ ...favouritesQueryOptions, enabled: editing });
+	const isOwner = useCurrentDashboard()?.isOwner ?? false;
+	const [adding, setAdding] = useState(false);
+	const favourites = useQuery({
+		...favouritesQueryOptions,
+		enabled: editing || isOwner,
+	});
+	const folder = favourites.data
+		? findNode(favourites.data, config.rootFolderId)
+		: undefined;
 	let data = widget.data as ExplorerData | undefined;
 	if (editing) {
 		if (!favourites.data) return null;
-		const folder = findNode(favourites.data, config.rootFolderId);
 		data =
 			folder?.kind === "folder"
 				? { children: folder.children ?? [] }
 				: { missing: true };
 	}
 	if (!data) return null;
+	const canAdd =
+		isOwner && !editing && !("missing" in data) && folder?.kind === "folder";
 	return (
-		<ExplorerTree
-			widgetId={widget.id}
-			size={config.size}
-			data={data}
-			editing={editing}
-			title={config.title ?? null}
-			headingLevel={headingLevel}
-		/>
+		<>
+			<ExplorerTree
+				widgetId={widget.id}
+				size={config.size}
+				data={data}
+				editing={editing}
+				title={config.title ?? null}
+				headingLevel={headingLevel}
+				onAdd={canAdd ? () => setAdding(true) : undefined}
+			/>
+			{canAdd && (
+				<NodeDialog
+					target={
+						adding
+							? {
+									kind: "link",
+									parent: folder,
+									parentLabel: label(folder) || t("favourites.title"),
+								}
+							: null
+					}
+					chooseFolder
+					onSaved={() =>
+						void queryClient.invalidateQueries({
+							queryKey: dashboardViewQueryKey,
+						})
+					}
+					onClose={() => setAdding(false)}
+				/>
+			)}
+		</>
 	);
 }
 
