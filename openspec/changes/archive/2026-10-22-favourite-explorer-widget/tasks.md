@@ -20,4 +20,4 @@
 ## 3. Verification
 
 - [x] 3.1 Run `make check` and `make test` and verify that both pass
-- [ ] 3.2 Verify in the browser: add an explorer, save, reload (state remembered), open the public dashboard signed out with the flag off (not shown) and on (shown)
+- [x] 3.2 Verify in the browser: add an explorer, save, reload (state remembered), open the public dashboard signed out with the flag off (not shown) and on (shown)

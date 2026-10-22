@@ -15,8 +15,7 @@ import {
 	favouritesQueryKey,
 	updateFavourite,
 } from "./api";
-import { FavouritePicker } from "./FavouritePicker";
-import { TagInput } from "./TagInput";
+import { LinkFields } from "./LinkFields";
 import {
 	checkFolderName,
 	checkLinkTitle,
@@ -25,8 +24,6 @@ import {
 	type FieldError,
 	fieldErrorFromCode,
 	MAX_FOLDER_NAME,
-	MAX_LINK_TITLE,
-	MAX_URL,
 } from "./validate";
 
 /** What the dialog does: create a node in a folder, or edit a node. */
@@ -178,53 +175,19 @@ function NodeForm({
 						/>
 					</div>
 				) : (
-					<>
-						<div>
-							<label
-								htmlFor="favourite-url"
-								className="block text-sm font-medium"
-							>
-								{t("favourites.dialog.urlLabel")}
-							</label>
-							<input
-								id="favourite-url"
-								type="url"
-								inputMode="url"
-								autoComplete="off"
-								maxLength={MAX_URL}
-								placeholder={t("favourites.dialog.urlPlaceholder")}
-								value={url}
-								onChange={(e) => setUrl(e.target.value)}
-								className={textInput}
-							/>
-						</div>
-						<div>
-							<label
-								htmlFor="favourite-title"
-								className="block text-sm font-medium"
-							>
-								{t("favourites.dialog.titleLabel")}
-							</label>
-							<input
-								id="favourite-title"
-								autoComplete="off"
-								maxLength={MAX_LINK_TITLE}
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								className={textInput}
-							/>
-						</div>
-						<TagInput value={tags} onChange={setTags} />
-						{!editing && chooseFolder && (
-							<FavouritePicker
-								id="favourite-folder"
-								label={t("favourites.dialog.folderLabel")}
-								mode="folder"
-								value={parentId}
-								onChange={setParentId}
-							/>
-						)}
-					</>
+					<LinkFields
+						url={url}
+						onUrlChange={setUrl}
+						title={title}
+						onTitleChange={setTitle}
+						tags={tags}
+						onTagsChange={setTags}
+						folder={
+							!editing && chooseFolder
+								? { value: parentId, onChange: setParentId }
+								: undefined
+						}
+					/>
 				)}
 				{problem && (
 					<p role="alert" className="text-sm text-danger">

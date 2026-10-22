@@ -46,6 +46,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/health", health(d.DB))
 	mux.Handle("POST /api/auth/magic-link", HandlerFunc(a.requestLink))
 	mux.Handle("POST /api/auth/magic-link/verify", HandlerFunc(a.verifyLink))
+	mux.Handle("POST /api/auth/magic-link/code", HandlerFunc(a.redeemCode))
 	mux.Handle("POST /api/auth/logout", HandlerFunc(a.logout))
 	mux.Handle("GET /api/me", a.requireUser(a.getMe))
 	mux.Handle("PATCH /api/me", a.requireUser(a.patchMe))

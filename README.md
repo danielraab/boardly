@@ -15,7 +15,8 @@ real user accounts.
 
 There are no passwords. Users sign in with:
 
-- **Magic link**: enter an email address and click the one-time login link that is sent to it.
+- **Magic link**: enter an email address and click the one-time login link that is sent to it,
+  or type the 6-character one-time code from the same email into the login page.
 - **Passkey** (WebAuthn): register one or more passkeys after the first login and use them to sign in.
 
 All data (dashboards, favourites, API tokens) belongs to a single user.
@@ -134,6 +135,19 @@ Famodash exposes the [Karakeep API](https://docs.karakeep.app/api), so Karakeep 
 The palette button in the header switches between 7 color themes: **White**, **Black**, **Sand**,
 **Sage** (light) and **Fjord**, **Dusk**, **Ember** (dark). The default, **System**, follows the
 operating system's light or dark setting. The choice is remembered in the browser.
+
+### Install as an app
+
+Famodash can be installed as a web app (PWA). Chrome, Edge and Android browsers offer this with
+their own install button once the app is served over HTTPS. On iOS, use Share → "Add to Home
+Screen". The installed app opens your default dashboard in its own window, and its title bar
+follows the theme. It doesn't work offline.
+
+- **Share links into Famodash** (Android, ChromeOS): Famodash appears in the system share sheet.
+  Sharing a page opens **Save link** (`/share`) with its URL and title filled in. Pick a folder
+  (the last one used is preselected), add tags and save.
+- **Shortcuts** on the app icon (long-press on Android, right-click on desktop): **Add link**,
+  **Favourites** and **Dashboards**.
 
 ## Concept overview
 
@@ -322,13 +336,20 @@ Anyone can sign up: the first sign-in with an email address creates the account.
    links) the page asks the visitor to click **Complete sign-in** first, so merely opening the
    link never uses it up. After sign-in the browser has an HttpOnly session cookie
    (`famodash_session`) that expires after 30 days without use.
+4. Instead of the link, the visitor can type the one-time code from the email (for example
+   `K7Q-4MZ`) into the login page that is still waiting for it. This helps when the link opens in
+   another browser or outside the installed app. The code only works in the browser that requested
+   the email and for that address. Link and code expire together, and using either one uses up
+   both. After 5 wrong codes, that browser's codes for the address stop working, while the link
+   still works.
 
 Link requests are limited to one per minute and five per hour per email address, and 20 per
 hour per client IP.
 
 **Development without mail.** If `FAMODASH_SMTP_HOST` is empty, the server logs a warning at
-startup and writes every sign-in email (including the link) to its log. To sign in, copy the
-`/login/verify#token=…` link from the log into the browser. The default `.env` sends mail to
+startup and writes every sign-in email (including the link and the code) to its log. To sign in,
+copy the `/login/verify#token=…` link from the log into the browser, or type the code into the
+login page. The default `.env` sends mail to
 Mailpit instead (http://localhost:8025).
 
 **Behind a reverse proxy** (e.g. Caddy, Traefik or nginx in front of the
@@ -391,10 +412,17 @@ keys; a test checks this.
 
 Each theme is a `[data-theme="…"]` block in `frontend/src/styles.css` that sets all color tokens
 (`paper`, `surface`, `ink`, `muted`, `line`, `accent`, `danger`, `on-danger`, `shadow`). Components
-use only these tokens, never raw Tailwind colors. To add a theme, add its block, add it to the list
-in `frontend/src/theme/index.ts` and to the inline script in `frontend/index.html`, and add its name
-to both locale files. Tests check that every theme defines all tokens, meets the WCAG contrast
-minimums, and that the inline script matches the theme list.
+use only these tokens, never raw Tailwind colors. To add a theme, add its block, add it with its
+`paper` colour to the list in `frontend/src/theme/index.ts` and to the inline script in
+`frontend/index.html`, and add its name to both locale files. Tests check that every theme defines
+all tokens, meets the WCAG contrast minimums, and that the inline script matches the theme list.
+
+### App icons
+
+The home-screen icons in `frontend/public/icons/` are rendered from `frontend/icons/*.svg`, which
+use the same drawing as `frontend/public/favicon.svg`. After changing the drawing, run `pnpm icons`
+in `frontend/` (it needs Chromium; set `CHROMIUM` to use another binary) and commit the PNGs. The
+web app manifests are `frontend/public/manifest.en.webmanifest` and `manifest.de.webmanifest`.
 
 ## Status
 

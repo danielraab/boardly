@@ -1,14 +1,17 @@
 import { useSyncExternalStore } from "react";
 
-/** All themes in menu order. Keep in sync with the inline script in index.html. */
+/**
+ * All themes in menu order, with their `paper` colour for the browser's title
+ * bar. Keep in sync with the inline script in index.html and src/styles.css.
+ */
 export const themes = [
-	{ id: "white", mode: "light" },
-	{ id: "black", mode: "dark" },
-	{ id: "sand", mode: "light" },
-	{ id: "sage", mode: "light" },
-	{ id: "fjord", mode: "dark" },
-	{ id: "dusk", mode: "dark" },
-	{ id: "ember", mode: "dark" },
+	{ id: "white", mode: "light", paper: "#f4f4f5" },
+	{ id: "black", mode: "dark", paper: "#0a0a0a" },
+	{ id: "sand", mode: "light", paper: "#f4efe6" },
+	{ id: "sage", mode: "light", paper: "#edf2ec" },
+	{ id: "fjord", mode: "dark", paper: "#242933" },
+	{ id: "dusk", mode: "dark", paper: "#1e1a2a" },
+	{ id: "ember", mode: "dark", paper: "#1f1b18" },
 ] as const;
 
 export type ThemeId = (typeof themes)[number]["id"];
@@ -49,7 +52,13 @@ export function resolveTheme(choice: ThemeChoice): ThemeId {
 }
 
 export function applyTheme(choice: ThemeChoice = current): void {
-	document.documentElement.dataset.theme = resolveTheme(choice);
+	const id = resolveTheme(choice);
+	document.documentElement.dataset.theme = id;
+	const themeColor = document.querySelector('meta[name="theme-color"]');
+	themeColor?.setAttribute(
+		"content",
+		themes.find((t) => t.id === id)?.paper ?? "",
+	);
 }
 
 export function getTheme(): ThemeChoice {

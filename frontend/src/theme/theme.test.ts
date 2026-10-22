@@ -74,6 +74,17 @@ describe("setTheme", () => {
 		expect(root.dataset.theme).toBe("white");
 	});
 
+	it("colours the browser title bar with the theme's paper colour", () => {
+		const themeColor = document.createElement("meta");
+		themeColor.name = "theme-color";
+		document.head.append(themeColor);
+		setTheme("white");
+		expect(themeColor.content).toBe("#f4f4f5");
+		setTheme("fjord");
+		expect(themeColor.content).toBe("#242933");
+		themeColor.remove();
+	});
+
 	it("still applies the theme when storage is unavailable", () => {
 		vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
 			throw new Error("blocked");

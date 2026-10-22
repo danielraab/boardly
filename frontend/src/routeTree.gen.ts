@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ShareRouteImport } from './routes/share'
 import { Route as UserSlugIndexRouteImport } from './routes/$userSlug/index'
 import { Route as UserSlugDashboardSlugRouteImport } from './routes/$userSlug/$dashboardSlug'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
@@ -36,6 +37,11 @@ const FavouritesRoute = FavouritesRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareRoute = ShareRouteImport.update({
+  id: '/share',
+  path: '/share',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UserSlugIndexRoute = UserSlugIndexRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/$userSlug/': typeof UserSlugIndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/$userSlug': typeof UserSlugIndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/$userSlug/': typeof UserSlugIndexRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/settings'
+    | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/$userSlug/'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/settings'
+    | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/$userSlug'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/settings'
+    | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/$userSlug/'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
   SettingsRoute: typeof SettingsRoute
+  ShareRoute: typeof ShareRoute
   UserSlugDashboardSlugRoute: typeof UserSlugDashboardSlugRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   UserSlugIndexRoute: typeof UserSlugIndexRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$userSlug/': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
   SettingsRoute: SettingsRoute,
+  ShareRoute: ShareRoute,
   UserSlugDashboardSlugRoute: UserSlugDashboardSlugRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   UserSlugIndexRoute: UserSlugIndexRoute,

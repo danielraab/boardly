@@ -10,9 +10,9 @@ describe("app shell", () => {
 		"shows the header on %s",
 		async (path) => {
 			renderApp(path);
-			expect(
-				await screen.findByRole("link", { name: "Famodash" }),
-			).toHaveAttribute("href", "/");
+			const home = await screen.findByRole("link", { name: "Famodash" });
+			expect(home).toHaveAttribute("href", "/");
+			expect(home.firstElementChild).toHaveAttribute("data-icon", "app");
 			expect(screen.getByRole("button", { name: "Theme" })).toBeVisible();
 			expect(screen.getByRole("button", { name: "Language" })).toBeVisible();
 			expect(screen.getByRole("button", { name: "User menu" })).toBeVisible();

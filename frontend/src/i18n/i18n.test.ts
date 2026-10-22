@@ -60,4 +60,15 @@ describe("setLanguage", () => {
 		expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("de");
 		expect(document.documentElement.lang).toBe("de");
 	});
+
+	it("links the manifest in the new language", async () => {
+		const manifest = document.createElement("link");
+		manifest.rel = "manifest";
+		document.head.append(manifest);
+		const i18n = freshInstance(["en"]);
+		expect(manifest.getAttribute("href")).toBe("/manifest.en.webmanifest");
+		await setLanguage("de", i18n);
+		expect(manifest.getAttribute("href")).toBe("/manifest.de.webmanifest");
+		manifest.remove();
+	});
 });

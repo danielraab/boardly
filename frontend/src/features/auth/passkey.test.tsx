@@ -76,6 +76,36 @@ describe("passkey sign-in", () => {
 		expect(api.callsTo("GET", "/api/me")).toHaveLength(1);
 	});
 
+	it("continues to the redirect path after signing in", async () => {
+		mockPasskeyApi();
+		webauthn.startAuthentication.mockResolvedValue(assertion);
+		const { user, router } = renderApp(
+			`/login?redirect=${encodeURIComponent("/settings?tab=passkeys")}`,
+		);
+
+		await user.click(
+			await screen.findByRole("button", { name: "Sign in with passkey" }),
+		);
+
+		await waitFor(() =>
+			expect(router.state.location.href).toBe("/settings?tab=passkeys"),
+		);
+	});
+
+	it("ignores a redirect to another site", async () => {
+		mockPasskeyApi();
+		webauthn.startAuthentication.mockResolvedValue(assertion);
+		const { user, router } = renderApp(
+			`/login?redirect=${encodeURIComponent("//evil.example")}`,
+		);
+
+		await user.click(
+			await screen.findByRole("button", { name: "Sign in with passkey" }),
+		);
+
+		await waitFor(() => expect(router.state.location.href).toBe("/"));
+	});
+
 	it("shows no error when the prompt is cancelled", async () => {
 		const api = mockPasskeyApi();
 		webauthn.startAuthentication.mockRejectedValue(cancelled());
