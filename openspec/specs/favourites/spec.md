@@ -37,7 +37,7 @@ A folder SHALL have a name of 1 to 100 characters after trimming, and SHALL cont
 - **THEN** the folder isn't saved and the form shows a translated validation message
 
 ### Requirement: Link nodes
-A link SHALL have an absolute `http` or `https` URL of at most 2048 characters and an optional title of at most 1000 characters after trimming. An empty title SHALL be stored as no title. The tree SHALL show a link by its title, or by its URL when it has no title. Activating a link in the tree SHALL open its URL in a new tab.
+A link SHALL have an absolute `http` or `https` URL of at most 2048 characters and an optional title of at most 1000 characters after trimming. An empty title SHALL be stored as no title. The tree SHALL show a link by its title, or by its URL when it has no title. Activating a link in the tree SHALL open its URL in a new tab. A link SHALL show the favicon of its URL's origin when one is known, and a globe icon otherwise. Creating a link or changing its URL SHALL start fetching that origin's favicon in the background, without delaying the response. In the API, a link node has `iconImageId` set to its favicon's image ID when one is known, and leaves it out otherwise.
 
 #### Scenario: Create a link with a title
 - **WHEN** the user adds a link with URL `https://example.org/docs` and title "Docs" to the folder "Work"
@@ -58,6 +58,14 @@ A link SHALL have an absolute `http` or `https` URL of at most 2048 characters a
 #### Scenario: Edit a link
 - **WHEN** the user changes the title of "Docs" to "Documentation" and its URL to `https://example.org/doc`
 - **THEN** the tree shows "Documentation", which opens the new URL
+
+#### Scenario: Favicon appears
+- **WHEN** the user adds a link to `https://github.com/` and the favicon fetch succeeds
+- **THEN** the link shows GitHub's favicon once the tree is loaded again
+
+#### Scenario: No favicon
+- **WHEN** a link's origin has no favicon
+- **THEN** the link shows a globe icon
 
 ### Requirement: Sibling order
 The children of a folder SHALL keep the order the user gave them. A new node SHALL be added at the end of its folder.
@@ -152,4 +160,3 @@ While the user types a tag name on a link, the tag input SHALL suggest up to 10 
 #### Scenario: Collapse a folder
 - **WHEN** the user collapses the folder "Work"
 - **THEN** the children of "Work" are hidden, and expanding it shows them again
-

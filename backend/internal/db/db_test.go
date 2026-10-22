@@ -552,3 +552,33 @@ func TestImagesConstraints(t *testing.T) {
 		t.Fatalf("images = %d, err %v; want 0", n, err)
 	}
 }
+
+func TestMagicLinkCodeMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0009")); err != nil {
+		t.Fatalf("Migrate to 0009: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO magic_link_tokens (token_hash, email, locale, created_at, expires_at, request_ip, browser_hash)
+		VALUES (x'01', 'a@example.org', 'en', ?, ?, '127.0.0.1', x'02')`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	var code []byte
+	var attempts int
+	if err := db.QueryRow(`SELECT code_hash, code_attempts FROM magic_link_tokens`).Scan(&code, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if code != nil || attempts != 0 {
+		t.Fatalf("code_hash = %x, code_attempts = %d; want NULL and 0 for existing links", code, attempts)
+	}
+}

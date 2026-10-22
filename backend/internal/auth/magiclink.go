@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -37,12 +38,15 @@ func (e *RateLimitedError) Error() string {
 // ErrInvalidToken is returned for unknown, expired and already used tokens alike.
 var ErrInvalidToken = errors.New("invalid token")
 
+// ErrInvalidCode is returned for a one-time code that doesn't sign in, whatever the reason.
+var ErrInvalidCode = errors.New("invalid code")
+
 // ErrConfirmationRequired is returned for a valid token that was redeemed without
 // confirmation from a browser other than the one that requested it. The token stays unused.
 var ErrConfirmationRequired = errors.New("confirmation required")
 
-// RequestLink issues a sign-in link for the normalized email and mails it in the
-// given locale. It does the same work whether or not an account exists. A failed
+// RequestLink issues a sign-in link and its one-time code for the normalized
+// email and mails both in the given locale. It does the same work whether or not an account exists. A failed
 // delivery is logged but not returned, so the response reveals nothing.
 //
 // browserSecret is the requesting browser's login-request cookie value, or empty
@@ -73,16 +77,21 @@ func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, brow
 	if err != nil {
 		return "", err
 	}
+	code, err := newCode()
+	if err != nil {
+		return "", err
+	}
 	if _, err := s.DB.ExecContext(ctx,
-		`INSERT INTO magic_link_tokens (token_hash, email, locale, created_at, expires_at, request_ip, browser_hash)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		tokenHash, email, locale, db.FormatTime(now), db.FormatTime(now.Add(LinkTTL)), clientIP, hash(browserSecret),
+		`INSERT INTO magic_link_tokens (token_hash, email, locale, created_at, expires_at, request_ip, browser_hash, code_hash)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tokenHash, email, locale, db.FormatTime(now), db.FormatTime(now.Add(LinkTTL)), clientIP, hash(browserSecret), codeHash(tokenHash, code),
 	); err != nil {
 		return "", fmt.Errorf("storing token: %w", err)
 	}
 
 	msg, err := famomail.RenderMagicLink(locale, email, famomail.MagicLinkData{
 		Link:         s.BaseURL.String() + "/login/verify#token=" + token,
+		Code:         FormatCode(code),
 		ValidMinutes: int(LinkTTL / time.Minute),
 	})
 	if err != nil {
@@ -188,6 +197,81 @@ func (s *Service) Redeem(ctx context.Context, token, userAgent, browserSecret st
 		return users.User{}, Session{}, err
 	}
 
+	user, err := s.Users.EnsureByEmail(ctx, tx, email)
+	if err != nil {
+		return users.User{}, Session{}, err
+	}
+	sess, err := s.createSession(ctx, tx, user.ID, MethodMagicLink, userAgent, now)
+	if err != nil {
+		return users.User{}, Session{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return users.User{}, Session{}, err
+	}
+	return user, sess, nil
+}
+
+// RedeemCode signs in with the one-time code of a sign-in email. The code must
+// belong to an unused, unexpired link for email that the browser with
+// browserSecret requested, and that link must have fewer than maxCodeAttempts
+// wrong codes. A match uses up the link, creates the account if needed and
+// starts a session. A wrong code counts against every live code of that
+// browser and address. Every failure returns ErrInvalidCode.
+func (s *Service) RedeemCode(ctx context.Context, email, code, userAgent, browserSecret string) (users.User, Session, error) {
+	code = NormalizeCode(code)
+	now := s.Now()
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return users.User{}, Session{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.QueryContext(ctx,
+		`SELECT token_hash, code_hash FROM magic_link_tokens
+		 WHERE email = ? AND browser_hash = ? AND used_at IS NULL AND expires_at > ?
+		   AND code_hash IS NOT NULL AND code_attempts < ?`,
+		email, hash(browserSecret), db.FormatTime(now), maxCodeAttempts,
+	)
+	if err != nil {
+		return users.User{}, Session{}, err
+	}
+	var live [][]byte
+	var match []byte
+	for rows.Next() {
+		var tokenHash, stored []byte
+		if err := rows.Scan(&tokenHash, &stored); err != nil {
+			rows.Close()
+			return users.User{}, Session{}, err
+		}
+		live = append(live, tokenHash)
+		if subtle.ConstantTimeCompare(codeHash(tokenHash, code), stored) == 1 {
+			match = tokenHash
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return users.User{}, Session{}, err
+	}
+
+	if match == nil {
+		for _, tokenHash := range live {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE magic_link_tokens SET code_attempts = code_attempts + 1 WHERE token_hash = ?`, tokenHash,
+			); err != nil {
+				return users.User{}, Session{}, err
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			return users.User{}, Session{}, err
+		}
+		return users.User{}, Session{}, ErrInvalidCode
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE magic_link_tokens SET used_at = ? WHERE token_hash = ?`, db.FormatTime(now), match,
+	); err != nil {
+		return users.User{}, Session{}, err
+	}
 	user, err := s.Users.EnsureByEmail(ctx, tx, email)
 	if err != nil {
 		return users.User{}, Session{}, err

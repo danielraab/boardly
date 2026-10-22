@@ -415,19 +415,36 @@ describe("the link widget on a dashboard", () => {
 			"/api/images/up1",
 		);
 
-		await user.click(within(chooser).getByRole("tab", { name: "None" }));
+		expect(within(chooser).getAllByRole("tab")).toHaveLength(3);
 		await user.click(
-			within(chooser).getByRole("button", { name: "Show a globe" }),
+			within(chooser).getByRole("button", { name: "Remove icon" }),
 		);
 		expect(
 			within(dialog).getByRole("button", { name: "Icon: None" }),
 		).toBeVisible();
-		// The image is kept, so it can be chosen again.
-		await user.click(within(chooser).getByRole("tab", { name: "Own image" }));
-		await user.click(
-			within(chooser).getByRole("button", { name: "Use this image" }),
+		const removed = within(chooser).getByRole("button", { name: "No icon" });
+		expect(removed).toHaveAttribute("aria-pressed", "true");
+		expect(removed).toHaveFocus();
+
+		// Without an icon, the chooser opens on the website icon.
+		await user.click(within(chooser).getByRole("button", { name: "Done" }));
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog", { name: "Icon" })).toBeNull(),
 		);
-		expect(within(chooser).getByText("In use")).toBeVisible();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Icon: None" }),
+		);
+		const reopened = await screen.findByRole("dialog", { name: "Icon" });
+		expect(
+			within(reopened).getByRole("tab", { name: "Website icon" }),
+		).toHaveAttribute("aria-selected", "true");
+
+		// The image is kept, so it can be chosen again.
+		await user.click(within(reopened).getByRole("tab", { name: "Own image" }));
+		await user.click(
+			within(reopened).getByRole("button", { name: "Use this image" }),
+		);
+		expect(within(reopened).getByText("In use")).toBeVisible();
 		await user.keyboard("{Escape}");
 		await waitFor(() =>
 			expect(screen.queryByRole("dialog", { name: "Icon" })).toBeNull(),

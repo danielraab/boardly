@@ -6,9 +6,13 @@ mit diesem Link meldest du dich bei Famodash an. Er öffnet Famodash in diesem B
 
 {{.Link}}
 
-Der Link ist {{.ValidMinutes}} Minuten gültig und kann nur einmal verwendet werden.
+Oder gib diesen Einmalcode auf der Anmeldeseite ein, auf der du diese E-Mail angefordert hast:
 
-Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link kann sich niemand anmelden.
+    {{.Code}}
+
+Link und Code sind {{.ValidMinutes}} Minuten gültig und können nur einmal verwendet werden.
+
+Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link oder den Code kann sich niemand anmelden.
 
 – Famodash
 {{end}}

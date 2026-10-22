@@ -32,7 +32,7 @@
 		"submit": "Anmeldelink senden",
 		"sending": "Wird gesendet…",
 		"sentTitle": "Schau in dein Postfach",
-		"sentText": "Wir haben einen Anmeldelink an <strong>{{email}}</strong> geschickt. Er ist 15 Minuten gültig.",
+		"sentText": "Wir haben einen Anmeldelink und einen Einmalcode an <strong>{{email}}</strong> geschickt. Beide sind 15 Minuten gültig.",
 		"resend": "Neuen Link senden",
 		"resendIn": "Neuen Link senden in {{seconds}} s",
 		"useOther": "Andere E-Mail-Adresse verwenden",
@@ -41,7 +41,12 @@
 		"or": "oder",
 		"passkey": "Mit Passkey anmelden",
 		"passkeyUnknown": "Dieser Passkey ist nicht mehr gültig. Melde dich stattdessen mit einem E-Mail-Link an.",
-		"passkeyInvalid": "Der Passkey konnte nicht geprüft werden. Versuche es noch einmal oder melde dich mit einem E-Mail-Link an."
+		"passkeyInvalid": "Der Passkey konnte nicht geprüft werden. Versuche es noch einmal oder melde dich mit einem E-Mail-Link an.",
+		"codeLabel": "Einmalcode aus der E-Mail",
+		"codeSubmit": "Mit Code anmelden",
+		"codeChecking": "Wird angemeldet…",
+		"invalidCode": "Dieser Code ist falsch oder abgelaufen. Prüfe die neueste E-Mail oder fordere eine neue an.",
+		"codeSlot": "Zeichen {{index}} von {{total}}"
 	},
 	"landing": {
 		"hero": {
@@ -477,14 +482,20 @@
 						"group": "Symbole",
 						"noMatches": "Kein Symbol passt."
 					},
-					"none": {
-						"text": "Das Widget zeigt einen Globus.",
-						"use": "Globus zeigen"
-					},
 					"inUse": "Wird verwendet",
+					"remove": "Icon entfernen",
+					"removed": "Kein Icon",
 					"done": "Fertig"
 				}
 			}
 		}
+	},
+	"share": {
+		"title": "Link speichern",
+		"intro": "Speichere einen Link in deinen Favoriten.",
+		"savedTitle": "Link gespeichert",
+		"savedText": "Er ist jetzt in „{{folder}}“.",
+		"openFavourites": "Favoriten öffnen",
+		"saveAnother": "Weiteren Link speichern"
 	}
 }

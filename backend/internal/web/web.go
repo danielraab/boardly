@@ -69,6 +69,10 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) 
 	if strings.HasPrefix(name, "assets/") {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
+	// Go's MIME table doesn't know web app manifests; ServeContent keeps a set type.
+	if path.Ext(name) == ".webmanifest" {
+		w.Header().Set("Content-Type", "application/manifest+json")
+	}
 	http.ServeContent(w, r, name, info.ModTime(), content)
 	return true
 }

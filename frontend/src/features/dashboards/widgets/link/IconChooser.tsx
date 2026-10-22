@@ -21,12 +21,16 @@ export type IconChoice = {
 	icon: string | null;
 };
 
-const sources: IconSource[] = ["favicon", "image", "symbol", "none"];
+/** "none" has no tab: it is chosen with the footer's "Remove icon" button. */
+const tabs: IconSource[] = ["favicon", "image", "symbol"];
+
+/** The tab the chooser opens on for a source. */
+const tabFor = (source: IconSource) => (source === "none" ? "favicon" : source);
 
 const imageTypes = "image/png,image/jpeg,image/webp,image/gif,image/x-icon";
 
 const tab =
-	"rounded-md px-2.5 py-1.5 text-sm text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent data-[selected]:bg-paper data-[selected]:font-medium data-[selected]:text-ink";
+	"min-w-0 truncate whitespace-nowrap rounded-md px-2 py-1.5 text-sm text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent data-[selected]:bg-paper data-[selected]:font-medium data-[selected]:text-ink";
 
 /** The image ID and symbol that show a choice, given the URL's favicon. */
 export function shownIcon(choice: IconChoice, faviconId: string | null) {
@@ -61,7 +65,7 @@ export function IconChooser({
 }) {
 	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
-	const [tabValue, setTabValue] = useState<IconSource>(value.source);
+	const [tabValue, setTabValue] = useState<IconSource>(tabFor(value.source));
 	const [filter, setFilter] = useState("");
 	const [uploadError, setUploadError] = useState<string | null>(null);
 	const [uploading, setUploading] = useState(false);
@@ -100,7 +104,12 @@ export function IconChooser({
 	 * A button that makes source the icon. It stays (pressed) once it is, so
 	 * focus doesn't fall out of the chooser.
 	 */
-	const chooseButton = (source: IconSource, label: string, fields = {}) => {
+	const chooseButton = (
+		source: IconSource,
+		label: string,
+		fields = {},
+		inUseLabel = t("dashboards.widgets.link.iconChooser.inUse"),
+	) => {
 		const inUse = value.source === source;
 		return (
 			<button
@@ -110,7 +119,7 @@ export function IconChooser({
 				className={`${secondaryButton} aria-pressed:bg-paper`}
 			>
 				{inUse && <Check className="size-4" aria-hidden />}
-				{inUse ? t("dashboards.widgets.link.iconChooser.inUse") : label}
+				{inUse ? inUseLabel : label}
 			</button>
 		);
 	};
@@ -149,7 +158,7 @@ export function IconChooser({
 				open={open}
 				onOpenChange={(next) => {
 					setOpen(next);
-					if (next) setTabValue(value.source);
+					if (next) setTabValue(tabFor(value.source));
 				}}
 			>
 				<Popover.Trigger
@@ -172,8 +181,8 @@ export function IconChooser({
 								value={tabValue}
 								onValueChange={(v) => setTabValue(v as IconSource)}
 							>
-								<Tabs.List className="flex flex-wrap gap-1 border-b border-line pb-2">
-									{sources.map((s) => (
+								<Tabs.List className="flex gap-1 border-b border-line pb-2">
+									{tabs.map((s) => (
 										<Tabs.Tab key={s} value={s} className={tab}>
 											{t(`dashboards.widgets.link.iconChooser.tabs.${s}`)}
 										</Tabs.Tab>
@@ -300,29 +309,14 @@ export function IconChooser({
 										</p>
 									)}
 								</Tabs.Panel>
-
-								<Tabs.Panel value="none" className="pt-3">
-									<div className="flex items-center gap-3">
-										{preview(
-											<LinkIcon
-												imageId={null}
-												icon={null}
-												className="size-8"
-											/>,
-										)}
-										<p className="text-sm text-muted">
-											{t("dashboards.widgets.link.iconChooser.none.text")}
-										</p>
-									</div>
-									<div className="mt-3">
-										{chooseButton(
-											"none",
-											t("dashboards.widgets.link.iconChooser.none.use"),
-										)}
-									</div>
-								</Tabs.Panel>
 							</Tabs.Root>
-							<div className="mt-3 flex justify-end border-t border-line pt-3">
+							<div className="mt-3 flex justify-between gap-2 border-t border-line pt-3">
+								{chooseButton(
+									"none",
+									t("dashboards.widgets.link.iconChooser.remove"),
+									{},
+									t("dashboards.widgets.link.iconChooser.removed"),
+								)}
 								<Popover.Close className={primaryButton}>
 									{t("dashboards.widgets.link.iconChooser.done")}
 								</Popover.Close>

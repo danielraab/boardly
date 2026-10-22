@@ -6,9 +6,13 @@ use this link to sign in to Famodash. It opens Famodash in this browser:
 
 {{.Link}}
 
-The link is valid for {{.ValidMinutes}} minutes and can be used only once.
+Or enter this one-time code on the sign-in page where you requested this email:
 
-If you didn't request this email, you can ignore it. Nobody can sign in without the link.
+    {{.Code}}
+
+The link and the code are valid for {{.ValidMinutes}} minutes and can be used only once.
+
+If you didn't request this email, you can ignore it. Nobody can sign in without the link or the code.
 
 – Famodash
 {{end}}
