@@ -477,11 +477,9 @@
 						"group": "Symbole",
 						"noMatches": "Kein Symbol passt."
 					},
-					"none": {
-						"text": "Das Widget zeigt einen Globus.",
-						"use": "Globus zeigen"
-					},
 					"inUse": "Wird verwendet",
+					"remove": "Icon entfernen",
+					"removed": "Kein Icon",
 					"done": "Fertig"
 				}
 			}

@@ -477,11 +477,9 @@
 						"group": "Symbols",
 						"noMatches": "No symbol matches."
 					},
-					"none": {
-						"text": "The widget shows a globe.",
-						"use": "Show a globe"
-					},
 					"inUse": "In use",
+					"remove": "Remove icon",
+					"removed": "No icon",
 					"done": "Done"
 				}
 			}
