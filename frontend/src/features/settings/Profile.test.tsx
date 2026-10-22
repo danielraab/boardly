@@ -137,7 +137,7 @@ describe("settings profile slug", () => {
 		await user.clear(input);
 		await user.type(input, "login");
 		expect(screen.getByRole("alert")).toHaveTextContent(
-			"This address is reserved by Famodash.",
+			"This address is reserved by Boardly.",
 		);
 		expect(screen.getByRole("button", { name: "Save address" })).toBeDisabled();
 	});

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 // TagInfo is Karakeep's tag shape with its bookmark counts in the subtree.
@@ -161,7 +161,7 @@ func (s *Service) DeleteTag(ctx context.Context, sc favourites.Scope, id string)
 	return s.Favourites.DetachTag(ctx, sc.UserID, id, links)
 }
 
-// CreateTag is tags.create, which Famodash refuses: a tag only exists while a
+// CreateTag is tags.create, which Boardly refuses: a tag only exists while a
 // link has it.
 func (s *Service) CreateTag() error {
 	return ErrTagCreate

@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Famodash</title>
+    <title>Boardly</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.en.webmanifest" />
@@ -24,7 +24,7 @@
             return null;
           }
         };
-        let choice = stored("famodash.theme");
+        let choice = stored("boardly.theme");
         if (!ids.includes(choice)) {
           const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
           choice = dark ? "black" : "white";
@@ -32,7 +32,7 @@
         document.documentElement.dataset.theme = choice;
         document.querySelector('meta[name="theme-color"]').content = paper[choice];
 
-        let language = stored("famodash.lang");
+        let language = stored("boardly.lang");
         if (!languages.includes(language)) {
           const preferred = navigator.languages ?? [navigator.language];
           language =

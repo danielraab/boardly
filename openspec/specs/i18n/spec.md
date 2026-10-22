@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Makes the Famodash UI available in several languages, English and German for now, and lets each visitor choose and keep their language.
+Makes the Boardly UI available in several languages, English and German for now, and lets each visitor choose and keep their language.
 
 ## Requirements
 

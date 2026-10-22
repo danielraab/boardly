@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The public page at `/` that introduces Famodash to visitors who are not signed in. For now it shows placeholders for a product screenshot and feature descriptions.
+The public page at `/` that introduces Boardly to visitors who are not signed in. For now it shows placeholders for a product screenshot and feature descriptions.
 
 ## Requirements
 

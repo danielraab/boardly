@@ -6,7 +6,7 @@ const STAR =
 	"M25.00 1.20L26.59 5.42L31.09 5.62L27.57 8.43L28.76 12.78L25.00 10.30L21.24 12.78L22.43 8.43L18.91 5.62L23.41 5.42Z";
 
 /**
- * The Famodash icon: a dashboard window with a widget and note lines, and a
+ * The Boardly icon: a dashboard window with a widget and note lines, and a
  * favourite star. Drawn in currentColor, so it follows the theme's text colour.
  * public/favicon.svg holds the same drawing. className sets the size.
  */

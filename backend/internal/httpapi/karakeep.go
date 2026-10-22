@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/favourites"
-	"famodash/internal/karakeep"
-	"famodash/internal/trpc"
-	"famodash/internal/users"
+	"boardly/internal/apptokens"
+	"boardly/internal/favourites"
+	"boardly/internal/karakeep"
+	"boardly/internal/trpc"
+	"boardly/internal/users"
 )
 
 // karakeepPrefix is the server address that Karakeep clients are given; they
@@ -24,11 +24,11 @@ const karakeepPrefix = "/api/karakeep"
 func (a *api) karakeepAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET "+karakeepPrefix+"/api/health", HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
-		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Famodash is working"})
+		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Boardly is working"})
 		return nil
 	}))
 	mux.Handle("GET "+karakeepPrefix+"/api/version", HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
-		WriteJSON(w, http.StatusOK, map[string]string{"version": "Famodash"})
+		WriteJSON(w, http.StatusOK, map[string]string{"version": "Boardly"})
 		return nil
 	}))
 	mux.Handle(karakeepPrefix+"/api/trpc/", &trpc.Server{
@@ -109,7 +109,7 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 			lists, err := k.ListsOfBookmark(ctx, sc, in.BookmarkID)
 			return map[string][]karakeep.List{"lists": lists}, err
 		})),
-		// Famodash has no list sharing, so there are never invitations.
+		// Boardly has no list sharing, so there are never invitations.
 		"lists.getPendingInvitations": query(func(context.Context, json.RawMessage) (any, error) {
 			return []struct{}{}, nil
 		}),
@@ -189,7 +189,7 @@ func karakeepError(err error) error {
 	case errors.Is(err, karakeep.ErrTagShared):
 		return trpc.NewError("FORBIDDEN", "This tag is also used outside this connected app's folder and can't be renamed here.")
 	case errors.Is(err, karakeep.ErrTagCreate):
-		return trpc.NewError("FORBIDDEN", "In Famodash, tags are created by adding them to a bookmark.")
+		return trpc.NewError("FORBIDDEN", "In Boardly, tags are created by adding them to a bookmark.")
 	case errors.Is(err, favourites.ErrTagExists):
 		return trpc.NewError("CONFLICT", "A tag with this name already exists.")
 	}
@@ -228,9 +228,9 @@ func (a *api) karakeepValidateKey(ctx context.Context, input json.RawMessage) (a
 }
 
 // karakeepExchange is apiKeys.exchange, the login with email and password,
-// which Famodash doesn't have.
+// which Boardly doesn't have.
 func karakeepExchange(context.Context, json.RawMessage) (any, error) {
-	return nil, trpc.NewError("UNAUTHORIZED", "Famodash has no passwords. Log in with an API key from Settings → Connected apps.")
+	return nil, trpc.NewError("UNAUTHORIZED", "Boardly has no passwords. Log in with an API key from Settings → Connected apps.")
 }
 
 // karakeepWhoAmI is users.whoami: the token's owner.
@@ -254,7 +254,7 @@ func (a *api) karakeepWhoAmI(ctx context.Context, _ json.RawMessage) (any, error
 
 // karakeepClientConfig is config.clientConfig. It has every field of
 // Karakeep's client configuration, because the apps read nested fields without
-// checks, and turns off everything Famodash doesn't offer.
+// checks, and turns off everything Boardly doesn't offer.
 func (a *api) karakeepClientConfig(context.Context, json.RawMessage) (any, error) {
 	return map[string]any{
 		"publicUrl":    a.origin,

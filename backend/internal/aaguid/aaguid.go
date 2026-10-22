@@ -1,6 +1,6 @@
 // Package aaguid maps passkey AAGUIDs to provider names and icons, using a
 // locally cached copy of the community-maintained passkey-authenticator-aaguids
-// list. The list is downloaded at runtime and never shipped with Famodash,
+// list. The list is downloaded at runtime and never shipped with Boardly,
 // because upstream declares no license.
 package aaguid
 

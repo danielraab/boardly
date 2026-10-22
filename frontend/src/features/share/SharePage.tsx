@@ -23,7 +23,7 @@ import { ApiError } from "#/lib/api";
 import { type ShareParams, sharedLink } from "./sharedLink";
 
 /** The folder last saved into on this page, remembered in this browser. */
-export const SHARE_FOLDER_STORAGE_KEY = "famodash.share.folder";
+export const SHARE_FOLDER_STORAGE_KEY = "boardly.share.folder";
 
 function storedFolder(): string | null {
 	try {

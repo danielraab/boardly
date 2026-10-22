@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/dbtest"
+	"boardly/internal/dbtest"
 )
 
 func ptr(s string) *string { return &s }

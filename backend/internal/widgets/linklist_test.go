@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
 )
 
 func linkList(config string) dashboards.Widget {

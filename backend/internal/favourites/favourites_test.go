@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/dbtest"
-	"famodash/internal/users"
+	"boardly/internal/apptokens"
+	"boardly/internal/dbtest"
+	"boardly/internal/users"
 )
 
 type fixture struct {

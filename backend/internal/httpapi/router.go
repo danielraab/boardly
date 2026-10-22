@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/auth"
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/users"
+	"boardly/internal/apptokens"
+	"boardly/internal/auth"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/users"
 )
 
 // Pinger reports whether the database is reachable.

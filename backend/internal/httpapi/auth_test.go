@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/apptokens"
-	"famodash/internal/auth"
-	"famodash/internal/dashboards"
-	"famodash/internal/dbtest"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/mail"
-	"famodash/internal/users"
-	"famodash/internal/widgets"
+	"boardly/internal/apptokens"
+	"boardly/internal/auth"
+	"boardly/internal/dashboards"
+	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/mail"
+	"boardly/internal/users"
+	"boardly/internal/widgets"
 )
 
 const testOrigin = "https://dash.example.org"
@@ -204,7 +204,7 @@ func TestRequestLinkValid(t *testing.T) {
 	if m.To != "ann@example.org" {
 		t.Fatalf("to = %q", m.To)
 	}
-	if m.Subject != "Dein Anmeldelink für Famodash" {
+	if m.Subject != "Dein Anmeldelink für Boardly" {
 		t.Fatalf("subject = %q, want the German one", m.Subject)
 	}
 	if !strings.Contains(m.Text, testOrigin+"/login/verify#token=") {
@@ -215,7 +215,7 @@ func TestRequestLinkValid(t *testing.T) {
 func TestRequestLinkUnsupportedLocaleFallsBackToEnglish(t *testing.T) {
 	s := newServer(t)
 	s.req("POST", "/api/auth/magic-link", `{"email":"ann@example.org","locale":"fr"}`)
-	if got := s.mail.last(t).Subject; got != "Your Famodash sign-in link" {
+	if got := s.mail.last(t).Subject; got != "Your Boardly sign-in link" {
 		t.Fatalf("subject = %q", got)
 	}
 }

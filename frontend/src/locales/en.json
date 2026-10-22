@@ -56,7 +56,7 @@
 		"screenshot": {
 			"placeholder": "Screenshot coming soon"
 		},
-		"featuresTitle": "What Famodash does"
+		"featuresTitle": "What Boardly does"
 	},
 	"features": {
 		"dashboards": {
@@ -78,7 +78,7 @@
 	},
 	"verify": {
 		"title": "Complete sign-in",
-		"text": "Confirm to sign in to Famodash in this browser.",
+		"text": "Confirm to sign in to Boardly in this browser.",
 		"confirm": "Complete sign-in",
 		"signingIn": "Signing in…",
 		"invalid": "This sign-in link is invalid or has expired.",
@@ -326,7 +326,7 @@
 		},
 		"slug": {
 			"invalid": "Use 1 to 32 characters: a–z, 0–9 and hyphens.",
-			"reserved": "This address is reserved by Famodash. Please choose another one.",
+			"reserved": "This address is reserved by Boardly. Please choose another one.",
 			"taken": "This address is already taken.",
 			"renameHint": "Links that use the old address will stop working."
 		},

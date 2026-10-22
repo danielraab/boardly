@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/favourites"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
+	"boardly/internal/users"
 )
 
 type fakeFavicons struct{ queued []string }
@@ -54,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{t: t, ctx: ctx, user: ann.ID, now: time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC), icons: &fakeFavicons{}}
 	f.fav = favourites.NewStore(database)
 	f.fav.Now = func() time.Time { f.now = f.now.Add(time.Minute); return f.now }
-	f.s = &Service{Favourites: f.fav, Favicons: f.icons, Origin: "https://famodash.example", Now: func() time.Time { return f.now }}
+	f.s = &Service{Favourites: f.fav, Favicons: f.icons, Origin: "https://boardly.example", Now: func() time.Time { return f.now }}
 	if f.topLevel, err = f.fav.EnsureRoot(ctx, database, ann.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestBookmarkShape(t *testing.T) {
 	want := fmt.Sprintf(`{"id":%q,"createdAt":"2026-03-04T12:03:00.000Z","modifiedAt":"2026-03-04T12:03:00.000Z","title":"Go",`+
 		`"archived":false,"favourited":false,"taggingStatus":null,"summarizationStatus":null,"embeddingStatus":null,`+
 		`"note":null,"summary":null,"source":null,"userId":%q,"tags":[{"id":%q,"name":"dev","attachedBy":"human"}],`+
-		`"content":{"type":"link","url":"https://go.dev/tour","title":"Go","favicon":"https://famodash.example/api/images/icon-go",`+
+		`"content":{"type":"link","url":"https://go.dev/tour","title":"Go","favicon":"https://boardly.example/api/images/icon-go",`+
 		`"crawlStatus":"success","crawledAt":"2026-03-04T12:03:00.000Z"},"assets":[]}`, id, f.user, tagID)
 	if got := jsonOf(t, b); got != want {
 		t.Errorf("bookmark =\n%s\nwant\n%s", got, want)

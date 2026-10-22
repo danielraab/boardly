@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/dashboards"
+	"boardly/internal/dashboards"
 )
 
 func (s *server) createDashboard(t *testing.T, cookie string, body map[string]any) dashboards.Dashboard {

@@ -11,7 +11,7 @@ import (
 func NewWebAuthn(rpID, origin string) (*webauthn.WebAuthn, error) {
 	w, err := webauthn.New(&webauthn.Config{
 		RPID:          rpID,
-		RPDisplayName: "Famodash",
+		RPDisplayName: "Boardly",
 		RPOrigins:     []string{origin},
 	})
 	if err != nil {

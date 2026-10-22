@@ -18,7 +18,7 @@ export type ThemeId = (typeof themes)[number]["id"];
 export type ThemeChoice = "system" | ThemeId;
 export type ThemeMode = (typeof themes)[number]["mode"];
 
-export const THEME_STORAGE_KEY = "famodash.theme";
+export const THEME_STORAGE_KEY = "boardly.theme";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 

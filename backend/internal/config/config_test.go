@@ -15,9 +15,9 @@ func env(vars map[string]string) func(string) (string, bool) {
 
 const testBaseURL = "http://localhost:3000"
 
-// withBaseURL returns vars plus the required FAMODASH_BASE_URL, unless vars sets it.
+// withBaseURL returns vars plus the required BOARDLY_BASE_URL, unless vars sets it.
 func withBaseURL(vars map[string]string) map[string]string {
-	out := map[string]string{"FAMODASH_BASE_URL": testBaseURL}
+	out := map[string]string{"BOARDLY_BASE_URL": testBaseURL}
 	for k, v := range vars {
 		out[k] = v
 	}
@@ -29,13 +29,13 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Port != 8080 || cfg.DBPath != "./data/famodash.db" || cfg.LogFormat != "json" {
+	if cfg.Port != 8080 || cfg.DBPath != "./data/boardly.db" || cfg.LogFormat != "json" {
 		t.Fatalf("got %+v", cfg)
 	}
 	if got := cfg.BaseURL.String(); got != "http://localhost:3000" {
 		t.Fatalf("BaseURL = %q", got)
 	}
-	wantSMTP := SMTP{Port: 587, From: "Famodash <noreply@localhost>", TLS: "starttls"}
+	wantSMTP := SMTP{Port: 587, From: "Boardly <noreply@localhost>", TLS: "starttls"}
 	if cfg.SMTP != wantSMTP {
 		t.Fatalf("SMTP = %+v, want %+v", cfg.SMTP, wantSMTP)
 	}
@@ -52,19 +52,19 @@ func TestLoadDefaults(t *testing.T) {
 
 func TestLoadOverrides(t *testing.T) {
 	cfg, err := Load(env(map[string]string{
-		"FAMODASH_PORT":                "9000",
-		"FAMODASH_DB_PATH":             "/tmp/x.db",
-		"FAMODASH_LOG_FORMAT":          "text",
-		"FAMODASH_BASE_URL":            "https://dash.example.org/",
-		"FAMODASH_SMTP_HOST":           "smtp.example.org",
-		"FAMODASH_SMTP_PORT":           "465",
-		"FAMODASH_SMTP_USERNAME":       "user",
-		"FAMODASH_SMTP_PASSWORD":       "secret",
-		"FAMODASH_SMTP_FROM":           "Dash <dash@example.org>",
-		"FAMODASH_SMTP_TLS":            "tls",
-		"FAMODASH_TRUST_PROXY_HEADERS": "true",
-		"FAMODASH_DATA_DIR":            "/srv/famodash",
-		"FAMODASH_FETCH_ALLOW_PRIVATE": "true",
+		"BOARDLY_PORT":                "9000",
+		"BOARDLY_DB_PATH":             "/tmp/x.db",
+		"BOARDLY_LOG_FORMAT":          "text",
+		"BOARDLY_BASE_URL":            "https://dash.example.org/",
+		"BOARDLY_SMTP_HOST":           "smtp.example.org",
+		"BOARDLY_SMTP_PORT":           "465",
+		"BOARDLY_SMTP_USERNAME":       "user",
+		"BOARDLY_SMTP_PASSWORD":       "secret",
+		"BOARDLY_SMTP_FROM":           "Dash <dash@example.org>",
+		"BOARDLY_SMTP_TLS":            "tls",
+		"BOARDLY_TRUST_PROXY_HEADERS": "true",
+		"BOARDLY_DATA_DIR":            "/srv/boardly",
+		"BOARDLY_FETCH_ALLOW_PRIVATE": "true",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -85,7 +85,7 @@ func TestLoadOverrides(t *testing.T) {
 	if !cfg.TrustProxyHeaders {
 		t.Fatal("TrustProxyHeaders should be true")
 	}
-	if cfg.DataDir != "/srv/famodash" || !cfg.FetchAllowPrivate {
+	if cfg.DataDir != "/srv/boardly" || !cfg.FetchAllowPrivate {
 		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v", cfg.DataDir, cfg.FetchAllowPrivate)
 	}
 }
@@ -96,7 +96,7 @@ func TestLoadBaseURLRequired(t *testing.T) {
 		vars map[string]string
 	}{
 		{"unset", nil},
-		{"empty", map[string]string{"FAMODASH_BASE_URL": ""}},
+		{"empty", map[string]string{"BOARDLY_BASE_URL": ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -104,8 +104,8 @@ func TestLoadBaseURLRequired(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected an error")
 			}
-			if !strings.Contains(err.Error(), "FAMODASH_BASE_URL") {
-				t.Fatalf("error %q does not name FAMODASH_BASE_URL", err)
+			if !strings.Contains(err.Error(), "BOARDLY_BASE_URL") {
+				t.Fatalf("error %q does not name BOARDLY_BASE_URL", err)
 			}
 		})
 	}
@@ -119,17 +119,17 @@ func TestLoadPort(t *testing.T) {
 		wantErr bool
 	}{
 		{"default", nil, 8080, false},
-		{"empty uses default", map[string]string{"FAMODASH_PORT": ""}, 8080, false},
-		{"set", map[string]string{"FAMODASH_PORT": "9000"}, 9000, false},
-		{"not a number", map[string]string{"FAMODASH_PORT": "abc"}, 0, true},
-		{"out of range", map[string]string{"FAMODASH_PORT": "0"}, 0, true},
+		{"empty uses default", map[string]string{"BOARDLY_PORT": ""}, 8080, false},
+		{"set", map[string]string{"BOARDLY_PORT": "9000"}, 9000, false},
+		{"not a number", map[string]string{"BOARDLY_PORT": "abc"}, 0, true},
+		{"out of range", map[string]string{"BOARDLY_PORT": "0"}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := LoadPort(env(tt.vars))
 			if tt.wantErr {
-				if err == nil || !strings.Contains(err.Error(), "FAMODASH_PORT") {
-					t.Fatalf("err = %v, want an error naming FAMODASH_PORT", err)
+				if err == nil || !strings.Contains(err.Error(), "BOARDLY_PORT") {
+					t.Fatalf("err = %v, want an error naming BOARDLY_PORT", err)
 				}
 				return
 			}
@@ -144,7 +144,7 @@ func TestLoadPort(t *testing.T) {
 }
 
 func TestOriginIgnoresPath(t *testing.T) {
-	cfg, err := Load(env(map[string]string{"FAMODASH_BASE_URL": "https://example.org:8443/dash"}))
+	cfg, err := Load(env(map[string]string{"BOARDLY_BASE_URL": "https://example.org:8443/dash"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,19 +157,19 @@ func TestLoadInvalid(t *testing.T) {
 	tests := []struct {
 		name, key, value string
 	}{
-		{"port not a number", "FAMODASH_PORT", "abc"},
-		{"port out of range", "FAMODASH_PORT", "70000"},
-		{"unknown log format", "FAMODASH_LOG_FORMAT", "xml"},
-		{"base URL relative", "FAMODASH_BASE_URL", "/dash"},
-		{"base URL without host", "FAMODASH_BASE_URL", "http://"},
-		{"base URL other scheme", "FAMODASH_BASE_URL", "ftp://example.org"},
-		{"base URL with query", "FAMODASH_BASE_URL", "https://example.org?x=1"},
-		{"smtp port not a number", "FAMODASH_SMTP_PORT", "smtp"},
-		{"unknown TLS mode", "FAMODASH_SMTP_TLS", "ssl"},
-		{"proxy flag not a bool", "FAMODASH_TRUST_PROXY_HEADERS", "maybe"},
-		{"private fetch flag not a bool", "FAMODASH_FETCH_ALLOW_PRIVATE", "sometimes"},
-		{"RP ID of another host", "FAMODASH_WEBAUTHN_RP_ID", "example.org"},
-		{"AAGUID list URL relative", "FAMODASH_AAGUID_LIST_URL", "/aaguids.json"},
+		{"port not a number", "BOARDLY_PORT", "abc"},
+		{"port out of range", "BOARDLY_PORT", "70000"},
+		{"unknown log format", "BOARDLY_LOG_FORMAT", "xml"},
+		{"base URL relative", "BOARDLY_BASE_URL", "/dash"},
+		{"base URL without host", "BOARDLY_BASE_URL", "http://"},
+		{"base URL other scheme", "BOARDLY_BASE_URL", "ftp://example.org"},
+		{"base URL with query", "BOARDLY_BASE_URL", "https://example.org?x=1"},
+		{"smtp port not a number", "BOARDLY_SMTP_PORT", "smtp"},
+		{"unknown TLS mode", "BOARDLY_SMTP_TLS", "ssl"},
+		{"proxy flag not a bool", "BOARDLY_TRUST_PROXY_HEADERS", "maybe"},
+		{"private fetch flag not a bool", "BOARDLY_FETCH_ALLOW_PRIVATE", "sometimes"},
+		{"RP ID of another host", "BOARDLY_WEBAUTHN_RP_ID", "example.org"},
+		{"AAGUID list URL relative", "BOARDLY_AAGUID_LIST_URL", "/aaguids.json"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,9 +195,9 @@ func TestWebAuthnRPID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vars := map[string]string{"FAMODASH_BASE_URL": tt.baseURL}
+			vars := map[string]string{"BOARDLY_BASE_URL": tt.baseURL}
 			if tt.rpID != "" {
-				vars["FAMODASH_WEBAUTHN_RP_ID"] = tt.rpID
+				vars["BOARDLY_WEBAUTHN_RP_ID"] = tt.rpID
 			}
 			cfg, err := Load(env(vars))
 			if err != nil {
@@ -217,8 +217,8 @@ func TestAAGUIDListURL(t *testing.T) {
 		want string
 	}{
 		{"unset uses upstream", nil, DefaultAAGUIDListURL},
-		{"self-hosted", map[string]string{"FAMODASH_AAGUID_LIST_URL": "https://files.example.org/aaguids.json"}, "https://files.example.org/aaguids.json"},
-		{"empty disables", map[string]string{"FAMODASH_AAGUID_LIST_URL": ""}, ""},
+		{"self-hosted", map[string]string{"BOARDLY_AAGUID_LIST_URL": "https://files.example.org/aaguids.json"}, "https://files.example.org/aaguids.json"},
+		{"empty disables", map[string]string{"BOARDLY_AAGUID_LIST_URL": ""}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

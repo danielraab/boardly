@@ -1,4 +1,4 @@
-module famodash
+module boardly
 
 go 1.26.5
 

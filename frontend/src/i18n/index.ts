@@ -11,7 +11,7 @@ export const languages = [
 
 export type LanguageCode = (typeof languages)[number]["code"];
 
-export const LANGUAGE_STORAGE_KEY = "famodash.lang";
+export const LANGUAGE_STORAGE_KEY = "boardly.lang";
 
 export const resources = {
 	en: { translation: en },

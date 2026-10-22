@@ -36,13 +36,13 @@ load_env .env
 export DEV_UID="$(id -u)" DEV_GID="$(id -g)"
 compose=(docker compose --profile dev)
 # Named explicitly: compose always includes services without a profile (the
-# famodash app container), which must not run next to the dev server on :8080.
+# boardly app container), which must not run next to the dev server on :8080.
 dev_services=(mailpit sqlite-web)
 
 # The server creates the DB on first start; create the directory first so
 # the bind mount isn't created by Docker (as root).
 mkdir -p data
-go -C backend build -o "$root/bin/famodash-dev" .
+go -C backend build -o "$root/bin/boardly-dev" .
 
 server_pid=""
 cleanup() {
@@ -67,7 +67,7 @@ echo "sqlite-web: http://localhost:8081"
 # after the server exits. The working directory is the repository root, so
 # relative paths from .env resolve against it.
 start_server() {
-	"$root/bin/famodash-dev" &
+	"$root/bin/boardly-dev" &
 	server_pid=$!
 }
 
@@ -90,7 +90,7 @@ if [[ -t 0 ]]; then
 		if read -rsn1 -t 1 key && [[ "$key" == r ]]; then
 			echo "Rebuilding..."
 			# Build first, so a compile error leaves the running server alone.
-			if go -C backend build -o "$root/bin/famodash-dev" .; then
+			if go -C backend build -o "$root/bin/boardly-dev" .; then
 				stop_server
 				start_server
 				echo "Server restarted."

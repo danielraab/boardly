@@ -5,12 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"famodash/internal/favourites"
-	"famodash/internal/images"
-	"famodash/internal/users"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
+	"boardly/internal/users"
 )
 
-// Version is the Linkwarden version whose API Famodash follows. The extension
+// Version is the Linkwarden version whose API Boardly follows. The extension
 // turns on paginated tags and tag search from 2.14.
 const Version = "v2.16.3"
 
@@ -25,13 +25,13 @@ type DashboardSection struct {
 	UpdatedAt    Time   `json:"updatedAt"`
 }
 
-// Subscription is a user's subscription; Famodash has no billing.
+// Subscription is a user's subscription; Boardly has no billing.
 type Subscription struct {
 	Active   bool `json:"active"`
 	Quantity int  `json:"quantity"`
 }
 
-// ParentSubscription is the subscription of a team owner; Famodash has none.
+// ParentSubscription is the subscription of a team owner; Boardly has none.
 type ParentSubscription struct {
 	Active bool     `json:"active"`
 	User   struct{} `json:"user"`
@@ -81,7 +81,7 @@ type User struct {
 }
 
 // Me is GET /api/v1/users/me for the token's owner. Tapping a link opens the
-// page (linksRouteTo ORIGINAL), because Famodash stores no page content.
+// page (linksRouteTo ORIGINAL), because Boardly stores no page content.
 func Me(u users.User) User {
 	created := Time(u.CreatedAt)
 	sections := []DashboardSection{

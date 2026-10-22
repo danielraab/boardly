@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/users"
 )
 
 // Minimal files of each type; enough for content sniffing.

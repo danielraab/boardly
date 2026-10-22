@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"famodash/internal/dbtest"
-	"famodash/internal/users"
+	"boardly/internal/dbtest"
+	"boardly/internal/users"
 )
 
 type fixture struct {

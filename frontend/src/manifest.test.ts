@@ -34,7 +34,7 @@ describe.each(languages)("manifest.$code.webmanifest", ({ code }) => {
 			display: "standalone",
 			lang: code,
 		});
-		expect(manifest.name).toBe("Famodash");
+		expect(manifest.name).toBe("Boardly");
 		expect(manifest.description).toEqual(expect.any(String));
 	});
 

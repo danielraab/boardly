@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"famodash/internal/favourites"
+	"boardly/internal/favourites"
 )
 
 func ptr[T any](v T) *T { return &v }

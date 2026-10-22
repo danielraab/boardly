@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Famodash ("favourites and more dashboard") is a self-hosted personal start page
+  Boardly is a self-hosted personal start page
   and bookmark manager: WYSIWYG dashboards (column grid, 6 columns by default; sections and widgets), one favourites
   tree per user, a Karakeep-compatible API, and passwordless login (magic link, passkeys).
   Anyone may sign up; all data belongs to a single user.
@@ -16,7 +16,7 @@ context: |
 
   Conventions:
   - REST/JSON API under /api. Errors are {"error": {"code": "<snake_case>", "message": "..."}}.
-  - Configuration only via FAMODASH_* environment variables with documented defaults.
+  - Configuration only via BOARDLY_* environment variables with documented defaults.
   - Every user-visible string is translated (en + de); keys are namespaced by area
     (e.g. shell.userMenu, landing.hero.title).
   - Tests live with the work that needs them: Go tests with httptest, frontend tests with

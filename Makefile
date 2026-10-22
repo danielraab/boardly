@@ -10,19 +10,19 @@ dev-backend:
 dev-frontend:
 	cd frontend && pnpm dev
 
-# Build the frontend into backend/internal/web/dist and embed it into bin/famodash.
+# Build the frontend into backend/internal/web/dist and embed it into bin/boardly.
 build: build-frontend build-backend
 
 build-frontend:
 	cd frontend && pnpm install --frozen-lockfile && pnpm build
 
 build-backend:
-	cd backend && go build -o ../bin/famodash .
+	cd backend && go build -o ../bin/boardly .
 
-# Build the container image famodash:dev, e.g. `make docker DOCKER_PLATFORM=linux/arm64`.
+# Build the container image boardly:dev, e.g. `make docker DOCKER_PLATFORM=linux/arm64`.
 DOCKER_PLATFORM ?=
 docker:
-	docker build $(if $(DOCKER_PLATFORM),--platform $(DOCKER_PLATFORM)) -t famodash:dev .
+	docker build $(if $(DOCKER_PLATFORM),--platform $(DOCKER_PLATFORM)) -t boardly:dev .
 
 test:
 	cd backend && go test ./...

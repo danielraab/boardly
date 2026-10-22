@@ -1,26 +1,26 @@
-# famodash: the app, built from the Dockerfile. Start it with
+# boardly: the app, built from the Dockerfile. Start it with
 #   docker compose up -d --build        (http://localhost:8080)
-# Sign-in links are written to its log: docker compose logs famodash
+# Sign-in links are written to its log: docker compose logs boardly
 #
 # The `dev` profile holds the development services. `make dev-backend` starts and
 # stops only those (or manually: docker compose --profile dev up -d mailpit sqlite-web).
 
-name: famodash
+name: boardly
 
 services:
-  famodash:
-#    image: ghcr.io/danielraab/famodash:latest
+  boardly:
+#    image: ghcr.io/danielraab/boardly:latest
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
-      # Not FAMODASH_BASE_URL: compose reads the dev .env, where that points to Vite (:3000).
-      FAMODASH_BASE_URL: ${FAMODASH_COMPOSE_BASE_URL:-http://localhost:8080}
-      FAMODASH_LOG_FORMAT: text
+      # Not BOARDLY_BASE_URL: compose reads the dev .env, where that points to Vite (:3000).
+      BOARDLY_BASE_URL: ${BOARDLY_COMPOSE_BASE_URL:-http://localhost:8080}
+      BOARDLY_LOG_FORMAT: text
     volumes:
-      - famodash-data:/data
+      - boardly-data:/data
 
   mailpit:
     image: axllent/mailpit:v1.31
@@ -35,11 +35,11 @@ services:
     # Run as the host user so files SQLite creates next to the DB (WAL/SHM) stay writable for the server.
     user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
     environment:
-      SQLITE_DATABASE: famodash.db
+      SQLITE_DATABASE: boardly.db
     volumes:
       - ./data:/data
     ports:
       - "8081:8080" # web UI: http://localhost:8081
 
 volumes:
-  famodash-data:
+  boardly-data:

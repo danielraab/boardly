@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"math"
 
-	"famodash/internal/favourites"
-	"famodash/internal/trpc"
+	"boardly/internal/favourites"
+	"boardly/internal/trpc"
 )
 
 // listIcon is the icon of every list; Karakeep requires one and folders have none.

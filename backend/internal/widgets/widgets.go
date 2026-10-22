@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"famodash/internal/dashboards"
-	"famodash/internal/favourites"
-	"famodash/internal/images"
+	"boardly/internal/dashboards"
+	"boardly/internal/favourites"
+	"boardly/internal/images"
 )
 
 // Register adds every content widget kind to the dashboard store. icons may
