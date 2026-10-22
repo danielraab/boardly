@@ -2,15 +2,13 @@
 
 ## Purpose
 App tokens let external apps such as the Karakeep browser extension and mobile app and the Linkwarden mobile app and browser extension connect to Boardly with a bearer API key. Each token is bound to one app and one folder in the user's favourites tree, and it only sees that folder's subtree.
-
 ## Requirements
-
 ### Requirement: App token properties
-An app token SHALL belong to one user and have a name, an app, a root folder, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep` or `linkwarden`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder. A token's secret starts with `famo_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
+An app token SHALL belong to one user and have a name, an app, a root folder, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep` or `linkwarden`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder. A token's secret starts with `bdly_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
 
 #### Scenario: Secret format
 - **WHEN** a token is created
-- **THEN** its secret starts with `famo_` and its prefix equals the first 12 characters of the secret
+- **THEN** its secret starts with `bdly_` and its prefix equals the first 12 characters of the secret
 
 #### Scenario: Linkwarden token
 - **WHEN** the user creates a token for the app `linkwarden`
@@ -102,7 +100,7 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 - **THEN** the token stays active
 
 ### Requirement: Create dialog
-The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Linkwarden"), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<FAMODASH_BASE_URL>/api/karakeep` for Karakeep, `<FAMODASH_BASE_URL>/api/linkwarden` for Linkwarden) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
+The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Linkwarden"), the root folder (picked from the favourites tree, folders only, including the top-level folder) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<BOARDLY_BASE_URL>/api/karakeep` for Karakeep, `<BOARDLY_BASE_URL>/api/linkwarden` for Linkwarden) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
 
 #### Scenario: Show secret once
 - **WHEN** the user creates a token and closes the dialog
@@ -118,10 +116,10 @@ The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Li
 
 #### Scenario: Server address for Linkwarden
 - **WHEN** the user creates a token for "Linkwarden"
-- **THEN** the dialog shows the server address `<FAMODASH_BASE_URL>/api/linkwarden`
+- **THEN** the dialog shows the server address `<BOARDLY_BASE_URL>/api/linkwarden`
 
 ### Requirement: Karakeep tRPC transport
-The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchLink`, `superjson` transformer) to `<server address>/api/trpc`. Famodash SHALL answer these calls at `/api/karakeep/api/trpc/<procedures>?batch=1`, where `<procedures>` is a comma-separated list of procedure names such as `apiKeys.validate`. Queries are sent with `GET` and their inputs in the `input` query parameter; mutations are sent with `POST` and their inputs in the JSON body. In both cases the inputs are a JSON object keyed by the call's index (`"0"`, `"1"`, …), each value a superjson envelope `{"json": <value>, "meta"?: …}`; a missing key means no input. Dates in an input arrive as ISO 8601 strings in `json`, and Famodash SHALL accept them as such; `meta` is not needed to read an input. The response SHALL be a JSON array with one entry per procedure, in the request's order: `{"result": {"data": {"json": <output>}}}` on success, or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus", "path"}}}}` on failure, where `code` is the JSON-RPC number of the tRPC error code (for example `-32001` for `UNAUTHORIZED`, `-32004` for `NOT_FOUND`). When an output contains dates or maps, the result SHALL also carry superjson's `meta` (`{"json": …, "meta": {"values": {<path>: ["Date"] | ["map"]}}}`), with dates as ISO 8601 strings and maps as arrays of `[key, value]` pairs in `json`, so the clients get real `Date` and `Map` values. The HTTP status SHALL be the common status of all entries, or 207 when they differ. Only the procedures named in this and later changes are implemented; any other procedure answers with a `NOT_FOUND` error entry. A query sent with `POST`, or a mutation sent with `GET`, answers with a `METHOD_NOT_SUPPORTED` error entry. A request without `batch=1`, or whose `input` isn't valid JSON, answers 400 with a single `BAD_REQUEST` error entry.
+The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchLink`, `superjson` transformer) to `<server address>/api/trpc`. Boardly SHALL answer these calls at `/api/karakeep/api/trpc/<procedures>?batch=1`, where `<procedures>` is a comma-separated list of procedure names such as `apiKeys.validate`. Queries are sent with `GET` and their inputs in the `input` query parameter; mutations are sent with `POST` and their inputs in the JSON body. In both cases the inputs are a JSON object keyed by the call's index (`"0"`, `"1"`, …), each value a superjson envelope `{"json": <value>, "meta"?: …}`; a missing key means no input. Dates in an input arrive as ISO 8601 strings in `json`, and Boardly SHALL accept them as such; `meta` is not needed to read an input. The response SHALL be a JSON array with one entry per procedure, in the request's order: `{"result": {"data": {"json": <output>}}}` on success, or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus", "path"}}}}` on failure, where `code` is the JSON-RPC number of the tRPC error code (for example `-32001` for `UNAUTHORIZED`, `-32004` for `NOT_FOUND`). When an output contains dates or maps, the result SHALL also carry superjson's `meta` (`{"json": …, "meta": {"values": {<path>: ["Date"] | ["map"]}}}`), with dates as ISO 8601 strings and maps as arrays of `[key, value]` pairs in `json`, so the clients get real `Date` and `Map` values. The HTTP status SHALL be the common status of all entries, or 207 when they differ. Only the procedures named in this and later changes are implemented; any other procedure answers with a `NOT_FOUND` error entry. A query sent with `POST`, or a mutation sent with `GET`, answers with a `METHOD_NOT_SUPPORTED` error entry. A request without `batch=1`, or whose `input` isn't valid JSON, answers 400 with a single `BAD_REQUEST` error entry.
 
 #### Scenario: Batched call
 - **WHEN** a client sends `GET /api/karakeep/api/trpc/users.whoami,config.clientConfig?batch=1&input={}` with a valid token
@@ -182,12 +180,12 @@ Responses on `/api/karakeep/` and `/api/linkwarden/` SHALL allow cross-origin re
 - **THEN** the server responds 204 and allows the methods `GET, POST, PUT, DELETE`
 
 ### Requirement: Karakeep login procedures
-Famodash SHALL implement the procedures the extension and the mobile app need to log in:
+Boardly SHALL implement the procedures the extension and the mobile app need to log in:
 
 - `apiKeys.validate` (public mutation, input `{"apiKey"}`): succeeds with `{"success": true}` when the API key is an active Karakeep token, and fails with `UNAUTHORIZED` otherwise. A successful call records the token's last use.
-- `apiKeys.exchange` (public mutation, email and password login): always fails with `UNAUTHORIZED` and the message "Famodash has no passwords. Log in with an API key from Settings → Connected apps.", because Famodash has no passwords.
+- `apiKeys.exchange` (public mutation, email and password login): always fails with `UNAUTHORIZED` and the message "Boardly has no passwords. Log in with an API key from Settings → Connected apps.", because Boardly has no passwords.
 - `users.whoami` (query): the token owner's `id`, `name` (the display name, or `null`), `email`, `image` `null` and `localUser` `true`.
-- `config.clientConfig` (public query): a fixed configuration that tells the clients that signups and password login are disabled and that AI features, chat, semantic search, payments, video download and Turnstile are not available, with `publicUrl` and `publicApiUrl` built from `FAMODASH_BASE_URL` and `disableNewReleaseCheck` `true`.
+- `config.clientConfig` (public query): a fixed configuration that tells the clients that signups and password login are disabled and that AI features, chat, semantic search, payments, video download and Turnstile are not available, with `publicUrl` and `publicApiUrl` built from `BOARDLY_BASE_URL` and `disableNewReleaseCheck` `true`.
 
 #### Scenario: Log in with an API key
 - **WHEN** the extension calls `apiKeys.validate` with an active Karakeep token as `apiKey` and without an `Authorization` header
@@ -206,7 +204,7 @@ Famodash SHALL implement the procedures the extension and the mobile app need to
 - **THEN** the result contains Ann's ID, name and email
 
 ### Requirement: Karakeep status endpoints
-`GET /api/karakeep/api/health` SHALL respond 200 with `{"status": "ok", "message": …}` and `GET /api/karakeep/api/version` SHALL respond 200 with `{"version": "Famodash"}`. Both are public. The mobile app uses them for its connection indicator and its settings page. Any other path under `/api/karakeep/` outside `api/trpc` responds 404 in the API's JSON error format.
+`GET /api/karakeep/api/health` SHALL respond 200 with `{"status": "ok", "message": …}` and `GET /api/karakeep/api/version` SHALL respond 200 with `{"version": "Boardly"}`. Both are public. The mobile app uses them for its connection indicator and its settings page. Any other path under `/api/karakeep/` outside `api/trpc` responds 404 in the API's JSON error format.
 
 #### Scenario: Health
 - **WHEN** the mobile app calls `GET /api/karakeep/api/health` without a token
@@ -226,3 +224,4 @@ A request authenticated with an app token SHALL only read and change nodes in th
 #### Scenario: Whole tree
 - **WHEN** a token is rooted at the top-level folder
 - **THEN** it can reach every node of the user's tree
+

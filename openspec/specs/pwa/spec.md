@@ -2,9 +2,7 @@
 
 ## Purpose
 Makes the Boardly web app installable as a progressive web app: a web app manifest, home-screen icons, a standalone window that opens the home page, and a title bar coloured like the active theme, without offline support.
-
 ## Requirements
-
 ### Requirement: Web app manifest
 Every page SHALL link a web app manifest served by the app. The manifest SHALL declare the id `/`, the start URL `/`, the scope `/`, the display mode `standalone`, a name, a short name, a description, a background colour, a theme colour and the home-screen icons. The server SHALL serve manifest files with the content type `application/manifest+json`.
 
@@ -20,8 +18,8 @@ Every page SHALL link a web app manifest served by the app. The manifest SHALL d
 The web app SHALL meet the installability criteria of Chromium-based browsers, so that they offer to install it with their own install button or prompt. The web app SHALL NOT show an install button, banner or prompt of its own.
 
 #### Scenario: Chromium browser
-- **WHEN** a visitor opens Famodash over HTTPS in a current Chrome or Edge
-- **THEN** the browser shows its install option for Famodash
+- **WHEN** a visitor opens Boardly over HTTPS in a current Chrome or Edge
+- **THEN** the browser shows its install option for Boardly
 
 #### Scenario: No own prompt
 - **WHEN** a visitor opens any page in a browser that can install the app
@@ -38,7 +36,7 @@ The installed app SHALL open `/` in a standalone window without browser address 
 The manifest's name, short name and description SHALL be in the app language (English or German), determined like the app language: the stored choice first, then the browser languages, then English. Both language versions SHALL declare the same id.
 
 #### Scenario: German browser
-- **WHEN** a visitor without a stored language choice opens Famodash in a browser that prefers German
+- **WHEN** a visitor without a stored language choice opens Boardly in a browser that prefers German
 - **THEN** the linked manifest has the German description
 
 #### Scenario: Language switched
@@ -78,7 +76,7 @@ The web app SHALL NOT register a service worker and SHALL NOT cache pages, asset
 The manifest SHALL register the app as a share target that accepts a title, a text and a URL, and opens `/share` with them as the query parameters `title`, `text` and `url`.
 
 #### Scenario: Share from another app
-- **WHEN** a user on Android, with the app installed, shares a web page from another app and picks Famodash
+- **WHEN** a user on Android, with the app installed, shares a web page from another app and picks Boardly
 - **THEN** the installed app opens `/share` with the shared title, text and URL
 
 ### Requirement: Save link page
@@ -126,3 +124,4 @@ The manifest SHALL declare the app shortcuts "Add link" (`/share`), "Favourites"
 #### Scenario: German shortcuts
 - **WHEN** the German manifest is linked
 - **THEN** its shortcuts are named "Link hinzufügen", "Favoriten" and "Dashboards"
+

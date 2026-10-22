@@ -443,6 +443,7 @@
 				"missing": "Dieser Ordner existiert nicht mehr",
 				"expandAll": "Alle aufklappen",
 				"collapseAll": "Alle zuklappen",
+				"addFavourite": "Favorit hinzufügen",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Wird über dem Baum angezeigt."
 			},

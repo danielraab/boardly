@@ -2,11 +2,9 @@
 
 ## Purpose
 Defines the Linkwarden REST endpoints that the Linkwarden mobile app and browser extension use to save, find and organise links, their wire format, and how Linkwarden's links, collections, tags, user and dashboard map onto the folder that an app token is bound to.
-
 ## Requirements
-
 ### Requirement: Linkwarden wire format
-The Linkwarden mobile app and browser extension talk to `<server address>/api/v1/…` and `<server address>/api/v2/…`. Famodash SHALL answer them under `/api/linkwarden/api/v1/` and `/api/linkwarden/api/v2/`. Request bodies are JSON. Responses SHALL be JSON with Linkwarden's envelopes: `{"response": <value>}` for single objects, plain lists and errors, and `{"data": <value>, "message": "Success", "success": true}` for search, the tag list and the dashboard. An error SHALL respond with an HTTP status 400, 401, 403 or 404 and `{"response": "<message>"}`, because the clients show `response` as the error text. Times SHALL be ISO 8601 strings in UTC with milliseconds (`2026-03-01T12:00:00.000Z`). Folders, links and tags SHALL appear with their integer ID (see the favourites spec); the token owner SHALL appear as the user `1`, so `ownerId` and `createdById` are always `1`. A path or method under `/api/linkwarden/` that isn't named in this spec SHALL respond 404 with `{"response": "Not found."}`.
+The Linkwarden mobile app and browser extension talk to `<server address>/api/v1/…` and `<server address>/api/v2/…`. Boardly SHALL answer them under `/api/linkwarden/api/v1/` and `/api/linkwarden/api/v2/`. Request bodies are JSON. Responses SHALL be JSON with Linkwarden's envelopes: `{"response": <value>}` for single objects, plain lists and errors, and `{"data": <value>, "message": "Success", "success": true}` for search, the tag list and the dashboard. An error SHALL respond with an HTTP status 400, 401, 403 or 404 and `{"response": "<message>"}`, because the clients show `response` as the error text. Times SHALL be ISO 8601 strings in UTC with milliseconds (`2026-03-01T12:00:00.000Z`). Folders, links and tags SHALL appear with their integer ID (see the favourites spec); the token owner SHALL appear as the user `1`, so `ownerId` and `createdById` are always `1`. A path or method under `/api/linkwarden/` that isn't named in this spec SHALL respond 404 with `{"response": "Not found."}`.
 
 #### Scenario: Envelope of a single link
 - **WHEN** the app calls `GET /api/linkwarden/api/v1/links/7` for a link in the subtree
@@ -27,7 +25,7 @@ A Linkwarden link SHALL be a link node in the subtree of the token's root folder
 - `tags`: the link's tags as tag objects (see "Tags in the token's subtree", without `_count`),
 - `collection`: the link's collection (see "Collections are folders", without `parent`, `members` and `_count`),
 - `pinnedBy` `[]`,
-- `preview`: a non-empty value when Famodash knows a favicon in PNG, JPEG, GIF or WebP for the link's origin, else `"unavailable"`; `image`, `pdf`, `readable` and `monolith` `"unavailable"`,
+- `preview`: a non-empty value when Boardly knows a favicon in PNG, JPEG, GIF or WebP for the link's origin, else `"unavailable"`; `image`, `pdf`, `readable` and `monolith` `"unavailable"`,
 - `lastPreserved` the creation time, so the clients don't wait for a preservation that never happens,
 - `icon`, `iconWeight`, `color`, `textContent`, `metaDescription`, `indexVersion` and `importDate` `null`; `clientSide` and `aiTagged` `false`.
 
@@ -48,7 +46,7 @@ A Linkwarden link SHALL be a link node in the subtree of the token's root folder
 
 - `sort`: `0` newest first (the default), `1` oldest first, `2` name A–Z, `3` name Z–A. Names are the title, or the URL when there is none, ignoring case. Equal values are ordered by ID.
 - `collectionId`: only links directly in that collection's folder. `tagId`: only links with that tag. An unknown or out-of-scope ID returns no links.
-- `pinnedOnly=true`: no links, because nothing is pinned in Famodash.
+- `pinnedOnly=true`: no links, because nothing is pinned in Boardly.
 - `searchQueryString`: links that match every whitespace-separated term, ignoring case. A term `url:<value>` matches a link whose URL equals the value, comparing without the fragment and without a trailing slash of the path; `name:<value>` matches a title that contains the value; `tag:<value>` matches a link with a tag of that name; `collection:<value>` matches a link whose collection's name contains the value. A value MAY be in double quotes. Any other term, including Linkwarden's other qualifiers, matches when the link's title, URL or one of its tags contains it.
 - `cursor`: the ID of the last link of the previous page; the page starts after that link in the chosen order. `0` or missing starts at the beginning.
 
@@ -96,11 +94,11 @@ Tags are given by `name`, and the rules of tags on links apply (an existing tag 
 - **THEN** the server responds 400 and nothing is created
 
 ### Requirement: Update links
-`PUT /api/v1/links/{id}` SHALL change the link and respond 200 with `{"response": <link>}`. `name` sets the title (`null` or empty removes it), and `url` sets the URL when it is a non-empty string. `tags` (required) replaces the link's tags with the given names, and tags that are then unused are removed. `collection.id` (required) moves the link to the first position of that collection's folder when it differs from the current one; it must be in the subtree, else 400. The rules of link nodes apply, and violations respond 400. Fields that Famodash doesn't have SHALL respond 400 when they would set a value: a non-empty `description`, `icon`, `iconWeight` or `color`, and `pinnedBy` with an entry that has an `id`. A rejected request changes nothing.
+`PUT /api/v1/links/{id}` SHALL change the link and respond 200 with `{"response": <link>}`. `name` sets the title (`null` or empty removes it), and `url` sets the URL when it is a non-empty string. `tags` (required) replaces the link's tags with the given names, and tags that are then unused are removed. `collection.id` (required) moves the link to the first position of that collection's folder when it differs from the current one; it must be in the subtree, else 400. The rules of link nodes apply, and violations respond 400. Fields that Boardly doesn't have SHALL respond 400 when they would set a value: a non-empty `description`, `icon`, `iconWeight` or `color`, and `pinnedBy` with an entry that has an `id`. A rejected request changes nothing.
 
 #### Scenario: Rename and tag
 - **WHEN** the app sends the link back with `name` "Docs" and the tags "dev" and "go"
-- **THEN** the link is titled "Docs" in Famodash and has exactly the tags "dev" and "go"
+- **THEN** the link is titled "Docs" in Boardly and has exactly the tags "dev" and "go"
 
 #### Scenario: Move to another collection
 - **WHEN** the app sets `collection.id` of a link in "Later" to the ID of "Recipes"
@@ -166,7 +164,7 @@ A tag SHALL be visible to a token when it is on at least one link in the subtree
 - **THEN** the result has "dev" and other matching tags by name, and `nextCursor` `null` when there are at most 50
 
 ### Requirement: Change tags
-`DELETE /api/v1/tags/{id}` SHALL remove the tag from every link in the subtree and respond 200 with `{"response": <tag>}`. Links outside the subtree keep it, and a tag left on no link is removed. `POST /api/v1/tags` SHALL respond 403 with a message that tags are created by adding them to a link, because a Famodash tag only exists while a link has it.
+`DELETE /api/v1/tags/{id}` SHALL remove the tag from every link in the subtree and respond 200 with `{"response": <tag>}`. Links outside the subtree keep it, and a tag left on no link is removed. `POST /api/v1/tags` SHALL respond 403 with a message that tags are created by adding them to a link, because a Boardly tag only exists while a link has it.
 
 #### Scenario: Delete a tag
 - **WHEN** the app deletes "dev", which is on one link inside and one link outside the subtree
@@ -177,10 +175,10 @@ A tag SHALL be visible to a token when it is on at least one link in the subtree
 - **THEN** the server responds 403 and no tag is created
 
 ### Requirement: Link previews
-`GET /api/v1/archives/{id}?format=1&preview=true` (also with `format=0`, and ignoring `updatedAt`) SHALL respond 200 with the image of the favicon Famodash knows for the link's origin, with its own content type, when that favicon is PNG, JPEG, GIF or WebP. A link without such a favicon, any other `format`, or a request without `preview=true` responds 404. Uploading an archive (`POST /api/v1/archives/{id}`) responds 400 with a message that Famodash doesn't store screenshots or files.
+`GET /api/v1/archives/{id}?format=1&preview=true` (also with `format=0`, and ignoring `updatedAt`) SHALL respond 200 with the image of the favicon Boardly knows for the link's origin, with its own content type, when that favicon is PNG, JPEG, GIF or WebP. A link without such a favicon, any other `format`, or a request without `preview=true` responds 404. Uploading an archive (`POST /api/v1/archives/{id}`) responds 400 with a message that Boardly doesn't store screenshots or files.
 
 #### Scenario: Preview from the favicon
-- **WHEN** the app loads the preview of a link to `https://github.com/` and Famodash has GitHub's PNG favicon
+- **WHEN** the app loads the preview of a link to `https://github.com/` and Boardly has GitHub's PNG favicon
 - **THEN** the response is that PNG
 
 #### Scenario: Readable view
@@ -192,8 +190,8 @@ A tag SHALL be visible to a token when it is on at least one link in the subtree
 - **THEN** the link is created and the following archive upload responds 400
 
 ### Requirement: User, configuration and dashboard
-- `GET /api/v1/users/me` SHALL respond with `{"response": …}`: `id` `1`, `uuid` the user's Famodash ID, `name` (the display name or `null`), `username` (the user slug), `email`, `image` `null`, `locale` `en`, `linksRouteTo` `ORIGINAL` (tapping a link opens the page, because Famodash stores no content), `preventDuplicateLinks` `false`, all `archiveAs…` `false`, `collectionOrder` `[]`, `dashboardSections` (see below), `subscription` `{"active": false, "quantity": 0}`, `parentSubscription` `{"active": false, "user": {}}`, `hasPassword` and `hasOAuthAccount` `false`, and `createdAt` and `updatedAt` of the user.
-- `GET /api/v1/config` (public) SHALL respond with `{"response": …}` with every field of Linkwarden's configuration `null`, except `DISABLE_REGISTRATION` `true` and `INSTANCE_VERSION` `v2.16.3`, the Linkwarden version whose API Famodash follows. Billing (`STRIPE_ENABLED` `null`) is off, so the app never asks for a subscription.
+- `GET /api/v1/users/me` SHALL respond with `{"response": …}`: `id` `1`, `uuid` the user's Boardly ID, `name` (the display name or `null`), `username` (the user slug), `email`, `image` `null`, `locale` `en`, `linksRouteTo` `ORIGINAL` (tapping a link opens the page, because Boardly stores no content), `preventDuplicateLinks` `false`, all `archiveAs…` `false`, `collectionOrder` `[]`, `dashboardSections` (see below), `subscription` `{"active": false, "quantity": 0}`, `parentSubscription` `{"active": false, "user": {}}`, `hasPassword` and `hasOAuthAccount` `false`, and `createdAt` and `updatedAt` of the user.
+- `GET /api/v1/config` (public) SHALL respond with `{"response": …}` with every field of Linkwarden's configuration `null`, except `DISABLE_REGISTRATION` `true` and `INSTANCE_VERSION` `v2.16.3`, the Linkwarden version whose API Boardly follows. Billing (`STRIPE_ENABLED` `null`) is off, so the app never asks for a subscription.
 - `GET /api/v1/logins` (public) SHALL respond with `{"buttonAuths": []}`, because there is no SSO.
 - The dashboard has the fixed sections `STATS` and `RECENT_LINKS`, each `{"id", "userId": 1, "collectionId": null, "type", "order", "createdAt", "updatedAt"}`. `GET /api/v2/dashboard` SHALL respond with `{"data": {"links", "collectionLinks": {}, "numberOfPinnedLinks": 0, "numberOfTags"}, …}`: the 16 newest links of the subtree and the number of tags visible to the token.
 
@@ -210,7 +208,7 @@ A tag SHALL be visible to a token when it is on at least one link in the subtree
 - **THEN** it shows the 16 newest links and the number of tags 4
 
 ### Requirement: Unsupported Linkwarden features
-Endpoints for Linkwarden features that Famodash doesn't have SHALL NOT be implemented and respond 404 (see "Linkwarden wire format"), among them SSO login (`/api/v1/auth/…`), registration, billing, highlights, preservation and re-preservation, uploads, RSS, collection sharing and members, public collections, bulk changes, tag merging, user and dashboard settings, and access token management. Password login (`POST /api/v1/session`, public) SHALL respond 401 with `{"response": "Famodash has no passwords. Log in with an access token from Settings → Connected apps."}`, so the clients show why. Messages for unsupported fields name the field and say that Famodash doesn't support it.
+Endpoints for Linkwarden features that Boardly doesn't have SHALL NOT be implemented and respond 404 (see "Linkwarden wire format"), among them SSO login (`/api/v1/auth/…`), registration, billing, highlights, preservation and re-preservation, uploads, RSS, collection sharing and members, public collections, bulk changes, tag merging, user and dashboard settings, and access token management. Password login (`POST /api/v1/session`, public) SHALL respond 401 with `{"response": "Boardly has no passwords. Log in with an access token from Settings → Connected apps."}`, so the clients show why. Messages for unsupported fields name the field and say that Boardly doesn't support it.
 
 #### Scenario: Highlights
 - **WHEN** the app opens a link and calls `GET /api/v1/links/{id}/highlights`
@@ -219,3 +217,4 @@ Endpoints for Linkwarden features that Famodash doesn't have SHALL NOT be implem
 #### Scenario: Password login
 - **WHEN** a client calls `POST /api/v1/session` with a username and password
 - **THEN** the server responds 401 and the message explains to use an access token
+

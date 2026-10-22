@@ -3,19 +3,17 @@
 ## Purpose
 
 Defines the global frame around every Boardly page: the header with the product name, the theme switcher, the language switcher and the user avatar with its menu.
-
 ## Requirements
-
 ### Requirement: Global header
-Every page SHALL show a header with the app icon and the product name "Famodash" on the left, together linking to `/`, and on the right, in this order, the theme switcher, the language switcher and the user avatar. The app icon comes directly before the product name, is drawn in the theme's text colour with the rose star as its only other colour, and is hidden from assistive technology so the link's accessible name stays "Famodash". On dashboard pages, the dashboard switcher (see the `dashboards` capability) appears right after the product name, separated from it by a slash.
+Every page SHALL show a header with the app icon and the product name "Boardly" on the left, together linking to `/`, and on the right, in this order, the theme switcher, the language switcher and the user avatar. The app icon comes directly before the product name, is drawn in the theme's text colour with the rose star as its only other colour, and is hidden from assistive technology so the link's accessible name stays "Boardly". On dashboard pages, the dashboard switcher (see the `dashboards` capability) appears right after the product name, separated from it by a slash.
 
 #### Scenario: Header on every page
 - **WHEN** a visitor opens `/`, `/login` or an unknown path
-- **THEN** the page shows the header with the app icon, "Famodash", the theme switcher, the language switcher and the avatar
+- **THEN** the page shows the header with the app icon, "Boardly", the theme switcher, the language switcher and the avatar
 
 #### Scenario: Icon before the product name
 - **WHEN** the header is rendered
-- **THEN** the app icon is shown directly before "Famodash" inside the same link, and the link's accessible name is "Famodash"
+- **THEN** the app icon is shown directly before "Boardly" inside the same link, and the link's accessible name is "Boardly"
 
 #### Scenario: Icon follows the theme
 - **WHEN** the visitor switches from the "white" theme to the "black" theme
@@ -27,7 +25,7 @@ Every page SHALL show a header with the app icon and the product name "Famodash"
 
 #### Scenario: Header with switcher
 - **WHEN** a user with the dashboards "Home" and "Work" opens `/<user-slug>/work`
-- **THEN** the header shows "Famodash / Work", where "Work" opens the dashboard switcher
+- **THEN** the header shows "Boardly / Work", where "Work" opens the dashboard switcher
 
 ### Requirement: Avatar shows a generic person icon
 The avatar SHALL be an icon button that shows a generic person icon, with the same size and corner radius as the other header buttons. It SHALL have an accessible name that describes it as the user menu.
@@ -109,3 +107,4 @@ Every page SHALL declare the app icon as its favicon, as an SVG file served by t
 #### Scenario: Dark browser
 - **WHEN** the browser uses a dark colour scheme
 - **THEN** the favicon's outline is drawn in a light colour and remains visible on the dark tab bar
+
