@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LANGUAGE_STORAGE_KEY } from "#/i18n";
 import { stubColorScheme } from "#/test/colorScheme";
 import { THEME_STORAGE_KEY, themes } from ".";
 
@@ -12,11 +13,43 @@ function run() {
 	return document.documentElement.dataset.theme;
 }
 
+// The script fills in these elements of the document head.
+let themeColor: HTMLMetaElement;
+let manifest: HTMLLinkElement;
+
+beforeEach(() => {
+	themeColor = document.createElement("meta");
+	themeColor.name = "theme-color";
+	manifest = document.createElement("link");
+	manifest.rel = "manifest";
+	document.head.append(themeColor, manifest);
+});
+
+afterEach(() => {
+	themeColor.remove();
+	manifest.remove();
+	vi.restoreAllMocks();
+});
+
+function constant(name: string) {
+	return JSON.parse(
+		script.match(new RegExp(`const ${name} = (.*?);\\n`))?.[1] ?? "",
+	);
+}
+
 describe("index.html theme script", () => {
-	it("uses the same theme ids and storage key as the theme module", () => {
-		const ids = JSON.parse(script.match(/const ids = (\[.*?\]);/)?.[1] ?? "");
-		expect(ids).toEqual(themes.map((t) => t.id));
-		expect(script).toContain(`localStorage.getItem("${THEME_STORAGE_KEY}")`);
+	it("uses the same theme ids, colours and storage key as the theme module", () => {
+		expect(constant("ids")).toEqual(themes.map((t) => t.id));
+		expect(constant("paper")).toEqual(
+			Object.fromEntries(themes.map((t) => [t.id, t.paper])),
+		);
+		expect(script).toContain(`stored("${THEME_STORAGE_KEY}")`);
+	});
+
+	it("colours the title bar like the stored theme", () => {
+		localStorage.setItem(THEME_STORAGE_KEY, "ember");
+		run();
+		expect(themeColor.content).toBe("#1f1b18");
 	});
 
 	it("applies a stored theme", () => {
@@ -38,4 +71,31 @@ describe("index.html theme script", () => {
 		localStorage.setItem(THEME_STORAGE_KEY, "neon");
 		expect(run()).toBe("black");
 	});
+});
+
+describe("index.html manifest language", () => {
+	it("uses the same storage key as i18n", () => {
+		expect(script).toContain(`stored("${LANGUAGE_STORAGE_KEY}")`);
+	});
+
+	it("links the manifest of a stored language", () => {
+		localStorage.setItem(LANGUAGE_STORAGE_KEY, "de");
+		run();
+		expect(manifest.getAttribute("href")).toBe("/manifest.de.webmanifest");
+	});
+
+	it.each([
+		[["de-AT", "en"], "de"],
+		[["fr", "de"], "de"],
+		[["fr"], "en"],
+	])(
+		"picks the manifest for browser languages %j: %s",
+		(preferred, language) => {
+			vi.spyOn(navigator, "languages", "get").mockReturnValue(preferred);
+			run();
+			expect(manifest.getAttribute("href")).toBe(
+				`/manifest.${language}.webmanifest`,
+			);
+		},
+	);
 });

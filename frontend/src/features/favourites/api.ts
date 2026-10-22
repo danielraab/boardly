@@ -9,6 +9,8 @@ export type FavouriteNode = {
 	url?: string;
 	tags?: string[];
 	children?: FavouriteNode[];
+	/** The favicon of a link's origin, when the server knows one. */
+	iconImageId?: string;
 };
 
 export type Tag = { id: string; name: string };

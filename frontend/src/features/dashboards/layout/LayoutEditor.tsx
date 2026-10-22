@@ -26,14 +26,17 @@ import {
 	secondaryIconButton,
 } from "#/components/buttonStyles";
 import {
+	type ContentWidget,
 	type DashboardViewData,
 	dashboardViewQueryKey,
 	isLayoutConflict,
-	type Section,
+	isSection,
 	saveLayout,
+	type Widget,
 } from "../api";
 import { DashboardPage } from "../DashboardView";
-import { DeleteSectionDialog, DiscardDraftDialog } from "./ConfirmDialogs";
+import { widgetLabel } from "../widgets/registry";
+import { DeleteWidgetDialog, DiscardDraftDialog } from "./ConfirmDialogs";
 import {
 	type DropTarget,
 	type Editor,
@@ -44,21 +47,32 @@ import {
 	canMove,
 	currentSlot,
 	findSection,
+	findWidget,
 	isSameTree,
 	isWithin,
 	keyboardSlots,
 	layoutReducer,
+	listOf,
+	type MoveProblem,
 	parentOf,
 	type Slot,
 } from "./layoutTree";
 import { SectionDialog, type SectionDialogTarget } from "./SectionDialog";
 import { DashboardGrid } from "./SectionGrid";
+import { WidgetDialog, WidgetPicker } from "./WidgetDialogs";
 
 type KeyboardDrag = {
 	id: string;
 	slots: Slot[];
 	index: number;
-	snapshot: Section[];
+	snapshot: Widget[];
+};
+
+/** The settings dialog of a content widget, new or existing. */
+type WidgetDialogTarget = {
+	widget: ContentWidget;
+	isNew: boolean;
+	parentId: string;
 };
 
 /**
@@ -85,9 +99,15 @@ export function LayoutEditor({
 	const [dialog, setDialog] = useState<
 		(SectionDialogTarget & { parentId: string | null }) | null
 	>(null);
-	const [deleting, setDeleting] = useState<Section | null>(null);
+	// The section whose "Add widget" opened the picker.
+	const [picking, setPicking] = useState<string | null>(null);
+	const [widgetDialog, setWidgetDialog] = useState<WidgetDialogTarget | null>(
+		null,
+	);
+	const [deleting, setDeleting] = useState<Widget | null>(null);
 	const [discarding, setDiscarding] = useState(false);
-	const [tooDeep, setTooDeep] = useState(false);
+	// Why the last move was refused; shown for a while.
+	const [refused, setRefused] = useState<MoveProblem | null>(null);
 	const [announcement, setAnnouncement] = useState("");
 
 	// Leaving on purpose (saved or discarded) must not be blocked.
@@ -138,20 +158,27 @@ export function LayoutEditor({
 		onExit();
 	}
 
-	// The "nested too deep" message disappears after a while.
+	// The "move refused" message disappears after a while.
 	useEffect(() => {
-		if (!tooDeep) return;
-		const timer = setTimeout(() => setTooDeep(false), 6000);
+		if (!refused) return;
+		const timer = setTimeout(() => setRefused(null), 6000);
 		return () => clearTimeout(timer);
-	}, [tooDeep]);
+	}, [refused]);
 
-	function blockTooDeep() {
-		setTooDeep(true);
-		setAnnouncement(t("dashboards.editor.tooDeep"));
+	const refusedText = (problem: MoveProblem | null) =>
+		problem === "topLevel"
+			? t("dashboards.editor.topLevel")
+			: t("dashboards.editor.tooDeep");
+
+	function refuse(problem: MoveProblem | null) {
+		setRefused(problem ?? "tooDeep");
+		setAnnouncement(refusedText(problem));
 	}
 
-	const titleOf = (id: string) =>
-		findSection(draft, id)?.title ?? t("dashboards.editor.untitled");
+	const titleOf = (id: string) => {
+		const widget = findWidget(draft, id);
+		return widget ? widgetLabel(widget, t) : t("dashboards.editor.untitled");
+	};
 
 	// --- Keyboard moves: pick up, step through slots, drop. ---
 	const [keyboard, setKeyboard] = useState<KeyboardDrag | null>(null);
@@ -176,21 +203,21 @@ export function LayoutEditor({
 		});
 	}
 
-	function onHandleKeyDown(event: KeyboardEvent, section: Section) {
-		if (keyboard?.id !== section.id) {
+	function onHandleKeyDown(event: KeyboardEvent, widget: Widget) {
+		if (keyboard?.id !== widget.id) {
 			if (event.key !== " " && event.key !== "Enter") return;
 			event.preventDefault();
-			const slots = keyboardSlots(draft, section.id);
-			const current = currentSlot(draft, section.id);
+			const slots = keyboardSlots(draft, widget.id);
+			const current = currentSlot(draft, widget.id);
 			const index = Math.max(
 				0,
 				slots.findIndex(
 					(s) => s.parentId === current?.parentId && s.index === current?.index,
 				),
 			);
-			setKeyboard({ id: section.id, slots, index, snapshot: draft });
+			setKeyboard({ id: widget.id, slots, index, snapshot: draft });
 			setAnnouncement(
-				t("dashboards.dnd.pickedUp", { title: titleOf(section.id) }),
+				t("dashboards.dnd.pickedUp", { title: titleOf(widget.id) }),
 			);
 			return;
 		}
@@ -225,10 +252,11 @@ export function LayoutEditor({
 				event.preventDefault();
 				const slot = slots[keyboard.index];
 				setKeyboard(null);
-				if (canMove(snapshot, id, slot.parentId) !== null) {
+				const problem = canMove(snapshot, id, slot.parentId);
+				if (problem !== null) {
 					dispatch({ type: "reset", sections: snapshot });
 					setRefocus(id);
-					blockTooDeep();
+					refuse(problem);
 					return;
 				}
 				setAnnouncement(t("dashboards.dnd.dropped", { title: titleOf(id) }));
@@ -260,14 +288,14 @@ export function LayoutEditor({
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
 	);
 
-	// Drop targets are the dragged section's siblings and every grid outside
+	// Drop targets are the dragged widget's siblings and every grid outside
 	// it. Of the targets under the pointer, the smallest (innermost) wins.
 	const collisionDetection: CollisionDetection = (args) => {
 		const active = String(args.active.id);
 		const droppableContainers = args.droppableContainers.filter((c) => {
 			const id = String(c.id);
 			const container = parentOfContainer(id);
-			// A section: the dragged one itself or any outside of it.
+			// A widget: the dragged one itself or any outside of it.
 			if (container === undefined) {
 				return id === active || !isWithin(draftRef.current, id, active);
 			}
@@ -288,23 +316,18 @@ export function LayoutEditor({
 	};
 
 	/** The slot a drop on overId means. */
-	function targetOf(tree: Section[], active: string, overId: string) {
+	function targetOf(tree: Widget[], active: string, overId: string) {
 		const container = parentOfContainer(overId);
 		if (container !== undefined) {
-			const list =
-				container === null
-					? tree
-					: (findSection(tree, container)?.children ?? []);
 			return {
 				parentId: container,
-				index: list.filter((s) => s.id !== active).length,
+				index: listOf(tree, container).filter((w) => w.id !== active).length,
 			};
 		}
 		const parentId = parentOf(tree, overId);
 		if (parentId === undefined) return null;
-		const list =
-			parentId === null ? tree : (findSection(tree, parentId)?.children ?? []);
-		return { parentId, index: list.findIndex((s) => s.id === overId) };
+		const list = listOf(tree, parentId);
+		return { parentId, index: list.findIndex((w) => w.id === overId) };
 	}
 
 	const announcements: Announcements = {
@@ -312,28 +335,36 @@ export function LayoutEditor({
 			t("dashboards.dnd.pickedUp", { title: titleOf(String(active.id)) }),
 		onDragOver: () => undefined,
 		onDragMove: () => undefined,
-		onDragEnd: ({ active }) =>
-			dropTargetRef.current?.blocked
-				? t("dashboards.editor.tooDeep")
-				: t("dashboards.dnd.dropped", { title: titleOf(String(active.id)) }),
+		onDragEnd: ({ active }) => {
+			const target = dropTargetRef.current;
+			return target?.blocked
+				? refusedText(
+						canMove(draftRef.current, String(active.id), target.parentId),
+					)
+				: t("dashboards.dnd.dropped", { title: titleOf(String(active.id)) });
+		},
 		onDragCancel: ({ active }) =>
 			t("dashboards.dnd.cancelled", { title: titleOf(String(active.id)) }),
 	};
 
 	const editor: Editor = {
 		onAdd: (parentId) => setDialog({ section: null, parentId }),
+		onAddWidget: (parentId) => setPicking(parentId),
 		onEdit: (id) => {
-			const section = findSection(draft, id);
-			if (section)
-				setDialog({ section, parentId: parentOf(draft, id) ?? null });
+			const widget = findWidget(draft, id);
+			const parentId = parentOf(draft, id) ?? null;
+			if (!widget) return;
+			if (isSection(widget)) setDialog({ section: widget, parentId });
+			else if (parentId !== null)
+				setWidgetDialog({ widget, isNew: false, parentId });
 		},
 		pickedId: keyboard?.id ?? null,
 		dropTarget,
 		onHandleKeyDown,
 		// Focus moving elsewhere cancels a keyboard move. A handle that loses
 		// focus because its section moved to another grid has no relatedTarget.
-		onHandleBlur: (event, section) => {
-			if (keyboard?.id !== section.id || event.relatedTarget === null) return;
+		onHandleBlur: (event, widget) => {
+			if (keyboard?.id !== widget.id || event.relatedTarget === null) return;
 			dispatch({ type: "reset", sections: keyboard.snapshot });
 			setKeyboard(null);
 		},
@@ -396,9 +427,9 @@ export function LayoutEditor({
 						{t("dashboards.editor.saveFailed")}
 					</p>
 				))}
-			{tooDeep && (
+			{refused && (
 				<output className="mb-4 block rounded-lg border border-line bg-surface px-4 py-3 text-sm">
-					{t("dashboards.editor.tooDeep")}
+					{refusedText(refused)}
 				</output>
 			)}
 			<EditorContext.Provider value={editor}>
@@ -434,7 +465,7 @@ export function LayoutEditor({
 						const id = String(active.id);
 						const target = dropTargetRef.current;
 						if (target?.blocked) {
-							setTooDeep(true);
+							setRefused(canMove(draft, id, target.parentId) ?? "tooDeep");
 						} else if (target) {
 							dispatch({ type: "move", id, ...target });
 						} else if (over && String(over.id) !== id) {
@@ -474,25 +505,73 @@ export function LayoutEditor({
 				onClose={() => setDialog(null)}
 				onApply={(settings) => {
 					if (dialog?.section) {
-						dispatch({ type: "update", id: dialog.section.id, settings });
+						dispatch({
+							type: "update",
+							id: dialog.section.id,
+							widget: { ...dialog.section, ...settings },
+						});
 					} else if (dialog) {
 						dispatch({
 							type: "add",
 							parentId: dialog.parentId,
-							section: { id: crypto.randomUUID(), children: [], ...settings },
+							widget: {
+								id: crypto.randomUUID(),
+								kind: "section",
+								children: [],
+								...settings,
+							},
 						});
 					}
 					setDialog(null);
 				}}
 				onDelete={(section) => setDeleting(section)}
 			/>
-			<DeleteSectionDialog
-				section={deleting}
+			<WidgetPicker
+				open={picking !== null}
+				onClose={() => setPicking(null)}
+				onPick={(kind) => {
+					if (picking === null) return;
+					// A new widget is as wide as its section.
+					const width = Math.min(
+						findSection(draft, picking)?.width ?? view.columns.desktopColumns,
+						view.columns.desktopColumns,
+					);
+					setWidgetDialog({
+						widget: {
+							id: crypto.randomUUID(),
+							kind: kind.kind,
+							width,
+							height: "auto",
+							config: kind.defaultConfig(),
+						},
+						isNew: true,
+						parentId: picking,
+					});
+					setPicking(null);
+				}}
+			/>
+			<WidgetDialog
+				target={widgetDialog}
+				desktopColumns={view.columns.desktopColumns}
+				onClose={() => setWidgetDialog(null)}
+				onApply={(widget) => {
+					if (widgetDialog?.isNew) {
+						dispatch({ type: "add", parentId: widgetDialog.parentId, widget });
+					} else if (widgetDialog) {
+						dispatch({ type: "update", id: widget.id, widget });
+					}
+					setWidgetDialog(null);
+				}}
+				onDelete={(widget) => setDeleting(widget)}
+			/>
+			<DeleteWidgetDialog
+				widget={deleting}
 				onClose={() => setDeleting(null)}
-				onConfirm={(section) => {
-					dispatch({ type: "remove", id: section.id });
+				onConfirm={(widget) => {
+					dispatch({ type: "remove", id: widget.id });
 					setDeleting(null);
 					setDialog(null);
+					setWidgetDialog(null);
 				}}
 			/>
 			<DiscardDraftDialog

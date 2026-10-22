@@ -13,6 +13,7 @@ import (
 	"famodash/internal/auth"
 	"famodash/internal/dashboards"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 	"famodash/internal/ratelimit"
 	"famodash/internal/users"
 )
@@ -34,6 +35,8 @@ type api struct {
 	users         *users.Store
 	favourites    *favourites.Store
 	dashboards    *dashboards.Store
+	images        *images.Store
+	favicons      *images.Favicons
 	origin        string
 	secureCookies bool
 	trustProxy    bool
@@ -80,6 +83,32 @@ func (a *api) verifyLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	if errors.Is(err, auth.ErrConfirmationRequired) {
 		return NewError(http.StatusForbidden, "confirmation_required", "Confirm the sign-in in this browser")
+	}
+	if err != nil {
+		return err
+	}
+	a.setSessionCookie(w, sess)
+	http.SetCookie(w, a.loginRequestCookie("", -1))
+	WriteJSON(w, http.StatusOK, me{User: user, PasskeyEnrollmentUntil: sess.EnrollmentUntil})
+	return nil
+}
+
+func (a *api) redeemCode(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	invalid := NewError(http.StatusBadRequest, "invalid_code", "The code is wrong or has expired")
+	email, err := auth.NormalizeEmail(body.Email)
+	if err != nil {
+		return invalid
+	}
+	user, sess, err := a.auth.RedeemCode(r.Context(), email, body.Code, r.UserAgent(), cookieValue(r, LoginRequestCookie))
+	if errors.Is(err, auth.ErrInvalidCode) {
+		return invalid
 	}
 	if err != nil {
 		return err
@@ -286,8 +315,10 @@ func checkCSRF(r *http.Request, origin string) *Error {
 		return nil
 	}
 	forbidden := NewError(http.StatusForbidden, "forbidden_origin", "Cross-site request rejected")
+	// Neither type can be sent cross-site without a CORS preflight, unlike
+	// form types. Image uploads send the raw file as octet-stream.
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" {
+	if err != nil || (mediaType != "application/json" && mediaType != "application/octet-stream") {
 		return forbidden
 	}
 	if o := r.Header.Get("Origin"); o != "" && o != origin {

@@ -42,6 +42,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.TrustProxyHeaders {
 		t.Fatal("TrustProxyHeaders should default to false")
 	}
+	if cfg.DataDir != "./data" || cfg.FetchAllowPrivate {
+		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v; want ./data, false", cfg.DataDir, cfg.FetchAllowPrivate)
+	}
 	if cfg.SecureCookies() {
 		t.Fatal("http base URL must not use secure cookies")
 	}
@@ -60,6 +63,8 @@ func TestLoadOverrides(t *testing.T) {
 		"FAMODASH_SMTP_FROM":           "Dash <dash@example.org>",
 		"FAMODASH_SMTP_TLS":            "tls",
 		"FAMODASH_TRUST_PROXY_HEADERS": "true",
+		"FAMODASH_DATA_DIR":            "/srv/famodash",
+		"FAMODASH_FETCH_ALLOW_PRIVATE": "true",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -79,6 +84,9 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if !cfg.TrustProxyHeaders {
 		t.Fatal("TrustProxyHeaders should be true")
+	}
+	if cfg.DataDir != "/srv/famodash" || !cfg.FetchAllowPrivate {
+		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v", cfg.DataDir, cfg.FetchAllowPrivate)
 	}
 }
 
@@ -159,6 +167,7 @@ func TestLoadInvalid(t *testing.T) {
 		{"smtp port not a number", "FAMODASH_SMTP_PORT", "smtp"},
 		{"unknown TLS mode", "FAMODASH_SMTP_TLS", "ssl"},
 		{"proxy flag not a bool", "FAMODASH_TRUST_PROXY_HEADERS", "maybe"},
+		{"private fetch flag not a bool", "FAMODASH_FETCH_ALLOW_PRIVATE", "sometimes"},
 		{"RP ID of another host", "FAMODASH_WEBAUTHN_RP_ID", "example.org"},
 		{"AAGUID list URL relative", "FAMODASH_AAGUID_LIST_URL", "/aaguids.json"},
 	}

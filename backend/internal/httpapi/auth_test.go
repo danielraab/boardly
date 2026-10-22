@@ -17,8 +17,10 @@ import (
 	"famodash/internal/dashboards"
 	"famodash/internal/dbtest"
 	"famodash/internal/favourites"
+	"famodash/internal/images"
 	"famodash/internal/mail"
 	"famodash/internal/users"
+	"famodash/internal/widgets"
 )
 
 const testOrigin = "https://dash.example.org"
@@ -69,10 +71,12 @@ func (o *outbox) last(t *testing.T) mail.Message {
 }
 
 type server struct {
-	h     http.Handler
-	db    *sql.DB
-	clock *clock
-	mail  *outbox
+	h        http.Handler
+	db       *sql.DB
+	clock    *clock
+	mail     *outbox
+	images   *images.Store
+	favicons *images.Favicons
 }
 
 func newServer(t *testing.T) *server {
@@ -92,11 +96,22 @@ func newServer(t *testing.T) *server {
 	}
 	svc.Providers = testProviders(t)
 
+	imageStore, err := images.NewStore(database, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageStore.Now = c.Now
+	favicons := images.NewFavicons(imageStore, false)
+	favicons.Now = c.Now
+	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
+	widgets.Register(dashboardStore, favouriteStore, favicons)
+
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favourites.NewStore(database), Dashboards: dashboards.NewStore(database),
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore,
+		Images: imageStore, Favicons: favicons,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, clock: c, mail: box}
+	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.
@@ -814,5 +829,178 @@ func TestMeEnrollmentWindowAfterMagicLink(t *testing.T) {
 	s.clock.Advance(4 * time.Minute)
 	if got := enrollmentUntil(t, s.req("GET", "/api/me", "", withCookie(cookie))); got != nil {
 		t.Fatalf("after the window: passkeyEnrollmentUntil = %v, want null", got)
+	}
+}
+
+// --- magic-link-code: one-time codes ---
+
+var codeRE = regexp.MustCompile(`\n    ([A-Z0-9]{3}-[A-Z0-9]{3})\n`)
+
+// requestCode requests an email from a browser and returns the token, the
+// code as printed in the mail, and the login-request cookie value.
+func (s *server) requestCode(t *testing.T, email string, opts ...func(*http.Request)) (token, code, browser string) {
+	t.Helper()
+	token, browser = s.requestFromBrowser(t, email, opts...)
+	m := codeRE.FindStringSubmatch(s.mail.last(t).Text)
+	if m == nil {
+		t.Fatalf("no code in mail %q", s.mail.last(t).Text)
+	}
+	return token, m[1], browser
+}
+
+func (s *server) postCode(email, code string, opts ...func(*http.Request)) *httptest.ResponseRecorder {
+	return s.req("POST", "/api/auth/magic-link/code", `{"email":`+mustJSON(email)+`,"code":`+mustJSON(code)+`}`, opts...)
+}
+
+func wantInvalidCode(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_code" || sessionCookie(rec) != nil {
+		t.Fatalf("got %d %s, want 400 invalid_code without session", rec.Code, rec.Body)
+	}
+}
+
+func TestCodeInMail(t *testing.T) {
+	s := newServer(t)
+	_, code, _ := s.requestCode(t, "ann@example.org")
+	for _, r := range strings.ReplaceAll(code, "-", "") {
+		if !strings.ContainsRune(auth.CodeAlphabet, r) {
+			t.Fatalf("code %q contains %q", code, r)
+		}
+	}
+}
+
+func TestCodeNotStoredInPlainText(t *testing.T) {
+	s := newServer(t)
+	_, code, _ := s.requestCode(t, "ann@example.org")
+	plain := strings.ReplaceAll(code, "-", "")
+
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM magic_link_tokens
+		WHERE instr(CAST(code_hash AS TEXT), ?) > 0 OR instr(CAST(token_hash AS TEXT), ?) > 0
+		   OR email = ? OR locale = ? OR request_ip = ?`,
+		plain, plain, plain, plain, plain).Scan(&n)
+	if err != nil || n != 0 {
+		t.Fatalf("plain code found in %d rows (err %v)", n, err)
+	}
+	var hashLen int
+	if err := s.db.QueryRow(`SELECT length(code_hash) FROM magic_link_tokens`).Scan(&hashLen); err != nil || hashLen != 32 {
+		t.Fatalf("code hash length = %d (err %v), want 32", hashLen, err)
+	}
+}
+
+func TestCodeSignsIn(t *testing.T) {
+	s := newServer(t)
+	_, code, browser := s.requestCode(t, "ann@example.org")
+	// Lower case and without the hyphen: still the same code.
+	entered := strings.ToLower(strings.ReplaceAll(code, "-", ""))
+
+	rec := s.postCode(" Ann@Example.org ", entered, withLoginRequest(browser))
+	if rec.Code != http.StatusOK || sessionCookie(rec) == nil {
+		t.Fatalf("got %d %s", rec.Code, rec.Body)
+	}
+	if u := decodeUser(t, rec); u.Email != "ann@example.org" {
+		t.Fatalf("user = %+v", u)
+	}
+	if c := loginRequestCookie(rec); c == nil || c.MaxAge >= 0 {
+		t.Fatalf("login-request cookie not cleared: %+v", c)
+	}
+	var method string
+	if err := s.db.QueryRow(`SELECT auth_method FROM sessions`).Scan(&method); err != nil || method != "magic_link" {
+		t.Fatalf("auth_method = %q (err %v)", method, err)
+	}
+}
+
+func TestCodeRejected(t *testing.T) {
+	s := newServer(t)
+	_, code, browser := s.requestCode(t, "ann@example.org")
+	_, _, otherBrowser := s.requestCode(t, "bob@example.org")
+
+	for name, rec := range map[string]func() *httptest.ResponseRecorder{
+		"no cookie": func() *httptest.ResponseRecorder { return s.postCode("ann@example.org", code) },
+		"other browser": func() *httptest.ResponseRecorder {
+			return s.postCode("ann@example.org", code, withLoginRequest(otherBrowser))
+		},
+		"wrong address": func() *httptest.ResponseRecorder {
+			return s.postCode("cid@example.org", code, withLoginRequest(browser))
+		},
+		"invalid email": func() *httptest.ResponseRecorder { return s.postCode("nope", code, withLoginRequest(browser)) },
+	} {
+		t.Run(name, func(t *testing.T) { wantInvalidCode(t, rec()) })
+	}
+	// None of these reached Ann's code in her browser, so it still works there.
+	if rec := s.postCode("ann@example.org", code, withLoginRequest(browser)); rec.Code != http.StatusOK {
+		t.Fatalf("code no longer works in the requesting browser: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestCodeExpires(t *testing.T) {
+	s := newServer(t)
+	_, code, browser := s.requestCode(t, "ann@example.org")
+	s.clock.Advance(16 * time.Minute)
+	wantInvalidCode(t, s.postCode("ann@example.org", code, withLoginRequest(browser)))
+}
+
+func TestCodeAndLinkUseEachOtherUp(t *testing.T) {
+	t.Run("link first", func(t *testing.T) {
+		s := newServer(t)
+		token, code, browser := s.requestCode(t, "ann@example.org")
+		if rec := s.req("POST", "/api/auth/magic-link/verify", `{"token":"`+token+`"}`, withLoginRequest(browser)); rec.Code != http.StatusOK {
+			t.Fatalf("verify: %d %s", rec.Code, rec.Body)
+		}
+		wantInvalidCode(t, s.postCode("ann@example.org", code, withLoginRequest(browser)))
+	})
+	t.Run("code first", func(t *testing.T) {
+		s := newServer(t)
+		token, code, browser := s.requestCode(t, "ann@example.org")
+		if rec := s.postCode("ann@example.org", code, withLoginRequest(browser)); rec.Code != http.StatusOK {
+			t.Fatalf("code: %d %s", rec.Code, rec.Body)
+		}
+		rec := s.req("POST", "/api/auth/magic-link/verify", `{"token":"`+token+`","confirm":true}`)
+		if rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_token" {
+			t.Fatalf("verify after code: %d %s", rec.Code, rec.Body)
+		}
+	})
+}
+
+func TestCodeLockedAfterFiveWrongAttempts(t *testing.T) {
+	s := newServer(t)
+	token, code, browser := s.requestCode(t, "ann@example.org")
+	wrong := "AAAAAA"
+	if strings.ReplaceAll(code, "-", "") == wrong {
+		wrong = "BBBBBB"
+	}
+	for range 5 {
+		wantInvalidCode(t, s.postCode("ann@example.org", wrong, withLoginRequest(browser)))
+	}
+	wantInvalidCode(t, s.postCode("ann@example.org", code, withLoginRequest(browser)))
+
+	// The link still works.
+	rec := s.req("POST", "/api/auth/magic-link/verify", `{"token":"`+token+`"}`, withLoginRequest(browser))
+	if rec.Code != http.StatusOK || sessionCookie(rec) == nil {
+		t.Fatalf("link after locked code: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestWrongCodeCountsAgainstEveryLiveCode(t *testing.T) {
+	s := newServer(t)
+	_, first, browser := s.requestCode(t, "ann@example.org")
+	for range 4 {
+		wantInvalidCode(t, s.postCode("ann@example.org", "AAAAAA", withLoginRequest(browser)))
+	}
+	s.clock.Advance(61 * time.Second)
+	_, second, _ := s.requestCode(t, "ann@example.org", withLoginRequest(browser))
+	// The fifth wrong attempt locks the first code and is the second code's first.
+	wantInvalidCode(t, s.postCode("ann@example.org", "AAAAAA", withLoginRequest(browser)))
+	wantInvalidCode(t, s.postCode("ann@example.org", first, withLoginRequest(browser)))
+	if rec := s.postCode("ann@example.org", second, withLoginRequest(browser)); rec.Code != http.StatusOK {
+		t.Fatalf("second code: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestCodeMalformedBody(t *testing.T) {
+	s := newServer(t)
+	rec := s.req("POST", "/api/auth/magic-link/code", `{"email":`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d %s", rec.Code, rec.Body)
 	}
 }

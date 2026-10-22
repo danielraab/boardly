@@ -14,6 +14,9 @@ type Config struct {
 	DBPath    string
 	LogFormat string // "json" or "text"
 
+	// DataDir holds the files the server writes itself, such as images.
+	DataDir string
+
 	// BaseURL is the public URL of the web app, without a trailing slash.
 	// It is used for sign-in links, the Origin check and the cookie's Secure flag.
 	BaseURL *url.URL
@@ -30,6 +33,10 @@ type Config struct {
 	// AAGUIDListURL is where the passkey provider list is downloaded from.
 	// Empty disables provider detection.
 	AAGUIDListURL string
+
+	// FetchAllowPrivate lets the favicon fetcher connect to private,
+	// loopback and link-local addresses.
+	FetchAllowPrivate bool
 }
 
 // DefaultAAGUIDListURL is the community-maintained passkey provider list.
@@ -57,6 +64,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	cfg := Config{
 		DBPath:    "./data/famodash.db",
 		LogFormat: "json",
+		DataDir:   "./data",
 		SMTP: SMTP{
 			Port: 587,
 			From: "Famodash <noreply@localhost>",
@@ -72,6 +80,10 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 
 	if v := getenv("FAMODASH_DB_PATH"); v != "" {
 		cfg.DBPath = v
+	}
+
+	if v := getenv("FAMODASH_DATA_DIR"); v != "" {
+		cfg.DataDir = v
 	}
 
 	if v := getenv("FAMODASH_LOG_FORMAT"); v != "" {
@@ -117,6 +129,14 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("FAMODASH_TRUST_PROXY_HEADERS: %q must be \"true\" or \"false\"", v)
 		}
 		cfg.TrustProxyHeaders = b
+	}
+
+	if v := getenv("FAMODASH_FETCH_ALLOW_PRIVATE"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("FAMODASH_FETCH_ALLOW_PRIVATE: %q must be \"true\" or \"false\"", v)
+		}
+		cfg.FetchAllowPrivate = b
 	}
 
 	cfg.WebAuthnRPID = cfg.BaseURL.Hostname()

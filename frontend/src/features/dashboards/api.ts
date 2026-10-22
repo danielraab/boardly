@@ -25,18 +25,37 @@ export type Dashboard = {
 	isPublic: boolean;
 } & Columns;
 
-/** A section's height: "auto" or a number of rows. */
+/** A widget's height: "auto" or a number of rows. */
 export type SectionHeight = "auto" | number;
 
 /** A section widget with its children, in order. */
 export type Section = {
 	id: string;
+	kind: "section";
 	width: number;
 	title: string | null;
 	border: boolean;
 	height: SectionHeight;
-	children: Section[];
+	children: Widget[];
 };
+
+/** A content widget: its config belongs to its kind, data comes from the server. */
+export type ContentWidget = {
+	id: string;
+	kind: string;
+	width: number;
+	height: SectionHeight;
+	config: unknown;
+	/** Resolved by the server for a lookup; never saved. */
+	data?: unknown;
+};
+
+/** A node of a layout. Only sections have children. */
+export type Widget = Section | ContentWidget;
+
+export function isSection(widget: Widget): widget is Section {
+	return widget.kind === "section";
+}
 
 /** A dashboard as anyone allowed to see it sees it. */
 export type DashboardEntry = { slug: string; title: string };
@@ -55,11 +74,11 @@ export type DashboardViewData = {
 	dashboards: DashboardEntry[];
 	columns: Columns;
 	layoutVersion: number;
-	sections: Section[];
+	sections: Widget[];
 };
 
 /** A saved layout with its version. */
-export type Layout = { version: number; sections: Section[] };
+export type Layout = { version: number; sections: Widget[] };
 
 export const dashboardsQueryKey = ["dashboards"] as const;
 export const dashboardViewQueryKey = ["dashboard-view"] as const;
@@ -89,11 +108,20 @@ export function dashboardViewQueryOptions(
 
 export type DashboardFields = Omit<Dashboard, "id">;
 
+/** A copy of a tree without the server-resolved data of its widgets. */
+export function withoutData(tree: Widget[]): Widget[] {
+	return tree.map((w) => {
+		if (isSection(w)) return { ...w, children: withoutData(w.children) };
+		const { data: _, ...rest } = w;
+		return rest;
+	});
+}
+
 /** Replaces a dashboard's layout; fails with 409 when version is outdated. */
-export function saveLayout(id: string, version: number, sections: Section[]) {
+export function saveLayout(id: string, version: number, sections: Widget[]) {
 	return api<Layout>(`/api/dashboards/${encodeURIComponent(id)}/layout`, {
 		method: "PUT",
-		json: { version, sections },
+		json: { version, sections: withoutData(sections) },
 	});
 }
 

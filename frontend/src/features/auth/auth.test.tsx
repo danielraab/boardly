@@ -23,6 +23,14 @@ describe("route protection", () => {
 		).toBeVisible();
 	});
 
+	it("sends signed-in users from /login to a local redirect path", async () => {
+		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
+		const { router } = renderApp("/login?redirect=%2Fsettings");
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/settings"),
+		);
+	});
+
 	it("shows neither landing nor home at / while the session is loading", async () => {
 		mockApi({ "GET /api/me": never });
 		renderApp("/");
@@ -125,6 +133,101 @@ describe("login page", () => {
 		expect(await screen.findByRole("alert")).toHaveTextContent(
 			"Enter a valid email address.",
 		);
+	});
+});
+
+describe("one-time code", () => {
+	// The label names the slot group and its first slot.
+	const firstSlot = () =>
+		screen.getByRole("textbox", { name: "One-time code from the email" });
+
+	async function requestEmail(path = "/login") {
+		const app = renderApp(path);
+		await app.user.type(
+			await screen.findByLabelText("Email address"),
+			"ann@example.org",
+		);
+		await app.user.click(
+			screen.getByRole("button", { name: "Send sign-in link" }),
+		);
+		await screen.findByRole("heading", { name: "Check your inbox" });
+		return app;
+	}
+
+	it("signs in with the code from the email", async () => {
+		const api = mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": signedIn({ name: "Ann" }),
+		});
+		const { user, router } = await requestEmail();
+
+		await user.type(firstSlot(), "k7q4mz");
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(
+			await screen.findByRole("heading", { name: "Welcome, Ann" }),
+		).toBeVisible();
+		expect(api.callsTo("POST", "/api/auth/magic-link/code")[0].body).toEqual({
+			email: "ann@example.org",
+			code: "K7Q4MZ",
+		});
+	});
+
+	it("shows the code in six upper-case slots and takes a pasted hyphen", async () => {
+		mockApi({ "POST /api/auth/magic-link": { status: 202 } });
+		const { user } = await requestEmail();
+		const sign = screen.getByRole("button", { name: "Sign in with code" });
+		expect(sign).toBeDisabled();
+
+		await user.click(firstSlot());
+		await user.paste("k7q-4mz");
+
+		const slots = [
+			firstSlot(),
+			...[2, 3, 4, 5, 6].map((n) =>
+				screen.getByLabelText(`Character ${n} of 6`),
+			),
+		];
+		expect(slots.map((s) => (s as HTMLInputElement).value)).toEqual([
+			"K",
+			"7",
+			"Q",
+			"4",
+			"M",
+			"Z",
+		]);
+		expect(sign).toBeEnabled();
+	});
+
+	it("continues to the redirect path", async () => {
+		mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": signedIn(),
+		});
+		const { user, router } = await requestEmail("/login?redirect=%2Fsettings");
+		await user.type(firstSlot(), "K7Q4MZ");
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/settings"),
+		);
+	});
+
+	it("explains a wrong code and lets the visitor try again", async () => {
+		mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": apiError(400, "invalid_code"),
+		});
+		const { user, router } = await requestEmail();
+		const field = firstSlot();
+		await user.type(field, "AAAAAA");
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"This code is wrong or has expired.",
+		);
+		expect(field).toBeVisible();
+		expect(router.state.location.pathname).toBe("/login");
 	});
 });
 

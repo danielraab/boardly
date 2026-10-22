@@ -182,7 +182,7 @@ describe("section dialog", () => {
 		);
 		const confirm = await screen.findByRole("alertdialog");
 		expect(confirm).toHaveTextContent(
-			"“Work” and the 2 sections inside it will be deleted.",
+			"“Work” and the 2 widgets inside it will be deleted.",
 		);
 		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 

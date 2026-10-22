@@ -2,34 +2,39 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { dangerButton, secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
-import type { Section } from "../api";
+import { isSection, type Widget } from "../api";
+import { widgetLabel } from "../widgets/registry";
 import { countDescendants } from "./layoutTree";
 
-/** Asks before deleting a section and everything inside it. */
-export function DeleteSectionDialog({
-	section,
+/** Asks before deleting a widget, and for a section everything inside it. */
+export function DeleteWidgetDialog({
+	widget,
 	onConfirm,
 	onClose,
 }: {
-	section: Section | null;
-	onConfirm: (section: Section) => void;
+	widget: Widget | null;
+	onConfirm: (widget: Widget) => void;
 	onClose: () => void;
 }) {
 	const { t } = useTranslation();
-	const title = section?.title ?? t("dashboards.editor.untitled");
-	const count = section ? countDescendants(section) : 0;
+	const title = widget ? widgetLabel(widget, t) : "";
+	const count = widget ? countDescendants(widget) : 0;
+	const keys =
+		widget === null || isSection(widget)
+			? "dashboards.deleteSection"
+			: "dashboards.deleteWidget";
 	return (
 		<Confirm
-			open={section !== null}
-			title={t("dashboards.deleteSection.title")}
+			open={widget !== null}
+			title={t(`${keys}.title`)}
 			text={
 				count > 0
 					? t("dashboards.deleteSection.textWithChildren", { title, count })
-					: t("dashboards.deleteSection.text", { title })
+					: t(`${keys}.text`, { title })
 			}
-			confirm={t("dashboards.deleteSection.confirm")}
-			cancel={t("dashboards.deleteSection.cancel")}
-			onConfirm={() => section && onConfirm(section)}
+			confirm={t(`${keys}.confirm`)}
+			cancel={t(`${keys}.cancel`)}
+			onConfirm={() => widget && onConfirm(widget)}
 			onClose={onClose}
 		/>
 	);

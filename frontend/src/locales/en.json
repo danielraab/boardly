@@ -32,7 +32,7 @@
 		"submit": "Send sign-in link",
 		"sending": "Sending…",
 		"sentTitle": "Check your inbox",
-		"sentText": "We sent a sign-in link to <strong>{{email}}</strong>. It is valid for 15 minutes.",
+		"sentText": "We sent a sign-in link and a one-time code to <strong>{{email}}</strong>. Both are valid for 15 minutes.",
 		"resend": "Send a new link",
 		"resendIn": "Send a new link in {{seconds}} s",
 		"useOther": "Use a different email address",
@@ -41,7 +41,12 @@
 		"or": "or",
 		"passkey": "Sign in with passkey",
 		"passkeyUnknown": "This passkey is no longer valid. Sign in with an email link instead.",
-		"passkeyInvalid": "The passkey could not be verified. Try again or sign in with an email link."
+		"passkeyInvalid": "The passkey could not be verified. Try again or sign in with an email link.",
+		"codeLabel": "One-time code from the email",
+		"codeSubmit": "Sign in with code",
+		"codeChecking": "Signing in…",
+		"invalidCode": "This code is wrong or has expired. Check the latest email or request a new one.",
+		"codeSlot": "Character {{index}} of {{total}}"
 	},
 	"landing": {
 		"hero": {
@@ -175,7 +180,8 @@
 			"removeTag": "Remove tag {{name}}",
 			"save": "Save",
 			"saving": "Saving…",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"folderLabel": "Folder"
 		},
 		"errors": {
 			"nameRequired": "Enter a name.",
@@ -206,6 +212,13 @@
 			"into": "Into the folder {{folder}}.",
 			"dropped": "{{name}} moved.",
 			"cancelled": "Moving {{name}} cancelled."
+		},
+		"picker": {
+			"search": "Search favourites",
+			"loading": "Loading favourites…",
+			"noMatches": "Nothing matches your search.",
+			"noLinks": "There are no links in your favourites yet.",
+			"selected": "Selected: {{path}}"
 		}
 	},
 	"dashboards": {
@@ -281,7 +294,10 @@
 			"saveFailed": "The dashboard couldn't be saved. Please try again.",
 			"conflict": "This dashboard was changed elsewhere. Reload it to continue with the current version. Your changes here will be lost.",
 			"reload": "Reload",
-			"tooDeep": "Sections can be nested at most 5 levels deep."
+			"tooDeep": "Sections can be nested at most 5 levels deep.",
+			"addWidget": "Add widget",
+			"editWidget": "Edit {{title}}",
+			"topLevel": "Widgets can only be placed inside a section."
 		},
 		"sectionDialog": {
 			"newTitle": "New section",
@@ -306,10 +322,26 @@
 		"deleteSection": {
 			"title": "Delete section?",
 			"text": "“{{title}}” will be deleted.",
-			"textWithChildren_one": "“{{title}}” and the section inside it will be deleted.",
-			"textWithChildren_other": "“{{title}}” and the {{count}} sections inside it will be deleted.",
+			"textWithChildren_one": "“{{title}}” and the widget inside it will be deleted.",
+			"textWithChildren_other": "“{{title}}” and the {{count}} widgets inside it will be deleted.",
 			"confirm": "Delete",
 			"cancel": "Cancel"
+		},
+		"deleteWidget": {
+			"title": "Delete widget?",
+			"text": "“{{title}}” will be deleted.",
+			"confirm": "Delete",
+			"cancel": "Cancel"
+		},
+		"widgetDialog": {
+			"add": "Add",
+			"apply": "Apply",
+			"cancel": "Cancel",
+			"delete": "Delete widget"
+		},
+		"widgetPicker": {
+			"title": "Add widget",
+			"text": "Choose what the new widget shows."
 		},
 		"discard": {
 			"title": "Discard changes?",
@@ -328,6 +360,142 @@
 		},
 		"switcher": {
 			"label": "Switch dashboard"
+		},
+		"widgets": {
+			"sizeLabel": "Size",
+			"size": {
+				"S": "Small",
+				"M": "Medium",
+				"L": "Large"
+			},
+			"favouriteExplorer": {
+				"name": "Favourite explorer",
+				"description": "Shows a folder of your favourites as a tree.",
+				"addTitle": "Add favourite explorer",
+				"editTitle": "Edit favourite explorer",
+				"folderLabel": "Folder",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see this folder's links. Otherwise only you see the widget.",
+				"empty": "This folder is empty",
+				"missing": "This folder no longer exists",
+				"expandAll": "Expand all",
+				"collapseAll": "Collapse all",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the tree."
+			},
+			"link": {
+				"name": "Link",
+				"description": "Shows one link, from your favourites or any URL.",
+				"addTitle": "Add link",
+				"editTitle": "Edit link",
+				"sourceLabel": "Link",
+				"source": {
+					"favourite": "Favourite",
+					"url": "URL"
+				},
+				"favouriteLabel": "Favourite",
+				"favouriteMissing": "This favourite no longer exists. Choose another one.",
+				"urlLabel": "URL",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Without one, the favourite's title is shown, or only the URL.",
+				"icons": {
+					"book-open": "Book",
+					"bookmark": "Bookmark",
+					"briefcase": "Briefcase",
+					"calendar": "Calendar",
+					"camera": "Camera",
+					"chart-bar": "Chart",
+					"cloud": "Cloud",
+					"code": "Code",
+					"cpu": "Processor",
+					"database": "Database",
+					"file-text": "Document",
+					"film": "Film",
+					"folder": "Folder",
+					"gamepad": "Game controller",
+					"globe": "Globe",
+					"hard-drive": "Hard drive",
+					"heart": "Heart",
+					"home": "Home",
+					"image": "Image",
+					"inbox": "Inbox",
+					"key": "Key",
+					"lock": "Lock",
+					"mail": "Mail",
+					"map-pin": "Map pin",
+					"message-square": "Chat",
+					"monitor": "Monitor",
+					"music": "Music",
+					"network": "Network",
+					"newspaper": "Newspaper",
+					"phone": "Phone",
+					"printer": "Printer",
+					"router": "Router",
+					"rss": "RSS feed",
+					"search": "Search",
+					"server": "Server",
+					"settings": "Settings",
+					"shield": "Shield",
+					"shopping-cart": "Shopping cart",
+					"star": "Star",
+					"terminal": "Terminal",
+					"tv": "TV",
+					"users": "People",
+					"wifi": "Wi-Fi",
+					"wrench": "Wrench"
+				},
+				"targetLabel": "Open in",
+				"target": {
+					"_blank": "New tab",
+					"_self": "Same tab"
+				},
+				"errors": {
+					"unsupported_image": "This file type isn't supported. Use PNG, JPEG, WebP, GIF or ICO.",
+					"image_too_large": "The image is larger than 1 MB.",
+					"uploadFailed": "The image couldn't be uploaded. Please try again."
+				},
+				"newFavourite": "New favourite…",
+				"iconChooser": {
+					"label": "Icon",
+					"button": "Icon: {{name}}",
+					"tabs": {
+						"favicon": "Website icon",
+						"image": "Own image",
+						"symbol": "Symbol",
+						"none": "None"
+					},
+					"favicon": {
+						"noUrl": "Choose a favourite or enter a URL first.",
+						"loading": "Looking for the website icon…",
+						"none": "No website icon found for {{host}}. A globe is shown instead.",
+						"found": "The website icon of {{host}}. It follows the link to other sites.",
+						"use": "Use the website icon"
+					},
+					"image": {
+						"hint": "PNG, JPEG, WebP, GIF or ICO, at most 1 MB.",
+						"upload": "Upload image",
+						"replace": "Upload another image",
+						"use": "Use this image"
+					},
+					"symbol": {
+						"filter": "Filter symbols",
+						"group": "Symbols",
+						"noMatches": "No symbol matches."
+					},
+					"inUse": "In use",
+					"remove": "Remove icon",
+					"removed": "No icon",
+					"done": "Done"
+				}
+			}
 		}
+	},
+	"share": {
+		"title": "Save link",
+		"intro": "Save a link to your favourites.",
+		"savedTitle": "Link saved",
+		"savedText": "It's now in “{{folder}}”.",
+		"openFavourites": "Open favourites",
+		"saveAnother": "Save another link"
 	}
 }
