@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
+import { usePageTitle } from "#/lib/usePageTitle";
 import { meQueryKey, resetToSignedOut, type User } from "./session";
 
 /** Reads the token from a location hash like "token=…" (with or without "#"). */
@@ -24,6 +25,7 @@ function hasCode(error: unknown, code: string) {
  */
 export function VerifyPage() {
 	const { t } = useTranslation();
+	usePageTitle(t("verify.title"));
 	const location = useLocation();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();

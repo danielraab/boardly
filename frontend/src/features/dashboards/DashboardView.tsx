@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryIconButton } from "#/components/buttonStyles";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { usePageTitle } from "#/lib/usePageTitle";
 import type { Dashboard, DashboardViewData } from "./api";
 import { useShowDashboard } from "./currentDashboard";
 import { DashboardDialog, type DashboardDialogTarget } from "./DashboardDialog";
@@ -164,6 +165,7 @@ export function DashboardPage({
 	actions?: ReactNode;
 	children: ReactNode;
 }) {
+	usePageTitle(title);
 	return (
 		<section className="pt-12">
 			<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">

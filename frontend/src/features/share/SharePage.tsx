@@ -20,6 +20,7 @@ import {
 	fieldErrorFromCode,
 } from "#/features/favourites/validate";
 import { ApiError } from "#/lib/api";
+import { usePageTitle } from "#/lib/usePageTitle";
 import { type ShareParams, sharedLink } from "./sharedLink";
 
 /** The folder last saved into on this page, remembered in this browser. */
@@ -54,6 +55,7 @@ function defaultFolder(root: FavouriteNode): string {
  */
 export function SharePage({ shared }: { shared: ShareParams }) {
 	const { t } = useTranslation();
+	usePageTitle(t("share.title"));
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const favourites = useQuery(favouritesQueryOptions);

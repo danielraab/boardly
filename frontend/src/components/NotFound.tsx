@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { usePageTitle } from "#/lib/usePageTitle";
 
 export function NotFound() {
 	const { t } = useTranslation();
+	usePageTitle(t("notFound.title"));
 
 	return (
 		<section className="max-w-prose py-16">
