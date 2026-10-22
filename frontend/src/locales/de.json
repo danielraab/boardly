@@ -206,6 +206,13 @@
 			"into": "In den Ordner {{folder}}.",
 			"dropped": "{{name}} verschoben.",
 			"cancelled": "Verschieben von {{name}} abgebrochen."
+		},
+		"picker": {
+			"search": "Favoriten durchsuchen",
+			"loading": "Favoriten werden geladen…",
+			"noMatches": "Nichts passt zu deiner Suche.",
+			"noLinks": "In deinen Favoriten gibt es noch keine Links.",
+			"selected": "Ausgewählt: {{path}}"
 		}
 	},
 	"dashboards": {
@@ -361,7 +368,6 @@
 				"addTitle": "Favoriten-Explorer hinzufügen",
 				"editTitle": "Favoriten-Explorer bearbeiten",
 				"folderLabel": "Ordner",
-				"folderPlaceholder": "Ordner auswählen",
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Links dieses Ordners. Sonst siehst nur du das Widget.",
 				"empty": "Dieser Ordner ist leer",
@@ -381,7 +387,6 @@
 					"url": "URL"
 				},
 				"favouriteLabel": "Favorit",
-				"favouritePlaceholder": "Favorit auswählen",
 				"favouriteMissing": "Dieser Favorit existiert nicht mehr. Wähle einen anderen.",
 				"urlLabel": "URL",
 				"newTitleLabel": "Name des Favoriten",

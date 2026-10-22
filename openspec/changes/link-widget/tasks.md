@@ -11,7 +11,7 @@
 
 - [x] 2.1 Add `widgets/sizes.ts` if it doesn't exist yet, and `widgets/link/icons.ts` with the curated icon list. Verify that `pnpm tsc` passes
 - [x] 2.2 Build `LinkView` (image → icon → globe, title/URL lines with truncation and tooltip, target, inert in edit mode), and verify with component tests for every scenario of "Link widget rendering"
-- [x] 2.3 Build the settings dialog: source radio group (favourite picker, new favourite with folder, URL with validation), title, image field (pre-fill with debounce, upload, remove, translated errors), icon select, target, size, common width/height. Verify with tests: pre-fill, upload error, URL validation, confirm disabled without a link
+- [x] 2.3 Build the settings dialog: source radio group (`FavouritePicker` for the favourite and for the new favourite's folder, URL with validation), title, image field (pre-fill with debounce, upload, remove, translated errors), icon select, target, size, common width/height. Verify with tests: pre-fill, upload error, URL validation, confirm disabled without a link
 - [x] 2.4 Implement the "New favourite" confirm flow (create first, then add the widget, invalidate favourites, keep the dialog open on error), and verify with a test that the favourite exists after cancelling the dashboard edit
 - [x] 2.5 Register the kind (icon `Link`, labels, defaults, view: `data` in view mode, favourites query in edit mode), and verify with an editor test that adds a link widget through the picker
 - [x] 2.6 Add the en/de keys (kind, sources, fields, targets, errors), and verify that the i18n check passes

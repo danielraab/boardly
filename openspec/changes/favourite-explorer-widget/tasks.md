@@ -11,7 +11,7 @@
 - [x] 2.1 Add `widgets/sizes.ts` with the S/M/L styles, and verify that `pnpm tsc` passes
 - [x] 2.2 Build `ExplorerTree` (nested lists with `aria-expanded` folder buttons, folder/link rows, `ImageIcon`, truncation, empty and missing states, new-tab links), and verify with component tests for the tree, the globe fallback, the empty folder and the missing folder
 - [x] 2.3 Add the collapse state hook (`famodash.explorer.<id>` in localStorage, collapsed by default, tolerant of blocked storage) and the expand-all/collapse-all button. Verify with tests: first render is collapsed, the state survives a remount, and expand all / collapse all switch every folder and the button label
-- [x] 2.4 Build the settings dialog (native folder select with paths, size, "Show on public dashboard", common width/height, confirm disabled without a folder), and verify with a test that adding requires a folder and that cancel adds nothing
+- [x] 2.4 Build the settings dialog (`FavouritePicker` in folder mode, size, "Show on public dashboard", common width/height, confirm disabled without a folder), and verify with a test that adding requires a folder and that cancel adds nothing
 - [x] 2.5 Register the kind (icon `FolderTree`, labels, defaults, view: `data` in view mode, favourites query in edit mode), and verify with an editor test that adds an explorer through the picker and sees its tree in the draft
 - [x] 2.6 Add the en/de keys (kind name and description, setting labels, empty, missing, expand/collapse all), and verify that the i18n check passes
 

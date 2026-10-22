@@ -254,20 +254,23 @@ describe("the favourite explorer on a dashboard", () => {
 		expect(
 			within(dialog).getByLabelText("Show on public dashboard"),
 		).not.toBeChecked();
-		const folder = within(dialog).getByLabelText("Folder");
-		await waitFor(() => expect(folder).toBeEnabled());
-		expect(
+		const folder = await within(dialog).findByRole("radiogroup", {
+			name: "Folder",
+		});
+		const radios = () =>
 			within(folder)
-				.getAllByRole("option")
-				.map((o) => o.textContent),
-		).toEqual([
-			"Choose a folder",
-			"Favourites",
-			"Favourites / Work",
-			"Favourites / Work / Tools",
-			"Favourites / Work / Tools / Inner",
-		]);
-		await user.selectOptions(folder, "Favourites / Work");
+				.getAllByRole("radio")
+				.map((r) => r.closest("label")?.textContent);
+		// Folders only, collapsed, with the root first.
+		expect(radios()).toEqual(["Favourites", "Work"]);
+		await user.click(
+			within(folder).getByRole("button", { name: "Expand Work" }),
+		);
+		expect(radios()).toEqual(["Favourites", "Work", "Tools"]);
+		await user.click(within(folder).getByRole("radio", { name: "Work" }));
+		expect(
+			within(dialog).getByText("Selected: Favourites / Work"),
+		).toBeVisible();
 		await user.selectOptions(within(dialog).getByLabelText("Size"), "Large");
 		await user.click(add);
 
@@ -317,11 +320,17 @@ describe("the favourite explorer on a dashboard", () => {
 		const dialog = await screen.findByRole("dialog", {
 			name: "Edit favourite explorer",
 		});
-		const folder = within(dialog).getByLabelText("Folder");
-		await waitFor(() => expect(folder).toHaveValue(""));
+		const folder = await within(dialog).findByRole("radiogroup", {
+			name: "Folder",
+		});
+		expect(within(folder).queryByRole("radio", { checked: true })).toBeNull();
 		const apply = within(dialog).getByRole("button", { name: "Apply" });
 		expect(apply).toBeDisabled();
-		await user.selectOptions(folder, "Favourites / Work / Tools");
+		// Found by searching, shown with the path of its folder.
+		await user.type(within(dialog).getByRole("searchbox"), "too");
+		const tools = within(folder).getByRole("radio", { name: "Tools" });
+		expect(tools).toHaveAccessibleDescription("Favourites / Work");
+		await user.click(tools);
 		await user.click(apply);
 		expect(await screen.findByText("GitLab")).toBeVisible();
 	});

@@ -8,6 +8,8 @@ import {
 	favouritesQueryKey,
 	favouritesQueryOptions,
 } from "#/features/favourites/api";
+import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { findNode } from "#/features/favourites/tree";
 import {
 	checkLinkTitle,
 	checkUrl,
@@ -15,7 +17,6 @@ import {
 } from "#/features/favourites/validate";
 import { ApiError } from "#/lib/api";
 import type { SectionHeight } from "../../api";
-import { folderOptions, linkOptions } from "../favouriteOptions";
 import type { WidgetSettingsProps } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { WidgetSettingsForm } from "../WidgetSettingsForm";
@@ -68,12 +69,13 @@ export function LinkSettings(props: WidgetSettingsProps) {
 	const [createError, setCreateError] = useState<string | null>(null);
 	const [creating, setCreating] = useState(false);
 
-	const links = favourites.data ? linkOptions(favourites.data) : [];
-	const folders = favourites.data
-		? folderOptions(favourites.data, t("favourites.title"))
-		: [];
-	const favourite = links.find((l) => l.node.id === favouriteId)?.node;
-	const folder = folderId || folders[0]?.node.id || "";
+	const found = favourites.data && findNode(favourites.data, favouriteId);
+	const favourite = found?.kind === "link" ? found : undefined;
+	// A new favourite goes into the root folder unless another one is chosen.
+	const folder =
+		(favourites.data && findNode(favourites.data, folderId)?.id) ||
+		favourites.data?.id ||
+		"";
 
 	const urlError = url.trim() ? checkUrl(url) : null;
 	const newUrlError = newUrl.trim() ? checkUrl(newUrl) : null;
@@ -227,25 +229,13 @@ export function LinkSettings(props: WidgetSettingsProps) {
 
 			{source === "favourite" && (
 				<div>
-					<label htmlFor="link-favourite" className="block text-sm font-medium">
-						{t("dashboards.widgets.link.favouriteLabel")}
-					</label>
-					<select
+					<FavouritePicker
 						id="link-favourite"
+						label={t("dashboards.widgets.link.favouriteLabel")}
+						mode="link"
 						value={favourite ? favouriteId : ""}
-						onChange={(e) => setFavouriteId(e.target.value)}
-						disabled={!favourites.data}
-						className={textInput}
-					>
-						<option value="" disabled>
-							{t("dashboards.widgets.link.favouritePlaceholder")}
-						</option>
-						{links.map(({ node, path }) => (
-							<option key={node.id} value={node.id}>
-								{path}
-							</option>
-						))}
-					</select>
+						onChange={setFavouriteId}
+					/>
 					{favourites.data && favouriteId !== "" && !favourite && (
 						<p className="mt-1 text-sm text-muted">
 							{t("dashboards.widgets.link.favouriteMissing")}
@@ -281,24 +271,13 @@ export function LinkSettings(props: WidgetSettingsProps) {
 							</p>
 						)}
 					</div>
-					<div>
-						<label htmlFor="link-folder" className="block text-sm font-medium">
-							{t("dashboards.widgets.link.folderLabel")}
-						</label>
-						<select
-							id="link-folder"
-							value={folder}
-							onChange={(e) => setFolderId(e.target.value)}
-							disabled={!favourites.data}
-							className={textInput}
-						>
-							{folders.map(({ node, path }) => (
-								<option key={node.id} value={node.id}>
-									{path}
-								</option>
-							))}
-						</select>
-					</div>
+					<FavouritePicker
+						id="link-folder"
+						label={t("dashboards.widgets.link.folderLabel")}
+						mode="folder"
+						value={folder}
+						onChange={setFolderId}
+					/>
 				</>
 			)}
 

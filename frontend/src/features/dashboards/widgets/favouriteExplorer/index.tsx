@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
 import { favouritesQueryOptions } from "#/features/favourites/api";
+import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { findNode } from "#/features/favourites/tree";
-import { folderOptions } from "../favouriteOptions";
 import type {
 	WidgetKind,
 	WidgetSettingsProps,
@@ -52,16 +52,14 @@ function Settings(props: WidgetSettingsProps) {
 	const { t } = useTranslation();
 	const config = props.widget.config as ExplorerConfig;
 	const favourites = useQuery(favouritesQueryOptions);
-	const folders = favourites.data
-		? folderOptions(favourites.data, t("favourites.title")).map(
-				({ node, path }) => ({ id: node.id, path }),
-			)
-		: [];
 	const [folderId, setFolderId] = useState(config.rootFolderId);
 	const [size, setSize] = useState(config.size);
 	const [showIfPublic, setShowIfPublic] = useState(config.showIfPublic);
 	// A deleted folder is no choice; another one has to be picked.
-	const chosen = folders.some((f) => f.id === folderId) ? folderId : "";
+	const chosen =
+		favourites.data && findNode(favourites.data, folderId)?.kind === "folder"
+			? folderId
+			: "";
 
 	return (
 		<WidgetSettingsForm
@@ -88,25 +86,13 @@ function Settings(props: WidgetSettingsProps) {
 			onDelete={props.onDelete}
 		>
 			<div>
-				<label htmlFor="explorer-folder" className="block text-sm font-medium">
-					{t("dashboards.widgets.favouriteExplorer.folderLabel")}
-				</label>
-				<select
+				<FavouritePicker
 					id="explorer-folder"
+					label={t("dashboards.widgets.favouriteExplorer.folderLabel")}
+					mode="folder"
 					value={chosen}
-					onChange={(e) => setFolderId(e.target.value)}
-					disabled={!favourites.data}
-					className={textInput}
-				>
-					<option value="" disabled>
-						{t("dashboards.widgets.favouriteExplorer.folderPlaceholder")}
-					</option>
-					{folders.map((f) => (
-						<option key={f.id} value={f.id}>
-							{f.path}
-						</option>
-					))}
-				</select>
+					onChange={setFolderId}
+				/>
 				{config.rootFolderId !== "" && favourites.data && chosen === "" && (
 					<p className="mt-1 text-sm text-muted">
 						{t("dashboards.widgets.favouriteExplorer.missing")}

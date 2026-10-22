@@ -217,9 +217,15 @@ describe("the link widget on a dashboard", () => {
 		expect(
 			within(dialog).getByRole("radio", { name: "Favourite" }),
 		).toBeChecked();
-		const select = within(dialog).getByRole("combobox", { name: "Favourite" });
-		await waitFor(() => expect(select).toBeEnabled());
-		await user.selectOptions(select, "Work / Mail");
+		const picker = await within(dialog).findByRole("radiogroup", {
+			name: "Favourite",
+		});
+		// Links only: the empty folder Home isn't offered.
+		expect(within(picker).queryByText("Home")).toBeNull();
+		await user.click(
+			within(picker).getByRole("button", { name: "Expand Work" }),
+		);
+		await user.click(within(picker).getByRole("radio", { name: "Mail" }));
 		// The favourite's known favicon fills the image without a request.
 		await waitFor(() =>
 			expect(
@@ -370,13 +376,14 @@ describe("the link widget on a dashboard", () => {
 			within(dialog).getByLabelText("Name of the favourite"),
 			"NAS",
 		);
-		await waitFor(() =>
-			expect(within(dialog).getByLabelText("Folder")).toBeEnabled(),
-		);
-		await user.selectOptions(
-			within(dialog).getByLabelText("Folder"),
-			"Favourites / Home",
-		);
+		const folder = await within(dialog).findByRole("radiogroup", {
+			name: "Folder",
+		});
+		// The root folder is chosen until another one is.
+		expect(
+			within(folder).getByRole("radio", { name: "Favourites" }),
+		).toBeChecked();
+		await user.click(within(folder).getByRole("radio", { name: "Home" }));
 
 		// A failure keeps the dialog open.
 		await user.click(within(dialog).getByRole("button", { name: "Add" }));

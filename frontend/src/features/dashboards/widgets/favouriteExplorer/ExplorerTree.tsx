@@ -131,7 +131,8 @@ export function ExplorerTree({
 	);
 
 	return (
-		<div className={style.text}>
+		<div className={`flex items-start gap-1 ${style.text}`}>
+			<div className="min-w-0 flex-1">{renderNodes(data.children, 0)}</div>
 			{folders.length > 0 && (
 				<button
 					type="button"
@@ -140,7 +141,7 @@ export function ExplorerTree({
 					}
 					aria-label={toggleAllLabel}
 					title={toggleAllLabel}
-					className={`${iconButton} float-right ml-1`}
+					className={iconButton}
 				>
 					{anyExpanded ? (
 						<ChevronsDownUp className="size-4" aria-hidden />
@@ -149,7 +150,6 @@ export function ExplorerTree({
 					)}
 				</button>
 			)}
-			{renderNodes(data.children, 0)}
 		</div>
 	);
 }

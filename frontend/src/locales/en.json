@@ -206,6 +206,13 @@
 			"into": "Into the folder {{folder}}.",
 			"dropped": "{{name}} moved.",
 			"cancelled": "Moving {{name}} cancelled."
+		},
+		"picker": {
+			"search": "Search favourites",
+			"loading": "Loading favourites…",
+			"noMatches": "Nothing matches your search.",
+			"noLinks": "There are no links in your favourites yet.",
+			"selected": "Selected: {{path}}"
 		}
 	},
 	"dashboards": {
@@ -361,7 +368,6 @@
 				"addTitle": "Add favourite explorer",
 				"editTitle": "Edit favourite explorer",
 				"folderLabel": "Folder",
-				"folderPlaceholder": "Choose a folder",
 				"publicLabel": "Show on public dashboard",
 				"publicHint": "Visitors of a public dashboard see this folder's links. Otherwise only you see the widget.",
 				"empty": "This folder is empty",
@@ -381,7 +387,6 @@
 					"url": "URL"
 				},
 				"favouriteLabel": "Favourite",
-				"favouritePlaceholder": "Choose a favourite",
 				"favouriteMissing": "This favourite no longer exists. Choose another one.",
 				"urlLabel": "URL",
 				"newTitleLabel": "Name of the favourite",

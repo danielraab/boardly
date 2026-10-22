@@ -64,7 +64,7 @@ The field shows a preview (`ImageIcon`), an "Upload" button (a file input with `
 The whole widget is one `<a>` (`rel="noopener noreferrer"` for `_blank`) with `min-w-0`, so `truncate` works. The icon box is fixed by size, followed by a column of `truncate` lines (title `font-medium`, URL `text-muted` one step smaller) and `title=` for the tooltip. In edit mode the anchor gets `onClick` → `preventDefault` and `aria-disabled`, so drag and the settings button stay usable.
 
 ### New favourite in the dialog
-The three sources are a radio group (like the height choice in the shared size fields), not tabs. The "New favourite" choice has a URL, a title and a folder select (the same component as the explorer's folder picker). Confirming the widget dialog first calls `createFavourite`, then confirms the widget with the returned ID, and invalidates the favourites query. If creation fails, the dialog stays open with the error.
+The three sources are a radio group (like the height choice in the shared size fields), not tabs. The "Favourite" choice uses `FavouritePicker` in link mode (see the favourite explorer's design). The "New favourite" choice has a URL, a title and the same picker in folder mode, starting at the root folder. Confirming the widget dialog first calls `createFavourite`, then confirms the widget with the returned ID, and invalidates the favourites query. If creation fails, the dialog stays open with the error.
 
 ## Risks / Trade-offs
 
