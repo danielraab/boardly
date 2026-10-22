@@ -7,9 +7,13 @@ mit diesem Link meldest du dich bei Famodash an. Er öffnet Famodash in diesem B
 
 https://dash.example.org/login/verify#token=TOKEN
 
-Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.
+Oder gib diesen Einmalcode auf der Anmeldeseite ein, auf der du diese E-Mail angefordert hast:
 
-Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link kann sich niemand anmelden.
+    K7Q 4MZ
+
+Link und Code sind 15 Minuten gültig und können nur einmal verwendet werden.
+
+Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link oder den Code kann sich niemand anmelden.
 
 – Famodash
 
@@ -23,8 +27,10 @@ Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den 
 <p style="margin:0 0 16px;font-size:20px;font-weight:600;">Famodash</p>
 <p style="margin:0 0 24px;">Mit diesem Button meldest du dich bei Famodash an. Er öffnet Famodash in diesem Browser.</p>
 <p style="margin:0 0 24px;"><a href="https://dash.example.org/login/verify#token=TOKEN" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#1d2733;color:#eef1f4;text-decoration:none;font-weight:500;">Bei Famodash anmelden</a></p>
-<p style="margin:0 0 8px;font-size:14px;color:#5a6878;">Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#5a6878;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link kann sich niemand anmelden.</p>
+<p style="margin:0 0 8px;">Oder gib diesen Einmalcode auf der Anmeldeseite ein, auf der du diese E-Mail angefordert hast:</p>
+<p style="margin:0 0 24px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;font-weight:600;letter-spacing:4px;">K7Q 4MZ</p>
+<p style="margin:0 0 8px;font-size:14px;color:#5a6878;">Link und Code sind 15 Minuten gültig und können nur einmal verwendet werden.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#5a6878;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link oder den Code kann sich niemand anmelden.</p>
 <p style="margin:0;font-size:12px;color:#5a6878;word-break:break-all;">Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:<br>https://dash.example.org/login/verify#token=TOKEN</p>
 </td></tr>
 </table>

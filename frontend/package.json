@@ -14,7 +14,8 @@
     "lint": "biome lint",
     "check": "biome check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+		"icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

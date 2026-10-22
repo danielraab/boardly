@@ -54,12 +54,16 @@ function contrast(a: string, b: string): number {
 	return (hi + 0.05) / (lo + 0.05);
 }
 
-describe.each(themes)("theme $id", ({ id, mode }) => {
+describe.each(themes)("theme $id", ({ id, mode, paper }) => {
 	const values = declarations(`[data-theme="${id}"]`);
 
 	it("defines every token and its color scheme", () => {
 		for (const token of tokens) expect(values[token], token).toBeDefined();
 		expect(values["color-scheme"]).toBe(mode);
+	});
+
+	it("has the paper colour of the theme module", () => {
+		expect(values.paper).toBe(paper);
 	});
 
 	it.each(pairs)("%s on %s meets %d:1", (fg, bg, min) => {

@@ -3,10 +3,14 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AppIcon, STAR_COLOR } from "./AppIcon";
 
-const favicon = new DOMParser().parseFromString(
-	readFileSync("public/favicon.svg", "utf8"),
-	"image/svg+xml",
-);
+function parseSvg(path: string) {
+	return new DOMParser().parseFromString(
+		readFileSync(path, "utf8"),
+		"image/svg+xml",
+	);
+}
+
+const favicon = parseSvg("public/favicon.svg");
 
 function shapes(root: ParentNode) {
 	return [...root.querySelectorAll("path, rect, circle")].map((el) =>
@@ -40,6 +44,15 @@ describe("AppIcon", () => {
 		const { container } = render(<AppIcon className="size-6" />);
 		expect(shapes(favicon)).toEqual(shapes(container));
 	});
+
+	it.each(["icons/app-icon.svg", "icons/app-icon-maskable.svg"])(
+		"has the same drawing in the home-screen icon source %s",
+		(path) => {
+			const drawing = parseSvg(path).getElementById("drawing") as Element;
+			expect(shapes(drawing)).toEqual(shapes(favicon));
+			expect(drawing.getAttribute("color")).toBe("#18181b");
+		},
+	);
 
 	it("draws the favicon outline dark in a light and light in a dark browser", () => {
 		const style = favicon.querySelector("style")?.textContent ?? "";

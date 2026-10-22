@@ -32,7 +32,7 @@
 		"submit": "Send sign-in link",
 		"sending": "Sending…",
 		"sentTitle": "Check your inbox",
-		"sentText": "We sent a sign-in link to <strong>{{email}}</strong>. It is valid for 15 minutes.",
+		"sentText": "We sent a sign-in link and a one-time code to <strong>{{email}}</strong>. Both are valid for 15 minutes.",
 		"resend": "Send a new link",
 		"resendIn": "Send a new link in {{seconds}} s",
 		"useOther": "Use a different email address",
@@ -41,7 +41,11 @@
 		"or": "or",
 		"passkey": "Sign in with passkey",
 		"passkeyUnknown": "This passkey is no longer valid. Sign in with an email link instead.",
-		"passkeyInvalid": "The passkey could not be verified. Try again or sign in with an email link."
+		"passkeyInvalid": "The passkey could not be verified. Try again or sign in with an email link.",
+		"codeLabel": "One-time code from the email",
+		"codeSubmit": "Sign in with code",
+		"codeChecking": "Signing in…",
+		"invalidCode": "This code is wrong or has expired. Check the latest email or request a new one."
 	},
 	"landing": {
 		"hero": {
@@ -484,5 +488,13 @@
 				}
 			}
 		}
+	},
+	"share": {
+		"title": "Save link",
+		"intro": "Save a link to your favourites.",
+		"savedTitle": "Link saved",
+		"savedText": "It's now in “{{folder}}”.",
+		"openFavourites": "Open favourites",
+		"saveAnother": "Save another link"
 	}
 }

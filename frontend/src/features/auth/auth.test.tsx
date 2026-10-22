@@ -23,6 +23,14 @@ describe("route protection", () => {
 		).toBeVisible();
 	});
 
+	it("sends signed-in users from /login to a local redirect path", async () => {
+		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
+		const { router } = renderApp("/login?redirect=%2Fsettings");
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/settings"),
+		);
+	});
+
 	it("shows neither landing nor home at / while the session is loading", async () => {
 		mockApi({ "GET /api/me": never });
 		renderApp("/");
@@ -125,6 +133,77 @@ describe("login page", () => {
 		expect(await screen.findByRole("alert")).toHaveTextContent(
 			"Enter a valid email address.",
 		);
+	});
+});
+
+describe("one-time code", () => {
+	async function requestEmail(path = "/login") {
+		const app = renderApp(path);
+		await app.user.type(
+			await screen.findByLabelText("Email address"),
+			"ann@example.org",
+		);
+		await app.user.click(
+			screen.getByRole("button", { name: "Send sign-in link" }),
+		);
+		await screen.findByRole("heading", { name: "Check your inbox" });
+		return app;
+	}
+
+	it("signs in with the code from the email", async () => {
+		const api = mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": signedIn({ name: "Ann" }),
+		});
+		const { user, router } = await requestEmail();
+
+		await user.type(
+			screen.getByLabelText("One-time code from the email"),
+			"k7q 4mz",
+		);
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(
+			await screen.findByRole("heading", { name: "Welcome, Ann" }),
+		).toBeVisible();
+		expect(api.callsTo("POST", "/api/auth/magic-link/code")[0].body).toEqual({
+			email: "ann@example.org",
+			code: "k7q 4mz",
+		});
+	});
+
+	it("continues to the redirect path", async () => {
+		mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": signedIn(),
+		});
+		const { user, router } = await requestEmail("/login?redirect=%2Fsettings");
+		await user.type(
+			screen.getByLabelText("One-time code from the email"),
+			"K7Q4MZ",
+		);
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/settings"),
+		);
+	});
+
+	it("explains a wrong code and lets the visitor try again", async () => {
+		mockApi({
+			"POST /api/auth/magic-link": { status: 202 },
+			"POST /api/auth/magic-link/code": apiError(400, "invalid_code"),
+		});
+		const { user, router } = await requestEmail();
+		const field = screen.getByLabelText("One-time code from the email");
+		await user.type(field, "AAAAAA");
+		await user.click(screen.getByRole("button", { name: "Sign in with code" }));
+
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"This code is wrong or has expired.",
+		);
+		expect(field).toBeVisible();
+		expect(router.state.location.pathname).toBe("/login");
 	});
 });
 

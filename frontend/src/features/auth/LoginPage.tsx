@@ -25,6 +25,7 @@ const RESEND_SECONDS = 60;
 
 type Problem =
 	| "invalidEmail"
+	| "invalidCode"
 	| "rateLimited"
 	| "passkeyUnknown"
 	| "passkeyInvalid"
@@ -41,24 +42,30 @@ function passkeyProblem(error: unknown): Problem | null {
 	return "generic";
 }
 
+/** Finishes a sign-in made on the login page: stores the user and continues to next. */
+function useSignedIn(next: string) {
+	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	return useCallback(
+		async (user: User) => {
+			queryClient.setQueryData(meQueryKey, user);
+			await navigate({ href: next });
+		},
+		[queryClient, navigate, next],
+	);
+}
+
 /**
  * Passkey sign-in for the login page: autofill on the email field (where the
  * browser supports it) and a modal prompt for the button.
  */
-function usePasskeySignIn(onProblem: (problem: Problem | null) => void) {
-	const queryClient = useQueryClient();
-	const navigate = useNavigate();
+function usePasskeySignIn(
+	signedIn: (user: User) => Promise<void>,
+	onProblem: (problem: Problem | null) => void,
+) {
 	const [supported] = useState(supportsPasskeys);
 	const [pending, setPending] = useState(false);
 	const active = useRef(true);
-
-	const signedIn = useCallback(
-		async (user: User) => {
-			queryClient.setQueryData(meQueryKey, user);
-			await navigate({ to: "/" });
-		},
-		[queryClient, navigate],
-	);
 
 	const startAutofill = useCallback(async () => {
 		if (!(await supportsPasskeyAutofill()) || !active.current) return;
@@ -98,13 +105,16 @@ function usePasskeySignIn(onProblem: (problem: Problem | null) => void) {
 	return { supported, pending, signInWithButton };
 }
 
-export function LoginPage() {
+/** The login page; next is the local path to continue to after signing in. */
+export function LoginPage({ next }: { next: string }) {
 	const { t, i18n } = useTranslation();
 	const [email, setEmail] = useState("");
 	const [sentTo, setSentTo] = useState<string | null>(null);
 	const [problem, setProblem] = useState<Problem | null>(null);
+	const [code, setCode] = useState("");
 	const countdown = useCountdown();
-	const passkey = usePasskeySignIn(setProblem);
+	const signedIn = useSignedIn(next);
+	const passkey = usePasskeySignIn(signedIn, setProblem);
 
 	const request = useMutation({
 		mutationFn: (address: string) =>
@@ -132,9 +142,31 @@ export function LoginPage() {
 		}
 	}
 
+	const redeemCode = useMutation({
+		mutationFn: (entered: string) =>
+			api<User>("/api/auth/magic-link/code", {
+				method: "POST",
+				json: { email: sentTo, code: entered },
+			}),
+	});
+
 	function onSubmit(event: FormEvent) {
 		event.preventDefault();
 		void send(email);
+	}
+
+	async function onSubmitCode(event: FormEvent) {
+		event.preventDefault();
+		setProblem(null);
+		try {
+			await signedIn(await redeemCode.mutateAsync(code));
+		} catch (e) {
+			setProblem(
+				e instanceof ApiError && e.code === "invalid_code"
+					? "invalidCode"
+					: "generic",
+			);
+		}
 	}
 
 	const waiting = countdown.remaining > 0;
@@ -145,13 +177,15 @@ export function LoginPage() {
 				: null
 			: problem === "invalidEmail"
 				? t("login.invalidEmail")
-				: problem === "passkeyUnknown"
-					? t("login.passkeyUnknown")
-					: problem === "passkeyInvalid"
-						? t("login.passkeyInvalid")
-						: problem === "generic"
-							? t("common.genericError")
-							: null;
+				: problem === "invalidCode"
+					? t("login.invalidCode")
+					: problem === "passkeyUnknown"
+						? t("login.passkeyUnknown")
+						: problem === "passkeyInvalid"
+							? t("login.passkeyInvalid")
+							: problem === "generic"
+								? t("common.genericError")
+								: null;
 	const alert = message && (
 		<p role="alert" className="mt-4 text-sm text-danger">
 			{message}
@@ -176,10 +210,36 @@ export function LoginPage() {
 						components={{ strong: <strong className="text-ink" /> }}
 					/>
 				</p>
-				<div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+				<form className="mt-8 text-left" onSubmit={onSubmitCode} noValidate>
+					<label htmlFor="login-code" className="block text-sm font-medium">
+						{t("login.codeLabel")}
+					</label>
+					<input
+						id="login-code"
+						name="code"
+						autoComplete="one-time-code"
+						autoCapitalize="characters"
+						spellCheck={false}
+						maxLength={12}
+						required
+						value={code}
+						onChange={(e) => setCode(e.target.value)}
+						className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-3 font-mono text-lg tracking-widest text-ink uppercase outline-none focus-visible:border-ink"
+					/>
+					<button
+						type="submit"
+						className={`${primaryButton} mt-4 w-full`}
+						disabled={redeemCode.isPending || code.trim() === ""}
+					>
+						{redeemCode.isPending
+							? t("login.codeChecking")
+							: t("login.codeSubmit")}
+					</button>
+				</form>
+				<div className="mt-6 flex flex-wrap items-center justify-center gap-4">
 					<button
 						type="button"
-						className={primaryButton}
+						className={secondaryButton}
 						disabled={waiting || request.isPending}
 						onClick={() => void send(sentTo)}
 					>
@@ -192,6 +252,7 @@ export function LoginPage() {
 						className="font-medium underline underline-offset-4"
 						onClick={() => {
 							setSentTo(null);
+							setCode("");
 							setProblem(null);
 						}}
 					>
