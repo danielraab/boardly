@@ -12,6 +12,7 @@ import {
 import { Trans, useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
+import { usePageTitle } from "#/lib/usePageTitle";
 import { CODE_LENGTH, CodeField } from "./CodeField";
 import {
 	isCancelled,
@@ -109,6 +110,7 @@ function usePasskeySignIn(
 /** The login page; next is the local path to continue to after signing in. */
 export function LoginPage({ next }: { next: string }) {
 	const { t, i18n } = useTranslation();
+	usePageTitle(t("login.title"));
 	const [email, setEmail] = useState("");
 	const [sentTo, setSentTo] = useState<string | null>(null);
 	const [problem, setProblem] = useState<Problem | null>(null);

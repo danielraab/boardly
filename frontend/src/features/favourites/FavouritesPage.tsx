@@ -34,6 +34,7 @@ import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import { useMe } from "#/features/auth/session";
+import { usePageTitle } from "#/lib/usePageTitle";
 import {
 	type FavouriteNode,
 	favouritesQueryKey,
@@ -69,6 +70,7 @@ type Actions = {
 
 export function FavouritesPage() {
 	const { t } = useTranslation();
+	usePageTitle(t("favourites.title"));
 	const { data: me } = useMe();
 	const tree = useQuery({ ...favouritesQueryOptions, enabled: !!me });
 	const [editing, setEditing] = useState<NodeDialogTarget | null>(null);
