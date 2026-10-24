@@ -8,9 +8,9 @@ Lets the owner of a dashboard look at everything about one of their favourite li
 
 ### Requirement: Favourite details dialog
 The details dialog of a favourite link SHALL be read-only and show, from the owner's current favourites:
-- the link's title as the dialog title, or its URL when it has no title;
+- the link's website icon followed by its title as the dialog title, or its URL when it has no title;
 - its preview image, when it has one; without a preview this part is left out;
-- its website icon and its URL as a link that opens in a new tab;
+- its URL as a link that opens in a new tab;
 - its description, or "No description" / "Keine Beschreibung" in muted text when it has none;
 - its tags, when it has any; without tags this part is left out.
 
@@ -18,7 +18,7 @@ The dialog closes with a close button, Escape or a click outside.
 
 #### Scenario: Link with all details
 - **WHEN** Ann opens the details of "Go tour", which has a preview, the description "A tour of Go" and the tag "learning"
-- **THEN** the dialog is titled "Go tour" and shows the preview, the icon with `https://go.dev/tour`, "A tour of Go" and "learning"
+- **THEN** the dialog is titled "Go tour" with the website icon before it, and shows the preview, `https://go.dev/tour`, "A tour of Go" and "learning"
 
 #### Scenario: No description
 - **WHEN** Ann opens the details of a link without a description

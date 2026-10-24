@@ -44,9 +44,9 @@ Each widget view keeps `const [detailsId, setDetailsId] = useState<string | null
 
 ### Dialog layout
 ```
-┌ <title or URL> ─────────────────────── ✕ ┐
+┌ [favicon] <title or URL> ───────────── ✕ ┐
 │ [ preview image, if any ]                │
-│ [favicon] https://go.dev/tour ↗  (link)  │
+│ https://go.dev/tour ↗  (link)            │
 │ A tour of Go … | "No description" muted  │
 │ [learning] [go]           (if any tags)  │
 │                         [Edit]  [Open ↗] │

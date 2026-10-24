@@ -90,7 +90,10 @@ describe("FavouriteDetailsDialog", () => {
 		});
 		expect(url).toHaveAttribute("href", "https://go.dev/tour");
 		expect(url).toHaveAttribute("target", "_blank");
-		expect(url.querySelector("img")).toHaveAttribute(
+		expect(url.querySelector("img")).toBeNull();
+		// The website icon comes before the title.
+		const title = within(dialog).getByRole("heading", { name: "Go tour" });
+		expect(title.previousElementSibling).toHaveAttribute(
 			"src",
 			"/api/images/icon1",
 		);

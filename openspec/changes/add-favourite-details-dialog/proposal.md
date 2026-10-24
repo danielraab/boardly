@@ -6,7 +6,7 @@ Links now have a description, a preview image and tags, but on a dashboard the o
 
 ## What Changes
 
-- A new read-only "details" dialog for a favourite link shows its preview image, its icon and URL (a link that opens in a new tab), its description ("No description" in muted text when it has none) and its tags. It has an "Open" button that opens the link in a new tab and an "Edit" button that opens the existing link edit dialog. After a save, the details and the widget show the new values.
+- A new read-only "details" dialog for a favourite link shows its website icon and title, its preview image, its URL (a link that opens in a new tab), its description ("No description" in muted text when it has none) and its tags. It has an "Open" button that opens the link in a new tab and an "Edit" button that opens the existing link edit dialog. After a save, the details and the widget show the new values.
 - An info button (ⓘ) next to a favourite link opens the dialog in:
   - the link widget, when its source is a favourite that still exists (not for plain URL links);
   - the favourite explorer, on each link row (not on folders), always visible and smaller than the row's text;

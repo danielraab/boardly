@@ -107,6 +107,7 @@ function Details({
 	return (
 		<>
 			<div className="flex items-start gap-2">
+				<ImageIcon imageId={link.iconImageId} className="mt-1 size-5" />
 				<Dialog.Title className="min-w-0 flex-1 text-lg font-semibold break-words">
 					{label(link)}
 				</Dialog.Title>
@@ -129,10 +130,9 @@ function Details({
 					href={url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex min-w-0 items-center gap-2 text-sm hover:underline"
+					className="block text-sm break-all hover:underline"
 				>
-					<ImageIcon imageId={link.iconImageId} className="size-4" />
-					<span className="break-all">{url}</span>
+					{url}
 				</a>
 				{link.description ? (
 					<p className="text-sm break-words whitespace-pre-line">
