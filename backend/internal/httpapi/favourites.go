@@ -19,6 +19,8 @@ func favouritesError(err error) error {
 		return NewError(http.StatusBadRequest, "invalid_url", "The URL must be an http or https address of at most 2048 characters")
 	case errors.Is(err, favourites.ErrInvalidTag):
 		return NewError(http.StatusBadRequest, "invalid_tag", "Tag names need 1 to 100 characters")
+	case errors.Is(err, favourites.ErrInvalidDescription):
+		return NewError(http.StatusBadRequest, "invalid_description", "Descriptions can have at most 2048 characters")
 	case errors.Is(err, favourites.ErrInvalidKind):
 		return NewError(http.StatusBadRequest, "invalid_kind", "The kind must be folder or link")
 	case errors.Is(err, favourites.ErrInvalidField):
@@ -41,13 +43,6 @@ func (a *api) withIcons(ctx context.Context, roots ...*favourites.Node) error {
 		return nil
 	}
 	return a.favicons.SetIcons(ctx, roots...)
-}
-
-// queueFavicon asks for the favicon of a link that was created or got a new URL.
-func (a *api) queueFavicon(n *favourites.Node) {
-	if a.favicons != nil && n.Kind == favourites.KindLink && n.URL != nil {
-		a.favicons.Queue(*n.URL)
-	}
 }
 
 func (a *api) getFavourites(w http.ResponseWriter, r *http.Request) error {
@@ -81,7 +76,6 @@ func (a *api) createFavourite(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return favouritesError(err)
 	}
-	a.queueFavicon(node)
 	if err := a.withIcons(r.Context(), node); err != nil {
 		return err
 	}
@@ -99,12 +93,9 @@ func (a *api) updateFavourite(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	user, _ := CurrentUser(r.Context())
-	node, err := a.favourites.Update(r.Context(), user.ID, r.PathValue("id"), favourites.Patch(body))
+	node, err := a.favourites.Update(r.Context(), user.ID, r.PathValue("id"), favourites.Patch{Title: body.Title, URL: body.URL, Tags: body.Tags})
 	if err != nil {
 		return favouritesError(err)
-	}
-	if body.URL != nil {
-		a.queueFavicon(node)
 	}
 	if err := a.withIcons(r.Context(), node); err != nil {
 		return err

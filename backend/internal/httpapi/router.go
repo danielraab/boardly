@@ -11,6 +11,7 @@ import (
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/ratelimit"
 	"boardly/internal/users"
 )
 
@@ -30,7 +31,9 @@ type Deps struct {
 	Dashboards *dashboards.Store
 	Images     *images.Store
 	Favicons   *images.Favicons
-	AppTokens  *apptokens.Store
+	// Previews takes preview images that connected apps send.
+	Previews  *images.Previews
+	AppTokens *apptokens.Store
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -42,7 +45,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -73,6 +76,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
 	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))
 	mux.Handle("POST /api/favicons", a.requireUser(a.getFavicon))
+	mux.Handle("POST /api/favicons/refresh", a.requireUser(a.refreshFavicon))
 	mux.Handle("GET /api/app-tokens", a.requireUser(a.listAppTokens))
 	mux.Handle("POST /api/app-tokens", a.requireUser(a.createAppToken))
 	mux.Handle("POST /api/app-tokens/{id}/revoke", a.requireUser(a.revokeAppToken))

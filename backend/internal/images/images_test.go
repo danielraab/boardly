@@ -134,3 +134,19 @@ func TestSaveRefusesBadImages(t *testing.T) {
 		t.Fatalf("files were written: %v", entries)
 	}
 }
+
+func TestLimits(t *testing.T) {
+	big := append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, MaxSize)...)
+	if _, err := Sniff(big); !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("Sniff over MaxSize: err = %v, want ErrTooLarge", err)
+	}
+	if ct, err := SniffLimit(big, 2*MaxSize); err != nil || ct != "image/png" {
+		t.Fatalf("SniffLimit: %q, %v", ct, err)
+	}
+	if _, err := ReadLimit(bytes.NewReader(make([]byte, 11)), 10); !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("ReadLimit over the limit: err = %v, want ErrTooLarge", err)
+	}
+	if data, err := ReadLimit(bytes.NewReader(make([]byte, 10)), 10); err != nil || len(data) != 10 {
+		t.Fatalf("ReadLimit at the limit: %d bytes, %v", len(data), err)
+	}
+}

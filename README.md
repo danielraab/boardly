@@ -26,13 +26,17 @@ All data (dashboards, favourites, API tokens) belongs to a single user.
 Each user has exactly **one favourites tree**. It is the single source of truth for all bookmarks:
 
 - **Folder nodes** group other nodes and can be nested to any depth.
-- **Link nodes** hold an `http` or `https` URL, an optional title and any number of **tags**. Icons
-  and thumbnails will follow.
+- **Link nodes** hold an `http` or `https` URL, an optional title and any number of **tags**. They
+  also have a **description** and a **preview image**, which the server takes from the linked
+  page. Boardly itself doesn't show or edit these yet; the
+  [Karakeep](#karakeep-compatible-server) and [Linkwarden](#linkwarden-compatible-server) apps
+  show them on their bookmark cards. See [Favicons and images](#favicons-and-images).
 
 The tree is managed on the **Favourites** page (`/favourites`, linked from the user menu):
 
 - Add, rename and delete folders and links. Links open in a new tab.
-- Each link shows the favicon of its site, or a globe until one is known. See
+- Each link shows the favicon of its site, or a globe until one is known. The **refresh** button
+  on a link loads its site's favicon again, for example after the site changed its logo. See
   [Favicons and images](#favicons-and-images).
 - Drag items by their handle to reorder them or move them into another folder. This also works with
   the keyboard: focus the handle, press Space, choose the place with the arrow keys and press Space
@@ -155,7 +159,9 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
 In the extension you can save the current page, see whether a page is already saved, and edit its
 title, tags and list. In the app you can browse, search, save, edit and delete bookmarks, and
-manage lists and tags. Tapping a bookmark opens the page. Karakeep features Boardly doesn't have
+manage lists and tags. Bookmark cards show the link's **description** and **preview image**, or
+the site's favicon when there is no preview; the description can be edited in the app. Tapping a
+bookmark opens the page. Karakeep features Boardly doesn't have
 answer with an error in the apps: notes and text bookmarks, file bookmarks and assets, archiving,
 favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
 icons and descriptions, and list sharing.
@@ -190,17 +196,17 @@ Everything goes through the key's folder, as for Karakeep, with these difference
   links). The key's folder itself can't be deleted.
 - **Tags** work as for Karakeep: deleting a tag in the app removes it only from links in the folder,
   and tags are created by adding them to a link, not on their own.
-- Link **previews** in the app are the favicon of the link's site, when Boardly knows one in PNG,
-  JPEG, GIF or WebP. Boardly stores no screenshots, PDFs or readable copies, so tapping a link opens
-  the page.
+- A link's **description** is shown and can be edited in the app and the extension.
+- Link **previews** in the app are the link's preview image, or else the favicon of its site when
+  Boardly knows one in PNG, JPEG, GIF or WebP. With **upload screenshot** turned on in the
+  extension, the screenshot becomes the link's preview. Boardly stores no PDFs or readable copies,
+  so tapping a link opens the page.
 - The app's dashboard shows statistics and the 16 newest links. Its layout can't be changed.
 
 Linkwarden features Boardly doesn't have answer with an error or "not found" in the clients:
-descriptions, preserved formats (screenshot, PDF, readable view, single file) and re-preserving,
-file uploads, highlights, pinned links, collection sharing, public collections and RSS feeds, link
-and collection icons and colors, bulk actions, tag merging, SSO and registration. In the extension,
-turn off **upload screenshot**: the link is still saved, but the screenshot upload fails with a
-message.
+preserved formats other than the screenshot (PDF, readable view, single file) and re-preserving,
+other file uploads, highlights, pinned links, collection sharing, public collections and RSS feeds,
+link and collection icons and colors, bulk actions, tag merging, SSO and registration.
 
 Requests under `/api/linkwarden/` are authenticated only by `Authorization: Bearer <key>` and allow
 cross-origin calls, as for Karakeep. IDs are numbers, because the Linkwarden clients expect them:
@@ -394,7 +400,10 @@ precedence over the file.
 | `BOARDLY_SMTP_TLS` | `starttls` | `starttls` (required STARTTLS, usually port 587), `tls` (implicit TLS, usually port 465) or `none` |
 | `BOARDLY_TRUST_PROXY_HEADERS` | `false` | Take the client IP from `X-Forwarded-For` (for rate limiting). Enable it only behind a reverse proxy that sets this header |
 | `BOARDLY_WEBAUTHN_RP_ID` | host name of `BOARDLY_BASE_URL` | Relying party ID that passkeys are bound to. It must be the base URL's host name or a parent domain of it (e.g. `example.org` for `dash.example.org`) |
-| `BOARDLY_FETCH_ALLOW_PRIVATE` | `false` | Let the server fetch favicons from private, loopback and link-local addresses (for example `http://192.168.1.10:8096`). See [Favicons and images](#favicons-and-images) |
+| `BOARDLY_FETCH_ALLOW_PRIVATE` | `false` | Let the server fetch favicons and link previews from private, loopback and link-local addresses (for example `http://192.168.1.10:8096`). See [Favicons and images](#favicons-and-images) |
+| `BOARDLY_PREVIEW_MAX_SIZE_MB` | `10` | Largest preview image, in megabytes, that the server downloads from a page or accepts from a connected app before converting it |
+| `BOARDLY_PREVIEW_MAX_PIXELS` | `25000000` | Largest preview image, as width times height, that the server decodes. Lower it on machines with little memory: decoding takes about 4 bytes per pixel |
+| `BOARDLY_PREVIEW_WIDTH` | `800` | Width, in pixels, that larger preview images are scaled down to |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
@@ -455,20 +464,39 @@ Mailpit instead (http://localhost:8025).
 
 ### Favicons and images
 
-- **Favicons** are fetched by the server when a link is added or its URL changes, and when the
-  server starts for links that have none yet. It loads the page, uses the icon the page declares
-  (or `/favicon.ico`) and keeps one copy per site for all users. PNG, JPEG, WebP, GIF and ICO
-  icons up to 1 MB are used; SVG icons are not. A favicon is fetched again after 30 days. After
-  a failed fetch, the server waits a day before trying that site again. This needs outbound
-  HTTP(S) to the linked sites.
+- **Favicons** are fetched by the server when a link is added or its URL changes. It loads the
+  page, uses the icon the page declares (or `/favicon.ico`) and keeps one copy per site for all
+  users. PNG, JPEG, WebP, GIF and ICO icons up to 1 MB are used; SVG icons are not. After a failed
+  fetch, the server waits a day before trying that site again.
+- **Favicons aren't refreshed automatically.** A stored favicon is kept until someone presses the
+  refresh button of a link to that site on the Favourites page; that also works during the day
+  after a failed fetch. A user can refresh 30 favicons right away and then one every two minutes.
+  Links that existed before a favicon could be fetched get one only through a refresh or a URL
+  change.
+- **Descriptions and preview images** of links are taken from the linked page when a link is
+  added or its URL changes: the description from `og:description` or the page's meta
+  description, the image from `og:image` or `twitter:image`. A description that a connected app
+  set is never overwritten. A preview is only fetched for a link that has none; changing the URL
+  removes the old one first. A screenshot from the Linkwarden extension always replaces it. Each
+  link has its own preview, also when two users save the same page. Links added before this
+  feature don't get a description or preview until their URL changes.
+- **Preview images are converted** in the background into a JPEG of at most
+  `BOARDLY_PREVIEW_WIDTH` pixels wide (800), upright and with transparent areas on white. PNG,
+  JPEG, WebP and GIF images up to `BOARDLY_PREVIEW_MAX_SIZE_MB` (10 MB) and
+  `BOARDLY_PREVIEW_MAX_PIXELS` (25 million pixels) are used; others are skipped. One image is
+  converted at a time.
+- **Background work survives restarts.** Favicon fetches, page fetches and conversions wait in the
+  database, so a restart or a busy server doesn't lose any. A job that was interrupted three times
+  is dropped with a warning in the log.
 - **Private addresses are blocked by default.** The server doesn't connect to loopback, private
   (`10.x`, `172.16–31.x`, `192.168.x`), link-local, unique-local or similar addresses, also
   not after DNS resolution or a redirect. This keeps users from making the server probe your
   internal network. On a home server where the links point to local services, set
-  `BOARDLY_FETCH_ALLOW_PRIVATE=true` to get their favicons too; only do that if you trust
-  everyone who can sign up.
+  `BOARDLY_FETCH_ALLOW_PRIVATE=true` to get their favicons and previews too; only do that if you
+  trust everyone who can sign up.
 - **Images are stored as files** in `BOARDLY_DATA_DIR/images`, next to the database in the
-  container's `/data` volume. Uploaded images that nothing uses are deleted after 24 hours.
+  container's `/data` volume. Uploaded images that nothing uses are deleted after 24 hours, and
+  previews that no link uses any more after about an hour.
 
 ### Passkeys
 

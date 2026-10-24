@@ -99,6 +99,7 @@ function fakeServer(initial: FavouriteNode[], tags: string[] = []) {
 
 	return {
 		api,
+		tree: () => tree,
 		titles: (id = "root") =>
 			(findNode(tree, id)?.children ?? []).map((c) => c.title ?? c.url),
 	};
@@ -164,6 +165,88 @@ describe("favourites page", () => {
 		expect(screen.queryByRole("link", { name: "Docs" })).toBeNull();
 		await user.click(screen.getByRole("button", { name: "Expand Work" }));
 		expect(screen.getByRole("link", { name: "Docs" })).toBeVisible();
+	});
+});
+
+describe("refresh icon", () => {
+	it("refreshes a link's favicon and shows the new one", async () => {
+		const server = fakeServer([folder("Work"), link("GitHub")]);
+		server.api.set({
+			"POST /api/favicons/refresh": () => {
+				const target = findNode(server.tree(), "GitHub");
+				if (target) target.iconImageId = "img-new";
+				return { body: { id: "img-new" } };
+			},
+		});
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Refresh icon of GitHub" }),
+		);
+		expect(server.api.callsTo("POST", "/api/favicons/refresh")[0].body).toEqual(
+			{
+				url: "https://example.org/GitHub",
+			},
+		);
+		const row = screen.getByRole("link", { name: "GitHub" }).parentElement
+			?.parentElement as HTMLElement;
+		await waitFor(() =>
+			expect(row.querySelector("img")).toHaveAttribute(
+				"src",
+				"/api/images/img-new",
+			),
+		);
+		// Folders have no icon to refresh.
+		expect(
+			screen.queryByRole("button", { name: "Refresh icon of Work" }),
+		).toBeNull();
+	});
+
+	it("is disabled while the refresh runs", async () => {
+		const server = fakeServer([link("GitHub")]);
+		let finish: () => void = () => {};
+		server.api.set({
+			"POST /api/favicons/refresh": () =>
+				new Promise((resolve) => {
+					finish = () => resolve({ body: { id: "img-1" } });
+				}),
+		});
+		const { user } = renderApp("/favourites");
+		const button = await screen.findByRole("button", {
+			name: "Refresh icon of GitHub",
+		});
+		await user.click(button);
+		await waitFor(() => expect(button).toBeDisabled());
+		finish();
+		await waitFor(() => expect(button).toBeEnabled());
+	});
+
+	it.each([
+		["favicon_not_found", 404, "No icon was found for GitHub."],
+		[
+			"blocked_address",
+			400,
+			"The icon of GitHub isn't loaded, because the site is on a private network address.",
+		],
+		[
+			"rate_limited",
+			429,
+			"Too many icon refreshes. Try again in a few minutes.",
+		],
+		["internal", 500, "The icon of GitHub could not be refreshed."],
+	])("explains %s and keeps the icon", async (code, status, message) => {
+		const server = fakeServer([link("GitHub", { iconImageId: "img-1" })]);
+		server.api.set({ "POST /api/favicons/refresh": apiError(status, code) });
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Refresh icon of GitHub" }),
+		);
+		expect(await screen.findByRole("alert")).toHaveTextContent(message);
+		const row = screen.getByRole("link", { name: "GitHub" }).parentElement
+			?.parentElement as HTMLElement;
+		expect(row.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/img-1",
+		);
 	});
 });
 

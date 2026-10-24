@@ -219,6 +219,7 @@
 		"addLinkTo": "Link zu {{name}} hinzufügen",
 		"edit": "{{name}} bearbeiten",
 		"delete": "{{name}} löschen",
+		"refreshIcon": "Icon von {{name}} neu laden",
 		"move": "{{name}} verschieben",
 		"expand": "{{name}} aufklappen",
 		"collapse": "{{name}} zuklappen",
@@ -252,7 +253,11 @@
 			"titleTooLong": "Der Titel darf höchstens 1000 Zeichen lang sein.",
 			"tagTooLong": "Tags dürfen höchstens 100 Zeichen lang sein.",
 			"notFound": "Diesen Eintrag gibt es nicht mehr. Die Liste wurde neu geladen.",
-			"moveFailed": "Der Eintrag konnte nicht verschoben werden. Die Liste wurde wiederhergestellt."
+			"moveFailed": "Der Eintrag konnte nicht verschoben werden. Die Liste wurde wiederhergestellt.",
+			"iconNotFound": "Für {{name}} wurde kein Icon gefunden.",
+			"iconBlocked": "Das Icon von {{name}} wird nicht geladen, weil die Seite eine Adresse im privaten Netzwerk hat.",
+			"iconRateLimited": "Zu viele Icons neu geladen. Versuch es in ein paar Minuten noch einmal.",
+			"iconFailed": "Das Icon von {{name}} konnte nicht neu geladen werden."
 		},
 		"deleteDialog": {
 			"linkTitle": "Link löschen?",

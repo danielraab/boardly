@@ -48,6 +48,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.SecureCookies() {
 		t.Fatal("http base URL must not use secure cookies")
 	}
+	if want := (Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800}); cfg.Previews != want {
+		t.Fatalf("Previews = %+v, want %+v", cfg.Previews, want)
+	}
 }
 
 func TestLoadOverrides(t *testing.T) {
@@ -65,6 +68,9 @@ func TestLoadOverrides(t *testing.T) {
 		"BOARDLY_TRUST_PROXY_HEADERS": "true",
 		"BOARDLY_DATA_DIR":            "/srv/boardly",
 		"BOARDLY_FETCH_ALLOW_PRIVATE": "true",
+		"BOARDLY_PREVIEW_MAX_SIZE_MB": "2",
+		"BOARDLY_PREVIEW_MAX_PIXELS":  "1000000",
+		"BOARDLY_PREVIEW_WIDTH":       "640",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -87,6 +93,9 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.DataDir != "/srv/boardly" || !cfg.FetchAllowPrivate {
 		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v", cfg.DataDir, cfg.FetchAllowPrivate)
+	}
+	if want := (Previews{MaxBytes: 2 << 20, MaxPixels: 1_000_000, Width: 640}); cfg.Previews != want {
+		t.Fatalf("Previews = %+v, want %+v", cfg.Previews, want)
 	}
 }
 
@@ -170,6 +179,11 @@ func TestLoadInvalid(t *testing.T) {
 		{"private fetch flag not a bool", "BOARDLY_FETCH_ALLOW_PRIVATE", "sometimes"},
 		{"RP ID of another host", "BOARDLY_WEBAUTHN_RP_ID", "example.org"},
 		{"AAGUID list URL relative", "BOARDLY_AAGUID_LIST_URL", "/aaguids.json"},
+		{"preview size zero", "BOARDLY_PREVIEW_MAX_SIZE_MB", "0"},
+		{"preview size negative", "BOARDLY_PREVIEW_MAX_SIZE_MB", "-1"},
+		{"preview pixels not a number", "BOARDLY_PREVIEW_MAX_PIXELS", "many"},
+		{"preview width not a number", "BOARDLY_PREVIEW_WIDTH", "wide"},
+		{"preview width fraction", "BOARDLY_PREVIEW_WIDTH", "800.5"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

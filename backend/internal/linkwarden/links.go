@@ -232,9 +232,6 @@ func (s *Service) CreateLink(ctx context.Context, sc favourites.Scope, in Create
 	if in.Type != nil && *in.Type != "" && *in.Type != "url" {
 		return Link{}, &InputError{"Boardly only stores links, not " + *in.Type + " files."}
 	}
-	if err := checkUnsupported(map[string]bool{"descriptions": nonEmpty(in.Description)}); err != nil {
-		return Link{}, err
-	}
 	if in.URL == nil {
 		return Link{}, &InputError{"A link needs a URL."}
 	}
@@ -243,6 +240,10 @@ func (s *Service) CreateLink(ctx context.Context, sc favourites.Scope, in Create
 		return Link{}, err
 	}
 	title, err := favourites.NormalizeLinkTitle(in.Name)
+	if err != nil {
+		return Link{}, err
+	}
+	description, err := favourites.NormalizeDescription(in.Description)
 	if err != nil {
 		return Link{}, err
 	}
@@ -286,12 +287,12 @@ func (s *Service) CreateLink(ctx context.Context, sc favourites.Scope, in Create
 		parent = folder.ID
 	}
 	node, err := s.Favourites.Create(ctx, sc.UserID, favourites.NewNode{
-		ParentID: parent, Kind: favourites.KindLink, URL: &rawURL, Title: title, Tags: tags, First: true,
+		ParentID: parent, Kind: favourites.KindLink, URL: &rawURL, Title: title, Tags: tags, Description: description,
+		First: true,
 	})
 	if err != nil {
 		return Link{}, err
 	}
-	s.Favicons.Queue(*node.URL)
 	return s.linkByID(ctx, sc, node.ID)
 }
 
@@ -301,11 +302,12 @@ type PinRef struct {
 }
 
 // UpdateLinkInput is the body of PUT /api/v1/links/{id} (Linkwarden's
-// UpdateLinkSchema). Name is raw JSON to tell a missing name from null.
+// UpdateLinkSchema). Name and Description are raw JSON to tell a missing
+// value from null.
 type UpdateLinkInput struct {
 	Name        json.RawMessage `json:"name"`
 	URL         *string         `json:"url"`
-	Description *string         `json:"description"`
+	Description json.RawMessage `json:"description"`
 	Icon        *string         `json:"icon"`
 	IconWeight  *string         `json:"iconWeight"`
 	Color       *string         `json:"color"`
@@ -314,10 +316,10 @@ type UpdateLinkInput struct {
 	PinnedBy    []*PinRef       `json:"pinnedBy"`
 }
 
-// UpdateLink is PUT /api/v1/links/{id}: title, URL, tags and collection.
+// UpdateLink is PUT /api/v1/links/{id}: title, URL, description, tags and
+// collection.
 func (s *Service) UpdateLink(ctx context.Context, sc favourites.Scope, num int64, in UpdateLinkInput) (Link, error) {
 	if err := checkUnsupported(map[string]bool{
-		"descriptions": nonEmpty(in.Description),
 		"link icons":   nonEmpty(in.Icon) || nonEmpty(in.IconWeight),
 		"link colors":  nonEmpty(in.Color),
 		"pinned links": slices.ContainsFunc(in.PinnedBy, func(p *PinRef) bool { return p != nil && p.ID != nil }),
@@ -347,18 +349,17 @@ func (s *Service) UpdateLink(ctx context.Context, sc favourites.Scope, num int64
 		return Link{}, err
 	}
 	patch := favourites.Patch{Tags: &tags}
-	if in.Name != nil {
-		var name *string
-		if err := json.Unmarshal(in.Name, &name); err != nil {
-			return Link{}, &InputError{"Invalid name."}
-		}
-		if name == nil {
-			name = new(string)
-		}
-		if _, err := favourites.NormalizeLinkTitle(name); err != nil {
-			return Link{}, err
-		}
-		patch.Title = name
+	if patch.Title, err = clearable(in.Name, "Invalid name."); err != nil {
+		return Link{}, err
+	}
+	if _, err := favourites.NormalizeLinkTitle(patch.Title); err != nil {
+		return Link{}, err
+	}
+	if patch.Description, err = clearable(in.Description, "Invalid description."); err != nil {
+		return Link{}, err
+	}
+	if _, err := favourites.NormalizeDescription(patch.Description); err != nil {
+		return Link{}, err
 	}
 	if in.URL != nil && *in.URL != "" {
 		if _, err := favourites.NormalizeURL(*in.URL); err != nil {
@@ -371,12 +372,8 @@ func (s *Service) UpdateLink(ctx context.Context, sc favourites.Scope, num int64
 			return Link{}, err
 		}
 	}
-	node, err := s.Favourites.Update(ctx, sc.UserID, link.ID, patch)
-	if err != nil {
+	if _, err := s.Favourites.Update(ctx, sc.UserID, link.ID, patch); err != nil {
 		return Link{}, err
-	}
-	if patch.URL != nil {
-		s.Favicons.Queue(*node.URL)
 	}
 	if target.ID != link.ParentID {
 		if err := s.Favourites.Move(ctx, sc.UserID, link.ID, target.ID, 0); err != nil {
@@ -404,4 +401,20 @@ func (s *Service) DeleteLink(ctx context.Context, sc favourites.Scope, num int64
 		return Link{}, err
 	}
 	return links[0], nil
+}
+
+// clearable decodes an optional string field: nil when it is missing, and an
+// empty string, which clears the value, for null.
+func clearable(raw json.RawMessage, invalid string) (*string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	var v *string
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, &InputError{invalid}
+	}
+	if v == nil {
+		v = new(string)
+	}
+	return v, nil
 }

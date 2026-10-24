@@ -62,6 +62,14 @@ export function deleteFavourite(id: string, mode?: DeleteMode) {
 	});
 }
 
+/** Fetches the favicon of the URL's site again, also after a failed fetch. */
+export function refreshFavicon(url: string) {
+	return api<{ id: string }>("/api/favicons/refresh", {
+		method: "POST",
+		json: { url },
+	});
+}
+
 export function suggestTags(prefix: string) {
 	return api<Tag[]>(`/api/tags?q=${encodeURIComponent(prefix)}`);
 }

@@ -1,5 +1,6 @@
 // Package images stores images as files in the data directory: favicons the
-// server fetched, shared by all users, and images users uploaded.
+// server fetched, shared by all users, images users uploaded, and preview
+// images of links.
 package images
 
 import (
@@ -20,12 +21,14 @@ import (
 )
 
 // MaxSize is the largest image in bytes, for uploads and favicons alike.
+// Previews have their own, configurable limit before conversion.
 const MaxSize = 1 << 20
 
 // Sources of an image.
 const (
 	SourceFavicon = "favicon"
 	SourceUpload  = "upload"
+	SourcePreview = "preview"
 )
 
 // Errors returned by the store.
@@ -62,10 +65,17 @@ func NewStore(database *sql.DB, dataDir string) (*Store, error) {
 // icoMagic starts every ICO file (reserved 0, type 1 = icon).
 var icoMagic = []byte{0, 0, 1, 0}
 
-// Sniff returns the content type of an allowed image, detected from its
-// bytes: PNG, JPEG, GIF, WebP or ICO. SVG and everything else is refused.
+// Sniff returns the content type of an allowed image of at most MaxSize
+// bytes (see SniffLimit).
 func Sniff(data []byte) (string, error) {
-	if len(data) > MaxSize {
+	return SniffLimit(data, MaxSize)
+}
+
+// SniffLimit returns the content type of an allowed image, detected from its
+// bytes: PNG, JPEG, GIF, WebP or ICO. SVG and everything else is refused, and
+// more than limit bytes fail with ErrTooLarge.
+func SniffLimit(data []byte, limit int64) (string, error) {
+	if int64(len(data)) > limit {
 		return "", ErrTooLarge
 	}
 	if len(data) == 0 {
@@ -81,9 +91,15 @@ func Sniff(data []byte) (string, error) {
 	return "", ErrUnsupported
 }
 
-// Save stores a new image. userID is set for uploads and empty for favicons.
+// Save stores a new image. userID is set for uploads and previews and empty
+// for favicons. Previews are converted before they are saved, so MaxSize
+// doesn't apply to them.
 func (s *Store) Save(ctx context.Context, source, userID string, data []byte) (Image, error) {
-	contentType, err := Sniff(data)
+	limit := int64(MaxSize)
+	if source == SourcePreview {
+		limit = int64(len(data))
+	}
+	contentType, err := SniffLimit(data, limit)
 	if err != nil {
 		return Image{}, err
 	}
@@ -161,11 +177,16 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 // ReadLimited reads r up to MaxSize bytes and fails with ErrTooLarge beyond.
 func ReadLimited(r io.Reader) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, MaxSize+1))
+	return ReadLimit(r, MaxSize)
+}
+
+// ReadLimit reads r up to limit bytes and fails with ErrTooLarge beyond.
+func ReadLimit(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > MaxSize {
+	if int64(len(data)) > limit {
 		return nil, ErrTooLarge
 	}
 	return data, nil

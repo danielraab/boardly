@@ -20,6 +20,7 @@ import {
 	GripVertical,
 	Pencil,
 	Plus,
+	RefreshCw,
 	Star,
 	Trash2,
 } from "lucide-react";
@@ -34,12 +35,14 @@ import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import { useMe } from "#/features/auth/session";
+import { ApiError } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import {
 	type FavouriteNode,
 	favouritesQueryKey,
 	favouritesQueryOptions,
 	moveFavourite,
+	refreshFavicon,
 } from "./api";
 import { DeleteDialog, type DeleteTarget } from "./DeleteDialog";
 import { NodeDialog, type NodeDialogTarget } from "./NodeDialog";
@@ -195,6 +198,17 @@ function TreeView({
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
 	);
+
+	const refresh = useMutation({
+		mutationFn: (node: FavouriteNode) => refreshFavicon(node.url ?? ""),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: favouritesQueryKey }),
+	});
+	const refreshError = refresh.isError
+		? t(refreshErrorKey(refresh.error), {
+				name: refresh.variables ? label(refresh.variables) : "",
+			})
+		: null;
 
 	const move = useMutation({
 		mutationFn: (v: { id: string; parentId: string; position: number }) =>
@@ -359,6 +373,11 @@ function TreeView({
 					{t("favourites.errors.moveFailed")}
 				</p>
 			)}
+			{refreshError && (
+				<p role="alert" className="mb-3 text-sm text-danger">
+					{refreshError}
+				</p>
+			)}
 			<ul className="rounded-xl border border-line bg-surface py-1">
 				{flatten(root, collapsed).map(({ node, depth }) => (
 					<TreeRow
@@ -385,6 +404,8 @@ function TreeView({
 							else handles.current.delete(node.id);
 						}}
 						actions={actions}
+						refreshing={refresh.isPending && refresh.variables?.id === node.id}
+						onRefresh={() => refresh.mutate(node)}
 					/>
 				))}
 			</ul>
@@ -402,6 +423,20 @@ function TreeView({
 			</DragOverlay>
 		</DndContext>
 	);
+}
+
+/** The translation key of the message for a failed icon refresh. */
+function refreshErrorKey(error: Error) {
+	switch (error instanceof ApiError ? error.code : "") {
+		case "favicon_not_found":
+			return "favourites.errors.iconNotFound";
+		case "blocked_address":
+			return "favourites.errors.iconBlocked";
+		case "rate_limited":
+			return "favourites.errors.iconRateLimited";
+		default:
+			return "favourites.errors.iconFailed";
+	}
 }
 
 /** applyMove that ignores a move the server would reject anyway. */
@@ -442,6 +477,8 @@ function TreeRow({
 	onHandleBlur,
 	registerHandle,
 	actions,
+	refreshing,
+	onRefresh,
 }: {
 	node: FavouriteNode;
 	depth: number;
@@ -454,6 +491,8 @@ function TreeRow({
 	onHandleBlur: () => void;
 	registerHandle: (el: HTMLButtonElement | null) => void;
 	actions: Actions;
+	refreshing: boolean;
+	onRefresh: () => void;
 }) {
 	const { t } = useTranslation();
 	const { setNodeRef: setDropRef } = useDroppable({ id: node.id });
@@ -468,6 +507,21 @@ function TreeRow({
 
 	let actionButtons: ReactNode = (
 		<>
+			{!isFolder && (
+				<button
+					type="button"
+					className={iconButton}
+					aria-label={t("favourites.refreshIcon", { name })}
+					title={t("favourites.refreshIcon", { name })}
+					disabled={refreshing}
+					onClick={onRefresh}
+				>
+					<RefreshCw
+						className={`size-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+						aria-hidden
+					/>
+				</button>
+			)}
 			<button
 				type="button"
 				className={iconButton}

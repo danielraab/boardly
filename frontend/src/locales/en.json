@@ -219,6 +219,7 @@
 		"addLinkTo": "Add link to {{name}}",
 		"edit": "Edit {{name}}",
 		"delete": "Delete {{name}}",
+		"refreshIcon": "Refresh icon of {{name}}",
 		"move": "Move {{name}}",
 		"expand": "Expand {{name}}",
 		"collapse": "Collapse {{name}}",
@@ -252,7 +253,11 @@
 			"titleTooLong": "The title can be at most 1000 characters long.",
 			"tagTooLong": "Tags can be at most 100 characters long.",
 			"notFound": "This item no longer exists. The list has been refreshed.",
-			"moveFailed": "The item could not be moved. The list has been restored."
+			"moveFailed": "The item could not be moved. The list has been restored.",
+			"iconNotFound": "No icon was found for {{name}}.",
+			"iconBlocked": "The icon of {{name}} isn't loaded, because the site is on a private network address.",
+			"iconRateLimited": "Too many icon refreshes. Try again in a few minutes.",
+			"iconFailed": "The icon of {{name}} could not be refreshed."
 		},
 		"deleteDialog": {
 			"linkTitle": "Delete link?",

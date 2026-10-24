@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"boardly/internal/db"
+	"boardly/internal/jobs"
 )
 
 // Kind is the type of a node.
@@ -57,16 +58,17 @@ const (
 
 // Errors returned by the store.
 var (
-	ErrNotFound       = errors.New("node not found")
-	ErrInvalidTitle   = errors.New("invalid title")
-	ErrInvalidURL     = errors.New("invalid url")
-	ErrInvalidTag     = errors.New("invalid tag")
-	ErrInvalidKind    = errors.New("invalid kind")
-	ErrInvalidField   = errors.New("field not allowed for this kind")
-	ErrInvalidParent  = errors.New("parent is not a folder")
-	ErrInvalidMove    = errors.New("cannot move a folder into itself")
-	ErrFolderNotEmpty = errors.New("folder is not empty")
-	ErrRootImmutable  = errors.New("the root folder cannot be changed")
+	ErrNotFound           = errors.New("node not found")
+	ErrInvalidTitle       = errors.New("invalid title")
+	ErrInvalidURL         = errors.New("invalid url")
+	ErrInvalidTag         = errors.New("invalid tag")
+	ErrInvalidDescription = errors.New("invalid description")
+	ErrInvalidKind        = errors.New("invalid kind")
+	ErrInvalidField       = errors.New("field not allowed for this kind")
+	ErrInvalidParent      = errors.New("parent is not a folder")
+	ErrInvalidMove        = errors.New("cannot move a folder into itself")
+	ErrFolderNotEmpty     = errors.New("folder is not empty")
+	ErrRootImmutable      = errors.New("the root folder cannot be changed")
 )
 
 // MaxTagSuggestions is the most tags SuggestTags returns.
@@ -76,6 +78,9 @@ const MaxTagSuggestions = 10
 type Store struct {
 	DB  *sql.DB
 	Now func() time.Time
+	// Jobs, when set, gets a favicon and a preview fetch for every new link
+	// and every URL change, in the same transaction.
+	Jobs *jobs.Queue
 }
 
 // NewStore returns a store that uses the real clock.
@@ -84,23 +89,27 @@ func NewStore(database *sql.DB) *Store {
 }
 
 // NewNode is a node to create. An empty ParentID means the root folder.
-// Folders need a Title and may not have a URL or tags; links need a URL.
-// The node is added at the end of its folder, or first when First is set.
+// Folders need a Title and may not have a URL, tags or a description; links
+// need a URL. The node is added at the end of its folder, or first when First
+// is set.
 type NewNode struct {
-	ParentID string
-	Kind     Kind
-	Title    *string
-	URL      *string
-	Tags     []string
-	First    bool
+	ParentID    string
+	Kind        Kind
+	Title       *string
+	URL         *string
+	Tags        []string
+	Description *string
+	First       bool
 }
 
-// Patch changes a node. Nil fields stay unchanged. An empty link title clears it.
-// URL and Tags are only allowed on links.
+// Patch changes a node. Nil fields stay unchanged. An empty link title or
+// description clears it. URL, Tags and Description are only allowed on links.
+// Changing the URL removes the link's preview image.
 type Patch struct {
-	Title *string
-	URL   *string
-	Tags  *[]string
+	Title       *string
+	URL         *string
+	Tags        *[]string
+	Description *string
 }
 
 // row is a stored node without its tags and children.
@@ -111,6 +120,8 @@ type row struct {
 	position int
 	title    sql.NullString
 	url      sql.NullString
+	// description is only set by load.
+	description sql.NullString
 }
 
 // EnsureRoot returns the ID of the user's root folder, creating it first if
@@ -245,11 +256,11 @@ func (s *Store) Link(ctx context.Context, userID, id string) (*Node, error) {
 
 // Create adds a node at the end of its parent folder and returns it.
 func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, error) {
-	var title, link *string
+	var title, link, description *string
 	var tags []string
 	switch n.Kind {
 	case KindFolder:
-		if n.URL != nil || len(n.Tags) > 0 {
+		if n.URL != nil || len(n.Tags) > 0 || n.Description != nil {
 			return nil, ErrInvalidField
 		}
 		if n.Title == nil {
@@ -273,6 +284,9 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 			return nil, err
 		}
 		if tags, err = NormalizeTags(n.Tags); err != nil {
+			return nil, err
+		}
+		if description, err = NormalizeDescription(n.Description); err != nil {
 			return nil, err
 		}
 	default:
@@ -314,9 +328,9 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 	id := uuid.NewString()
 	now := db.FormatTime(s.Now())
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, userID, parentID, n.Kind, position, title, link, now, now,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, description, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, userID, parentID, n.Kind, position, title, link, description, now, now,
 	); err != nil {
 		return nil, err
 	}
@@ -328,8 +342,37 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 		if node.Tags, err = nodeTags(ctx, tx, id); err != nil {
 			return nil, err
 		}
+		if err := s.queueFetches(ctx, tx, userID, id, *link); err != nil {
+			return nil, err
+		}
 	}
-	return node, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	s.notifyFetches(n.Kind == KindLink)
+	return node, nil
+}
+
+// queueFetches queues the favicon of the link's origin and the metadata of
+// its page. It does nothing without a job queue.
+func (s *Store) queueFetches(ctx context.Context, q db.Querier, userID, nodeID, rawURL string) error {
+	if s.Jobs == nil {
+		return nil
+	}
+	if origin, err := Origin(rawURL); err == nil {
+		if err := s.Jobs.Enqueue(ctx, q, jobs.KindFavicon, origin, jobs.FaviconPayload{URL: rawURL}); err != nil {
+			return err
+		}
+	}
+	return s.Jobs.Enqueue(ctx, q, jobs.KindPreviewFetch, nodeID,
+		jobs.PreviewFetchPayload{UserID: userID, NodeID: nodeID, URL: rawURL})
+}
+
+// notifyFetches wakes the fetch workers after a commit that queued jobs.
+func (s *Store) notifyFetches(queued bool) {
+	if queued && s.Jobs != nil {
+		s.Jobs.Notify(jobs.KindFavicon, jobs.KindPreviewFetch)
+	}
 }
 
 // Update changes the title, URL or tags of a node and returns it without children.
@@ -347,7 +390,7 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 	if !r.parentID.Valid {
 		return nil, ErrRootImmutable
 	}
-	if r.kind == KindFolder && (p.URL != nil || p.Tags != nil) {
+	if r.kind == KindFolder && (p.URL != nil || p.Tags != nil || p.Description != nil) {
 		return nil, ErrInvalidField
 	}
 
@@ -377,10 +420,20 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 			return nil, err
 		}
 	}
+	description := nullable(r.description)
+	if p.Description != nil {
+		if description, err = NormalizeDescription(p.Description); err != nil {
+			return nil, err
+		}
+	}
+	urlChanged := link != nil && (!r.url.Valid || r.url.String != *link)
 
+	// A new URL is a new page: its preview is fetched again.
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE favourite_nodes SET title = ?, url = ?, updated_at = ? WHERE id = ?`,
-		title, link, db.FormatTime(s.Now()), id,
+		`UPDATE favourite_nodes SET title = ?, url = ?, description = ?, updated_at = ?,
+		   preview_image_id = CASE WHEN ? THEN NULL ELSE preview_image_id END
+		 WHERE id = ?`,
+		title, link, description, db.FormatTime(s.Now()), urlChanged, id,
 	); err != nil {
 		return nil, err
 	}
@@ -397,8 +450,17 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 		if node.Tags, err = nodeTags(ctx, tx, id); err != nil {
 			return nil, err
 		}
+		if urlChanged {
+			if err := s.queueFetches(ctx, tx, userID, id, *link); err != nil {
+				return nil, err
+			}
+		}
 	}
-	return node, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	s.notifyFetches(urlChanged)
+	return node, nil
 }
 
 // Move puts a node into the folder parentID at position, which is the index
@@ -631,9 +693,9 @@ func nodeTags(ctx context.Context, q db.Querier, nodeID string) ([]string, error
 func load(ctx context.Context, q db.Querier, userID, id string) (row, error) {
 	var r row
 	err := q.QueryRowContext(ctx,
-		`SELECT id, parent_id, kind, position, title, url FROM favourite_nodes WHERE id = ? AND user_id = ?`,
+		`SELECT id, parent_id, kind, position, title, url, description FROM favourite_nodes WHERE id = ? AND user_id = ?`,
 		id, userID,
-	).Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url)
+	).Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description)
 	if errors.Is(err, sql.ErrNoRows) {
 		return row{}, ErrNotFound
 	}

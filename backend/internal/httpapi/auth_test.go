@@ -19,6 +19,7 @@ import (
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/jobs"
 	"boardly/internal/mail"
 	"boardly/internal/users"
 	"boardly/internal/widgets"
@@ -78,6 +79,8 @@ type server struct {
 	mail     *outbox
 	images   *images.Store
 	favicons *images.Favicons
+	previews *images.Previews
+	jobs     *jobs.Queue
 }
 
 func newServer(t *testing.T) *server {
@@ -102,9 +105,17 @@ func newServer(t *testing.T) *server {
 		t.Fatal(err)
 	}
 	imageStore.Now = c.Now
+	queue := jobs.New(database)
+	queue.PollInterval = 20 * time.Millisecond
 	favicons := images.NewFavicons(imageStore, false)
 	favicons.Now = c.Now
+	favicons.Jobs = queue
+	previews, err := images.NewPreviews(imageStore, queue, favicons.Client, 1<<20, images.Converter{MaxPixels: 25_000_000, Width: 800})
+	if err != nil {
+		t.Fatal(err)
+	}
 	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
+	favouriteStore.Jobs = queue
 	widgets.Register(dashboardStore, favouriteStore, favicons)
 
 	appTokens := apptokens.NewStore(database)
@@ -112,10 +123,10 @@ func newServer(t *testing.T) *server {
 
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore,
-		Images: imageStore, Favicons: favicons, AppTokens: appTokens,
+		Images: imageStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons}
+	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

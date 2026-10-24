@@ -271,13 +271,12 @@ func (s *Service) CreateBookmark(ctx context.Context, sc favourites.Scope, in Cr
 	if err != nil {
 		return CreatedBookmark{}, err
 	}
-	s.Favicons.Queue(*node.URL)
 	b, err := s.bookmark(ctx, sc, node.ID)
 	return CreatedBookmark{Bookmark: b}, err
 }
 
-// UpdateBookmarkInput is the input of bookmarks.updateBookmark. Title is raw
-// JSON to tell a missing title from null.
+// UpdateBookmarkInput is the input of bookmarks.updateBookmark. Title and
+// Description are raw JSON to tell a missing value from null.
 type UpdateBookmarkInput struct {
 	BookmarkID    string          `json:"bookmarkId"`
 	Title         json.RawMessage `json:"title"`
@@ -286,7 +285,7 @@ type UpdateBookmarkInput struct {
 	Favourited    *bool           `json:"favourited"`
 	Summary       *string         `json:"summary"`
 	Note          *string         `json:"note"`
-	Description   *string         `json:"description"`
+	Description   json.RawMessage `json:"description"`
 	Author        *string         `json:"author"`
 	Publisher     *string         `json:"publisher"`
 	Text          *string         `json:"text"`
@@ -296,14 +295,13 @@ type UpdateBookmarkInput struct {
 	AssetContent  json.RawMessage `json:"assetContent"`
 }
 
-// UpdateBookmark is bookmarks.updateBookmark: title and URL.
+// UpdateBookmark is bookmarks.updateBookmark: title, URL and description.
 func (s *Service) UpdateBookmark(ctx context.Context, sc favourites.Scope, in UpdateBookmarkInput) (Bookmark, error) {
 	if err := checkUnsupported(map[string]bool{
 		"archiving":                  isTrue(in.Archived),
 		"favourites":                 isTrue(in.Favourited),
 		"summaries":                  nonEmpty(in.Summary),
 		"notes":                      nonEmpty(in.Note),
-		"descriptions":               nonEmpty(in.Description),
 		"authors":                    nonEmpty(in.Author),
 		"publishers":                 nonEmpty(in.Publisher),
 		"text bookmarks":             nonEmpty(in.Text),
@@ -322,26 +320,34 @@ func (s *Service) UpdateBookmark(ctx context.Context, sc favourites.Scope, in Up
 		return Bookmark{}, err
 	}
 	patch := favourites.Patch{URL: in.URL}
-	if in.Title != nil {
-		var title *string
-		if err := json.Unmarshal(in.Title, &title); err != nil {
-			return Bookmark{}, &InputError{"Invalid title"}
-		}
-		if title == nil {
-			title = new(string)
-		}
-		patch.Title = title
+	if patch.Title, err = clearable(in.Title, "Invalid title"); err != nil {
+		return Bookmark{}, err
 	}
-	if patch.Title != nil || patch.URL != nil {
-		node, err := s.Favourites.Update(ctx, sc.UserID, in.BookmarkID, patch)
-		if err != nil {
+	if patch.Description, err = clearable(in.Description, "Invalid description"); err != nil {
+		return Bookmark{}, err
+	}
+	if patch.Title != nil || patch.URL != nil || patch.Description != nil {
+		if _, err := s.Favourites.Update(ctx, sc.UserID, in.BookmarkID, patch); err != nil {
 			return Bookmark{}, err
-		}
-		if in.URL != nil {
-			s.Favicons.Queue(*node.URL)
 		}
 	}
 	return s.bookmark(ctx, sc, in.BookmarkID)
+}
+
+// clearable decodes an optional string field: nil when it is missing, and an
+// empty string, which clears the value, for null.
+func clearable(raw json.RawMessage, invalid string) (*string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	var v *string
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, &InputError{invalid}
+	}
+	if v == nil {
+		v = new(string)
+	}
+	return v, nil
 }
 
 // DeleteBookmark is bookmarks.deleteBookmark.

@@ -71,16 +71,22 @@ const unorganized = "Unorganized"
 // Favicons looks up and fetches favicons by origin (images.Favicons).
 type Favicons interface {
 	LookupImages(ctx context.Context, origins []string) (map[string]images.FaviconImage, error)
-	Queue(rawURL string)
 }
 
 // previewTypes are the favicon types the mobile app can show as previews.
 var previewTypes = []string{"image/png", "image/jpeg", "image/gif", "image/webp"}
 
+// Previews takes preview images that clients send (images.Previews).
+type Previews interface {
+	Replace(ctx context.Context, userID, nodeID, rawURL string, data []byte) error
+}
+
 // Service implements the Linkwarden endpoints on the favourites tree.
 type Service struct {
 	Favourites *favourites.Store
 	Favicons   Favicons
+	// Previews, when set, stores uploaded screenshots as link previews.
+	Previews Previews
 }
 
 // Time is a time in JavaScript's toISOString format, as Linkwarden sends it.
@@ -311,7 +317,8 @@ func tagOf(tag favourites.Tag) Tag {
 	}
 }
 
-// mapLinks maps links of the tree, with previews from their favicons.
+// mapLinks maps links of the tree, with their preview images, or else their
+// favicons, as previews.
 func (s *Service) mapLinks(ctx context.Context, t *tree, links []*favourites.ScopedNode) ([]Link, error) {
 	var origins []string
 	for _, n := range links {
@@ -327,21 +334,27 @@ func (s *Service) mapLinks(ctx context.Context, t *tree, links []*favourites.Sco
 	for i, n := range links {
 		parent := t.byID[n.ParentID]
 		preview := unavailable
-		if o, err := images.Origin(*n.URL); err == nil {
-			if img, ok := icons[o]; ok && slices.Contains(previewTypes, img.ContentType) {
-				preview = "archives/preview/" + strconv.FormatInt(parent.Num, 10) + "/" + strconv.FormatInt(n.Num, 10) + ".jpeg"
-			}
+		hasPreview := n.PreviewImageID != nil
+		if o, err := images.Origin(*n.URL); err == nil && !hasPreview {
+			img, ok := icons[o]
+			hasPreview = ok && slices.Contains(previewTypes, img.ContentType)
+		}
+		if hasPreview {
+			preview = "archives/preview/" + strconv.FormatInt(parent.Num, 10) + "/" + strconv.FormatInt(n.Num, 10) + ".jpeg"
 		}
 		tags := make([]Tag, len(n.Tags))
 		for j, tag := range n.Tags {
 			tags[j] = tagOf(tag)
 		}
-		name := ""
+		name, description := "", ""
 		if n.Title != nil {
 			name = *n.Title
 		}
+		if n.Description != nil {
+			description = *n.Description
+		}
 		out[i] = Link{
-			ID: n.Num, Name: name, Type: "url", CreatedByID: userID, CollectionID: parent.Num, URL: *n.URL,
+			ID: n.Num, Name: name, Type: "url", Description: description, CreatedByID: userID, CollectionID: parent.Num, URL: *n.URL,
 			Preview: preview, Image: unavailable, PDF: unavailable, Readable: unavailable, Monolith: unavailable,
 			LastPreserved: Time(n.CreatedAt), CreatedAt: Time(n.CreatedAt), UpdatedAt: Time(n.UpdatedAt),
 			Tags: tags, Collection: t.shortCollection(parent), PinnedBy: []struct{}{},

@@ -29,6 +29,9 @@ type ScopedNode struct {
 	UpdatedAt time.Time
 	// Tags are the tags of a link, sorted by name.
 	Tags []Tag
+	// Description and PreviewImageID are set on links that have them.
+	Description    *string
+	PreviewImageID *string
 }
 
 // subtreeCTE selects the IDs of the scope's root (?1, owned by user ?2) and
@@ -44,7 +47,8 @@ const subtreeCTE = `WITH RECURSIVE sub (id) AS (
 // of the user's folders.
 func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error) {
 	rows, err := s.DB.QueryContext(ctx, subtreeCTE+`
-		SELECT n.id, n.num, n.parent_id, n.kind, n.position, n.title, n.url, n.created_at, n.updated_at
+		SELECT n.id, n.num, n.parent_id, n.kind, n.position, n.title, n.url, n.description, n.preview_image_id,
+		       n.created_at, n.updated_at
 		FROM favourite_nodes n JOIN sub ON n.id = sub.id
 		ORDER BY n.parent_id, n.position`, sc.RootID, sc.UserID)
 	if err != nil {
@@ -55,15 +59,17 @@ func (s *Store) SubtreeNodes(ctx context.Context, sc Scope) ([]ScopedNode, error
 	index := map[string]int{}
 	for rows.Next() {
 		var n ScopedNode
-		var parentID, title, link sql.NullString
+		var parentID, title, link, description, preview sql.NullString
 		var created, updated string
-		if err := rows.Scan(&n.ID, &n.Num, &parentID, &n.Kind, &n.Position, &title, &link, &created, &updated); err != nil {
+		if err := rows.Scan(&n.ID, &n.Num, &parentID, &n.Kind, &n.Position, &title, &link, &description, &preview,
+			&created, &updated); err != nil {
 			return nil, err
 		}
 		if n.ID != sc.RootID {
 			n.ParentID = parentID.String
 		}
 		n.Title, n.URL = nullable(title), nullable(link)
+		n.Description, n.PreviewImageID = nullable(description), nullable(preview)
 		if n.CreatedAt, err = db.ParseTime(created); err != nil {
 			return nil, err
 		}
