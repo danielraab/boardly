@@ -58,7 +58,7 @@
 ## 10. Docs and checks
 
 - [x] 10.1 Update the README ("Favourites tree": descriptions and previews for connected apps; "Favicons and images": previews, conversion, persisted background jobs, no automatic favicon refresh, the refresh action, no backfill for existing links; configuration table: the three new variables; Linkwarden section: screenshot upload now works) and add a CHANGELOG entry; verify by reading them against the specs
-- [ ] 10.2 Run `make check` and `make test`, then on a local server:
+- [x] 10.2 Run `make check` and `make test`, then on a local server:
   - save a page with Open Graph tags from the Karakeep extension and see its description and image in the Karakeep app
   - save one from the Linkwarden extension with "upload screenshot" on and see the screenshot as preview in the Linkwarden app
   - change a link's URL and see the new preview
