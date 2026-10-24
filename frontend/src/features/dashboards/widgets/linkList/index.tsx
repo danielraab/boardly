@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { List } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
+import { dashboardViewQueryKey } from "#/features/dashboards/api";
+import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
 import { favouritesQueryOptions } from "#/features/favourites/api";
+import { FavouriteDetailsDialog } from "#/features/favourites/FavouriteDetails";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { findNode } from "#/features/favourites/tree";
 import type {
@@ -32,11 +35,18 @@ export type LinkListConfig = {
 /**
  * In view mode the server's data; in edit mode the links of the owner's
  * current favourites, since a draft widget has no data yet and its folder or
- * settings may have changed.
+ * settings may have changed. In view mode the owner can open the details of
+ * the links.
  */
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
+	const queryClient = useQueryClient();
 	const config = widget.config as LinkListConfig;
-	const favourites = useQuery({ ...favouritesQueryOptions, enabled: editing });
+	const isOwner = useCurrentDashboard()?.isOwner ?? false;
+	const [detailsId, setDetailsId] = useState<string | null>(null);
+	const favourites = useQuery({
+		...favouritesQueryOptions,
+		enabled: editing || isOwner,
+	});
 	let data = widget.data as LinkListData | undefined;
 	if (editing) {
 		if (!favourites.data) return null;
@@ -52,15 +62,30 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				: { missing: true };
 	}
 	if (!data) return null;
+	const canShowDetails = isOwner && !editing && !!favourites.data;
 	return (
-		<LinkListView
-			data={data}
-			layout={config.layout}
-			size={config.size}
-			editing={editing}
-			title={config.title}
-			headingLevel={headingLevel}
-		/>
+		<>
+			<LinkListView
+				data={data}
+				layout={config.layout}
+				size={config.size}
+				editing={editing}
+				title={config.title}
+				headingLevel={headingLevel}
+				onDetails={canShowDetails ? setDetailsId : undefined}
+			/>
+			{canShowDetails && (
+				<FavouriteDetailsDialog
+					favouriteId={detailsId}
+					onSaved={() =>
+						void queryClient.invalidateQueries({
+							queryKey: dashboardViewQueryKey,
+						})
+					}
+					onClose={() => setDetailsId(null)}
+				/>
+			)}
+		</>
 	);
 }
 

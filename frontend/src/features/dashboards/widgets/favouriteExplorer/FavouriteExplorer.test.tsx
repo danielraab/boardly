@@ -484,3 +484,66 @@ describe("adding a favourite from the explorer", () => {
 		expect(screen.queryByRole("button", { name: "Add favourite" })).toBeNull();
 	});
 });
+
+describe("explorer details", () => {
+	const viewRoutes = (sections: Widget[], fields = {}) => ({
+		"GET /api/me": signedIn(),
+		"GET /api/u/ann/home": { body: viewData(sections, fields) },
+		"GET /api/favourites": { body: favourites },
+	});
+	const workExplorer = () =>
+		section("Work", {}, explorer("e1", {}, { children: [tools, mail] }));
+
+	it("has a small info button on link rows only", async () => {
+		const onDetails = vi.fn();
+		const user = userEvent.setup();
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="M"
+				data={{ children: [tools, mail] }}
+				editing={false}
+				onDetails={onDetails}
+			/>,
+		);
+		const button = screen.getByRole("button", {
+			name: "Details for https://mail.example.org/inbox",
+		});
+		expect(button.closest("a")).toBeNull();
+		expect(button.querySelector("svg")).toHaveClass("size-3.5");
+		// Folders have none.
+		expect(
+			screen.getAllByRole("button", { name: /^Details for/ }),
+		).toHaveLength(1);
+		await user.click(button);
+		expect(onDetails).toHaveBeenCalledWith("mail");
+	});
+
+	it("opens a link's details for the owner", async () => {
+		mockApi(viewRoutes([workExplorer()]));
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", {
+				name: "Details for https://mail.example.org/inbox",
+			}),
+		);
+		expect(
+			await screen.findByRole("dialog", {
+				name: "https://mail.example.org/inbox",
+			}),
+		).toBeVisible();
+	});
+
+	it("has no info buttons for visitors", async () => {
+		mockApi(viewRoutes([workExplorer()], { isOwner: false, id: undefined }));
+		renderApp("/ann/home");
+		await screen.findByRole("link", { name: "https://mail.example.org/inbox" });
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
+	});
+
+	it("has no info buttons in edit mode", async () => {
+		await openEditor([section("Work", {}, explorer("e1", {}))]);
+		await screen.findByText("https://mail.example.org/inbox");
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
+	});
+});

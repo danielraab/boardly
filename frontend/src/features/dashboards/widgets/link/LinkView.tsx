@@ -1,5 +1,6 @@
 import { Globe } from "lucide-react";
 import { ImageIcon } from "#/components/ImageIcon";
+import { DetailsButton } from "#/features/favourites/FavouriteDetails";
 import { sizeStyles, type WidgetSize } from "../sizes";
 import { findIcon } from "./icons";
 
@@ -33,7 +34,8 @@ export function LinkIcon({
 
 /**
  * One link: its icon, then its title and URL on two lines, or only the URL.
- * In edit mode it doesn't navigate.
+ * In edit mode it doesn't navigate. With onDetails, an info button right of
+ * the link calls it.
  */
 export function LinkView({
 	url,
@@ -43,6 +45,7 @@ export function LinkView({
 	target,
 	size,
 	editing,
+	onDetails,
 }: {
 	url: string;
 	title: string | null;
@@ -51,9 +54,10 @@ export function LinkView({
 	target: "_blank" | "_self";
 	size: WidgetSize;
 	editing: boolean;
+	onDetails?: () => void;
 }) {
 	const style = sizeStyles[size];
-	return (
+	const link = (
 		<a
 			href={url}
 			target={target}
@@ -61,7 +65,7 @@ export function LinkView({
 			title={title ? `${title}\n${url}` : url}
 			aria-disabled={editing || undefined}
 			onClick={editing ? (e) => e.preventDefault() : undefined}
-			className={`flex min-w-0 items-center gap-2 rounded-lg px-1 ${style.row} ${style.text} hover:bg-paper`}
+			className={`flex min-w-0 items-center gap-2 rounded-lg px-1 ${style.row} ${style.text} hover:bg-paper ${onDetails ? "flex-1" : ""}`}
 		>
 			<LinkIcon imageId={imageId} icon={icon} className={style.icon} />
 			<span className="flex min-w-0 flex-col">
@@ -73,5 +77,12 @@ export function LinkView({
 				</span>
 			</span>
 		</a>
+	);
+	if (!onDetails) return link;
+	return (
+		<div className="flex min-w-0 items-center gap-1">
+			{link}
+			<DetailsButton link={{ title, url }} onClick={onDetails} />
+		</div>
 	);
 }

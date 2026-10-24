@@ -10,9 +10,17 @@ import { useTranslation } from "react-i18next";
 import { iconButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import type { FavouriteNode } from "#/features/favourites/api";
+import { DetailsButton } from "#/features/favourites/FavouriteDetails";
 import { label } from "#/features/favourites/tree";
 import { sizeStyles, type WidgetSize } from "../sizes";
 import { useExpanded } from "./useExpanded";
+
+/** The info button's icon, a step smaller than the row's icons. */
+const detailsIcon: Record<WidgetSize, string> = {
+	S: "size-3",
+	M: "size-3.5",
+	L: "size-4",
+};
 
 /** What an explorer shows: its folder's children, or that the folder is gone. */
 export type ExplorerData = { missing: true } | { children: FavouriteNode[] };
@@ -26,7 +34,8 @@ function folderIds(nodes: FavouriteNode[]): string[] {
 /**
  * The children of an explorer's folder as a file tree, below its title as a
  * heading of headingLevel when it has one. In edit mode, links don't navigate.
- * With onAdd, a button left of the expand-all button calls it.
+ * With onAdd, a button left of the expand-all button calls it. With onDetails,
+ * an info button at the end of each link row calls it with the link's ID.
  */
 export function ExplorerTree({
 	widgetId,
@@ -36,6 +45,7 @@ export function ExplorerTree({
 	title = null,
 	headingLevel = 2,
 	onAdd,
+	onDetails,
 }: {
 	widgetId: string;
 	size: WidgetSize;
@@ -44,6 +54,7 @@ export function ExplorerTree({
 	title?: string | null;
 	headingLevel?: number;
 	onAdd?: () => void;
+	onDetails?: (id: string) => void;
 }) {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useExpanded(widgetId);
@@ -101,10 +112,14 @@ export function ExplorerTree({
 						<span className="truncate">{name}</span>
 					</>
 				);
+				const linkRow = onDetails ? `${row} flex-1` : row;
 				return (
-					<li key={node.id}>
+					<li
+						key={node.id}
+						className={onDetails ? "flex min-w-0 items-center" : undefined}
+					>
 						{editing ? (
-							<span className={row} style={indent} title={node.url}>
+							<span className={linkRow} style={indent} title={node.url}>
 								{content}
 							</span>
 						) : (
@@ -112,12 +127,20 @@ export function ExplorerTree({
 								href={node.url}
 								target="_blank"
 								rel="noopener noreferrer"
-								className={row}
+								className={linkRow}
 								style={indent}
 								title={node.url}
 							>
 								{content}
 							</a>
+						)}
+						{onDetails && (
+							<DetailsButton
+								link={node}
+								onClick={() => onDetails(node.id)}
+								className="inline-flex shrink-0 items-center justify-center rounded p-1 text-muted hover:bg-paper hover:text-ink"
+								iconClassName={detailsIcon[size]}
+							/>
 						)}
 					</li>
 				);
