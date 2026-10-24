@@ -24,4 +24,4 @@
 ## 5. Verification
 
 - [x] 5.1 Run `pnpm check`, typecheck and `pnpm test` in `frontend/` and verify they pass (`make check` and `make test`)
-- [ ] 5.2 Run the app and check the info buttons and the dialog in all three widgets and all link-list layouts, at sizes S and L, in light and dark themes, signed in as owner and as a visitor of a public dashboard
+- [x] 5.2 Run the app and check the info buttons and the dialog in all three widgets and all link-list layouts, at sizes S and L, in light and dark themes, signed in as owner and as a visitor of a public dashboard
