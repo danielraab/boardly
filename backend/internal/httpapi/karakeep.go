@@ -207,8 +207,6 @@ func (noFavicons) Lookup(context.Context, []string) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
-func (noFavicons) Queue(string) {}
-
 // karakeepValidateKey is apiKeys.validate: the login with an API key, which
 // clients send in the input before they use it as their bearer token.
 func (a *api) karakeepValidateKey(ctx context.Context, input json.RawMessage) (any, error) {

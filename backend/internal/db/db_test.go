@@ -710,3 +710,133 @@ func TestIntIDsMigrationOnExistingData(t *testing.T) {
 		t.Fatalf("new tag num = %v, want 3", got)
 	}
 }
+
+func TestLinkPreviewsMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0013")); err != nil {
+		t.Fatalf("Migrate to 0013: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	node := `INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, created_at, updated_at)
+		VALUES (?, 'u1', ?, ?, 0, ?, ?, ?, ?)`
+	for _, q := range [][]any{
+		{`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?)`, ts, ts},
+		{node, "root", nil, "folder", nil, nil, ts, ts},
+		{node, "l1", "root", "link", "L", "https://example.org", ts, ts},
+		{`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES
+			('fav1', 'favicon', NULL, 'image/png', 10, ?), ('fav2', 'favicon', NULL, 'image/png', 10, ?),
+			('up', 'upload', 'u1', 'image/png', 10, ?)`, ts, ts, ts},
+		{`INSERT INTO favicons (origin, image_id, fetched_at) VALUES ('https://a.example', 'fav1', ?), ('https://b.example', 'fav2', ?)`, ts, ts},
+		{`INSERT INTO favicons (origin, failed_at) VALUES ('https://c.example', ?)`, ts},
+	} {
+		if _, err := db.Exec(q[0].(string), q[1:]...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	// Every favicon still points to its image.
+	rows, err := db.Query(`SELECT origin, image_id FROM favicons ORDER BY origin`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]sql.NullString{}
+	for rows.Next() {
+		var origin string
+		var id sql.NullString
+		if err := rows.Scan(&origin, &id); err != nil {
+			t.Fatal(err)
+		}
+		got[origin] = id
+	}
+	rows.Close()
+	if got["https://a.example"].String != "fav1" || got["https://b.example"].String != "fav2" || got["https://c.example"].Valid {
+		t.Fatalf("favicons = %v, want a→fav1, b→fav2, c→NULL", got)
+	}
+	if n := countRows(t, db, `SELECT COUNT(*) FROM images`); n != 3 {
+		t.Fatalf("images = %d, want 3", n)
+	}
+
+	image := `INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES (?, ?, ?, 'image/jpeg', 10, ?)`
+	if _, err := db.Exec(image, "prev", "preview", "u1", ts); err != nil {
+		t.Fatalf("preview with user: %v", err)
+	}
+	if _, err := db.Exec(image, "prev2", "preview", nil, ts); err == nil {
+		t.Error("preview without user: insert succeeded, want a constraint error")
+	}
+
+	// Links take a description and a preview, folders don't.
+	if _, err := db.Exec(`UPDATE favourite_nodes SET description = 'D', preview_image_id = 'prev' WHERE id = 'l1'`); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+	for name, q := range map[string]string{
+		"folder description": `UPDATE favourite_nodes SET description = 'D' WHERE id = 'root'`,
+		"folder preview":     `UPDATE favourite_nodes SET preview_image_id = 'prev' WHERE id = 'root'`,
+		"unknown image":      `UPDATE favourite_nodes SET preview_image_id = 'nope' WHERE id = 'l1'`,
+	} {
+		if _, err := db.Exec(q); err == nil {
+			t.Errorf("%s: update succeeded, want a constraint error", name)
+		}
+	}
+
+	// Deleting the preview image leaves the link without one.
+	if _, err := db.Exec(`DELETE FROM images WHERE id = 'prev'`); err != nil {
+		t.Fatal(err)
+	}
+	var prev sql.NullString
+	if err := db.QueryRow(`SELECT preview_image_id FROM favourite_nodes WHERE id = 'l1'`).Scan(&prev); err != nil || prev.Valid {
+		t.Fatalf("preview_image_id = %v, err %v; want NULL", prev, err)
+	}
+}
+
+func countRows(t *testing.T, db *sql.DB, query string) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(query).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestJobsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	job := `INSERT INTO jobs (kind, dedup_key, payload, created_at, started_at) VALUES (?, ?, '{}', ?, ?)`
+	if _, err := db.Exec(job, "favicon", "https://a.example", ts, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(job, "favicon", "https://a.example", ts, nil); err == nil {
+		t.Error("second pending job with the same key: insert succeeded, want a constraint error")
+	}
+	// A running job doesn't block a new pending one, and other kinds or no key don't collide.
+	for name, args := range map[string][]any{
+		"running":      {"favicon", "https://a.example", ts, ts},
+		"other kind":   {"preview_fetch", "https://a.example", ts, nil},
+		"no key":       {"preview_convert", nil, ts, nil},
+		"no key again": {"preview_convert", nil, ts, nil},
+	} {
+		if _, err := db.Exec(job, args...); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err := db.Exec(job, "thumbnail", nil, ts, nil); err == nil {
+		t.Error("unknown kind: insert succeeded, want a constraint error")
+	}
+}

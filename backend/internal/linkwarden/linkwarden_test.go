@@ -6,16 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/jobs"
 	"boardly/internal/users"
 )
 
-type fakeFavicons struct{ queued []string }
+type fakeFavicons struct{}
 
 func (f *fakeFavicons) LookupImages(_ context.Context, origins []string) (map[string]images.FaviconImage, error) {
 	out := map[string]images.FaviconImage{}
@@ -29,8 +31,6 @@ func (f *fakeFavicons) LookupImages(_ context.Context, origins []string) (map[st
 	}
 	return out, nil
 }
-
-func (f *fakeFavicons) Queue(rawURL string) { f.queued = append(f.queued, rawURL) }
 
 type fixture struct {
 	t        *testing.T
@@ -59,6 +59,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	f := &fixture{t: t, ctx: ctx, user: ann, now: time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC), icons: &fakeFavicons{}}
 	f.fav = favourites.NewStore(database)
+	f.fav.Jobs = jobs.New(database)
 	f.fav.Now = func() time.Time { f.now = f.now.Add(time.Minute); return f.now }
 	f.s = &Service{Favourites: f.fav, Favicons: f.icons}
 	if f.topLevel, err = f.fav.EnsureRoot(ctx, database, ann.ID); err != nil {
@@ -206,11 +207,24 @@ func TestPreviewValues(t *testing.T) {
 	f := newFixture(t)
 	ico := f.link(f.sc.RootID, "Ico", "https://ico.example/a")
 	none := f.link(f.sc.RootID, "None", "https://none.example/a")
-	for id, want := range map[string]string{ico: "unavailable", none: "unavailable"} {
+	withPreview := f.link(f.sc.RootID, "Card", "https://none.example/card")
+	if _, err := f.fav.DB.Exec(`INSERT INTO images (id, source, user_id, content_type, size, created_at)
+		VALUES ('prev-1', 'preview', ?, 'image/jpeg', 10, '2026-01-01T00:00:00.000Z')`, f.user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.fav.DB.Exec(`UPDATE favourite_nodes SET preview_image_id = 'prev-1' WHERE id = ?`, withPreview); err != nil {
+		t.Fatal(err)
+	}
+	cardPath := "archives/preview/" + strconv.FormatInt(f.num(f.sc.RootID), 10) + "/" + strconv.FormatInt(f.num(withPreview), 10) + ".jpeg"
+	for id, want := range map[string]string{ico: "unavailable", none: "unavailable", withPreview: cardPath} {
 		link, err := f.s.Link(f.ctx, f.sc, f.num(id))
 		if err != nil || link.Preview != want {
 			t.Errorf("preview = %q, err %v; want %q", link.Preview, err, want)
 		}
+	}
+	// The preview endpoint serves the preview image.
+	if img, err := f.s.Preview(f.ctx, f.sc, f.num(withPreview)); err != nil || img.ID != "prev-1" {
+		t.Errorf("Preview = %+v, %v; want prev-1", img, err)
 	}
 }
 
@@ -308,4 +322,24 @@ func TestSearchFilters(t *testing.T) {
 			t.Errorf("%s: %v, want %v", name, got, tc.want)
 		}
 	}
+}
+
+// queuedFavicons returns the origins of the pending favicon jobs; jobs of
+// one origin are combined.
+func (f *fixture) queuedFavicons() []string {
+	f.t.Helper()
+	rows, err := f.fav.DB.Query(`SELECT dedup_key FROM jobs WHERE kind = 'favicon' ORDER BY id`)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			f.t.Fatal(err)
+		}
+		out = append(out, u)
+	}
+	return out
 }

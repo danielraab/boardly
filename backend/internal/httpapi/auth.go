@@ -32,16 +32,19 @@ const (
 const maxBodyBytes = 64 << 10
 
 type api struct {
-	auth          *auth.Service
-	users         *users.Store
-	favourites    *favourites.Store
-	dashboards    *dashboards.Store
-	images        *images.Store
-	favicons      *images.Favicons
-	appTokens     *apptokens.Store
-	origin        string
-	secureCookies bool
-	trustProxy    bool
+	auth       *auth.Service
+	users      *users.Store
+	favourites *favourites.Store
+	dashboards *dashboards.Store
+	images     *images.Store
+	favicons   *images.Favicons
+	previews   *images.Previews
+	// refreshLimiter limits favicon refreshes per user.
+	refreshLimiter *ratelimit.Limiter
+	appTokens      *apptokens.Store
+	origin         string
+	secureCookies  bool
+	trustProxy     bool
 }
 
 func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {

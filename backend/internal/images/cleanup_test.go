@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"boardly/internal/favourites"
 )
 
 func TestSweep(t *testing.T) {
@@ -86,5 +88,98 @@ func TestSweep(t *testing.T) {
 	}
 	if _, err := os.Stat(newOrphan); err != nil {
 		t.Errorf("new orphan removed: %v", err)
+	}
+}
+
+func TestSweepPreviewsAndRawFiles(t *testing.T) {
+	ctx := context.Background()
+	s, ann := newStore(t)
+	clock := &fakeClock{now: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)}
+	s.Now = clock.Now
+	favs := favourites.NewStore(s.DB)
+
+	link := func(withPreview string) string {
+		t.Helper()
+		n, err := favs.Create(ctx, ann, favourites.NewNode{Kind: favourites.KindLink, URL: ptr("https://example.org/")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if withPreview != "" {
+			if _, err := s.DB.Exec(`UPDATE favourite_nodes SET preview_image_id = ? WHERE id = ?`, withPreview, n.ID); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return n.ID
+	}
+	save := func() string {
+		t.Helper()
+		img, err := s.Save(ctx, SourcePreview, ann, jpegData)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return img.ID
+	}
+	unused, referenced, inFolder := save(), save(), save()
+	link(referenced)
+	folder, err := favs.Create(ctx, ann, favourites.NewNode{Kind: favourites.KindFolder, Title: ptr("Old")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := favs.Create(ctx, ann, favourites.NewNode{ParentID: folder.ID, Kind: favourites.KindLink, URL: ptr("https://example.org/x")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(`UPDATE favourite_nodes SET preview_image_id = ? WHERE id = ?`, inFolder, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := favs.Delete(ctx, ann, folder.ID, favourites.DeleteWithChildren); err != nil {
+		t.Fatal(err)
+	}
+	clock.now = clock.now.Add(2 * time.Hour)
+	fresh := save()
+
+	// Raw files: one named by a job, one orphan, and one written just now.
+	raw := filepath.Join(s.Dir, rawDirName)
+	if err := os.MkdirAll(raw, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	queued, orphan, recent := "aaaaaaaa-0000-4000-8000-000000000001", "aaaaaaaa-0000-4000-8000-000000000002", "aaaaaaaa-0000-4000-8000-000000000003"
+	if _, err := s.DB.Exec(`INSERT INTO jobs (kind, payload, created_at) VALUES ('preview_convert', json_object('file', ?), '2026-01-01T00:00:00.000Z')`, queued); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{queued, orphan, recent} {
+		p := filepath.Join(raw, name)
+		if err := os.WriteFile(p, pngData, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		mtime := clock.now.Add(-2 * time.Hour)
+		if name == recent {
+			mtime = clock.now
+		}
+		if err := os.Chtimes(p, mtime, mtime); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got, err := s.Sweep(ctx); err != nil || got != 2 {
+		t.Fatalf("Sweep = %d, %v; want 2 (the unused preview and the one of the deleted folder)", got, err)
+	}
+	for name, id := range map[string]string{"unused": unused, "in deleted folder": inFolder} {
+		if _, _, err := s.Open(ctx, id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("%s preview: %v, want deleted", name, err)
+		}
+	}
+	for name, id := range map[string]string{"referenced": referenced, "fresh": fresh} {
+		_, f, err := s.Open(ctx, id)
+		if err != nil {
+			t.Errorf("%s preview: %v", name, err)
+			continue
+		}
+		f.Close()
+	}
+	for name, want := range map[string]bool{queued: true, orphan: false, recent: true} {
+		if _, err := os.Stat(filepath.Join(raw, name)); (err == nil) != want {
+			t.Errorf("raw file %s: exists = %v, want %v", name, err == nil, want)
+		}
 	}
 }

@@ -39,6 +39,9 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		icons = a.favicons
 	}
 	lw := &linkwarden.Service{Favourites: a.favourites, Favicons: icons}
+	if a.previews != nil {
+		lw.Previews = a.previews
+	}
 	v1 := linkwardenPrefix + "/api/v1"
 	mux := http.NewServeMux()
 	// respond registers a handler whose result is written as {"response": v},
@@ -176,8 +179,20 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		}
 		return a.linkwardenPreview(w, r, lw, sc, num)
 	}))
-	respond("POST "+v1+"/archives/{id}", func(*http.Request, favourites.Scope) (any, error) {
-		return nil, &linkwardenFailure{http.StatusBadRequest, "Boardly doesn't store screenshots or files. The link was saved without it."}
+	respond("POST "+v1+"/archives/{id}", func(r *http.Request, sc favourites.Scope) (any, error) {
+		num, err := pathNum(r, linkwarden.ErrLinkNotFound)
+		if err != nil {
+			return nil, err
+		}
+		// format 0 and 1 are a PNG or JPEG screenshot; the others are files.
+		if f := r.URL.Query().Get("format"); (f != "0" && f != "1") || a.previews == nil {
+			return nil, &linkwardenFailure{http.StatusBadRequest, "Boardly only stores screenshots, not PDFs or archived pages. The link was saved without it."}
+		}
+		data, err := screenshotUpload(r, a.previews.MaxBytes)
+		if err != nil {
+			return nil, err
+		}
+		return lw.UploadPreview(r.Context(), sc, num, data)
 	})
 
 	mux.Handle(linkwardenPrefix+"/", linkwardenServe(func(http.ResponseWriter, *http.Request) error {
@@ -186,7 +201,28 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 	return mux
 }
 
-// linkwardenPreview serves a link's favicon as its preview image.
+// screenshotUpload reads the file field of a multipart upload of at most
+// maxBytes, plus room for the form around it.
+func screenshotUpload(r *http.Request, maxBytes int64) ([]byte, error) {
+	tooLarge := &linkwardenFailure{http.StatusBadRequest, "The screenshot is too large."}
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBytes+64<<10)
+	file, _, err := r.FormFile("file")
+	var maxErr *http.MaxBytesError
+	if errors.As(err, &maxErr) {
+		return nil, tooLarge
+	}
+	if err != nil {
+		return nil, &linkwardenFailure{http.StatusBadRequest, "The upload needs a file."}
+	}
+	defer file.Close()
+	data, err := images.ReadLimit(file, maxBytes)
+	if errors.Is(err, images.ErrTooLarge) {
+		return nil, tooLarge
+	}
+	return data, err
+}
+
+// linkwardenPreview serves a link's preview image, or its favicon.
 func (a *api) linkwardenPreview(w http.ResponseWriter, r *http.Request, lw *linkwarden.Service, sc favourites.Scope, num int64) error {
 	format := r.URL.Query().Get("format")
 	if r.URL.Query().Get("preview") == "" || (format != "0" && format != "1") || a.images == nil {

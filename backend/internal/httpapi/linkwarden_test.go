@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/png"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"boardly/internal/images"
 )
@@ -128,12 +132,96 @@ func TestLinkwardenExtensionFlow(t *testing.T) {
 		t.Errorf("already saved after saving: %d", n)
 	}
 
-	// Screenshot upload after saving: refused, the link stays.
-	rec := c.do("POST", lwV1+"/archives/"+strconv.FormatInt(link.ID, 10)+"?format=0", "")
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "screenshots") {
-		t.Errorf("screenshot upload: %d %s", rec.Code, rec.Body)
+	// Screenshot upload after saving: it becomes the link's preview.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.previews.Run(ctx)
+	screenshot := testScreenshot(t, 1600, 900)
+	rec := c.upload(link.ID, "0", screenshot)
+	if got := lwDecode[lwLink](t, rec, http.StatusOK); got.ID != link.ID {
+		t.Errorf("upload response = %+v", got)
 	}
-	lwDecode[lwLink](t, c.do("GET", lwV1+"/links/"+strconv.FormatInt(link.ID, 10), ""), http.StatusOK)
+	preview := lwV1 + "/archives/" + strconv.FormatInt(link.ID, 10) + "?format=0&preview=true"
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		rec := c.do("GET", preview, "")
+		if rec.Code == http.StatusOK && rec.Header().Get("Content-Type") == "image/jpeg" {
+			img, _, err := image.DecodeConfig(rec.Body)
+			if err != nil || img.Width != 800 || img.Height != 450 {
+				t.Fatalf("preview = %+v, %v; want an 800×450 JPEG", img, err)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the screenshot never became the preview: %d %v", rec.Code, rec.Header())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got := lwDecode[lwLink](t, c.do("GET", lwV1+"/links/"+strconv.FormatInt(link.ID, 10), ""), http.StatusOK); got.Preview == "unavailable" {
+		t.Errorf("link preview = %q after the upload", got.Preview)
+	}
+}
+
+// testScreenshot returns a w×h PNG.
+func testScreenshot(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewRGBA(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+// upload sends a file to the archive endpoint as the browser extension does.
+func (c linkwardenClient) upload(linkID int64, format string, data []byte) *httptest.ResponseRecorder {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	part, _ := mw.CreateFormFile("file", "screenshot.png")
+	_, _ = part.Write(data)
+	_ = mw.Close()
+	r := httptest.NewRequest("POST", lwV1+"/archives/"+strconv.FormatInt(linkID, 10)+"?format="+format, &body)
+	r.RemoteAddr = "192.0.2.1:4000"
+	r.Header.Set("Content-Type", mw.FormDataContentType())
+	withBearer(c.secret)(r)
+	fromExtension(r)
+	rec := httptest.NewRecorder()
+	c.s.h.ServeHTTP(rec, r)
+	return rec
+}
+
+func TestLinkwardenScreenshotUploadRefusals(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	c := s.linkwardenToken(t, ann)
+	link := lwDecode[lwLink](t, c.do("POST", lwV1+"/links", `{"url":"https://example.org/"}`), http.StatusOK)
+	outside := s.create(t, ann, map[string]any{"kind": "link", "url": "https://example.org/outside"})
+	var outsideNum int64
+	if err := s.db.QueryRow(`SELECT num FROM favourite_nodes WHERE id = ?`, outside.ID).Scan(&outsideNum); err != nil {
+		t.Fatal(err)
+	}
+
+	big := append(testScreenshot(t, 10, 10), make([]byte, 2<<20)...)
+	for name, tt := range map[string]struct {
+		id     int64
+		format string
+		data   []byte
+		status int
+		text   string
+	}{
+		"too large":    {link.ID, "0", big, http.StatusBadRequest, "too large"},
+		"text file":    {link.ID, "0", []byte("hello"), http.StatusBadRequest, "PNG, JPEG"},
+		"pdf":          {link.ID, "2", []byte("%PDF-1.4"), http.StatusBadRequest, "PDFs"},
+		"out of scope": {outsideNum, "0", testScreenshot(t, 10, 10), http.StatusNotFound, "Link not found"},
+	} {
+		rec := c.upload(tt.id, tt.format, tt.data)
+		if rec.Code != tt.status || !strings.Contains(rec.Body.String(), tt.text) {
+			t.Errorf("%s: %d %s, want %d with %q", name, rec.Code, rec.Body, tt.status, tt.text)
+		}
+	}
+	var jobs int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind = 'preview_convert'`).Scan(&jobs); err != nil || jobs != 0 {
+		t.Fatalf("convert jobs = %d, err %v; want none", jobs, err)
+	}
 }
 
 func TestLinkwardenMobileFlow(t *testing.T) {

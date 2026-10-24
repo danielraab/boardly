@@ -5,12 +5,13 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"boardly/internal/images"
 )
 
-// Cache lifetimes of served images. An upload's bytes never change; a
-// favicon's are replaced under the same ID when it is refreshed.
+// Cache lifetimes of served images. The bytes of an upload or a preview never
+// change; a favicon's are replaced under the same ID when it is refreshed.
 const (
 	uploadCacheControl  = "public, max-age=31536000, immutable"
 	faviconCacheControl = "public, max-age=86400"
@@ -47,7 +48,7 @@ func (a *api) getImage(w http.ResponseWriter, r *http.Request) error {
 	h.Set("Content-Length", strconv.FormatInt(img.Size, 10))
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "sandbox")
-	if img.Source == images.SourceUpload {
+	if img.Source == images.SourceUpload || img.Source == images.SourcePreview {
 		h.Set("Cache-Control", uploadCacheControl)
 	} else {
 		h.Set("Cache-Control", faviconCacheControl)
@@ -73,6 +74,33 @@ func (a *api) uploadImage(w http.ResponseWriter, r *http.Request) error {
 }
 
 // getFavicon returns the favicon of a URL's origin, fetching it if needed.
+// Favicon refreshes a user may start: 30 at once, then one every 2 minutes.
+const (
+	refreshesPerHour = 30
+	refreshBurst     = 30
+)
+
+// refreshFavicon fetches the favicon of the URL's site again right away.
+func (a *api) refreshFavicon(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		URL string `json:"url"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	user, _ := CurrentUser(r.Context())
+	if ok, retry := a.refreshLimiter.Reserve(user.ID, time.Now()); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds(retry)))
+		return NewError(http.StatusTooManyRequests, "rate_limited", "Too many icon refreshes, try again later")
+	}
+	id, err := a.favicons.Refresh(r.Context(), body.URL)
+	if err != nil {
+		return imagesError(err)
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"id": id})
+	return nil
+}
+
 func (a *api) getFavicon(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
 		URL string `json:"url"`

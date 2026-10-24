@@ -6,16 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
+	"boardly/internal/jobs"
 	"boardly/internal/users"
 )
 
-type fakeFavicons struct{ queued []string }
+type fakeFavicons struct{}
 
 func (f *fakeFavicons) Lookup(_ context.Context, origins []string) (map[string]string, error) {
 	out := map[string]string{}
@@ -26,8 +28,6 @@ func (f *fakeFavicons) Lookup(_ context.Context, origins []string) (map[string]s
 	}
 	return out, nil
 }
-
-func (f *fakeFavicons) Queue(rawURL string) { f.queued = append(f.queued, rawURL) }
 
 type fixture struct {
 	t        *testing.T
@@ -53,6 +53,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	f := &fixture{t: t, ctx: ctx, user: ann.ID, now: time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC), icons: &fakeFavicons{}}
 	f.fav = favourites.NewStore(database)
+	f.fav.Jobs = jobs.New(database)
 	f.fav.Now = func() time.Time { f.now = f.now.Add(time.Minute); return f.now }
 	f.s = &Service{Favourites: f.fav, Favicons: f.icons, Origin: "https://boardly.example", Now: func() time.Time { return f.now }}
 	if f.topLevel, err = f.fav.EnsureRoot(ctx, database, ann.ID); err != nil {
@@ -124,7 +125,8 @@ func TestBookmarkShape(t *testing.T) {
 	want := fmt.Sprintf(`{"id":%q,"createdAt":"2026-03-04T12:03:00.000Z","modifiedAt":"2026-03-04T12:03:00.000Z","title":"Go",`+
 		`"archived":false,"favourited":false,"taggingStatus":null,"summarizationStatus":null,"embeddingStatus":null,`+
 		`"note":null,"summary":null,"source":null,"userId":%q,"tags":[{"id":%q,"name":"dev","attachedBy":"human"}],`+
-		`"content":{"type":"link","url":"https://go.dev/tour","title":"Go","favicon":"https://boardly.example/api/images/icon-go",`+
+		`"content":{"type":"link","url":"https://go.dev/tour","title":"Go","description":null,`+
+		`"imageUrl":"https://boardly.example/api/images/icon-go","favicon":"https://boardly.example/api/images/icon-go",`+
 		`"crawlStatus":"success","crawledAt":"2026-03-04T12:03:00.000Z"},"assets":[]}`, id, f.user, tagID)
 	if got := jsonOf(t, b); got != want {
 		t.Errorf("bookmark =\n%s\nwant\n%s", got, want)
@@ -136,6 +138,34 @@ func TestBookmarkShape(t *testing.T) {
 	}
 	if _, err := f.s.GetBookmark(f.ctx, f.sc, f.sc.RootID); !errors.Is(err, favourites.ErrNotFound) {
 		t.Errorf("folder as bookmark: %v", err)
+	}
+}
+
+func TestBookmarkDescriptionAndImage(t *testing.T) {
+	f := newFixture(t)
+	withPreview := f.link(f.sc.RootID, "Go", "https://go.dev/tour")
+	if _, err := f.fav.DB.Exec(`INSERT INTO images (id, source, user_id, content_type, size, created_at)
+		VALUES ('prev-1', 'preview', ?, 'image/jpeg', 10, '2026-01-01T00:00:00.000Z')`, f.user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.fav.DB.Exec(`UPDATE favourite_nodes SET description = 'A tour of Go', preview_image_id = 'prev-1' WHERE id = ?`, withPreview); err != nil {
+		t.Fatal(err)
+	}
+	onlyFavicon := f.link(f.sc.RootID, "Play", "https://go.dev/play")
+	neither := f.link(f.sc.RootID, "Example", "https://example.org/")
+
+	for id, want := range map[string]string{
+		withPreview: `"description":"A tour of Go","imageUrl":"https://boardly.example/api/images/prev-1","favicon":"https://boardly.example/api/images/icon-go"`,
+		onlyFavicon: `"description":null,"imageUrl":"https://boardly.example/api/images/icon-go","favicon":"https://boardly.example/api/images/icon-go"`,
+		neither:     `"description":null,"imageUrl":null,"favicon":null`,
+	} {
+		b, err := f.s.GetBookmark(f.ctx, f.sc, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := jsonOf(t, b.Content); !strings.Contains(got, want) {
+			t.Errorf("content = %s, want it to contain %s", got, want)
+		}
 	}
 }
 
@@ -260,8 +290,8 @@ func TestCreateBookmark(t *testing.T) {
 	if got := f.children(f.sc.RootID); !reflect.DeepEqual(got, []string{"Example", "A"}) {
 		t.Errorf("root = %v", got)
 	}
-	if !reflect.DeepEqual(f.icons.queued, []string{"https://example.org"}) {
-		t.Errorf("favicons queued = %v", f.icons.queued)
+	if got := f.queuedFavicons(); !reflect.DeepEqual(got, []string{"https://example.org"}) {
+		t.Errorf("favicons queued = %v", got)
 	}
 
 	again, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "link", URL: "https://example.org/#top"})
@@ -305,6 +335,33 @@ func TestUpdateAndDeleteBookmark(t *testing.T) {
 	in.URL = nil
 	if b, err := f.s.UpdateBookmark(f.ctx, f.sc, in); err != nil || b.Title != nil {
 		t.Errorf("clear title = %+v, %v", b.Title, err)
+	}
+
+	// The description is set, kept when missing, and removed by null or "".
+	for _, tt := range []struct {
+		raw  string
+		want *string
+	}{
+		{`{"description":"  Read later "}`, ptr("Read later")},
+		{`{"title":"T"}`, ptr("Read later")},
+		{`{"description":null}`, nil},
+		{`{"description":"Again"}`, ptr("Again")},
+		{`{"description":""}`, nil},
+	} {
+		in := UpdateBookmarkInput{}
+		_ = json.Unmarshal([]byte(tt.raw), &in)
+		in.BookmarkID = id
+		b, err := f.s.UpdateBookmark(f.ctx, f.sc, in)
+		if err != nil {
+			t.Fatalf("%s: %v", tt.raw, err)
+		}
+		if got := b.Content.Description; (got == nil) != (tt.want == nil) || (got != nil && *got != *tt.want) {
+			t.Errorf("%s: description = %v, want %v", tt.raw, got, tt.want)
+		}
+	}
+	long := UpdateBookmarkInput{BookmarkID: id, Description: json.RawMessage(strconv.Quote(strings.Repeat("x", 2049)))}
+	if _, err := f.s.UpdateBookmark(f.ctx, f.sc, long); !errors.Is(err, favourites.ErrInvalidDescription) {
+		t.Errorf("too long: %v", err)
 	}
 
 	for name, raw := range map[string]string{
@@ -566,3 +623,24 @@ func TestSettingsAndStats(t *testing.T) {
 		t.Errorf("this week = %d", st.BookmarkingActivity.ThisWeek)
 	}
 }
+
+// queuedFavicons returns the origins of the pending favicon jobs; jobs of
+// one origin are combined.
+func (f *fixture) queuedFavicons() []string {
+	f.t.Helper()
+	rows, err := f.fav.DB.Query(`SELECT dedup_key FROM jobs WHERE kind = 'favicon' ORDER BY id`)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			f.t.Fatal(err)
+		}
+		out = append(out, u)
+	}
+	return out
+}
+func ptr(s string) *string { return &s }

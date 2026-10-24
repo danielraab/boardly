@@ -37,6 +37,18 @@ type Config struct {
 	// FetchAllowPrivate lets the favicon fetcher connect to private,
 	// loopback and link-local addresses.
 	FetchAllowPrivate bool
+
+	Previews Previews
+}
+
+// Previews holds the limits of link preview images.
+type Previews struct {
+	// MaxBytes is the largest image accepted before conversion.
+	MaxBytes int64
+	// MaxPixels is the largest width times height accepted before decoding.
+	MaxPixels int64
+	// Width is the largest width of a converted preview.
+	Width int
 }
 
 // DefaultAAGUIDListURL is the community-maintained passkey provider list.
@@ -70,6 +82,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			From: "Boardly <noreply@localhost>",
 			TLS:  "starttls",
 		},
+		Previews: Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
 	}
 
 	port, err := LoadPort(lookupEnv)
@@ -137,6 +150,23 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("BOARDLY_FETCH_ALLOW_PRIVATE: %q must be \"true\" or \"false\"", v)
 		}
 		cfg.FetchAllowPrivate = b
+	}
+
+	for _, p := range []struct {
+		name string
+		set  func(int64)
+	}{
+		{"BOARDLY_PREVIEW_MAX_SIZE_MB", func(n int64) { cfg.Previews.MaxBytes = n << 20 }},
+		{"BOARDLY_PREVIEW_MAX_PIXELS", func(n int64) { cfg.Previews.MaxPixels = n }},
+		{"BOARDLY_PREVIEW_WIDTH", func(n int64) { cfg.Previews.Width = int(n) }},
+	} {
+		if v := getenv(p.name); v != "" {
+			n, err := strconv.ParseInt(v, 10, 32)
+			if err != nil || n < 1 {
+				return Config{}, fmt.Errorf("%s: %q must be a positive whole number", p.name, v)
+			}
+			p.set(n)
+		}
 	}
 
 	cfg.WebAuthnRPID = cfg.BaseURL.Hostname()

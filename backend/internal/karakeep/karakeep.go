@@ -38,7 +38,6 @@ func unsupported(field string) error {
 // Favicons looks up and fetches favicons by origin (images.Favicons).
 type Favicons interface {
 	Lookup(ctx context.Context, origins []string) (map[string]string, error)
-	Queue(rawURL string)
 }
 
 // Service implements the Karakeep procedures on the favourites tree.
@@ -57,11 +56,14 @@ type Tag struct {
 	AttachedBy string `json:"attachedBy"`
 }
 
-// LinkContent is the content of a link bookmark.
+// LinkContent is the content of a link bookmark. ImageURL is the preview
+// image, or the favicon when the link has none.
 type LinkContent struct {
 	Type        string    `json:"type"`
 	URL         string    `json:"url"`
 	Title       *string   `json:"title"`
+	Description *string   `json:"description"`
+	ImageURL    *string   `json:"imageUrl"`
 	Favicon     *string   `json:"favicon"`
 	CrawlStatus string    `json:"crawlStatus"`
 	CrawledAt   trpc.Date `json:"crawledAt"`
@@ -162,9 +164,12 @@ func (s *Service) bookmarks(ctx context.Context, userID string, links []*favouri
 		var favicon *string
 		if o, err := images.Origin(*n.URL); err == nil {
 			if id, ok := icons[o]; ok {
-				u := s.Origin + "/api/images/" + id
-				favicon = &u
+				favicon = s.imageURL(id)
 			}
+		}
+		imageURL := favicon
+		if n.PreviewImageID != nil {
+			imageURL = s.imageURL(*n.PreviewImageID)
 		}
 		tags := make([]Tag, len(n.Tags))
 		for j, t := range n.Tags {
@@ -178,13 +183,19 @@ func (s *Service) bookmarks(ctx context.Context, userID string, links []*favouri
 			UserID:     userID,
 			Tags:       tags,
 			Content: LinkContent{
-				Type: "link", URL: *n.URL, Title: n.Title, Favicon: favicon,
+				Type: "link", URL: *n.URL, Title: n.Title, Description: n.Description, ImageURL: imageURL, Favicon: favicon,
 				CrawlStatus: "success", CrawledAt: trpc.Date(n.CreatedAt),
 			},
 			Assets: []struct{}{},
 		}
 	}
 	return out, nil
+}
+
+// imageURL is the absolute URL of an image of Boardly.
+func (s *Service) imageURL(id string) *string {
+	u := s.Origin + "/api/images/" + id
+	return &u
 }
 
 // bookmark loads the subtree and returns the bookmark with the given ID.

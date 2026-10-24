@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 
 	"boardly/internal/favourites"
@@ -30,8 +32,8 @@ func TestCreateLink(t *testing.T) {
 	if got := f.children(f.sc.RootID); !reflect.DeepEqual(got, []string{"Example", "Old", "Later"}) {
 		t.Errorf("root = %v", got)
 	}
-	if len(f.icons.queued) != 1 || f.icons.queued[0] != "https://example.org" {
-		t.Errorf("queued favicons = %v", f.icons.queued)
+	if got := f.queuedFavicons(); len(got) != 1 || got[0] != "https://example.org" {
+		t.Errorf("queued favicons = %v", got)
 	}
 
 	// Into a collection by ID, and again with the same URL: saved twice.
@@ -75,7 +77,7 @@ func TestCreateLinkRejections(t *testing.T) {
 		"pdf":              {Type: ptr("pdf"), URL: ptr("https://example.org/a.pdf")},
 		"no url":           {Name: ptr("Note")},
 		"invalid url":      {URL: ptr("javascript:alert(1)")},
-		"description":      {URL: ptr("https://example.org"), Description: ptr("About")},
+		"long description": {URL: ptr("https://example.org"), Description: ptr(strings.Repeat("x", 2049))},
 		"outside":          {URL: ptr("https://example.org"), Collection: &CollectionRef{ID: ptr(f.num(work))}},
 		"bad tag":          {URL: ptr("https://example.org"), Tags: []TagRef{{Name: " "}}, Collection: &CollectionRef{Name: ptr("New")}},
 		"unknown tag ID":   {URL: ptr("https://example.org"), Tags: []TagRef{{ID: ptr(int64(99))}}},
@@ -86,7 +88,8 @@ func TestCreateLinkRejections(t *testing.T) {
 			t.Errorf("%s: no error", name)
 		}
 		if !isInput(err) && !errors.Is(err, favourites.ErrInvalidURL) && !errors.Is(err, favourites.ErrInvalidTag) &&
-			!errors.Is(err, favourites.ErrInvalidTitle) && !errors.Is(err, ErrTagNotFound) {
+			!errors.Is(err, favourites.ErrInvalidTitle) && !errors.Is(err, ErrTagNotFound) &&
+			!errors.Is(err, favourites.ErrInvalidDescription) {
 			t.Errorf("%s: err = %v", name, err)
 		}
 	}
@@ -157,15 +160,16 @@ func TestUpdateLinkRejections(t *testing.T) {
 		return UpdateLinkInput{Name: json.RawMessage(`"Changed"`), Tags: &[]TagRef{{Name: "new"}}, Collection: &CollectionRef{ID: &root}}
 	}
 	for name, change := range map[string]func(in *UpdateLinkInput){
-		"pin":           func(in *UpdateLinkInput) { in.PinnedBy = []*PinRef{{ID: ptr(int64(1))}} },
-		"description":   func(in *UpdateLinkInput) { in.Description = ptr("About") },
-		"color":         func(in *UpdateLinkInput) { in.Color = ptr("#fff") },
-		"icon":          func(in *UpdateLinkInput) { in.Icon = ptr("star") },
-		"no tags":       func(in *UpdateLinkInput) { in.Tags = nil },
-		"no collection": func(in *UpdateLinkInput) { in.Collection = nil },
-		"outside":       func(in *UpdateLinkInput) { in.Collection = &CollectionRef{ID: ptr(f.num(work))} },
-		"invalid url":   func(in *UpdateLinkInput) { in.URL = ptr("example") },
-		"bad tag":       func(in *UpdateLinkInput) { in.Tags = &[]TagRef{{Name: ""}} },
+		"pin":             func(in *UpdateLinkInput) { in.PinnedBy = []*PinRef{{ID: ptr(int64(1))}} },
+		"description":     func(in *UpdateLinkInput) { in.Description = json.RawMessage(strconv.Quote(strings.Repeat("x", 2049))) },
+		"bad description": func(in *UpdateLinkInput) { in.Description = json.RawMessage(`42`) },
+		"color":           func(in *UpdateLinkInput) { in.Color = ptr("#fff") },
+		"icon":            func(in *UpdateLinkInput) { in.Icon = ptr("star") },
+		"no tags":         func(in *UpdateLinkInput) { in.Tags = nil },
+		"no collection":   func(in *UpdateLinkInput) { in.Collection = nil },
+		"outside":         func(in *UpdateLinkInput) { in.Collection = &CollectionRef{ID: ptr(f.num(work))} },
+		"invalid url":     func(in *UpdateLinkInput) { in.URL = ptr("example") },
+		"bad tag":         func(in *UpdateLinkInput) { in.Tags = &[]TagRef{{Name: ""}} },
 	} {
 		in := valid()
 		change(&in)
@@ -178,10 +182,57 @@ func TestUpdateLinkRejections(t *testing.T) {
 	}
 	// Empty pin entries and fields the API returns as null or "" pass.
 	in := valid()
-	in.PinnedBy, in.Description, in.Icon = []*PinRef{}, ptr(""), nil
+	in.PinnedBy, in.Description, in.Icon = []*PinRef{}, json.RawMessage(`""`), nil
 	if _, err := f.s.UpdateLink(f.ctx, f.sc, num, in); err != nil {
 		t.Errorf("round trip: %v", err)
 	}
+}
+
+func TestLinkDescriptions(t *testing.T) {
+	f := newFixture(t)
+	created, err := f.s.CreateLink(f.ctx, f.sc, CreateLinkInput{URL: ptr("https://example.org"), Description: ptr(" Read on the weekend ")})
+	if err != nil || created.Description != "Read on the weekend" {
+		t.Fatalf("create: %q, %v", created.Description, err)
+	}
+	root := f.num(f.sc.RootID)
+	update := func(raw string) Link {
+		t.Helper()
+		in := UpdateLinkInput{Tags: &[]TagRef{}, Collection: &CollectionRef{ID: &root}}
+		if raw != "" {
+			in.Description = json.RawMessage(raw)
+		}
+		got, err := f.s.UpdateLink(f.ctx, f.sc, created.ID, in)
+		if err != nil {
+			t.Fatalf("update %s: %v", raw, err)
+		}
+		return got
+	}
+	for _, tt := range []struct{ raw, want string }{
+		{`"Updated notes"`, "Updated notes"},
+		{"", "Updated notes"}, // missing: kept
+		{`null`, ""},
+		{`"Again"`, "Again"},
+		{`""`, ""},
+	} {
+		if got := update(tt.raw); got.Description != tt.want {
+			t.Errorf("update %s: description %q, want %q", tt.raw, got.Description, tt.want)
+		}
+	}
+	if d := f.nodes()[f.linkID(created.ID)].Description; d != nil {
+		t.Errorf("stored description = %q, want none", *d)
+	}
+}
+
+// linkID returns the node ID of the link with an integer ID.
+func (f *fixture) linkID(num int64) string {
+	f.t.Helper()
+	for id, n := range f.nodes() {
+		if n.Num == num {
+			return id
+		}
+	}
+	f.t.Fatalf("no link %d", num)
+	return ""
 }
 
 func TestDeleteLink(t *testing.T) {

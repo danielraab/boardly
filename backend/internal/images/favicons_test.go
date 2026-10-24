@@ -227,21 +227,64 @@ func TestFaviconCache(t *testing.T) {
 		t.Fatalf("Lookup = %v, %v", got, err)
 	}
 
-	// After 30 days it is fetched again under the same ID.
+	// A stored favicon is kept, however old it is.
 	icon = gifData
-	clock.now = clock.now.Add(2 * 24 * time.Hour)
-	if refreshed, err := f.Get(ctx, s.URL); err != nil || refreshed != id {
-		t.Fatalf("refresh: %q, %v", refreshed, err)
+	clock.now = clock.now.Add(60 * 24 * time.Hour)
+	if kept, err := f.Get(ctx, s.URL); err != nil || kept != id || s.requests.Load() != fetches {
+		t.Fatalf("60 days later: %q, %v, %d requests", kept, err, s.requests.Load())
+	}
+	if !bytes.Equal(f.mustRead(t, id), pngData) {
+		t.Fatal("old favicon changed without a refresh")
+	}
+}
+
+func TestFaviconRefresh(t *testing.T) {
+	ctx := context.Background()
+	f, clock := newFavicons(t, true)
+	s := newSite(t, nil)
+
+	// A failed fetch starts the back-off, which a refresh ignores.
+	if _, err := f.Get(ctx, s.URL); !errors.Is(err, ErrNoFavicon) {
+		t.Fatalf("first: %v", err)
+	}
+	s.routes = map[string]func(http.ResponseWriter, *http.Request){"/favicon.ico": file(pngData)}
+	clock.now = clock.now.Add(time.Hour)
+	if _, err := f.Get(ctx, s.URL); !errors.Is(err, ErrNoFavicon) {
+		t.Fatalf("Get during the back-off: %v", err)
+	}
+	id, err := f.Refresh(ctx, s.URL+"/page")
+	if err != nil {
+		t.Fatalf("refresh after a failure: %v", err)
+	}
+	if got, err := f.Get(ctx, s.URL); err != nil || got != id {
+		t.Fatalf("Get after the refresh: %q, %v", got, err)
+	}
+
+	// A refresh replaces the bytes under the same ID.
+	s.routes["/favicon.ico"] = file(gifData)
+	if again, err := f.Refresh(ctx, s.URL); err != nil || again != id {
+		t.Fatalf("second refresh: %q, %v", again, err)
 	}
 	if !bytes.Equal(f.mustRead(t, id), gifData) {
 		t.Fatal("refresh didn't replace the bytes")
 	}
 
-	// A failed refresh keeps the old image.
+	// A failed refresh reports it and keeps the stored image.
 	delete(s.routes, "/favicon.ico")
-	clock.now = clock.now.Add(31 * 24 * time.Hour)
-	if kept, err := f.Get(ctx, s.URL); err != nil || kept != id {
-		t.Fatalf("failed refresh: %q, %v", kept, err)
+	if _, err := f.Refresh(ctx, s.URL); !errors.Is(err, ErrNoFavicon) {
+		t.Fatalf("failed refresh: %v, want ErrNoFavicon", err)
+	}
+	if kept, err := f.Get(ctx, s.URL); err != nil || kept != id || !bytes.Equal(f.mustRead(t, id), gifData) {
+		t.Fatalf("after a failed refresh: %q, %v", kept, err)
+	}
+
+	// Invalid and blocked addresses.
+	if _, err := f.Refresh(ctx, "javascript:alert(1)"); !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("invalid URL: %v", err)
+	}
+	guarded, _ := newFavicons(t, false)
+	if _, err := guarded.Refresh(ctx, s.URL); !errors.Is(err, ErrBlocked) {
+		t.Fatalf("blocked: %v", err)
 	}
 }
 

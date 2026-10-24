@@ -3,6 +3,7 @@ package images
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 	"boardly/internal/db"
 	"boardly/internal/favourites"
+	"boardly/internal/jobs"
 )
 
 // Limits of the favicon fetcher.
@@ -26,10 +28,8 @@ const (
 	FetchTimeout  = 10 * time.Second
 	MaxPageSize   = 512 << 10
 	MaxRedirects  = 5
-	RefreshAfter  = 30 * 24 * time.Hour
 	RetryAfter    = 24 * time.Hour
 	workers       = 4
-	queueSize     = 256
 	maxCandidates = 4
 )
 
@@ -45,8 +45,10 @@ type Favicons struct {
 	Client *http.Client
 	Now    func() time.Time
 
+	// Jobs is the queue that favicon fetches run on.
+	Jobs *jobs.Queue
+
 	group singleflight.Group
-	queue chan string
 }
 
 // NewFavicons returns a fetcher whose connections are guarded unless
@@ -70,27 +72,17 @@ func NewFavicons(store *Store, allowPrivate bool) *Favicons {
 			return nil
 		},
 	}
-	return &Favicons{Images: store, Client: client, Now: time.Now, queue: make(chan string, queueSize)}
+	return &Favicons{Images: store, Client: client, Now: time.Now}
 }
 
 // Origin returns scheme://host[:port] of an http or https URL, lower-cased
-// and without the default port.
+// and without the default port (see favourites.Origin), or ErrInvalidURL.
 func Origin(rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+	o, err := favourites.Origin(rawURL)
+	if err != nil {
 		return "", ErrInvalidURL
 	}
-	scheme, host, port := strings.ToLower(u.Scheme), strings.ToLower(u.Hostname()), u.Port()
-	if (scheme == "http" && port == "80") || (scheme == "https" && port == "443") {
-		port = ""
-	}
-	if strings.Contains(host, ":") {
-		host = "[" + host + "]"
-	}
-	if port != "" {
-		host += ":" + port
-	}
-	return scheme + "://" + host, nil
+	return o, nil
 }
 
 // cached is an origin's row in favicons.
@@ -101,7 +93,9 @@ type cached struct {
 }
 
 // Get returns the image ID of the favicon of rawURL's origin, from the cache
-// or by fetching it. It fails with ErrInvalidURL, ErrBlocked or ErrNoFavicon.
+// or by fetching it. A stored favicon is kept until Refresh replaces it.
+// After a failed fetch, the origin isn't fetched again for RetryAfter. It
+// fails with ErrInvalidURL, ErrBlocked or ErrNoFavicon.
 func (f *Favicons) Get(ctx context.Context, rawURL string) (string, error) {
 	origin, err := Origin(rawURL)
 	if err != nil {
@@ -111,18 +105,34 @@ func (f *Favicons) Get(ctx context.Context, rawURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	now := f.Now()
-	fresh := c.imageID.Valid && f.within(c.fetchedAt, now, RefreshAfter)
-	backingOff := f.within(c.failedAt, now, RetryAfter)
-	switch {
-	case fresh:
+	if c.imageID.Valid {
 		return c.imageID.String, nil
-	case backingOff && c.imageID.Valid:
-		return c.imageID.String, nil
-	case backingOff:
+	}
+	if f.within(c.failedAt, f.Now(), RetryAfter) {
 		return "", ErrNoFavicon
 	}
+	return f.fetchShared(ctx, origin, rawURL, c)
+}
 
+// Refresh fetches the favicon of rawURL's origin again right away, also
+// during the back-off after a failure, and returns its image ID. A refresh
+// keeps the ID of a stored favicon. When it fails, the stored favicon stays
+// and the error is ErrNoFavicon or ErrBlocked.
+func (f *Favicons) Refresh(ctx context.Context, rawURL string) (string, error) {
+	origin, err := Origin(rawURL)
+	if err != nil {
+		return "", err
+	}
+	c, err := f.load(ctx, origin)
+	if err != nil {
+		return "", err
+	}
+	return f.fetchShared(ctx, origin, rawURL, c)
+}
+
+// fetchShared runs one refresh per origin at a time; concurrent callers wait
+// for it and share its result.
+func (f *Favicons) fetchShared(ctx context.Context, origin, rawURL string, c cached) (string, error) {
 	// The fetch must outlive a cancelled request, because others may wait on it.
 	v, err, _ := f.group.Do(origin, func() (any, error) {
 		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), FetchTimeout)
@@ -217,75 +227,34 @@ func (f *Favicons) LookupImages(ctx context.Context, origins []string) (map[stri
 	return out, rows.Err()
 }
 
-// Queue asks for rawURL's favicon in the background. It never blocks; when
-// the queue is full the request is dropped and retried on a later Get.
+// Queue asks for rawURL's favicon in the background, as a favicon job keyed
+// by its origin. Links queue theirs with the change that creates them; this
+// is for other URLs, such as plain link widgets.
 func (f *Favicons) Queue(rawURL string) {
-	select {
-	case f.queue <- rawURL:
-	default:
+	origin, err := Origin(rawURL)
+	if err != nil || f.Jobs == nil {
+		return
+	}
+	ctx := context.Background()
+	if err := f.Jobs.Enqueue(ctx, f.Images.DB, jobs.KindFavicon, origin, jobs.FaviconPayload{URL: rawURL}); err != nil {
+		slog.ErrorContext(ctx, "queueing a favicon failed", "error", err)
 	}
 }
 
-// Run works through the queue until ctx is done.
+// Run starts the favicon workers on the job queue until ctx is done.
 func (f *Favicons) Run(ctx context.Context) {
-	for range workers {
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case u := <-f.queue:
-					if _, err := f.Get(ctx, u); err != nil && !errors.Is(err, ErrNoFavicon) &&
-						!errors.Is(err, ErrBlocked) && ctx.Err() == nil {
-						slog.WarnContext(ctx, "fetching favicon failed", "error", err)
-					}
-				}
-			}
-		}()
-	}
+	f.Jobs.Run(ctx, jobs.KindFavicon, workers, f.handle)
 }
 
-// Backfill queues one link URL for every origin without a favicons row.
-func (f *Favicons) Backfill(ctx context.Context) error {
-	rows, err := f.Images.DB.QueryContext(ctx, `SELECT url FROM favourite_nodes WHERE kind = 'link'`)
-	if err != nil {
+// handle is the favicon job. A site without a favicon or on a blocked
+// address is not an error.
+func (f *Favicons) handle(ctx context.Context, job jobs.Job) error {
+	var p jobs.FaviconPayload
+	if err := json.Unmarshal(job.Payload, &p); err != nil {
 		return err
 	}
-	byOrigin := map[string]string{}
-	for rows.Next() {
-		var u string
-		if err := rows.Scan(&u); err != nil {
-			rows.Close()
-			return err
-		}
-		if o, err := Origin(u); err == nil {
-			if _, ok := byOrigin[o]; !ok {
-				byOrigin[o] = u
-			}
-		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	if _, err := f.Get(ctx, p.URL); err != nil && !errors.Is(err, ErrNoFavicon) && !errors.Is(err, ErrBlocked) {
 		return err
-	}
-	known, err := f.Images.DB.QueryContext(ctx, `SELECT origin FROM favicons`)
-	if err != nil {
-		return err
-	}
-	for known.Next() {
-		var o string
-		if err := known.Scan(&o); err != nil {
-			known.Close()
-			return err
-		}
-		delete(byOrigin, o)
-	}
-	known.Close()
-	if err := known.Err(); err != nil {
-		return err
-	}
-	for _, u := range byOrigin {
-		f.Queue(u)
 	}
 	return nil
 }
@@ -311,16 +280,14 @@ func (f *Favicons) within(ts sql.NullString, now time.Time, d time.Duration) boo
 }
 
 // refresh fetches the favicon and stores it. A refresh keeps the image ID,
-// so references stay valid. A failed refresh keeps serving the old image.
+// so references stay valid. A failed refresh leaves the stored image as it is
+// and returns ErrBlocked or ErrNoFavicon.
 func (f *Favicons) refresh(ctx context.Context, origin, pageURL string, c cached) (string, error) {
 	now := db.FormatTime(f.Now())
 	data, err := f.fetch(ctx, origin, pageURL)
 	if errors.Is(err, ErrBlocked) {
 		// Not a failure of the site: nothing is recorded, so the answer
 		// stays "blocked" instead of turning into a back-off.
-		if c.imageID.Valid {
-			return c.imageID.String, nil
-		}
 		return "", ErrBlocked
 	}
 	if err != nil {
@@ -328,9 +295,6 @@ func (f *Favicons) refresh(ctx context.Context, origin, pageURL string, c cached
 			`INSERT INTO favicons (origin, failed_at) VALUES (?, ?)
 			 ON CONFLICT (origin) DO UPDATE SET failed_at = excluded.failed_at`, origin, now); dbErr != nil {
 			return "", dbErr
-		}
-		if c.imageID.Valid {
-			return c.imageID.String, nil
 		}
 		return "", fmt.Errorf("%w: %v", ErrNoFavicon, err)
 	}

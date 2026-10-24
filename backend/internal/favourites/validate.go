@@ -13,6 +13,8 @@ const (
 	MaxLinkTitleLength  = 1000
 	MaxURLLength        = 2048
 	MaxTagNameLength    = 100
+	// MaxDescriptionLength matches Linkwarden's limit for link descriptions.
+	MaxDescriptionLength = 2048
 )
 
 // NormalizeFolderName trims the name; empty names and names longer than
@@ -41,6 +43,23 @@ func NormalizeLinkTitle(title *string) (*string, error) {
 	return &trimmed, nil
 }
 
+// NormalizeDescription trims the description. Nil, empty and
+// whitespace-only descriptions become nil; descriptions longer than
+// MaxDescriptionLength return ErrInvalidDescription.
+func NormalizeDescription(description *string) (*string, error) {
+	if description == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*description)
+	if trimmed == "" {
+		return nil, nil
+	}
+	if utf8.RuneCountInString(trimmed) > MaxDescriptionLength {
+		return nil, ErrInvalidDescription
+	}
+	return &trimmed, nil
+}
+
 // NormalizeURL trims the URL and checks that it is an absolute http or https
 // URL with a host and at most MaxURLLength characters. Other schemes, such as
 // javascript:, return ErrInvalidURL because dashboards render these URLs as links.
@@ -62,6 +81,26 @@ func NormalizeURL(raw string) (string, error) {
 // whether a page is already saved.
 func SameURL(a, b string) bool {
 	return comparableURL(a) == comparableURL(b)
+}
+
+// Origin returns scheme://host[:port] of an http or https URL, lower-cased
+// and without the default port, or ErrInvalidURL.
+func Origin(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return "", ErrInvalidURL
+	}
+	scheme, host, port := strings.ToLower(u.Scheme), strings.ToLower(u.Hostname()), u.Port()
+	if (scheme == "http" && port == "80") || (scheme == "https" && port == "443") {
+		port = ""
+	}
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	if port != "" {
+		host += ":" + port
+	}
+	return scheme + "://" + host, nil
 }
 
 func comparableURL(raw string) string {

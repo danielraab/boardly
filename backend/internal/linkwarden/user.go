@@ -2,6 +2,7 @@ package linkwarden
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 
@@ -141,8 +142,9 @@ func (s *Service) Dashboard(ctx context.Context, sc favourites.Scope) (Dashboard
 	return Dashboard{Links: links, CollectionLinks: map[int64][]Link{}, NumberOfTags: len(t.tags())}, nil
 }
 
-// Preview is GET /api/v1/archives/{id}?preview=true: the favicon of the
-// link's origin when the app can show it, else ErrPreviewNotFound.
+// Preview is GET /api/v1/archives/{id}?preview=true: the link's preview
+// image, or else the favicon of its origin when the app can show it, else
+// ErrPreviewNotFound. Only the image ID is used for a preview image.
 func (s *Service) Preview(ctx context.Context, sc favourites.Scope, num int64) (images.FaviconImage, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
@@ -151,6 +153,9 @@ func (s *Service) Preview(ctx context.Context, sc favourites.Scope, num int64) (
 	n, err := t.link(num)
 	if err != nil {
 		return images.FaviconImage{}, err
+	}
+	if n.PreviewImageID != nil {
+		return images.FaviconImage{ID: *n.PreviewImageID, ContentType: "image/jpeg"}, nil
 	}
 	origin, err := images.Origin(*n.URL)
 	if err != nil {
@@ -165,4 +170,35 @@ func (s *Service) Preview(ctx context.Context, sc favourites.Scope, num int64) (
 		return images.FaviconImage{}, ErrPreviewNotFound
 	}
 	return img, nil
+}
+
+// UploadPreview is POST /api/v1/archives/{id} with a screenshot (format 0 or
+// 1): the image replaces the link's preview once it is converted.
+func (s *Service) UploadPreview(ctx context.Context, sc favourites.Scope, num int64, data []byte) (Link, error) {
+	if s.Previews == nil {
+		return Link{}, unsupported("screenshots")
+	}
+	t, err := s.load(ctx, sc)
+	if err != nil {
+		return Link{}, err
+	}
+	n, err := t.link(num)
+	if err != nil {
+		return Link{}, err
+	}
+	switch err := s.Previews.Replace(ctx, sc.UserID, n.ID, *n.URL, data); {
+	case errors.Is(err, images.ErrTooLarge):
+		return Link{}, &InputError{"The screenshot is too large."}
+	case errors.Is(err, images.ErrTooManyPixels):
+		return Link{}, &InputError{"The screenshot has too many pixels."}
+	case errors.Is(err, images.ErrUnsupported):
+		return Link{}, &InputError{"Boardly only takes PNG, JPEG, GIF or WebP screenshots."}
+	case err != nil:
+		return Link{}, err
+	}
+	links, err := s.mapLinks(ctx, t, []*favourites.ScopedNode{n})
+	if err != nil {
+		return Link{}, err
+	}
+	return links[0], nil
 }

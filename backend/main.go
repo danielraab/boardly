@@ -24,6 +24,7 @@ import (
 	"boardly/internal/favourites"
 	"boardly/internal/httpapi"
 	"boardly/internal/images"
+	"boardly/internal/jobs"
 	"boardly/internal/mail"
 	"boardly/internal/users"
 	"boardly/internal/web"
@@ -80,16 +81,21 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	queue := jobs.New(database)
 	favicons := images.NewFavicons(imageStore, cfg.FetchAllowPrivate)
-	go favicons.Run(ctx)
-	go func() {
-		if err := favicons.Backfill(ctx); err != nil && ctx.Err() == nil {
-			slog.ErrorContext(ctx, "queueing missing favicons failed", "error", err)
-		}
-	}()
+	favicons.Jobs = queue
+	previews, err := images.NewPreviews(imageStore, queue, favicons.Client, cfg.Previews.MaxBytes,
+		images.Converter{MaxPixels: cfg.Previews.MaxPixels, Width: cfg.Previews.Width})
+	if err != nil {
+		return err
+	}
+	if err := startJobs(ctx, queue, favicons, previews); err != nil {
+		return err
+	}
 	go imageStore.RunCleanup(ctx, time.Hour)
 
 	favouriteStore := favourites.NewStore(database)
+	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
 	widgets.Register(dashboardStore, favouriteStore, favicons)
 
@@ -104,6 +110,7 @@ func run() error {
 			Dashboards:        dashboardStore,
 			Images:            imageStore,
 			Favicons:          favicons,
+			Previews:          previews,
 			AppTokens:         apptokens.NewStore(database),
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
@@ -134,6 +141,17 @@ func run() error {
 		return err
 	}
 	slog.Info("shutdown complete")
+	return nil
+}
+
+// startJobs queues the jobs that were running when the server stopped again
+// and starts the workers of every job kind.
+func startJobs(ctx context.Context, queue *jobs.Queue, favicons *images.Favicons, previews *images.Previews) error {
+	if err := queue.Recover(ctx); err != nil {
+		return fmt.Errorf("recovering background jobs: %w", err)
+	}
+	favicons.Run(ctx)
+	previews.Run(ctx)
 	return nil
 }
 
