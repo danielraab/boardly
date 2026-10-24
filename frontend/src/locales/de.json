@@ -8,7 +8,8 @@
 		"dashboards": "Dashboards",
 		"favourites": "Favoriten",
 		"settings": "Einstellungen",
-		"signOut": "Abmelden"
+		"signOut": "Abmelden",
+		"addLink": "Link hinzufügen"
 	},
 	"theme": {
 		"system": "System",
@@ -219,7 +220,6 @@
 		"addLinkTo": "Link zu {{name}} hinzufügen",
 		"edit": "{{name}} bearbeiten",
 		"delete": "{{name}} löschen",
-		"refreshIcon": "Icon von {{name}} neu laden",
 		"move": "{{name}} verschieben",
 		"expand": "{{name}} aufklappen",
 		"collapse": "{{name}} zuklappen",
@@ -243,7 +243,15 @@
 			"save": "Speichern",
 			"saving": "Wird gespeichert…",
 			"cancel": "Abbrechen",
-			"folderLabel": "Ordner"
+			"folderLabel": "Ordner",
+			"descriptionLabel": "Beschreibung",
+			"previewLabel": "Vorschaubild",
+			"previewAlt": "Vorschaubild des Links",
+			"noPreview": "Kein Vorschaubild",
+			"removePreview": "Vorschaubild entfernen",
+			"iconLabel": "Icon",
+			"refreshIcon": "Icon neu laden",
+			"fetchHint": "Beschreibung und Vorschaubild werden im Hintergrund von der Seite geladen. Du kannst sie danach bearbeiten."
 		},
 		"errors": {
 			"nameRequired": "Gib einen Namen ein.",
@@ -252,6 +260,7 @@
 			"urlTooLong": "Die URL darf höchstens 2048 Zeichen lang sein.",
 			"titleTooLong": "Der Titel darf höchstens 1000 Zeichen lang sein.",
 			"tagTooLong": "Tags dürfen höchstens 100 Zeichen lang sein.",
+			"descriptionTooLong": "Die Beschreibung darf höchstens 2048 Zeichen lang sein.",
 			"notFound": "Diesen Eintrag gibt es nicht mehr. Die Liste wurde neu geladen.",
 			"moveFailed": "Der Eintrag konnte nicht verschoben werden. Die Liste wurde wiederhergestellt.",
 			"iconNotFound": "Für {{name}} wurde kein Icon gefunden.",

@@ -2,7 +2,9 @@
 
 ## Purpose
 Makes the Boardly web app installable as a progressive web app: a web app manifest, home-screen icons, a standalone window that opens the home page, and a title bar coloured like the active theme, without offline support.
+
 ## Requirements
+
 ### Requirement: Web app manifest
 Every page SHALL link a web app manifest served by the app. The manifest SHALL declare the id `/`, the start URL `/`, the scope `/`, the display mode `standalone`, a name, a short name, a description, a background colour, a theme colour and the home-screen icons. The server SHALL serve manifest files with the content type `application/manifest+json`.
 
@@ -80,7 +82,7 @@ The manifest SHALL register the app as a share target that accepts a title, a te
 - **THEN** the installed app opens `/share` with the shared title, text and URL
 
 ### Requirement: Save link page
-`/share` SHALL require a signed-in user and show a "Save link" form with the URL, the title, a folder choice and tags, prefilled from the query parameters:
+`/share` SHALL require a signed-in user and show a "Save link" form with the title, the URL, tags and a folder choice, in the order of the link form (see "Link form" in the favourites spec) and with its hint about the description and preview image, prefilled from the query parameters:
 - The URL is `url` if it is an absolute http or https URL. Otherwise it is the first http or https URL in `text`. Otherwise the field is empty.
 - The title is `title` if present. Otherwise it is `text` without the URL taken from it, trimmed. It is cut to the link title limit.
 - The folder is the one last used on this page in this browser if it still exists, otherwise the root folder.
@@ -97,6 +99,10 @@ Saving SHALL create a link in the chosen folder, with the same validation as the
 #### Scenario: Nothing shared
 - **WHEN** a signed-in user opens `/share` without parameters
 - **THEN** the form is empty and the folder is the last used one, or the root
+
+#### Scenario: Title before URL and hint
+- **WHEN** a signed-in user opens `/share`
+- **THEN** the title field comes before the URL field, and the page shows the hint that the description and preview image are loaded in the background
 
 #### Scenario: Save
 - **WHEN** the user picks the folder "Work", adds the tag "docs" and saves
@@ -124,4 +130,3 @@ The manifest SHALL declare the app shortcuts "Add link" (`/share`), "Favourites"
 #### Scenario: German shortcuts
 - **WHEN** the German manifest is linked
 - **THEN** its shortcuts are named "Link hinzufügen", "Favoriten" and "Dashboards"
-

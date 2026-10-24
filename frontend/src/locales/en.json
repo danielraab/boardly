@@ -8,7 +8,8 @@
 		"dashboards": "Dashboards",
 		"favourites": "Favourites",
 		"settings": "Settings",
-		"signOut": "Sign out"
+		"signOut": "Sign out",
+		"addLink": "Add link"
 	},
 	"theme": {
 		"system": "System",
@@ -219,7 +220,6 @@
 		"addLinkTo": "Add link to {{name}}",
 		"edit": "Edit {{name}}",
 		"delete": "Delete {{name}}",
-		"refreshIcon": "Refresh icon of {{name}}",
 		"move": "Move {{name}}",
 		"expand": "Expand {{name}}",
 		"collapse": "Collapse {{name}}",
@@ -243,7 +243,15 @@
 			"save": "Save",
 			"saving": "Saving…",
 			"cancel": "Cancel",
-			"folderLabel": "Folder"
+			"folderLabel": "Folder",
+			"descriptionLabel": "Description",
+			"previewLabel": "Preview image",
+			"previewAlt": "Preview image of the link",
+			"noPreview": "No preview image",
+			"removePreview": "Remove preview",
+			"iconLabel": "Icon",
+			"refreshIcon": "Refresh icon",
+			"fetchHint": "The description and preview image are loaded from the page in the background. You can edit them afterwards."
 		},
 		"errors": {
 			"nameRequired": "Enter a name.",
@@ -252,6 +260,7 @@
 			"urlTooLong": "The URL can be at most 2048 characters long.",
 			"titleTooLong": "The title can be at most 1000 characters long.",
 			"tagTooLong": "Tags can be at most 100 characters long.",
+			"descriptionTooLong": "The description can be at most 2048 characters long.",
 			"notFound": "This item no longer exists. The list has been refreshed.",
 			"moveFailed": "The item could not be moved. The list has been restored.",
 			"iconNotFound": "No icon was found for {{name}}.",

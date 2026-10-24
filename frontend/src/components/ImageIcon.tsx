@@ -9,13 +9,16 @@ export function imageUrl(id: string) {
 /**
  * A decorative icon from the image store, such as a favicon. Without an image,
  * or when it can't be loaded, it shows a globe instead. className sets the size.
+ * A changed version loads the image again, for favicons refreshed in place.
  */
 export function ImageIcon({
 	imageId,
 	className,
+	version,
 }: {
 	imageId: string | null | undefined;
 	className: string;
+	version?: number;
 }) {
 	const [failed, setFailed] = useState<string | null>(null);
 	if (!imageId || failed === imageId) {
@@ -29,7 +32,7 @@ export function ImageIcon({
 	}
 	return (
 		<img
-			src={imageUrl(imageId)}
+			src={version ? `${imageUrl(imageId)}?v=${version}` : imageUrl(imageId)}
 			alt=""
 			aria-hidden
 			loading="lazy"

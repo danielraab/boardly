@@ -35,6 +35,10 @@ type Node struct {
 	// IconImageID is the favicon of a link's origin, when one is known. The
 	// store doesn't set it; favicons are resolved by origin when serving.
 	IconImageID *string `json:"iconImageId,omitempty"`
+	// Description and PreviewImageID are only set for the tree's owner (Tree,
+	// Create and Update), never by the loaders that widgets use.
+	Description    *string `json:"description,omitempty"`
+	PreviewImageID *string `json:"previewImageId,omitempty"`
 }
 
 // Tag is a tag of a user.
@@ -103,13 +107,15 @@ type NewNode struct {
 }
 
 // Patch changes a node. Nil fields stay unchanged. An empty link title or
-// description clears it. URL, Tags and Description are only allowed on links.
-// Changing the URL removes the link's preview image.
+// description clears it. URL, Tags, Description and RemovePreview are only
+// allowed on links. Changing the URL or RemovePreview removes the link's
+// preview image.
 type Patch struct {
-	Title       *string
-	URL         *string
-	Tags        *[]string
-	Description *string
+	Title         *string
+	URL           *string
+	Tags          *[]string
+	Description   *string
+	RemovePreview bool
 }
 
 // row is a stored node without its tags and children.
@@ -120,8 +126,9 @@ type row struct {
 	position int
 	title    sql.NullString
 	url      sql.NullString
-	// description is only set by load.
-	description sql.NullString
+	// description and previewImageID are only set by load and Tree.
+	description    sql.NullString
+	previewImageID sql.NullString
 }
 
 // EnsureRoot returns the ID of the user's root folder, creating it first if
@@ -152,7 +159,7 @@ func (s *Store) Tree(ctx context.Context, userID string) (*Node, error) {
 	}
 
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id, parent_id, kind, position, title, url FROM favourite_nodes
+		`SELECT id, parent_id, kind, position, title, url, description, preview_image_id FROM favourite_nodes
 		 WHERE user_id = ? ORDER BY parent_id, position`, userID)
 	if err != nil {
 		return nil, err
@@ -162,10 +169,12 @@ func (s *Store) Tree(ctx context.Context, userID string) (*Node, error) {
 	var order []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url); err != nil {
+		if err := rows.Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description, &r.previewImageID); err != nil {
 			return nil, err
 		}
-		nodes[r.id] = r.node()
+		n := r.node()
+		n.Description, n.PreviewImageID = nullable(r.description), nullable(r.previewImageID)
+		nodes[r.id] = n
 		order = append(order, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -334,7 +343,7 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 	); err != nil {
 		return nil, err
 	}
-	node := &Node{ID: id, Kind: n.Kind, Title: title, URL: link}
+	node := &Node{ID: id, Kind: n.Kind, Title: title, URL: link, Description: description}
 	if n.Kind == KindLink {
 		if err := s.setTags(ctx, tx, userID, id, tags); err != nil {
 			return nil, err
@@ -375,7 +384,7 @@ func (s *Store) notifyFetches(queued bool) {
 	}
 }
 
-// Update changes the title, URL or tags of a node and returns it without children.
+// Update changes the title, URL, tags, description or preview of a node and returns it without children.
 func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -390,7 +399,7 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 	if !r.parentID.Valid {
 		return nil, ErrRootImmutable
 	}
-	if r.kind == KindFolder && (p.URL != nil || p.Tags != nil || p.Description != nil) {
+	if r.kind == KindFolder && (p.URL != nil || p.Tags != nil || p.Description != nil || p.RemovePreview) {
 		return nil, ErrInvalidField
 	}
 
@@ -427,17 +436,21 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 		}
 	}
 	urlChanged := link != nil && (!r.url.Valid || r.url.String != *link)
+	preview := nullable(r.previewImageID)
+	if urlChanged || p.RemovePreview {
+		preview = nil
+	}
 
-	// A new URL is a new page: its preview is fetched again.
+	// A new URL is a new page: its preview is fetched again. A removed
+	// preview isn't.
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE favourite_nodes SET title = ?, url = ?, description = ?, updated_at = ?,
-		   preview_image_id = CASE WHEN ? THEN NULL ELSE preview_image_id END
+		`UPDATE favourite_nodes SET title = ?, url = ?, description = ?, preview_image_id = ?, updated_at = ?
 		 WHERE id = ?`,
-		title, link, description, db.FormatTime(s.Now()), urlChanged, id,
+		title, link, description, preview, db.FormatTime(s.Now()), id,
 	); err != nil {
 		return nil, err
 	}
-	node := &Node{ID: id, Kind: r.kind, Title: title, URL: link}
+	node := &Node{ID: id, Kind: r.kind, Title: title, URL: link, Description: description, PreviewImageID: preview}
 	if r.kind == KindLink {
 		if p.Tags != nil {
 			if err := s.setTags(ctx, tx, userID, id, tags); err != nil {
@@ -693,9 +706,9 @@ func nodeTags(ctx context.Context, q db.Querier, nodeID string) ([]string, error
 func load(ctx context.Context, q db.Querier, userID, id string) (row, error) {
 	var r row
 	err := q.QueryRowContext(ctx,
-		`SELECT id, parent_id, kind, position, title, url, description FROM favourite_nodes WHERE id = ? AND user_id = ?`,
+		`SELECT id, parent_id, kind, position, title, url, description, preview_image_id FROM favourite_nodes WHERE id = ? AND user_id = ?`,
 		id, userID,
-	).Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description)
+	).Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description, &r.previewImageID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return row{}, ErrNotFound
 	}

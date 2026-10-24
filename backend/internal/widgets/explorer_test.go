@@ -158,7 +158,7 @@ func TestExplorerResolve(t *testing.T) {
 	work := f.node(f.ann, "", favourites.KindFolder, "Work", "")
 	tools := f.node(f.ann, work, favourites.KindFolder, "Tools", "")
 	f.node(f.ann, tools, favourites.KindLink, "GitLab", "https://gitlab.example.org/")
-	f.node(f.ann, work, favourites.KindLink, "Mail", "https://mail.example.org/inbox")
+	mail := f.node(f.ann, work, favourites.KindLink, "Mail", "https://mail.example.org/inbox")
 	f.node(f.ann, "", favourites.KindLink, "Secret", "https://secret.example.org/")
 	empty := f.node(f.ann, "", favourites.KindFolder, "Empty", "")
 	gone := f.node(f.ann, "", favourites.KindFolder, "Gone", "")
@@ -172,6 +172,14 @@ func TestExplorerResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO favicons (origin, image_id, fetched_at) VALUES ('https://mail.example.org', '11111111-1111-1111-1111-111111111111', '2026-01-01T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+
+	// The owner's description and preview never reach the widget data.
+	if _, err := db.Exec(`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES ('22222222-2222-2222-2222-222222222222', 'preview', ?, 'image/jpeg', 1, '2026-01-01T00:00:00Z')`, f.ann); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE favourite_nodes SET description = 'Private notes', preview_image_id = '22222222-2222-2222-2222-222222222222' WHERE id = ?`, mail); err != nil {
 		t.Fatal(err)
 	}
 

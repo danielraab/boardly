@@ -163,6 +163,7 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 					tags={tags}
 					onTagsChange={setTags}
 					folder={{ value: folderId, onChange: setChosenFolder }}
+					hint
 				/>
 				{problem && (
 					<p role="alert" className="text-sm text-danger">

@@ -1,8 +1,12 @@
 import { Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { useMe } from "#/features/auth/session";
 import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard";
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
 import { AppIcon } from "./AppIcon";
+import { headerButton } from "./buttonStyles";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { UserMenu } from "./UserMenu";
@@ -23,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 						<DashboardSwitcher />
 					</div>
 					<div className="flex items-center gap-1">
+						<AddLinkButton />
 						<ThemeSwitcher />
 						<LanguageSwitcher />
 						<UserMenu />
@@ -33,5 +38,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 				</main>
 			</div>
 		</CurrentDashboardProvider>
+	);
+}
+
+/** Opens the "Save link" page; only for signed-in users. */
+function AddLinkButton() {
+	const { t } = useTranslation();
+	const { data: me } = useMe();
+	if (!me) return null;
+	return (
+		<Link
+			to="/share"
+			className={headerButton}
+			aria-label={t("shell.addLink")}
+			title={t("shell.addLink")}
+		>
+			<Plus className="size-5" aria-hidden />
+		</Link>
 	);
 }

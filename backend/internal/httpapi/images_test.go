@@ -290,28 +290,64 @@ func TestRefreshFaviconRateLimit(t *testing.T) {
 	}
 }
 
-func TestFavouritesJSONHasNoPreviewFields(t *testing.T) {
+func TestFavouritesDescriptionAndPreview(t *testing.T) {
 	s := newServer(t)
 	ann := s.signIn(t, "ann@example.org")
+	folder := s.create(t, ann, map[string]any{"kind": "folder", "title": "Work"})
 	link := s.create(t, ann, map[string]any{"kind": "link", "url": "https://example.org/", "title": "Docs"})
-	if _, err := s.db.Exec(`UPDATE favourite_nodes SET description = 'Mine' WHERE id = ?`, link.ID); err != nil {
+	if _, err := s.db.Exec(`INSERT INTO images (id, source, user_id, content_type, size, created_at)
+		SELECT 'prev1', 'preview', user_id, 'image/jpeg', 10, created_at FROM favourite_nodes WHERE id = ?`, link.ID); err != nil {
 		t.Fatal(err)
 	}
-	// The Boardly API ignores a description in requests and never returns one.
-	rec := s.req("PATCH", "/api/favourites/"+link.ID, `{"title":"Docs 2","description":"Other"}`, withCookie(ann))
+	if _, err := s.db.Exec(`UPDATE favourite_nodes SET preview_image_id = 'prev1' WHERE id = ?`, link.ID); err != nil {
+		t.Fatal(err)
+	}
+	find := func() favourites.Node {
+		for _, c := range s.tree(t, ann).Children {
+			if c.ID == link.ID {
+				return *c
+			}
+		}
+		t.Fatal("link not in tree")
+		return favourites.Node{}
+	}
+
+	rec := s.req("PATCH", "/api/favourites/"+link.ID, `{"description":" My notes "}`, withCookie(ann))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("patch: %d %s", rec.Code, rec.Body)
 	}
-	tree := s.req("GET", "/api/favourites", "", withCookie(ann)).Body.String()
-	for _, body := range []string{rec.Body.String(), tree} {
-		for _, field := range []string{"description", "Mine", "Other", "preview"} {
-			if strings.Contains(body, field) {
-				t.Fatalf("response %s contains %q", body, field)
-			}
+	patched := decodeJSONBody[favourites.Node](t, rec)
+	if patched.Description == nil || *patched.Description != "My notes" || patched.PreviewImageID == nil || *patched.PreviewImageID != "prev1" {
+		t.Fatalf("patch response = %+v", patched)
+	}
+	if n := find(); n.Description == nil || *n.Description != "My notes" || n.PreviewImageID == nil || *n.PreviewImageID != "prev1" {
+		t.Fatalf("tree link = %+v", n)
+	}
+
+	rec = s.req("PATCH", "/api/favourites/"+link.ID, `{"description":"","removePreview":true}`, withCookie(ann))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("clear: %d %s", rec.Code, rec.Body)
+	}
+	for _, field := range []string{"description", "previewImageId"} {
+		if strings.Contains(rec.Body.String(), field) {
+			t.Fatalf("clear response %s contains %q", rec.Body, field)
 		}
 	}
-	var d string
-	if err := s.db.QueryRow(`SELECT description FROM favourite_nodes WHERE id = ?`, link.ID).Scan(&d); err != nil || d != "Mine" {
-		t.Fatalf("description = %q, %v; want Mine", d, err)
+	if n := find(); n.Description != nil || n.PreviewImageID != nil {
+		t.Fatalf("tree link after clearing = %+v", n)
+	}
+
+	long := strings.Repeat("a", favourites.MaxDescriptionLength+1)
+	for _, tt := range []struct {
+		name, id, body, code string
+	}{
+		{"too long", link.ID, `{"description":"` + long + `"}`, "invalid_description"},
+		{"folder description", folder.ID, `{"description":"x"}`, "invalid_field"},
+		{"folder preview", folder.ID, `{"removePreview":true}`, "invalid_field"},
+	} {
+		rec := s.req("PATCH", "/api/favourites/"+tt.id, tt.body, withCookie(ann))
+		if rec.Code != http.StatusBadRequest || errorCode(t, rec) != tt.code {
+			t.Errorf("%s: %d %s, want 400 %s", tt.name, rec.Code, rec.Body, tt.code)
+		}
 	}
 }

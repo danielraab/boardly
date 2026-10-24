@@ -71,7 +71,12 @@ function fakeServer(initial: FavouriteNode[], tags: string[] = []) {
 		api.set({
 			[`PATCH /api/favourites/${node.id}`]: ({ body }) => {
 				const target = findNode(tree, node.id);
-				Object.assign(target ?? {}, body);
+				const { removePreview, ...patch } = body as FavouriteNode & {
+					removePreview?: boolean;
+				};
+				Object.assign(target ?? {}, patch);
+				if (target && removePreview) delete target.previewImageId;
+				if (target && patch.description === "") delete target.description;
 				return { body: target };
 			},
 			[`POST /api/favourites/${node.id}/move`]: ({ body }) => {
@@ -168,8 +173,17 @@ describe("favourites page", () => {
 	});
 });
 
+/** Opens the edit dialog of a node and returns it. */
+async function openEdit(
+	user: ReturnType<typeof renderApp>["user"],
+	name: string,
+) {
+	await user.click(await screen.findByRole("button", { name: `Edit ${name}` }));
+	return screen.findByRole("dialog");
+}
+
 describe("refresh icon", () => {
-	it("refreshes a link's favicon and shows the new one", async () => {
+	it("refreshes a link's favicon from its edit dialog", async () => {
 		const server = fakeServer([folder("Work"), link("GitHub")]);
 		server.api.set({
 			"POST /api/favicons/refresh": () => {
@@ -179,26 +193,36 @@ describe("refresh icon", () => {
 			},
 		});
 		const { user } = renderApp("/favourites");
+		// The tree rows have no refresh action.
+		await screen.findByRole("link", { name: "GitHub" });
+		expect(screen.queryByRole("button", { name: /Refresh icon/ })).toBeNull();
+
+		const dialog = await openEdit(user, "GitHub");
 		await user.click(
-			await screen.findByRole("button", { name: "Refresh icon of GitHub" }),
+			within(dialog).getByRole("button", { name: "Refresh icon" }),
 		);
 		expect(server.api.callsTo("POST", "/api/favicons/refresh")[0].body).toEqual(
-			{
-				url: "https://example.org/GitHub",
-			},
+			{ url: "https://example.org/GitHub" },
 		);
-		const row = screen.getByRole("link", { name: "GitHub" }).parentElement
-			?.parentElement as HTMLElement;
 		await waitFor(() =>
-			expect(row.querySelector("img")).toHaveAttribute(
+			expect(
+				within(dialog).getByRole("button", { name: "Refresh icon" })
+					.previousElementSibling,
+			).toHaveAttribute(
 				"src",
-				"/api/images/img-new",
+				expect.stringMatching(/^\/api\/images\/img-new\?v=/),
 			),
 		);
-		// Folders have no icon to refresh.
-		expect(
-			screen.queryByRole("button", { name: "Refresh icon of Work" }),
-		).toBeNull();
+		const row = screen.getByRole("link", { name: "GitHub", hidden: true })
+			.parentElement?.parentElement as HTMLElement;
+		expect(row.querySelector("img")).toHaveAttribute(
+			"src",
+			"/api/images/img-new",
+		);
+		expect(screen.getByRole("dialog")).toBeVisible();
+		expect(server.api.callsTo("PATCH", "/api/favourites/GitHub")).toHaveLength(
+			0,
+		);
 	});
 
 	it("is disabled while the refresh runs", async () => {
@@ -211,8 +235,9 @@ describe("refresh icon", () => {
 				}),
 		});
 		const { user } = renderApp("/favourites");
-		const button = await screen.findByRole("button", {
-			name: "Refresh icon of GitHub",
+		const dialog = await openEdit(user, "GitHub");
+		const button = within(dialog).getByRole("button", {
+			name: "Refresh icon",
 		});
 		await user.click(button);
 		await waitFor(() => expect(button).toBeDisabled());
@@ -233,20 +258,131 @@ describe("refresh icon", () => {
 			"Too many icon refreshes. Try again in a few minutes.",
 		],
 		["internal", 500, "The icon of GitHub could not be refreshed."],
-	])("explains %s and keeps the icon", async (code, status, message) => {
-		const server = fakeServer([link("GitHub", { iconImageId: "img-1" })]);
-		server.api.set({ "POST /api/favicons/refresh": apiError(status, code) });
+	])(
+		"explains %s in the dialog and keeps the icon",
+		async (code, status, message) => {
+			const server = fakeServer([link("GitHub", { iconImageId: "img-1" })]);
+			server.api.set({ "POST /api/favicons/refresh": apiError(status, code) });
+			const { user } = renderApp("/favourites");
+			const dialog = await openEdit(user, "GitHub");
+			await user.click(
+				within(dialog).getByRole("button", { name: "Refresh icon" }),
+			);
+			expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+				message,
+			);
+			const row = screen.getByRole("link", { name: "GitHub", hidden: true })
+				.parentElement?.parentElement as HTMLElement;
+			expect(row.querySelector("img")).toHaveAttribute(
+				"src",
+				"/api/images/img-1",
+			);
+		},
+	);
+});
+
+describe("description and preview", () => {
+	it("edits a link's description", async () => {
+		const server = fakeServer([link("Docs", { description: "Old" })]);
 		const { user } = renderApp("/favourites");
+		let dialog = await openEdit(user, "Docs");
+		const field = within(dialog).getByLabelText("Description");
+		expect(field).toHaveValue("Old");
+		await user.clear(field);
+		await user.type(field, "Team docs");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("PATCH", "/api/favourites/Docs")[0].body).toEqual(
+			{
+				title: "Docs",
+				url: "https://example.org/Docs",
+				tags: [],
+				description: "Team docs",
+			},
+		);
+
+		dialog = await openEdit(user, "Docs");
+		expect(within(dialog).getByLabelText("Description")).toHaveValue(
+			"Team docs",
+		);
+	});
+
+	it("rejects a too long description", async () => {
+		const server = fakeServer([link("Docs")]);
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Docs");
+		within(dialog).getByLabelText("Description").focus();
+		await user.paste("a".repeat(3000));
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		expect(within(dialog).getByRole("alert")).toHaveTextContent(
+			"The description can be at most 2048 characters long.",
+		);
+		expect(server.api.callsTo("PATCH", "/api/favourites/Docs")).toHaveLength(0);
+	});
+
+	it("removes the preview when the dialog is saved", async () => {
+		const server = fakeServer([link("Docs", { previewImageId: "prev-1" })]);
+		const { user } = renderApp("/favourites");
+		let dialog = await openEdit(user, "Docs");
+		expect(
+			within(dialog).getByRole("img", { name: "Preview image of the link" }),
+		).toHaveAttribute("src", "/api/images/prev-1");
 		await user.click(
-			await screen.findByRole("button", { name: "Refresh icon of GitHub" }),
+			within(dialog).getByRole("button", { name: "Remove preview" }),
 		);
-		expect(await screen.findByRole("alert")).toHaveTextContent(message);
-		const row = screen.getByRole("link", { name: "GitHub" }).parentElement
-			?.parentElement as HTMLElement;
-		expect(row.querySelector("img")).toHaveAttribute(
-			"src",
-			"/api/images/img-1",
+		expect(within(dialog).getByText("No preview image")).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(
+			server.api.callsTo("PATCH", "/api/favourites/Docs")[0].body,
+		).toMatchObject({ removePreview: true });
+
+		dialog = await openEdit(user, "Docs");
+		expect(within(dialog).getByText("No preview image")).toBeVisible();
+	});
+
+	it("keeps the preview when the dialog is cancelled", async () => {
+		const server = fakeServer([link("Docs", { previewImageId: "prev-1" })]);
+		const { user } = renderApp("/favourites");
+		let dialog = await openEdit(user, "Docs");
+		await user.click(
+			within(dialog).getByRole("button", { name: "Remove preview" }),
 		);
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("PATCH", "/api/favourites/Docs")).toHaveLength(0);
+
+		dialog = await openEdit(user, "Docs");
+		expect(
+			within(dialog).getByRole("img", { name: "Preview image of the link" }),
+		).toBeVisible();
+	});
+
+	it("shows only the name when editing a folder", async () => {
+		fakeServer([folder("Work")]);
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Work");
+		expect(within(dialog).getAllByRole("textbox")).toHaveLength(1);
+		expect(within(dialog).queryByText("Preview image")).toBeNull();
+		expect(
+			within(dialog).queryByRole("button", { name: "Refresh icon" }),
+		).toBeNull();
+	});
+
+	it("shows the title first and the background hint when adding a link", async () => {
+		fakeServer([]);
+		const { user } = renderApp("/favourites");
+		await user.click(await screen.findByRole("button", { name: "Add link" }));
+		const dialog = await screen.findByRole("dialog");
+		const [first, second] = within(dialog).getAllByRole("textbox");
+		expect(first).toBe(within(dialog).getByLabelText("Title (optional)"));
+		expect(second).toBe(within(dialog).getByLabelText("URL"));
+		expect(
+			within(dialog).getByText(
+				"The description and preview image are loaded from the page in the background. You can edit them afterwards.",
+			),
+		).toBeVisible();
+		expect(within(dialog).queryByLabelText("Description")).toBeNull();
 	});
 });
 
@@ -287,7 +423,12 @@ describe("add and edit", () => {
 
 		await screen.findByRole("link", { name: "Documentation" });
 		expect(server.api.callsTo("PATCH", "/api/favourites/Docs")[0].body).toEqual(
-			{ title: "Documentation", url: "https://example.org/doc", tags: [] },
+			{
+				title: "Documentation",
+				url: "https://example.org/doc",
+				tags: [],
+				description: "",
+			},
 		);
 	});
 

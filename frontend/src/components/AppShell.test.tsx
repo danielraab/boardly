@@ -27,6 +27,30 @@ describe("app shell", () => {
 		);
 	});
 
+	it("shows no add link button to signed-out visitors", async () => {
+		renderApp("/");
+		await screen.findByRole("button", { name: "Theme" });
+		expect(screen.queryByRole("link", { name: "Add link" })).toBeNull();
+	});
+
+	it("offers signed-in users an add link button before the theme switcher", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/favourites": {
+				body: { id: "root", kind: "folder", title: null },
+			},
+			"GET /api/tags": { body: [] },
+		});
+		const { user, router } = renderApp("/");
+		const add = await screen.findByRole("link", { name: "Add link" });
+		expect(add.nextElementSibling).toBe(
+			screen.getByRole("button", { name: "Theme" }),
+		);
+		await user.click(add);
+		await waitFor(() => expect(router.state.location.pathname).toBe("/share"));
+		expect(await screen.findByLabelText("URL")).toHaveValue("");
+	});
+
 	it("shows a not-found page with a link home for unknown paths", async () => {
 		renderApp("/no/such/page");
 		expect(

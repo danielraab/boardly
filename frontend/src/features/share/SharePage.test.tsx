@@ -60,6 +60,20 @@ describe("save link page", () => {
 		expect(await folderRadio("Favourites")).toBeChecked();
 	});
 
+	it("shows the title before the URL and the background hint", async () => {
+		mockShareApi();
+		renderApp("/share");
+		const title = await screen.findByLabelText("Title (optional)");
+		const [first, second] = screen.getAllByRole("textbox");
+		expect(first).toBe(title);
+		expect(second).toBe(screen.getByLabelText("URL"));
+		expect(
+			screen.getByText(
+				"The description and preview image are loaded from the page in the background. You can edit them afterwards.",
+			),
+		).toBeVisible();
+	});
+
 	it("saves into the chosen folder with tags and remembers the folder", async () => {
 		const api = mockShareApi();
 		const { user } = renderApp(share({ url: "https://example.org/docs" }));

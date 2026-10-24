@@ -24,7 +24,7 @@ func favouritesError(err error) error {
 	case errors.Is(err, favourites.ErrInvalidKind):
 		return NewError(http.StatusBadRequest, "invalid_kind", "The kind must be folder or link")
 	case errors.Is(err, favourites.ErrInvalidField):
-		return NewError(http.StatusBadRequest, "invalid_field", "Folders can't have a URL or tags")
+		return NewError(http.StatusBadRequest, "invalid_field", "Folders can't have a URL, tags, a description or a preview")
 	case errors.Is(err, favourites.ErrInvalidParent):
 		return NewError(http.StatusBadRequest, "invalid_parent", "The parent must be a folder")
 	case errors.Is(err, favourites.ErrInvalidMove):
@@ -85,15 +85,19 @@ func (a *api) createFavourite(w http.ResponseWriter, r *http.Request) error {
 
 func (a *api) updateFavourite(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
-		Title *string   `json:"title"`
-		URL   *string   `json:"url"`
-		Tags  *[]string `json:"tags"`
+		Title         *string   `json:"title"`
+		URL           *string   `json:"url"`
+		Tags          *[]string `json:"tags"`
+		Description   *string   `json:"description"`
+		RemovePreview bool      `json:"removePreview"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		return err
 	}
 	user, _ := CurrentUser(r.Context())
-	node, err := a.favourites.Update(r.Context(), user.ID, r.PathValue("id"), favourites.Patch{Title: body.Title, URL: body.URL, Tags: body.Tags})
+	node, err := a.favourites.Update(r.Context(), user.ID, r.PathValue("id"), favourites.Patch{
+		Title: body.Title, URL: body.URL, Tags: body.Tags, Description: body.Description, RemovePreview: body.RemovePreview,
+	})
 	if err != nil {
 		return favouritesError(err)
 	}

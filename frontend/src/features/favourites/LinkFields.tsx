@@ -5,8 +5,10 @@ import { TagInput } from "./TagInput";
 import { MAX_LINK_TITLE, MAX_URL } from "./validate";
 
 /**
- * The fields of a link: URL, title, tags and, when folder is given, the folder
- * to save it in. Used by the favourites dialog and the "Save link" page.
+ * The fields of a link: title, URL, tags and, when folder is given, the folder
+ * to save it in. With hint, a note that the page's description and preview are
+ * loaded in the background, for new links. Used by the favourites dialog and
+ * the "Save link" page.
  */
 export function LinkFields({
 	url,
@@ -16,6 +18,7 @@ export function LinkFields({
 	tags,
 	onTagsChange,
 	folder,
+	hint = false,
 }: {
 	url: string;
 	onUrlChange: (url: string) => void;
@@ -24,10 +27,24 @@ export function LinkFields({
 	tags: string[];
 	onTagsChange: (tags: string[]) => void;
 	folder?: { value: string; onChange: (id: string) => void };
+	hint?: boolean;
 }) {
 	const { t } = useTranslation();
 	return (
 		<>
+			<div>
+				<label htmlFor="favourite-title" className="block text-sm font-medium">
+					{t("favourites.dialog.titleLabel")}
+				</label>
+				<input
+					id="favourite-title"
+					autoComplete="off"
+					maxLength={MAX_LINK_TITLE}
+					value={title}
+					onChange={(e) => onTitleChange(e.target.value)}
+					className={textInput}
+				/>
+			</div>
 			<div>
 				<label htmlFor="favourite-url" className="block text-sm font-medium">
 					{t("favourites.dialog.urlLabel")}
@@ -44,19 +61,6 @@ export function LinkFields({
 					className={textInput}
 				/>
 			</div>
-			<div>
-				<label htmlFor="favourite-title" className="block text-sm font-medium">
-					{t("favourites.dialog.titleLabel")}
-				</label>
-				<input
-					id="favourite-title"
-					autoComplete="off"
-					maxLength={MAX_LINK_TITLE}
-					value={title}
-					onChange={(e) => onTitleChange(e.target.value)}
-					className={textInput}
-				/>
-			</div>
 			<TagInput value={tags} onChange={onTagsChange} />
 			{folder && (
 				<FavouritePicker
@@ -66,6 +70,9 @@ export function LinkFields({
 					value={folder.value}
 					onChange={folder.onChange}
 				/>
+			)}
+			{hint && (
+				<p className="text-sm text-muted">{t("favourites.dialog.fetchHint")}</p>
 			)}
 		</>
 	);

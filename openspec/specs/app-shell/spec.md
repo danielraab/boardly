@@ -7,7 +7,7 @@ Defines the global frame around every Boardly page: the header with the product 
 ## Requirements
 
 ### Requirement: Global header
-Every page SHALL show a header with the app icon and the product name "Boardly" on the left, together linking to `/`, and on the right, in this order, the theme switcher, the language switcher and the user avatar. The app icon comes directly before the product name, is drawn in the theme's text colour with the rose star as its only other colour, and is hidden from assistive technology so the link's accessible name stays "Boardly". On dashboard pages, the dashboard switcher (see the `dashboards` capability) appears right after the product name, separated from it by a slash.
+Every page SHALL show a header with the app icon and the product name "Boardly" on the left, together linking to `/`, and on the right, in this order, the "Add link" button (only for signed-in users, see "Add link button"), the theme switcher, the language switcher and the user avatar. The app icon comes directly before the product name, is drawn in the theme's text colour with the rose star as its only other colour, and is hidden from assistive technology so the link's accessible name stays "Boardly". On dashboard pages, the dashboard switcher (see the `dashboards` capability) appears right after the product name, separated from it by a slash.
 
 #### Scenario: Header on every page
 - **WHEN** a visitor opens `/`, `/login` or an unknown path
@@ -140,3 +140,18 @@ The document title (shown in the browser tab) SHALL be `<page title> - Boardly` 
 #### Scenario: Not-found page
 - **WHEN** a visitor opens `/no/such/page` in English
 - **THEN** the document title is "Page not found - Boardly"
+
+### Requirement: Add link button
+When a user is signed in, the header SHALL show an icon button with a plus icon, the same size and corner radius as the other header buttons, directly before the theme switcher. Its accessible name and tooltip SHALL be "Add link" / "Link hinzufügen". It SHALL link to `/share`, the "Save link" page (see the `pwa` capability). Signed-out visitors and visitors whose session is still loading SHALL NOT see it.
+
+#### Scenario: Open the save link page
+- **WHEN** a signed-in user activates "Add link" in the header
+- **THEN** the browser shows `/share` with an empty form
+
+#### Scenario: Signed-out visitor
+- **WHEN** a signed-out visitor opens `/`
+- **THEN** the header has no "Add link" button
+
+#### Scenario: Placement
+- **WHEN** a signed-in user's header is rendered
+- **THEN** the "Add link" button comes directly before the theme switcher

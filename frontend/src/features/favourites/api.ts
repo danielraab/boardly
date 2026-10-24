@@ -11,6 +11,10 @@ export type FavouriteNode = {
 	children?: FavouriteNode[];
 	/** The favicon of a link's origin, when the server knows one. */
 	iconImageId?: string;
+	/** A link's description, fetched from its page or set by the user. */
+	description?: string;
+	/** A link's preview image, fetched from its page or sent by an app. */
+	previewImageId?: string;
 };
 
 export type Tag = { id: string; name: string };
@@ -40,7 +44,13 @@ export function createFavourite(node: NewFavourite) {
 
 export function updateFavourite(
 	id: string,
-	patch: { title?: string; url?: string; tags?: string[] },
+	patch: {
+		title?: string;
+		url?: string;
+		tags?: string[];
+		description?: string;
+		removePreview?: true;
+	},
 ) {
 	return api<FavouriteNode>(`/api/favourites/${encodeURIComponent(id)}`, {
 		method: "PATCH",

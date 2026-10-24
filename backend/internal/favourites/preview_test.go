@@ -206,20 +206,98 @@ func equal(a, b []string) bool {
 	return true
 }
 
-func TestNodeJSONHasNoPreviewFields(t *testing.T) {
+// Widgets serve subtrees on public dashboards: they never carry the
+// owner's description or preview.
+func TestSubtreeJSONHasNoPreviewFields(t *testing.T) {
 	f := newFixture(t)
-	id := f.link("", "Docs")
+	folder := f.folder("", "Work")
+	id := f.link(folder, "Docs")
 	if _, err := f.s.Update(f.ctx, f.user, id, Patch{Description: ptr("Mine")}); err != nil {
 		t.Fatal(err)
 	}
 	f.setPreview(id)
-	data, err := json.Marshal(f.tree())
+	sub, err := f.s.Subtree(f.ctx, f.user, folder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(sub)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, field := range []string{"description", "Mine", "preview", "img-"} {
 		if strings.Contains(string(data), field) {
-			t.Fatalf("tree JSON %s contains %q", data, field)
+			t.Fatalf("subtree JSON %s contains %q", data, field)
 		}
+	}
+}
+
+func TestTreeHasDescriptionAndPreview(t *testing.T) {
+	f := newFixture(t)
+	folder := f.folder("", "Work")
+	id := f.link(folder, "Docs")
+	if _, err := f.s.Update(f.ctx, f.user, id, Patch{Description: ptr("Notes")}); err != nil {
+		t.Fatal(err)
+	}
+	f.setPreview(id)
+
+	tree := f.tree()
+	link := find(tree, id)
+	if link.Description == nil || *link.Description != "Notes" {
+		t.Fatalf("description = %v, want Notes", link.Description)
+	}
+	if link.PreviewImageID == nil || *link.PreviewImageID != "img-"+id {
+		t.Fatalf("preview = %v, want img-%s", link.PreviewImageID, id)
+	}
+	if n := find(tree, folder); n.Description != nil || n.PreviewImageID != nil {
+		t.Fatalf("folder has description %v, preview %v", n.Description, n.PreviewImageID)
+	}
+
+	// The loaders that widgets use leave both out.
+	sub, err := f.s.Subtree(f.ctx, f.user, folder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := find(sub, id); n.Description != nil || n.PreviewImageID != nil {
+		t.Fatalf("subtree link has description %v, preview %v", n.Description, n.PreviewImageID)
+	}
+	l, err := f.s.Link(f.ctx, f.user, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Description != nil || l.PreviewImageID != nil {
+		t.Fatalf("Link has description %v, preview %v", l.Description, l.PreviewImageID)
+	}
+}
+
+func TestRemovePreview(t *testing.T) {
+	f := newFixture(t)
+	f.s.Jobs = jobs.New(f.s.DB)
+	id := f.link("", "Docs")
+	f.setPreview(id)
+	before := queued(f)
+
+	// A title change keeps the preview and returns it.
+	n, err := f.s.Update(f.ctx, f.user, id, Patch{Title: ptr("Documentation")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.PreviewImageID == nil || *n.PreviewImageID != "img-"+id {
+		t.Fatalf("preview after title change = %v", n.PreviewImageID)
+	}
+
+	n, err = f.s.Update(f.ctx, f.user, id, Patch{RemovePreview: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.PreviewImageID != nil || f.scoped(id).PreviewImageID != nil {
+		t.Fatal("preview not removed")
+	}
+	if got := queued(f); !equal(got, before) {
+		t.Fatalf("jobs after removing the preview = %v, want %v", got, before)
+	}
+
+	folder := f.folder("", "Work")
+	if _, err := f.s.Update(f.ctx, f.user, folder, Patch{RemovePreview: true}); !errors.Is(err, ErrInvalidField) {
+		t.Fatalf("folder: err = %v, want ErrInvalidField", err)
 	}
 }

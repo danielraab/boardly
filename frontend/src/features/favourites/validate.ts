@@ -5,6 +5,7 @@ export const MAX_FOLDER_NAME = 100;
 export const MAX_LINK_TITLE = 1000;
 export const MAX_URL = 2048;
 export const MAX_TAG = 100;
+export const MAX_DESCRIPTION = 2048;
 
 /** A translation key under favourites.errors. */
 export type FieldError =
@@ -13,7 +14,8 @@ export type FieldError =
 	| "urlInvalid"
 	| "urlTooLong"
 	| "titleTooLong"
-	| "tagTooLong";
+	| "tagTooLong"
+	| "descriptionTooLong";
 
 const length = (s: string) => [...s].length;
 
@@ -43,6 +45,12 @@ export function checkTag(name: string): FieldError | null {
 	return length(name.trim()) > MAX_TAG ? "tagTooLong" : null;
 }
 
+export function checkDescription(description: string): FieldError | null {
+	return length(description.trim()) > MAX_DESCRIPTION
+		? "descriptionTooLong"
+		: null;
+}
+
 /** Maps an API error code to a field error, or null for other errors. */
 export function fieldErrorFromCode(
 	code: string,
@@ -55,6 +63,8 @@ export function fieldErrorFromCode(
 			return "urlInvalid";
 		case "invalid_tag":
 			return "tagTooLong";
+		case "invalid_description":
+			return "descriptionTooLong";
 		default:
 			return null;
 	}

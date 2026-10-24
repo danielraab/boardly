@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
@@ -8,15 +9,20 @@ import {
 	dialogPopup,
 	textInput,
 } from "#/components/dialogStyles";
+import { ImageIcon, imageUrl } from "#/components/ImageIcon";
 import { ApiError } from "#/lib/api";
 import {
 	createFavourite,
 	type FavouriteNode,
 	favouritesQueryKey,
+	favouritesQueryOptions,
+	refreshFavicon,
 	updateFavourite,
 } from "./api";
 import { LinkFields } from "./LinkFields";
+import { findNode, label } from "./tree";
 import {
+	checkDescription,
 	checkFolderName,
 	checkLinkTitle,
 	checkTag,
@@ -91,6 +97,8 @@ function NodeForm({
 	const [title, setTitle] = useState(editing?.title ?? "");
 	const [url, setUrl] = useState(editing?.url ?? "");
 	const [tags, setTags] = useState<string[]>(editing?.tags ?? []);
+	const [description, setDescription] = useState(editing?.description ?? "");
+	const [removePreview, setRemovePreview] = useState(false);
 	const [problem, setProblem] = useState<FieldError | "generic" | null>(null);
 	const [parentId, setParentId] = useState(
 		"parent" in target ? target.parent.id : "",
@@ -101,7 +109,15 @@ function NodeForm({
 			if (editing) {
 				return updateFavourite(
 					editing.id,
-					kind === "folder" ? { title } : { title, url, tags },
+					kind === "folder"
+						? { title }
+						: {
+								title,
+								url,
+								tags,
+								description,
+								...(removePreview && { removePreview: true }),
+							},
 				);
 			}
 			return createFavourite(
@@ -135,7 +151,7 @@ function NodeForm({
 				: (checkUrl(url) ??
 					checkLinkTitle(title) ??
 					tags.map(checkTag).find((p) => p !== null) ??
-					null);
+					(editing ? checkDescription(description) : null));
 		setProblem(found);
 		if (!found) save.mutate();
 	}
@@ -187,6 +203,16 @@ function NodeForm({
 								? { value: parentId, onChange: setParentId }
 								: undefined
 						}
+						hint={!editing}
+					/>
+				)}
+				{editing && kind === "link" && (
+					<LinkDetails
+						link={editing}
+						description={description}
+						onDescriptionChange={setDescription}
+						removePreview={removePreview}
+						onRemovePreview={() => setRemovePreview(true)}
 					/>
 				)}
 				{problem && (
@@ -213,4 +239,126 @@ function NodeForm({
 			</form>
 		</>
 	);
+}
+
+/**
+ * The parts of an existing link that new links get from the page fetch: its
+ * description, its preview (which can be removed on save) and its icon, which
+ * can be refreshed right away.
+ */
+function LinkDetails({
+	link,
+	description,
+	onDescriptionChange,
+	removePreview,
+	onRemovePreview,
+}: {
+	link: FavouriteNode;
+	description: string;
+	onDescriptionChange: (description: string) => void;
+	removePreview: boolean;
+	onRemovePreview: () => void;
+}) {
+	const { t } = useTranslation();
+	const queryClient = useQueryClient();
+	// The tree has the icon after a refresh; the target is a snapshot.
+	const tree = useQuery(favouritesQueryOptions);
+	const current = tree.data ? findNode(tree.data, link.id) : undefined;
+	const iconImageId = current ? current.iconImageId : link.iconImageId;
+	const preview = removePreview ? undefined : link.previewImageId;
+
+	const refresh = useMutation({
+		mutationFn: () => refreshFavicon(link.url ?? ""),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: favouritesQueryKey }),
+	});
+
+	return (
+		<>
+			<div>
+				<label
+					htmlFor="favourite-description"
+					className="block text-sm font-medium"
+				>
+					{t("favourites.dialog.descriptionLabel")}
+				</label>
+				<textarea
+					id="favourite-description"
+					rows={3}
+					value={description}
+					onChange={(e) => onDescriptionChange(e.target.value)}
+					className={`${textInput} resize-y`}
+				/>
+			</div>
+			<div>
+				<p className="text-sm font-medium">
+					{t("favourites.dialog.previewLabel")}
+				</p>
+				{preview ? (
+					<div className="mt-2 flex items-end gap-3">
+						<img
+							src={imageUrl(preview)}
+							alt={t("favourites.dialog.previewAlt")}
+							className="max-h-32 min-w-0 rounded-lg border border-line object-contain"
+						/>
+						<button
+							type="button"
+							className={`${secondaryButton} shrink-0`}
+							onClick={onRemovePreview}
+						>
+							<Trash2 className="size-4" aria-hidden />
+							{t("favourites.dialog.removePreview")}
+						</button>
+					</div>
+				) : (
+					<p className="mt-1 text-sm text-muted">
+						{t("favourites.dialog.noPreview")}
+					</p>
+				)}
+			</div>
+			<div>
+				<p className="text-sm font-medium">
+					{t("favourites.dialog.iconLabel")}
+				</p>
+				<div className="mt-2 flex items-center gap-3">
+					<ImageIcon
+						imageId={iconImageId}
+						version={refresh.isSuccess ? refresh.submittedAt : undefined}
+						className="size-6"
+					/>
+					<button
+						type="button"
+						className={secondaryButton}
+						disabled={refresh.isPending}
+						onClick={() => refresh.mutate()}
+					>
+						<RefreshCw
+							className={`size-4 ${refresh.isPending ? "animate-spin motion-reduce:animate-none" : ""}`}
+							aria-hidden
+						/>
+						{t("favourites.dialog.refreshIcon")}
+					</button>
+				</div>
+				{refresh.isError && (
+					<p role="alert" className="mt-2 text-sm text-danger">
+						{t(refreshErrorKey(refresh.error), { name: label(link) })}
+					</p>
+				)}
+			</div>
+		</>
+	);
+}
+
+/** The translation key of the message for a failed icon refresh. */
+function refreshErrorKey(error: Error) {
+	switch (error instanceof ApiError ? error.code : "") {
+		case "favicon_not_found":
+			return "favourites.errors.iconNotFound";
+		case "blocked_address":
+			return "favourites.errors.iconBlocked";
+		case "rate_limited":
+			return "favourites.errors.iconRateLimited";
+		default:
+			return "favourites.errors.iconFailed";
+	}
 }
