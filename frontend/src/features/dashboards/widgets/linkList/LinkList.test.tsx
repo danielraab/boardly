@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ContentWidget, Widget } from "#/features/dashboards/api";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { mockApi, signedIn } from "#/test/api";
@@ -283,5 +283,70 @@ describe("the link list on a dashboard", () => {
 		await user.click(within(folder).getByRole("radio", { name: "Tools" }));
 		await user.click(apply);
 		expect(await screen.findByRole("link", { name: /GitLab/ })).toBeVisible();
+	});
+});
+
+describe("link list details", () => {
+	it.each(["list", "compact", "tiles"] as const)(
+		"has an info button beside each link in the layout %s",
+		async (layout) => {
+			const onDetails = vi.fn();
+			const user = userEvent.setup();
+			render(
+				<LinkListView
+					data={{ links: [mail, wiki] }}
+					layout={layout}
+					size="M"
+					editing={false}
+					onDetails={onDetails}
+				/>,
+			);
+			const button = screen.getByRole("button", { name: "Details for Mail" });
+			expect(button.closest("a")).toBeNull();
+			expect(
+				screen.getByRole("button", {
+					name: "Details for https://wiki.example.org/",
+				}),
+			).toBeVisible();
+			if (layout === "tiles") {
+				expect(button).toHaveClass("absolute", "top-0.5", "right-0.5");
+				expect(button.parentElement).toHaveClass("relative");
+			}
+			await user.click(button);
+			expect(onDetails).toHaveBeenCalledWith("mail");
+		},
+	);
+
+	const viewRoutes = (fields = {}) => ({
+		"GET /api/me": signedIn(),
+		"GET /api/u/ann/home": {
+			body: viewData(
+				[section("Work", {}, linkList("l1", {}, { links: [mail] }))],
+				fields,
+			),
+		},
+		"GET /api/favourites": { body: favourites },
+	});
+
+	it("opens a link's details for the owner", async () => {
+		mockApi(viewRoutes());
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Details for Mail" }),
+		);
+		expect(await screen.findByRole("dialog", { name: "Mail" })).toBeVisible();
+	});
+
+	it("has no info buttons for visitors", async () => {
+		mockApi(viewRoutes({ isOwner: false, id: undefined }));
+		renderApp("/ann/home");
+		await screen.findByRole("link", { name: /Mail/ });
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
+	});
+
+	it("has no info buttons in edit mode", async () => {
+		await openEditor([section("Work", {}, linkList("l1", {}))]);
+		await screen.findByText("Mail");
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
 	});
 });

@@ -296,6 +296,15 @@
 			"noMatches": "Nothing matches your search.",
 			"noLinks": "There are no links in your favourites yet.",
 			"selected": "Selected: {{path}}"
+		},
+		"details": {
+			"button": "Details for {{title}}",
+			"open": "Open",
+			"edit": "Edit",
+			"noDescription": "No description",
+			"close": "Close",
+			"tags": "Tags",
+			"previewAlt": "Preview image"
 		}
 	},
 	"dashboards": {

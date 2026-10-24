@@ -6,6 +6,7 @@ import { textInput } from "#/components/dialogStyles";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
 import { favouritesQueryOptions } from "#/features/favourites/api";
+import { FavouriteDetailsDialog } from "#/features/favourites/FavouriteDetails";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { NodeDialog } from "#/features/favourites/NodeDialog";
 import { findNode, label } from "#/features/favourites/tree";
@@ -29,7 +30,8 @@ export type ExplorerConfig = {
 /**
  * In view mode the server's data; in edit mode the owner's current favourites,
  * since a draft widget has no data yet and its folder may have changed. In
- * view mode the owner can add a link, to the explorer's folder by default.
+ * view mode the owner can add a link, to the explorer's folder by default, and
+ * open the details of the links.
  */
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const { t } = useTranslation();
@@ -37,6 +39,7 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const config = widget.config as ExplorerConfig;
 	const isOwner = useCurrentDashboard()?.isOwner ?? false;
 	const [adding, setAdding] = useState(false);
+	const [detailsId, setDetailsId] = useState<string | null>(null);
 	const favourites = useQuery({
 		...favouritesQueryOptions,
 		enabled: editing || isOwner,
@@ -55,6 +58,9 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	if (!data) return null;
 	const canAdd =
 		isOwner && !editing && !("missing" in data) && folder?.kind === "folder";
+	const canShowDetails = isOwner && !editing && !!favourites.data;
+	const refreshDashboard = () =>
+		void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
 	return (
 		<>
 			<ExplorerTree
@@ -65,7 +71,15 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				title={config.title ?? null}
 				headingLevel={headingLevel}
 				onAdd={canAdd ? () => setAdding(true) : undefined}
+				onDetails={canShowDetails ? setDetailsId : undefined}
 			/>
+			{canShowDetails && (
+				<FavouriteDetailsDialog
+					favouriteId={detailsId}
+					onSaved={refreshDashboard}
+					onClose={() => setDetailsId(null)}
+				/>
+			)}
 			{canAdd && (
 				<NodeDialog
 					target={
@@ -78,11 +92,7 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 							: null
 					}
 					chooseFolder
-					onSaved={() =>
-						void queryClient.invalidateQueries({
-							queryKey: dashboardViewQueryKey,
-						})
-					}
+					onSaved={refreshDashboard}
 					onClose={() => setAdding(false)}
 				/>
 			)}

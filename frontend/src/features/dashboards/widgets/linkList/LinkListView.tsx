@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ImageIcon } from "#/components/ImageIcon";
+import { DetailsButton } from "#/features/favourites/FavouriteDetails";
 import { LinkView } from "../link/LinkView";
 import { sizeStyles, type WidgetSize } from "../sizes";
 import type { LinkListData, ListLink } from "./flatten";
@@ -47,7 +48,9 @@ function anchorProps(link: ListLink, editing: boolean) {
 
 /**
  * The links of a link list in its layout, below its title as a heading of
- * headingLevel when it has one. In edit mode, links don't navigate.
+ * headingLevel when it has one. In edit mode, links don't navigate. With
+ * onDetails, an info button beside each link (on a tile, in its top-right
+ * corner) calls it with the link's ID.
  */
 export function LinkListView({
 	data,
@@ -56,6 +59,7 @@ export function LinkListView({
 	editing,
 	title = null,
 	headingLevel = 2,
+	onDetails,
 }: {
 	data: LinkListData;
 	layout: LinkListLayout;
@@ -63,6 +67,7 @@ export function LinkListView({
 	editing: boolean;
 	title?: string | null;
 	headingLevel?: number;
+	onDetails?: (id: string) => void;
 }) {
 	const { t } = useTranslation();
 	const style = sizeStyles[size];
@@ -81,7 +86,7 @@ export function LinkListView({
 		body = (
 			<ul className={`grid gap-1 ${tile.grid}`}>
 				{data.links.map((link) => (
-					<li key={link.id} className="min-w-0">
+					<li key={link.id} className="relative min-w-0">
 						<a
 							{...anchorProps(link, editing)}
 							className={`flex min-w-0 flex-col items-center gap-1 rounded-lg p-2 ${tile.text} hover:bg-paper`}
@@ -91,6 +96,14 @@ export function LinkListView({
 								{link.title || link.url}
 							</span>
 						</a>
+						{onDetails && (
+							<DetailsButton
+								link={link}
+								onClick={() => onDetails(link.id)}
+								className="absolute top-0.5 right-0.5 inline-flex items-center justify-center rounded p-1 text-muted hover:bg-paper hover:text-ink"
+								iconClassName="size-3.5"
+							/>
+						)}
 					</li>
 				))}
 			</ul>
@@ -99,14 +112,22 @@ export function LinkListView({
 		body = (
 			<ul>
 				{data.links.map((link) => (
-					<li key={link.id}>
+					<li
+						key={link.id}
+						className={
+							onDetails ? "flex min-w-0 items-center gap-1" : undefined
+						}
+					>
 						<a
 							{...anchorProps(link, editing)}
-							className={`flex min-w-0 items-center gap-2 rounded-lg px-1 ${style.row} hover:bg-paper`}
+							className={`flex min-w-0 items-center gap-2 rounded-lg px-1 ${style.row} hover:bg-paper ${onDetails ? "flex-1" : ""}`}
 						>
 							<ImageIcon imageId={link.iconImageId} className={style.icon} />
 							<span className="truncate">{link.title || link.url}</span>
 						</a>
+						{onDetails && (
+							<DetailsButton link={link} onClick={() => onDetails(link.id)} />
+						)}
 					</li>
 				))}
 			</ul>
@@ -124,6 +145,7 @@ export function LinkListView({
 							target="_blank"
 							size={size}
 							editing={editing}
+							onDetails={onDetails && (() => onDetails(link.id))}
 						/>
 					</li>
 				))}

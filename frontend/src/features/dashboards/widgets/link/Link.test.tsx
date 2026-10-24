@@ -589,3 +589,75 @@ describe("the link widget on a dashboard", () => {
 		).toBeDisabled();
 	});
 });
+
+describe("link widget details", () => {
+	const mailWidget = (favouriteId = "mail") =>
+		linkWidget(
+			{
+				source: "favourite",
+				favouriteId,
+				favouriteTitle: "Mail",
+				url: "https://mail.example.org/",
+			},
+			{ url: "https://mail.example.org/", title: "Mail" },
+		);
+	const viewRoutes = (widget: ContentWidget, fields = {}) => ({
+		"GET /api/me": signedIn(),
+		"GET /api/u/ann/home": {
+			body: viewData([section("Work", {}, widget)], fields),
+		},
+		"GET /api/favourites": { body: favourites },
+	});
+
+	it("opens the favourite's details for the owner", async () => {
+		mockApi(viewRoutes(mailWidget()));
+		const { user } = renderApp("/ann/home");
+		const button = await screen.findByRole("button", {
+			name: "Details for Mail",
+		});
+		// The button follows the link, outside of it.
+		expect(button.closest("a")).toBeNull();
+		expect(button.previousElementSibling).toBe(
+			screen.getByRole("link", { name: /Mail/ }),
+		);
+		await user.click(button);
+		const dialog = await screen.findByRole("dialog", { name: "Mail" });
+		expect(within(dialog).getByText("No description")).toBeVisible();
+	});
+
+	it("has no details button for visitors", async () => {
+		mockApi(viewRoutes(mailWidget(), { isOwner: false, id: undefined }));
+		renderApp("/ann/home");
+		await screen.findByRole("link", { name: /Mail/ });
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
+	});
+
+	it("has no details button for a plain URL or a deleted favourite", async () => {
+		mockApi({
+			...viewRoutes(mailWidget()),
+			"GET /api/u/ann/home": {
+				body: viewData([
+					section(
+						"Work",
+						{},
+						{ ...mailWidget("gone"), id: "gone" },
+						{ ...linkWidget({}), id: "plain" },
+						mailWidget(),
+					),
+				]),
+			},
+		});
+		renderApp("/ann/home");
+		// Only the existing favourite gets a button.
+		await screen.findByRole("button", { name: "Details for Mail" });
+		expect(
+			screen.getAllByRole("button", { name: /^Details for/ }),
+		).toHaveLength(1);
+	});
+
+	it("has no details button in edit mode", async () => {
+		await openEditor([section("Work", {}, mailWidget())]);
+		await screen.findByText("Mail");
+		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
+	});
+});
