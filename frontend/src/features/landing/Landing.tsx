@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
+import { appTitle } from "#/lib/appTitle";
 import { features } from "./features";
 
 const tile = "rounded-md border border-line bg-paper/70";
@@ -24,7 +25,7 @@ export function Landing() {
 		<>
 			<section className="pt-12 pb-10 sm:pt-20">
 				<h1 className="text-[clamp(3rem,11vw,7.5rem)] leading-[0.9] font-bold tracking-[-0.04em]">
-					Boardly
+					{appTitle()}
 				</h1>
 				<p className="mt-5 max-w-[34ch] text-xl text-muted sm:text-2xl">
 					{t("landing.hero.tagline")}
@@ -55,7 +56,7 @@ export function Landing() {
 					id="features-title"
 					className="text-2xl font-semibold tracking-tight"
 				>
-					{t("landing.featuresTitle")}
+					{t("landing.featuresTitle", { appName: appTitle() })}
 				</h2>
 				<ul className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
 					{features.map(({ id, icon: Icon }) => (

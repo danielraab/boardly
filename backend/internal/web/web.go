@@ -2,7 +2,11 @@
 package web
 
 import (
+	"bytes"
 	"embed"
+	"encoding/json"
+	"fmt"
+	"html"
 	"io"
 	"io/fs"
 	"net/http"
@@ -13,18 +17,31 @@ import (
 //go:embed all:dist
 var dist embed.FS
 
-// Handler serves the embedded frontend build.
-func Handler() http.Handler {
+// The markers in index.html that carry the app title. Keep them in sync with
+// frontend/index.html.
+const (
+	titleMarker = "<title>Boardly</title>"
+	metaMarker  = `<meta name="application-name" content="Boardly" />`
+)
+
+// Handler serves the embedded frontend build under the given app title.
+func Handler(appTitle string) http.Handler {
 	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
 		panic(err)
 	}
-	return NewHandler(sub)
+	return NewHandler(sub, appTitle)
 }
 
 // NewHandler serves files from fsys and falls back to index.html for paths
-// that match no file, so client-side routes work on reload.
-func NewHandler(fsys fs.FS) http.Handler {
+// that match no file, so client-side routes work on reload. index.html and the
+// web app manifests are served with appTitle as the product name.
+func NewHandler(fsys fs.FS, appTitle string) http.Handler {
+	titled, err := titledFiles(fsys, appTitle)
+	if err != nil {
+		panic(err)
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -33,20 +50,21 @@ func NewHandler(fsys fs.FS) http.Handler {
 		}
 
 		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
-		if name != "" && name != "index.html" && serveFile(w, r, fsys, name) {
+		if name != "" && name != "index.html" && serveFile(w, r, fsys, titled, name) {
 			return
 		}
 
 		w.Header().Set("Cache-Control", "no-cache")
-		if !serveFile(w, r, fsys, "index.html") {
+		if !serveFile(w, r, fsys, titled, "index.html") {
 			w.Header().Del("Cache-Control")
 			http.Error(w, "frontend not built: run `make build` (or `pnpm build` in frontend/)", http.StatusServiceUnavailable)
 		}
 	})
 }
 
-// serveFile writes the named file and reports whether it existed.
-func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) bool {
+// serveFile writes the named file and reports whether it existed. A file in
+// titled is served with that content instead.
+func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, titled map[string][]byte, name string) bool {
 	f, err := fsys.Open(name)
 	if err != nil {
 		return false
@@ -58,7 +76,9 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) 
 		return false
 	}
 	content, ok := f.(io.ReadSeeker)
-	if !ok {
+	if data, isTitled := titled[name]; isTitled {
+		content = bytes.NewReader(data)
+	} else if !ok {
 		data, err := io.ReadAll(f)
 		if err != nil {
 			return false
@@ -70,9 +90,49 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) 
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
 	// Go's MIME table doesn't know web app manifests; ServeContent keeps a set type.
+	// The URL isn't hashed, so a changed app title needs revalidation.
 	if path.Ext(name) == ".webmanifest" {
 		w.Header().Set("Content-Type", "application/manifest+json")
+		w.Header().Set("Cache-Control", "no-cache")
 	}
 	http.ServeContent(w, r, name, info.ModTime(), content)
 	return true
+}
+
+// titledFiles returns index.html and the root *.webmanifest files of fsys with
+// appTitle filled in, keyed by name. Files that don't exist are left out.
+func titledFiles(fsys fs.FS, appTitle string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+
+	if index, err := fs.ReadFile(fsys, "index.html"); err == nil {
+		escaped := html.EscapeString(appTitle)
+		index = bytes.Replace(index, []byte(titleMarker), []byte("<title>"+escaped+"</title>"), 1)
+		index = bytes.Replace(index, []byte(metaMarker), []byte(`<meta name="application-name" content="`+escaped+`" />`), 1)
+		out["index.html"] = index
+	}
+
+	manifests, err := fs.Glob(fsys, "*.webmanifest")
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range manifests {
+		data, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			return nil, err
+		}
+		var manifest map[string]json.RawMessage
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		title, err := json.Marshal(appTitle)
+		if err != nil {
+			return nil, err
+		}
+		manifest["name"] = title
+		manifest["short_name"] = title
+		if out[name], err = json.MarshalIndent(manifest, "", "\t"); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }

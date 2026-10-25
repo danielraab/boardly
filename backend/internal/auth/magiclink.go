@@ -90,6 +90,7 @@ func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, brow
 	}
 
 	msg, err := boardlymail.RenderMagicLink(locale, email, boardlymail.MagicLinkData{
+		AppName:      s.AppTitle,
 		Link:         s.BaseURL.String() + "/login/verify#token=" + token,
 		Code:         FormatCode(code),
 		ValidMinutes: int(LinkTTL / time.Minute),

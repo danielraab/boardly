@@ -17,6 +17,10 @@ type Config struct {
 	// DataDir holds the files the server writes itself, such as images.
 	DataDir string
 
+	// AppTitle is the product name the web app and the sign-in email show,
+	// so an instance such as a staging system can be told apart.
+	AppTitle string
+
 	// BaseURL is the public URL of the web app, without a trailing slash.
 	// It is used for sign-in links, the Origin check and the cookie's Secure flag.
 	BaseURL *url.URL
@@ -51,6 +55,9 @@ type Previews struct {
 	Width int
 }
 
+// DefaultAppTitle is the app title when BOARDLY_APP_TITLE is unset or blank.
+const DefaultAppTitle = "Boardly"
+
 // DefaultAAGUIDListURL is the community-maintained passkey provider list.
 const DefaultAAGUIDListURL = "https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/main/combined_aaguid.json"
 
@@ -77,6 +84,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		DBPath:    "./data/boardly.db",
 		LogFormat: "json",
 		DataDir:   "./data",
+		AppTitle:  DefaultAppTitle,
 		SMTP: SMTP{
 			Port: 587,
 			From: "Boardly <noreply@localhost>",
@@ -97,6 +105,10 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 
 	if v := getenv("BOARDLY_DATA_DIR"); v != "" {
 		cfg.DataDir = v
+	}
+
+	if v := strings.TrimSpace(getenv("BOARDLY_APP_TITLE")); v != "" {
+		cfg.AppTitle = v
 	}
 
 	if v := getenv("BOARDLY_LOG_FORMAT"); v != "" {

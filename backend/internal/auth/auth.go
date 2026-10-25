@@ -27,6 +27,8 @@ type Service struct {
 	Users   *users.Store
 	Mailer  boardlymail.Sender
 	BaseURL *url.URL
+	// AppTitle names the product in sign-in emails; empty means the default.
+	AppTitle string
 	// IPLimiter limits link requests per client IP.
 	IPLimiter *ratelimit.Limiter
 	Now       func() time.Time

@@ -15,9 +15,14 @@ var templateFiles embed.FS
 // DefaultLocale is used when a message is requested in a locale without templates.
 const DefaultLocale = "en"
 
+// DefaultAppName names the product when MagicLinkData.AppName is empty.
+const DefaultAppName = "Boardly"
+
 // MagicLinkData fills the magic-link templates.
 type MagicLinkData struct {
-	Link string
+	// AppName is the product name the email shows, DefaultAppName if empty.
+	AppName string
+	Link    string
 	// Code is the one-time code as shown to the reader, such as "K7Q-4MZ".
 	Code         string
 	ValidMinutes int
@@ -30,6 +35,9 @@ func RenderMagicLink(locale, to string, data MagicLinkData) (Message, error) {
 		locale = DefaultLocale
 	}
 	dir := "templates/" + locale + "/"
+	if data.AppName == "" {
+		data.AppName = DefaultAppName
+	}
 
 	txt, err := texttemplate.ParseFS(templateFiles, dir+"magic_link.txt")
 	if err != nil {

@@ -67,6 +67,7 @@ func run() error {
 
 	userStore := users.NewStore(database)
 	authService := auth.NewService(database, userStore, mail.New(cfg.SMTP), cfg.BaseURL)
+	authService.AppTitle = cfg.AppTitle
 	if authService.WebAuthn, err = auth.NewWebAuthn(cfg.WebAuthnRPID, cfg.Origin()); err != nil {
 		return err
 	}
@@ -103,7 +104,7 @@ func run() error {
 		Addr: ":" + strconv.Itoa(cfg.Port),
 		Handler: httpapi.New(httpapi.Deps{
 			DB:                database,
-			Web:               web.Handler(),
+			Web:               web.Handler(cfg.AppTitle),
 			Auth:              authService,
 			Users:             userStore,
 			Favourites:        favouriteStore,

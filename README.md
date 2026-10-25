@@ -393,6 +393,7 @@ precedence over the file.
 | `BOARDLY_DATA_DIR` | `./data` (`/data` in the container) | Directory for files the server writes itself: favicons and uploaded images go to its `images` folder. It is created if needed. Keep it on the same volume as the database |
 | `BOARDLY_LOG_FORMAT` | `json` | Log format, `json` or `text` |
 | `BOARDLY_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
+| `BOARDLY_APP_TITLE` | `Boardly` | Name the web app, its installed app (manifest) and sign-in emails show, for example `Boardly Staging` to tell a staging system apart. Blank means the default. Development with the Vite dev server always shows `Boardly` |
 | `BOARDLY_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
 | `BOARDLY_SMTP_PORT` | `587` | SMTP port |
 | `BOARDLY_SMTP_USERNAME` / `BOARDLY_SMTP_PASSWORD` | (empty) | SMTP login; leave empty for servers without authentication |

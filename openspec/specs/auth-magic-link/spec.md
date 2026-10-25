@@ -34,7 +34,7 @@ Each link SHALL carry a random, unguessable token of at least 256 bits. It SHALL
 - **THEN** it contains no copy of the plain token
 
 ### Requirement: Localized sign-in email
-The sign-in email SHALL be written in the requested locale. It SHALL contain the sign-in button and link, then, introduced as an alternative ("or use this one-time code"), the one-time code with a note that it is entered on the sign-in page where the email was requested. It SHALL also contain the 15-minute validity of link and code and a note that the recipient can ignore the email if they didn't request it. It SHALL be sent as plain text with an HTML alternative, both with the same content.
+The sign-in email SHALL be written in the requested locale. It SHALL contain the sign-in button and link, then, introduced as an alternative ("or use this one-time code"), the one-time code with a note that it is entered on the sign-in page where the email was requested. It SHALL also contain the 15-minute validity of link and code and a note that the recipient can ignore the email if they didn't request it. Wherever the subject and body name the product (subject, heading, text, button and signature), they SHALL use the configured app title (see "Configurable app title" in the `app-hosting` capability, "Boardly" by default). It SHALL be sent as plain text with an HTML alternative, both with the same content.
 
 #### Scenario: English email
 - **WHEN** a link is requested with locale `en`
@@ -43,6 +43,14 @@ The sign-in email SHALL be written in the requested locale. It SHALL contain the
 #### Scenario: Both ways to sign in
 - **WHEN** a sign-in email is sent
 - **THEN** its HTML and plain-text parts both contain the link, followed by the alternative of the one-time code
+
+#### Scenario: Default app title
+- **WHEN** the server runs without `BOARDLY_APP_TITLE` and a link is requested with locale `en`
+- **THEN** the email subject is "Your Boardly sign-in link"
+
+#### Scenario: Custom app title
+- **WHEN** the server runs with `BOARDLY_APP_TITLE="Boardly Staging"` and a link is requested with locale `de`
+- **THEN** the email subject is "Dein Anmeldelink für Boardly Staging", and the heading, text, button and signature of both parts name "Boardly Staging" instead of "Boardly"
 
 ### Requirement: Redeem a sign-in link
 `POST /api/auth/magic-link/verify` with `{"token": "...", "confirm": true|false}` SHALL, for a valid unused and unexpired token, mark the token as used, create the account for its email if none exists, start a session, and respond 200 with the user. Without `"confirm": true`, it SHALL redeem the token only when the request carries the login-request cookie of the browser that requested the link. Otherwise it responds 403 with `error.code` `confirmation_required` and leaves the token unused.
@@ -178,4 +186,3 @@ A wrong code SHALL count as a failed attempt against every unused, unexpired cod
 #### Scenario: Link still works
 - **WHEN** the code of an email is locked and the email's link is opened in the requesting browser
 - **THEN** the visitor is signed in
-
