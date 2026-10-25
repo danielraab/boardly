@@ -63,7 +63,7 @@ const columns = `id, email, name, slug, created_at, updated_at`
 // A new account gets a generated slug; if it's taken, "-2", "-3", … is
 // appended until it is free.
 func (s *Store) EnsureByEmail(ctx context.Context, q db.Querier, email string) (User, error) {
-	u, err := scan(q.QueryRowContext(ctx, `SELECT `+columns+` FROM users WHERE email = ?`, email))
+	u, err := s.GetByEmail(ctx, q, email)
 	if !errors.Is(err, ErrNotFound) {
 		return u, err
 	}
@@ -79,6 +79,12 @@ func (s *Store) EnsureByEmail(ctx context.Context, q db.Querier, email string) (
 	); err != nil {
 		return User{}, err
 	}
+	return s.GetByEmail(ctx, q, email)
+}
+
+// GetByEmail returns the user with the (already normalized) email, or
+// ErrNotFound. Unlike EnsureByEmail, it never creates an account. q may be a transaction.
+func (s *Store) GetByEmail(ctx context.Context, q db.Querier, email string) (User, error) {
 	return scan(q.QueryRowContext(ctx, `SELECT `+columns+` FROM users WHERE email = ?`, email))
 }
 

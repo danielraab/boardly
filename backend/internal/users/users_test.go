@@ -31,6 +31,23 @@ func TestEnsureByEmailCreatesOnce(t *testing.T) {
 	}
 }
 
+func TestGetByEmailDoesNotCreate(t *testing.T) {
+	s := NewStore(dbtest.Open(t))
+	ctx := context.Background()
+
+	if _, err := s.GetByEmail(ctx, s.DB, "new@example.org"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown address: err = %v, want ErrNotFound", err)
+	}
+	if _, err := s.GetByEmail(ctx, s.DB, "new@example.org"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("lookup created an account: err = %v", err)
+	}
+	ann, _ := s.EnsureByEmail(ctx, s.DB, "ann@example.org")
+	got, err := s.GetByEmail(ctx, s.DB, "ann@example.org")
+	if err != nil || got.ID != ann.ID {
+		t.Fatalf("known address: got %+v, %v", got, err)
+	}
+}
+
 func TestSetName(t *testing.T) {
 	s := NewStore(dbtest.Open(t))
 	ctx := context.Background()

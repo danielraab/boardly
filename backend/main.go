@@ -68,6 +68,7 @@ func run() error {
 	userStore := users.NewStore(database)
 	authService := auth.NewService(database, userStore, mail.New(cfg.SMTP), cfg.BaseURL)
 	authService.AppTitle = cfg.AppTitle
+	authService.RegistrationClosed = !cfg.AllowRegistration
 	if authService.WebAuthn, err = auth.NewWebAuthn(cfg.WebAuthnRPID, cfg.Origin()); err != nil {
 		return err
 	}

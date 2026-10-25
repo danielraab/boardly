@@ -27,6 +27,9 @@ type Config struct {
 
 	SMTP SMTP
 
+	// AllowRegistration lets sign-in create accounts for new addresses.
+	AllowRegistration bool
+
 	// TrustProxyHeaders makes the server take the client IP from X-Forwarded-For.
 	TrustProxyHeaders bool
 
@@ -90,7 +93,8 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			From: "Boardly <noreply@localhost>",
 			TLS:  "starttls",
 		},
-		Previews: Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
+		AllowRegistration: true,
+		Previews:          Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
 	}
 
 	port, err := LoadPort(lookupEnv)
@@ -146,6 +150,14 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("BOARDLY_SMTP_TLS: %q must be \"starttls\", \"tls\" or \"none\"", v)
 		}
 		cfg.SMTP.TLS = v
+	}
+
+	if v := getenv("BOARDLY_ALLOW_REGISTRATION"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("BOARDLY_ALLOW_REGISTRATION: %q must be \"true\" or \"false\"", v)
+		}
+		cfg.AllowRegistration = b
 	}
 
 	if v := getenv("BOARDLY_TRUST_PROXY_HEADERS"); v != "" {

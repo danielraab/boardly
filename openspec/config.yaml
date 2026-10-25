@@ -4,7 +4,8 @@ context: |
   Boardly is a self-hosted personal start page
   and bookmark manager: WYSIWYG dashboards (column grid, 6 columns by default; sections and widgets), one favourites
   tree per user, a Karakeep-compatible API, and passwordless login (magic link, passkeys).
-  Anyone may sign up; all data belongs to a single user.
+  Anyone may sign up unless BOARDLY_ALLOW_REGISTRATION=false closes registration; all data belongs
+  to a single user.
 
   Tech stack:
   - Backend: Go (standard library net/http with method patterns, log/slog), SQLite via

@@ -75,6 +75,7 @@ func (o *outbox) last(t *testing.T) mail.Message {
 type server struct {
 	h        http.Handler
 	db       *sql.DB
+	auth     *auth.Service
 	clock    *clock
 	mail     *outbox
 	images   *images.Store
@@ -126,7 +127,7 @@ func newServer(t *testing.T) *server {
 		Images: imageStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, clock: c, mail: box, images: imageStore, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.
@@ -258,6 +259,31 @@ func TestRequestLinkDoesNotRevealAccounts(t *testing.T) {
 	}
 	if known.Body.String() != unknown.Body.String() {
 		t.Fatalf("bodies differ: %q vs %q", known.Body, unknown.Body)
+	}
+}
+
+func TestClosedRegistrationDoesNotRevealAccounts(t *testing.T) {
+	s := newServer(t)
+	s.signIn(t, "known@example.org")
+	s.auth.RegistrationClosed = true
+	const browser = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFG"
+
+	known := s.req("POST", "/api/auth/magic-link", `{"email":"known@example.org"}`, withLoginRequest(browser))
+	if s.mail.last(t).To != "known@example.org" || !tokenRE.MatchString(s.mail.last(t).Text) {
+		t.Fatalf("known address got %+v", s.mail.last(t))
+	}
+	unknown := s.req("POST", "/api/auth/magic-link", `{"email":"unknown@example.org"}`, withLoginRequest(browser))
+	if m := s.mail.last(t); m.To != "unknown@example.org" || tokenRE.MatchString(m.Text) {
+		t.Fatalf("unknown address got %+v", m)
+	}
+	if known.Code != http.StatusAccepted || unknown.Code != http.StatusAccepted {
+		t.Fatalf("status = %d / %d", known.Code, unknown.Code)
+	}
+	if known.Body.String() != unknown.Body.String() {
+		t.Fatalf("bodies differ: %q vs %q", known.Body, unknown.Body)
+	}
+	if k, u := known.Header().Get("Set-Cookie"), unknown.Header().Get("Set-Cookie"); k == "" || k != u {
+		t.Fatalf("Set-Cookie differs: %q vs %q", k, u)
 	}
 }
 

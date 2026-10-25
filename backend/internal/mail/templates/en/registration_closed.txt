@@ -1,0 +1,12 @@
+{{define "subject"}}Registration for {{.AppName}} is closed{{end}}
+{{define "body"}}
+Hello,
+
+someone asked to sign in to {{.AppName}} with this email address. There is no {{.AppName}} account for this address, and registration of new accounts is closed on this instance.
+
+If you think you should have access, ask the administrator of this {{.AppName}} instance.
+
+If you didn't request this email, you can ignore it.
+
+– {{.AppName}}
+{{end}}

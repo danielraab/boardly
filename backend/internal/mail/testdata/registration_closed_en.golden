@@ -1,0 +1,28 @@
+To: new@example.org
+Subject: Registration for Boardly is closed
+
+Hello,
+
+someone asked to sign in to Boardly with this email address. There is no Boardly account for this address, and registration of new accounts is closed on this instance.
+
+If you think you should have access, ask the administrator of this Boardly instance.
+
+If you didn't request this email, you can ignore it.
+
+– Boardly
+
+--- html ---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Registration for Boardly is closed</title></head>
+<body style="margin:0;padding:24px;background:#eef1f4;color:#1d2733;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #cbd3dc;border-radius:8px;">
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:20px;font-weight:600;">Boardly</p>
+<p style="margin:0 0 24px;">Someone asked to sign in to Boardly with this email address. There is no Boardly account for this address, and registration of new accounts is closed on this instance.</p>
+<p style="margin:0 0 24px;">If you think you should have access, ask the administrator of this Boardly instance.</p>
+<p style="margin:0;font-size:14px;color:#5a6878;">If you didn't request this email, you can ignore it.</p>
+</td></tr>
+</table>
+</body>
+</html>

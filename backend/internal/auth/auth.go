@@ -29,6 +29,8 @@ type Service struct {
 	BaseURL *url.URL
 	// AppTitle names the product in sign-in emails; empty means the default.
 	AppTitle string
+	// RegistrationClosed stops sign-in from creating accounts for new addresses.
+	RegistrationClosed bool
 	// IPLimiter limits link requests per client IP.
 	IPLimiter *ratelimit.Limiter
 	Now       func() time.Time

@@ -1,0 +1,12 @@
+{{define "subject"}}Registrierung bei {{.AppName}} ist geschlossen{{end}}
+{{define "body"}}
+Hallo,
+
+jemand wollte sich mit dieser E-Mail-Adresse bei {{.AppName}} anmelden. Für diese Adresse gibt es kein {{.AppName}}-Konto, und auf dieser Instanz können keine neuen Konten registriert werden.
+
+Wenn du Zugang haben solltest, wende dich an die Administration dieser {{.AppName}}-Instanz.
+
+Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren.
+
+– {{.AppName}}
+{{end}}
