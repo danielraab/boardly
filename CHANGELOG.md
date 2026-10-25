@@ -17,6 +17,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   the Linkwarden extension's screenshot upload now becomes the link's preview.
 - The edit dialog of a link shows and edits its description, shows its preview image with a
   "Remove preview" action, and has a button that loads the site's favicon again.
+- A details dialog for links on dashboards shows the preview image, icon, URL, description and tags,
+  with Open and Edit actions. The dashboard owner opens it from an info button on link, link list
+  and favourite explorer widgets.
 - Preview images are converted into JPEGs of at most 800 pixels wide. New settings:
   `BOARDLY_PREVIEW_MAX_SIZE_MB`, `BOARDLY_PREVIEW_MAX_PIXELS` and `BOARDLY_PREVIEW_WIDTH`.
 - Dashboards: create, rename and delete dashboards, address them by user slug, pick one as the

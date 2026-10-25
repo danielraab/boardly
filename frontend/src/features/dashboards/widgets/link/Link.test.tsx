@@ -1,18 +1,23 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
+	act,
 	fireEvent,
 	render,
 	screen,
 	waitFor,
 	within,
 } from "@testing-library/react";
-import type { UserEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createQueryClient } from "#/features/auth/session";
 import type { ContentWidget, Widget } from "#/features/dashboards/api";
+import { WidgetDialog } from "#/features/dashboards/layout/WidgetDialogs";
 import type { FavouriteNode } from "#/features/favourites/api";
-import { apiError, mockApi, signedIn } from "#/test/api";
+import { apiError, mockApi, type Routes, signedIn } from "#/test/api";
 import { section, viewData } from "#/test/dashboards";
 import { renderApp } from "#/test/renderApp";
-import type { LinkConfig } from "./LinkSettings";
+import { linkKind } from ".";
+import { faviconDelayMs, type LinkConfig } from "./LinkSettings";
 import { LinkView } from "./LinkView";
 
 function view(fields: Partial<Parameters<typeof LinkView>[0]> = {}) {
@@ -118,6 +123,17 @@ const favourites: FavouriteNode = {
 		{ id: "home", kind: "folder", title: "Home", children: [] },
 		{ id: "work", kind: "folder", title: "Work", children: [mail] },
 	],
+};
+
+const nas: FavouriteNode = {
+	id: "nas",
+	kind: "link",
+	title: "NAS",
+	url: "https://nas.example.org/",
+};
+const withNas: FavouriteNode = {
+	...favourites,
+	children: [...(favourites.children ?? []), nas],
 };
 
 function linkWidget(
@@ -264,14 +280,139 @@ describe("the link widget on a dashboard", () => {
 		});
 	});
 
-	it("validates a URL and looks up its website icon", async () => {
+	it("keeps a favourite created from the settings when the changes are discarded", async () => {
+		let created = false;
 		const { api, user } = await openEditor([section("Work")], {
-			"POST /api/favicons": ({ body }: { body: unknown }) =>
-				(body as { url: string }).url === "https://github.com"
-					? { body: { id: "gh" } }
-					: apiError(404, "favicon_not_found"),
+			"GET /api/favourites": () => ({
+				body: created ? withNas : favourites,
+			}),
+			"POST /api/favourites": () => {
+				created = true;
+				return { status: 201, body: nas };
+			},
 		});
-		const dialog = await openNewLink(user);
+		const settings = await openNewLink(user);
+		await user.click(
+			await within(settings).findByRole("button", { name: "New favourite…" }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "New link" });
+		await user.click(within(dialog).getByRole("textbox", { name: "URL" }));
+		await user.paste("https://nas.example.org/");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await within(settings).findByText("Selected: Favourites / NAS");
+		await user.click(within(settings).getByRole("button", { name: "Add" }));
+		expect(await screen.findByText("NAS")).toBeVisible();
+
+		await user.click(screen.getByRole("button", { name: "Cancel editing" }));
+		const confirm = await screen.findByRole("alertdialog", {
+			name: "Discard changes?",
+		});
+		await user.click(within(confirm).getByRole("button", { name: "Discard" }));
+		await waitFor(() => expect(screen.queryByText("NAS")).toBeNull());
+		expect(api.callsTo("POST", "/api/favourites")).toHaveLength(1);
+		expect(api.calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+	});
+
+	it("has no height choice and always fits its content", async () => {
+		const { api, user, router } = await openEditor([
+			// Stored with a fixed height by an older version.
+			section("Work", {}, { ...linkWidget({}), height: 3 }),
+		]);
+		await user.click(screen.getByRole("button", { name: "Edit Link" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
+		expect(within(dialog).getByLabelText("Width")).toBeVisible();
+		expect(within(dialog).queryByLabelText("Fit the content")).toBeNull();
+		expect(within(dialog).queryByLabelText("Fixed")).toBeNull();
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+
+		await user.click(screen.getByRole("button", { name: "Save and exit" }));
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+		const [call] = api.callsTo("PUT", "/api/dashboards/d1/layout");
+		const sent = (call.body as { sections: Widget[] }).sections[0] as {
+			children: ContentWidget[];
+		};
+		expect(sent.children[0].height).toBe("auto");
+	});
+
+	it("falls back to the copies when the favourite is gone", async () => {
+		const { user } = await openEditor([
+			section(
+				"Work",
+				{},
+				linkWidget({
+					source: "favourite",
+					favouriteId: "gone",
+					favouriteTitle: "Old",
+					url: "https://old.example.org/",
+				}),
+			),
+		]);
+		expect(await screen.findByText("Old")).toBeVisible();
+		await user.click(screen.getByRole("button", { name: "Edit Link" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
+		expect(
+			await within(dialog).findByText(
+				"This favourite no longer exists. Choose another one.",
+			),
+		).toBeVisible();
+		expect(
+			within(dialog).getByRole("button", { name: "Apply" }),
+		).toBeDisabled();
+	});
+});
+
+/**
+ * Renders the link settings in their dialog, without the dashboard around
+ * them, which keeps the many steps of these tests fast.
+ */
+async function renderSettings(
+	widget: ContentWidget,
+	{ isNew = true, routes = {} }: { isNew?: boolean; routes?: Routes } = {},
+) {
+	const api = mockApi({
+		"GET /api/favourites": { body: favourites },
+		...routes,
+	});
+	const onApply = vi.fn();
+	const onClose = vi.fn();
+	render(
+		<QueryClientProvider client={createQueryClient()}>
+			<WidgetDialog
+				target={{ widget, isNew }}
+				desktopColumns={4}
+				onApply={onApply}
+				onDelete={() => {}}
+				onClose={onClose}
+			/>
+		</QueryClientProvider>,
+	);
+	const dialog = await screen.findByRole("dialog", {
+		name: isNew ? "Add link" : "Edit link",
+	});
+	const applied = () =>
+		(onApply.mock.lastCall?.[0] as ContentWidget | undefined)?.config;
+	return { api, user: userEvent.setup(), dialog, applied, onClose };
+}
+
+const newLink = () => linkWidget(linkKind.defaultConfig() as LinkConfig);
+
+describe("the link settings", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("validates a URL and looks up its website icon", async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const { api, dialog } = await renderSettings(newLink(), {
+			routes: {
+				"POST /api/favicons": ({ body }: { body: unknown }) =>
+					(body as { url: string }).url === "https://github.com"
+						? { body: { id: "gh" } }
+						: apiError(404, "favicon_not_found"),
+			},
+		});
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const lookups = () => api.callsTo("POST", "/api/favicons");
 		await user.click(within(dialog).getByLabelText("URL"));
 		const url = within(dialog).getByRole("textbox", { name: "URL" });
 		const add = within(dialog).getByRole("button", { name: "Add" });
@@ -291,19 +432,25 @@ describe("the link widget on a dashboard", () => {
 		const trigger = within(dialog).getByRole("button", {
 			name: "Icon: Website icon",
 		});
+		// Only URLs that stayed unchanged are looked up.
+		act(() => vi.advanceTimersByTime(faviconDelayMs - 100));
+		expect(lookups()).toHaveLength(0);
+		act(() => vi.advanceTimersByTime(100));
 		await waitFor(() =>
 			expect(trigger.querySelector("img")).toHaveAttribute(
 				"src",
 				"/api/images/gh",
 			),
 		);
+		expect(lookups()).toHaveLength(1);
+
 		await user.clear(url);
 		await user.paste("https://nothing.example/");
-		// Only URLs that stayed unchanged are looked up.
+		act(() => vi.advanceTimersByTime(faviconDelayMs));
+		await waitFor(() => expect(lookups()).toHaveLength(2));
 		await waitFor(() =>
-			expect(api.callsTo("POST", "/api/favicons")).toHaveLength(2),
+			expect(trigger.querySelector("[data-icon='globe']")).not.toBeNull(),
 		);
-		expect(trigger.querySelector("[data-icon='globe']")).not.toBeNull();
 
 		await user.click(trigger);
 		const chooser = await screen.findByRole("dialog", { name: "Icon" });
@@ -318,11 +465,10 @@ describe("the link widget on a dashboard", () => {
 	});
 
 	it("chooses a symbol by filter and with arrow keys", async () => {
-		const { api, user, router } = await openEditor([
-			section("Work", {}, linkWidget({ url: "https://nothing.example/" })),
-		]);
-		await user.click(screen.getByRole("button", { name: "Edit Link" }));
-		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
+		const { user, dialog, applied } = await renderSettings(
+			linkWidget({ url: "https://nothing.example/" }),
+			{ isNew: false },
+		);
 		await user.click(
 			within(dialog).getByRole("button", { name: "Icon: Website icon" }),
 		);
@@ -355,7 +501,7 @@ describe("the link widget on a dashboard", () => {
 			"Same tab",
 		);
 		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
-		expect(await savedConfig(user, api, router)).toEqual({
+		expect(applied()).toEqual({
 			source: "url",
 			url: "https://nothing.example/",
 			title: null,
@@ -369,18 +515,19 @@ describe("the link widget on a dashboard", () => {
 
 	it("uploads an own image, shows upload errors, and switches to none", async () => {
 		let uploads = 0;
-		const { api, user, router } = await openEditor([section("Work")], {
-			"POST /api/images": ({ init }: { init: RequestInit }) => {
-				uploads++;
-				expect(new Headers(init.headers).get("Content-Type")).toBe(
-					"application/octet-stream",
-				);
-				return uploads === 1
-					? apiError(400, "unsupported_image")
-					: { status: 201, body: { id: "up1" } };
+		const { user, dialog, applied, onClose } = await renderSettings(newLink(), {
+			routes: {
+				"POST /api/images": ({ init }: { init: RequestInit }) => {
+					uploads++;
+					expect(new Headers(init.headers).get("Content-Type")).toBe(
+						"application/octet-stream",
+					);
+					return uploads === 1
+						? apiError(400, "unsupported_image")
+						: { status: 201, body: { id: "up1" } };
+				},
 			},
 		});
-		const dialog = await openNewLink(user);
 		await user.click(within(dialog).getByLabelText("URL"));
 		await user.click(within(dialog).getByRole("textbox", { name: "URL" }));
 		await user.paste("https://example.org/");
@@ -452,8 +599,9 @@ describe("the link widget on a dashboard", () => {
 			expect(screen.queryByRole("dialog", { name: "Icon" })).toBeNull(),
 		);
 		// Escape closed only the chooser.
+		expect(onClose).not.toHaveBeenCalled();
 		await user.click(within(dialog).getByRole("button", { name: "Add" }));
-		expect(await savedConfig(user, api, router)).toMatchObject({
+		expect(applied()).toMatchObject({
 			iconSource: "image",
 			imageId: "up1",
 			icon: null,
@@ -462,27 +610,27 @@ describe("the link widget on a dashboard", () => {
 
 	it("creates a new favourite in its own dialog and chooses it", async () => {
 		let created = 0;
-		const nas: FavouriteNode = {
-			id: "nas",
-			kind: "link",
-			title: "NAS",
-			url: "https://nas.example.org/",
-		};
-		const withNas: FavouriteNode = {
+		const nasAtHome: FavouriteNode = {
 			...favourites,
 			children: [
 				{ id: "home", kind: "folder", title: "Home", children: [nas] },
 				...(favourites.children ?? []).slice(1),
 			],
 		};
-		const { api, user } = await openEditor([section("Work")], {
-			"GET /api/favourites": () => ({
-				body: created > 1 ? withNas : favourites,
-			}),
-			"POST /api/favourites": () =>
-				++created === 1 ? apiError(500, "error") : { status: 201, body: nas },
+		const {
+			api,
+			user,
+			dialog: settings,
+			applied,
+		} = await renderSettings(newLink(), {
+			routes: {
+				"GET /api/favourites": () => ({
+					body: created > 1 ? nasAtHome : favourites,
+				}),
+				"POST /api/favourites": () =>
+					++created === 1 ? apiError(500, "error") : { status: 201, body: nas },
+			},
 		});
-		const settings = await openNewLink(user);
 		// Only two sources: new favourites aren't entered in the settings.
 		expect(
 			within(settings).getAllByRole("radio", { name: /^(Favourite|URL)$/ }),
@@ -529,64 +677,12 @@ describe("the link widget on a dashboard", () => {
 			await within(settings).findByText("Selected: Favourites / Home / NAS"),
 		).toBeVisible();
 		await user.click(within(settings).getByRole("button", { name: "Add" }));
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		expect(screen.getByText("NAS")).toBeVisible();
-
-		await user.click(screen.getByRole("button", { name: "Cancel editing" }));
-		const confirm = await screen.findByRole("alertdialog", {
-			name: "Discard changes?",
+		expect(applied()).toMatchObject({
+			source: "favourite",
+			favouriteId: "nas",
+			favouriteTitle: "NAS",
+			url: "https://nas.example.org/",
 		});
-		await user.click(within(confirm).getByRole("button", { name: "Discard" }));
-		await waitFor(() => expect(screen.queryByText("NAS")).toBeNull());
-		// Nothing deletes the favourite.
-		expect(api.calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
-	});
-
-	it("has no height choice and always fits its content", async () => {
-		const { api, user, router } = await openEditor([
-			// Stored with a fixed height by an older version.
-			section("Work", {}, { ...linkWidget({}), height: 3 }),
-		]);
-		await user.click(screen.getByRole("button", { name: "Edit Link" }));
-		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
-		expect(within(dialog).getByLabelText("Width")).toBeVisible();
-		expect(within(dialog).queryByLabelText("Fit the content")).toBeNull();
-		expect(within(dialog).queryByLabelText("Fixed")).toBeNull();
-		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
-
-		await user.click(screen.getByRole("button", { name: "Save and exit" }));
-		await waitFor(() => expect(router.state.location.search).toEqual({}));
-		const [call] = api.callsTo("PUT", "/api/dashboards/d1/layout");
-		const sent = (call.body as { sections: Widget[] }).sections[0] as {
-			children: ContentWidget[];
-		};
-		expect(sent.children[0].height).toBe("auto");
-	});
-
-	it("falls back to the copies when the favourite is gone", async () => {
-		const { user } = await openEditor([
-			section(
-				"Work",
-				{},
-				linkWidget({
-					source: "favourite",
-					favouriteId: "gone",
-					favouriteTitle: "Old",
-					url: "https://old.example.org/",
-				}),
-			),
-		]);
-		expect(await screen.findByText("Old")).toBeVisible();
-		await user.click(screen.getByRole("button", { name: "Edit Link" }));
-		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
-		expect(
-			await within(dialog).findByText(
-				"This favourite no longer exists. Choose another one.",
-			),
-		).toBeVisible();
-		expect(
-			within(dialog).getByRole("button", { name: "Apply" }),
-		).toBeDisabled();
 	});
 });
 
