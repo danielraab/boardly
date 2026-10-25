@@ -11,6 +11,7 @@ const tabs: readonly unknown[] = [
 	"profile",
 	"passkeys",
 	"apps",
+	"data",
 ] satisfies SettingsTab[];
 
 export const Route = createFileRoute("/settings")({

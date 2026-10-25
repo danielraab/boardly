@@ -105,7 +105,8 @@
 			"label": "Settings sections",
 			"profile": "Profile",
 			"passkeys": "Passkeys",
-			"apps": "Connected apps"
+			"apps": "Connected apps",
+			"data": "Import / Export"
 		},
 		"apps": {
 			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it.",
@@ -165,6 +166,44 @@
 				"copied": "Copied",
 				"once": "Copy the API key now. It won't be shown again.",
 				"done": "Done"
+			}
+		},
+		"import": {
+			"title": "Import bookmarks",
+			"intro": "Bring your bookmarks over from Karakeep, Linkwarden or a browser, once. Folders, tags and dates are kept. Links that are already in your favourites are skipped.",
+			"format": "Export file",
+			"formats": {
+				"karakeep": "Karakeep (JSON)",
+				"linkwarden": "Linkwarden (JSON)",
+				"netscape": "Bookmarks file (HTML)"
+			},
+			"karakeepHint": "From Karakeep, use the JSON export: it keeps your lists, the HTML export doesn't.",
+			"file": "File",
+			"folder": "Import into",
+			"folderHint": "Folders of the file are created in this folder. Folders that already exist there with the same name are used.",
+			"submit": "Import",
+			"importing": "Importing…",
+			"errors": {
+				"invalidFile": "This file isn't a valid {{format}} export.",
+				"tooLarge": "The file is too large. It can have at most 10 MB.",
+				"invalidFolder": "Choose one of your folders to import into."
+			},
+			"report": {
+				"imported": "Imported {{links}} and created {{folders}}.",
+				"links_one": "{{count}} link",
+				"links_other": "{{count}} links",
+				"folders_one": "{{count}} folder",
+				"folders_other": "{{count}} folders",
+				"duplicates_one": "{{count}} link was already in your favourites",
+				"duplicates_other": "{{count}} links were already in your favourites",
+				"invalidUrls_one": "{{count}} entry had an invalid address",
+				"invalidUrls_other": "{{count}} entries had an invalid address",
+				"notLinks_one": "{{count}} entry isn't a link, such as a note or a file",
+				"notLinks_other": "{{count}} entries aren't links, such as notes or files",
+				"smartLists_one": "{{count}} smart list was left out",
+				"smartLists_other": "{{count}} smart lists were left out",
+				"shortenedDescriptions_one": "{{count}} description was shortened to 2048 characters",
+				"shortenedDescriptions_other": "{{count}} descriptions were shortened to 2048 characters"
 			}
 		}
 	},
