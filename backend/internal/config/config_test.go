@@ -246,3 +246,27 @@ func TestAAGUIDListURL(t *testing.T) {
 		})
 	}
 }
+
+func TestAppTitle(t *testing.T) {
+	tests := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"unset uses default", nil, "Boardly"},
+		{"custom", map[string]string{"BOARDLY_APP_TITLE": "Boardly Staging"}, "Boardly Staging"},
+		{"trimmed", map[string]string{"BOARDLY_APP_TITLE": "  Boardly Staging "}, "Boardly Staging"},
+		{"blank uses default", map[string]string{"BOARDLY_APP_TITLE": "   "}, "Boardly"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(withBaseURL(tt.vars)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.AppTitle != tt.want {
+				t.Fatalf("AppTitle = %q, want %q", cfg.AppTitle, tt.want)
+			}
+		})
+	}
+}

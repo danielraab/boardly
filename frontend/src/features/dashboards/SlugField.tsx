@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { appTitle } from "#/lib/appTitle";
 import { MAX_SLUG, normalizeSlugInput, slugError } from "./slug";
 
 /** Problems a slug field can show; "taken" comes from the server. */
@@ -61,7 +62,7 @@ export function SlugField({
 			</div>
 			{problem ? (
 				<p id={hintId} role="alert" className="mt-2 text-sm text-red-700">
-					{t(`dashboards.slug.${problem}`)}
+					{t(`dashboards.slug.${problem}`, { appName: appTitle() })}
 				</p>
 			) : (
 				renamed && (

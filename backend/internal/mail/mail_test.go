@@ -156,3 +156,46 @@ func TestSMTPSenderIntegration(t *testing.T) {
 		t.Fatalf("Send: %v", err)
 	}
 }
+
+func TestRenderMagicLinkUsesAppName(t *testing.T) {
+	data := MagicLinkData{AppName: "Boardly Staging", Link: "https://x/login/verify#token=T", Code: "K7Q-4MZ", ValidMinutes: 15}
+	for _, tt := range []struct {
+		locale, subject string
+		texts, htmls    int
+	}{
+		{"en", "Your Boardly Staging sign-in link", 3, 4},
+		{"de", "Dein Anmeldelink für Boardly Staging", 3, 4},
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			m, err := RenderMagicLink(tt.locale, "a@example.org", data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m.Subject != tt.subject {
+				t.Fatalf("Subject = %q, want %q", m.Subject, tt.subject)
+			}
+			// Text: two mentions in the sentence and the signature.
+			if n := strings.Count(m.Text, "Boardly Staging"); n != tt.texts {
+				t.Fatalf("text names the app %d times, want %d:\n%s", n, tt.texts, m.Text)
+			}
+			// HTML: title, heading, two mentions in the sentence and the button,
+			// counted without the title.
+			if n := strings.Count(m.HTML, "Boardly Staging") - 1; n != tt.htmls {
+				t.Fatalf("HTML names the app %d times, want %d:\n%s", n, tt.htmls, m.HTML)
+			}
+			if all := m.Subject + m.Text + m.HTML; strings.Count(all, "Boardly") != strings.Count(all, "Boardly Staging") {
+				t.Fatal("email still names plain Boardly")
+			}
+		})
+	}
+}
+
+func TestRenderMagicLinkEscapesAppNameInHTML(t *testing.T) {
+	m, err := RenderMagicLink("en", "a@example.org", MagicLinkData{AppName: "A & <B>", Link: "x", ValidMinutes: 15})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(m.HTML, "<B>") || !strings.Contains(m.HTML, "A &amp; &lt;B&gt;") {
+		t.Fatalf("HTML doesn't escape the app name:\n%s", m.HTML)
+	}
+}

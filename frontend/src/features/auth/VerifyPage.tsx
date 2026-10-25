@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
 import { ApiError, api } from "#/lib/api";
+import { appTitle } from "#/lib/appTitle";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { meQueryKey, resetToSignedOut, type User } from "./session";
 
@@ -86,7 +87,9 @@ export function VerifyPage() {
 				</>
 			) : needsConfirmation ? (
 				<>
-					<p className="mt-3 text-muted">{t("verify.text")}</p>
+					<p className="mt-3 text-muted">
+						{t("verify.text", { appName: appTitle() })}
+					</p>
 					<button
 						type="button"
 						className={`${primaryButton} mt-8`}

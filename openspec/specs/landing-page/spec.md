@@ -5,11 +5,15 @@
 The public page at `/` that introduces Boardly to visitors who are not signed in. For now it shows placeholders for a product screenshot and feature descriptions.
 ## Requirements
 ### Requirement: Landing page for signed-out visitors
-When no user is signed in, `/` SHALL show the landing page: a hero area with the product name, a one-line translated tagline and a call to action that goes to `/login`.
+When no user is signed in, `/` SHALL show the landing page: a hero area with the app title (see "Configurable app title" in the `app-hosting` capability, "Boardly" by default), a one-line translated tagline and a call to action that goes to `/login`.
 
 #### Scenario: Visitor opens root
 - **WHEN** a signed-out visitor opens `/`
 - **THEN** the page shows "Boardly", the tagline and a sign-in call to action
+
+#### Scenario: Custom app title
+- **WHEN** the app title is "Boardly Staging" and a signed-out visitor opens `/`
+- **THEN** the hero shows "Boardly Staging"
 
 #### Scenario: Call to action
 - **WHEN** the visitor activates the call to action
@@ -35,4 +39,3 @@ The landing page SHALL be usable at widths from 320px upwards without horizontal
 #### Scenario: Narrow viewport
 - **WHEN** the landing page is shown at 320px width
 - **THEN** all content is visible without horizontal scrolling and the feature cards stack in one column
-

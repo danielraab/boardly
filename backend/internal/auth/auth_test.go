@@ -106,3 +106,25 @@ func TestCleanupKeepsRecentlyExpiredTokens(t *testing.T) {
 		t.Fatalf("tokens = %d, want 1", tokens)
 	}
 }
+
+type captured struct{ msgs []mail.Message }
+
+func (c *captured) Send(_ context.Context, m mail.Message) error {
+	c.msgs = append(c.msgs, m)
+	return nil
+}
+
+func TestRequestLinkUsesAppTitle(t *testing.T) {
+	database := dbtest.Open(t)
+	base, _ := url.Parse("http://localhost:3000")
+	box := &captured{}
+	svc := NewService(database, users.NewStore(database), box, base)
+	svc.AppTitle = "Boardly Staging"
+
+	if _, err := svc.RequestLink(context.Background(), "ann@example.org", "en", "192.0.2.1", "secret"); err != nil {
+		t.Fatal(err)
+	}
+	if len(box.msgs) != 1 || box.msgs[0].Subject != "Your Boardly Staging sign-in link" {
+		t.Fatalf("sent %+v", box.msgs)
+	}
+}

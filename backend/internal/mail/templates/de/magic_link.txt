@@ -1,8 +1,8 @@
-{{define "subject"}}Dein Anmeldelink für Boardly{{end}}
+{{define "subject"}}Dein Anmeldelink für {{.AppName}}{{end}}
 {{define "body"}}
 Hallo,
 
-mit diesem Link meldest du dich bei Boardly an. Er öffnet Boardly in diesem Browser:
+mit diesem Link meldest du dich bei {{.AppName}} an. Er öffnet {{.AppName}} in diesem Browser:
 
 {{.Link}}
 
@@ -14,5 +14,5 @@ Link und Code sind {{.ValidMinutes}} Minuten gültig und können nur einmal verw
 
 Wenn du diese E-Mail nicht angefordert hast, kannst du sie ignorieren. Ohne den Link oder den Code kann sich niemand anmelden.
 
-– Boardly
+– {{.AppName}}
 {{end}}
