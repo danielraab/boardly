@@ -19,6 +19,9 @@ There are no passwords. Users sign in with:
   or type the 6-character one-time code from the same email into the login page.
 - **Passkey** (WebAuthn): register one or more passkeys after the first login and use them to sign in.
 
+By default anyone can sign up. Set `BOARDLY_ALLOW_REGISTRATION=false` to close registration once your
+users have accounts (see [Sign-in](#sign-in)).
+
 All data (dashboards, favourites, API tokens) belongs to a single user.
 
 ### Favourites tree
@@ -394,6 +397,7 @@ precedence over the file.
 | `BOARDLY_LOG_FORMAT` | `json` | Log format, `json` or `text` |
 | `BOARDLY_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
 | `BOARDLY_APP_TITLE` | `Boardly` | Name the web app, its installed app (manifest) and sign-in emails show, for example `Boardly Staging` to tell a staging system apart. Blank means the default. Development with the Vite dev server always shows `Boardly` |
+| `BOARDLY_ALLOW_REGISTRATION` | `true` | Whether the first sign-in with a new email address creates an account. `false` closes registration: only existing users can sign in, and new addresses get an email saying that registration is closed. See [Sign-in](#sign-in) |
 | `BOARDLY_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
 | `BOARDLY_SMTP_PORT` | `587` | SMTP port |
 | `BOARDLY_SMTP_USERNAME` / `BOARDLY_SMTP_PASSWORD` | (empty) | SMTP login; leave empty for servers without authentication |
@@ -426,6 +430,13 @@ these steps once:
 ### Sign-in
 
 Anyone can sign up: the first sign-in with an email address creates the account.
+
+With `BOARDLY_ALLOW_REGISTRATION=false`, registration is closed. Users with an account sign in as
+before. An address without an account gets an email, in the visitor's language, saying that
+registration is closed, with no link and no code. The login page responds the same either way, so it
+doesn't reveal which addresses have an account. These requests count against the same rate limits.
+A link or code that was sent to an address without an account before registration was closed no
+longer works.
 
 1. On `/login`, the visitor enters their email address. The server sends a one-time link that is
    valid for 15 minutes, in the visitor's language.

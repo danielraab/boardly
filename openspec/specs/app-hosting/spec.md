@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines how Boardly runs as a single self-hosted binary. The binary serves the JSON REST API and the web app, is configured from the environment, and keeps its data in a local database.
+
 ## Requirements
+
 ### Requirement: Single binary serves API and web app
 The server SHALL serve the REST API under `/api/` and the built web app from the same binary and port. It SHALL NOT need any other files at runtime besides its database file and the files it writes itself to its data directory (`BOARDLY_DATA_DIR`, default `./data`). It SHALL create the data directory and its `images` subdirectory on start if they don't exist.
 
@@ -134,3 +136,18 @@ The repository SHALL contain a container build that produces an image of the who
 #### Scenario: Local secrets stay out of the image
 - **WHEN** the image is built from a working copy that contains `.env` or database files
 - **THEN** none of these files are in the image or its build stages
+
+### Requirement: Registration switch
+The server SHALL read from `BOARDLY_ALLOW_REGISTRATION` whether new accounts may be created. The value is `true` or `false`, and an unset or empty value gives the default `true`. Any other value SHALL stop startup with an error message that names `BOARDLY_ALLOW_REGISTRATION`. How sign-in behaves when registration is not allowed is described in the `auth-magic-link` capability.
+
+#### Scenario: Default allows registration
+- **WHEN** the server starts without `BOARDLY_ALLOW_REGISTRATION`
+- **THEN** registration is allowed
+
+#### Scenario: Registration disabled
+- **WHEN** the server starts with `BOARDLY_ALLOW_REGISTRATION=false`
+- **THEN** registration is not allowed
+
+#### Scenario: Invalid value
+- **WHEN** the server starts with `BOARDLY_ALLOW_REGISTRATION=maybe`
+- **THEN** it exits with a non-zero status and an error message that names `BOARDLY_ALLOW_REGISTRATION`

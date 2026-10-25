@@ -199,3 +199,55 @@ func TestRenderMagicLinkEscapesAppNameInHTML(t *testing.T) {
 		t.Fatalf("HTML doesn't escape the app name:\n%s", m.HTML)
 	}
 }
+
+func TestRenderRegistrationClosedGolden(t *testing.T) {
+	for _, tt := range []struct{ locale, golden string }{
+		{"en", "en"},
+		{"de", "de"},
+		{"fr", "en"}, // unknown locale falls back to English
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			m, err := RenderRegistrationClosed(tt.locale, "new@example.org", RegistrationClosedData{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := "To: " + m.To + "\nSubject: " + m.Subject + "\n\n" + m.Text + "\n--- html ---\n" + m.HTML
+			path := filepath.Join("testdata", "registration_closed_"+tt.golden+".golden")
+			if *update && tt.locale == tt.golden {
+				if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("%v (run with -update to create it)", err)
+			}
+			if got != string(want) {
+				t.Fatalf("output differs from %s:\n%s", path, got)
+			}
+		})
+	}
+}
+
+func TestRenderRegistrationClosedUsesAppName(t *testing.T) {
+	for _, tt := range []struct{ locale, subject string }{
+		{"en", "Registration for Boardly Staging is closed"},
+		{"de", "Registrierung bei Boardly Staging ist geschlossen"},
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			m, err := RenderRegistrationClosed(tt.locale, "a@example.org", RegistrationClosedData{AppName: "Boardly Staging"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m.Subject != tt.subject {
+				t.Fatalf("Subject = %q, want %q", m.Subject, tt.subject)
+			}
+			if !strings.Contains(m.Text, "Boardly Staging") || !strings.Contains(m.HTML, "Boardly Staging") {
+				t.Fatal("email doesn't name the app")
+			}
+			if all := m.Subject + m.Text + m.HTML; strings.Count(all, "Boardly") != strings.Count(all, "Boardly Staging") {
+				t.Fatal("email still names plain Boardly")
+			}
+		})
+	}
+}

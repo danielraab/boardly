@@ -42,6 +42,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.TrustProxyHeaders {
 		t.Fatal("TrustProxyHeaders should default to false")
 	}
+	if !cfg.AllowRegistration {
+		t.Fatal("AllowRegistration should default to true")
+	}
 	if cfg.DataDir != "./data" || cfg.FetchAllowPrivate {
 		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v; want ./data, false", cfg.DataDir, cfg.FetchAllowPrivate)
 	}
@@ -66,6 +69,7 @@ func TestLoadOverrides(t *testing.T) {
 		"BOARDLY_SMTP_FROM":           "Dash <dash@example.org>",
 		"BOARDLY_SMTP_TLS":            "tls",
 		"BOARDLY_TRUST_PROXY_HEADERS": "true",
+		"BOARDLY_ALLOW_REGISTRATION":  "false",
 		"BOARDLY_DATA_DIR":            "/srv/boardly",
 		"BOARDLY_FETCH_ALLOW_PRIVATE": "true",
 		"BOARDLY_PREVIEW_MAX_SIZE_MB": "2",
@@ -90,6 +94,9 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if !cfg.TrustProxyHeaders {
 		t.Fatal("TrustProxyHeaders should be true")
+	}
+	if cfg.AllowRegistration {
+		t.Fatal("AllowRegistration should be false")
 	}
 	if cfg.DataDir != "/srv/boardly" || !cfg.FetchAllowPrivate {
 		t.Fatalf("DataDir = %q, FetchAllowPrivate = %v", cfg.DataDir, cfg.FetchAllowPrivate)
@@ -176,6 +183,7 @@ func TestLoadInvalid(t *testing.T) {
 		{"smtp port not a number", "BOARDLY_SMTP_PORT", "smtp"},
 		{"unknown TLS mode", "BOARDLY_SMTP_TLS", "ssl"},
 		{"proxy flag not a bool", "BOARDLY_TRUST_PROXY_HEADERS", "maybe"},
+		{"registration flag not a bool", "BOARDLY_ALLOW_REGISTRATION", "maybe"},
 		{"private fetch flag not a bool", "BOARDLY_FETCH_ALLOW_PRIVATE", "sometimes"},
 		{"RP ID of another host", "BOARDLY_WEBAUTHN_RP_ID", "example.org"},
 		{"AAGUID list URL relative", "BOARDLY_AAGUID_LIST_URL", "/aaguids.json"},

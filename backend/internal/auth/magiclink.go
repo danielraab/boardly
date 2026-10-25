@@ -73,6 +73,14 @@ func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, brow
 			return "", err
 		}
 	}
+	if s.RegistrationClosed {
+		if _, err := s.Users.GetByEmail(ctx, s.DB, email); errors.Is(err, users.ErrNotFound) {
+			return browserSecret, s.refuseRegistration(ctx, email, locale, clientIP, browserSecret, now)
+		} else if err != nil {
+			return "", err
+		}
+	}
+
 	token, tokenHash, err := newSecret()
 	if err != nil {
 		return "", err
@@ -102,6 +110,44 @@ func (s *Service) RequestLink(ctx context.Context, email, locale, clientIP, brow
 		slog.ErrorContext(ctx, "sending sign-in link failed", "error", err)
 	}
 	return browserSecret, nil
+}
+
+// refuseRegistration mails the registration-closed email to an address without
+// an account. It stores the request as an already used token that nobody
+// receives, so the per-email rate limits count it like a sign-in link request.
+// A failed delivery is logged but not returned, as in RequestLink.
+func (s *Service) refuseRegistration(ctx context.Context, email, locale, clientIP, browserSecret string, now time.Time) error {
+	_, tokenHash, err := newSecret()
+	if err != nil {
+		return err
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`INSERT INTO magic_link_tokens (token_hash, email, locale, created_at, expires_at, used_at, request_ip, browser_hash)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tokenHash, email, locale, db.FormatTime(now), db.FormatTime(now.Add(LinkTTL)), db.FormatTime(now), clientIP, hash(browserSecret),
+	); err != nil {
+		return fmt.Errorf("storing request: %w", err)
+	}
+
+	msg, err := boardlymail.RenderRegistrationClosed(locale, email, boardlymail.RegistrationClosedData{AppName: s.AppTitle})
+	if err != nil {
+		return fmt.Errorf("rendering mail: %w", err)
+	}
+	slog.InfoContext(ctx, "sign-in refused, registration is closed")
+	if err := s.Mailer.Send(ctx, msg); err != nil {
+		slog.ErrorContext(ctx, "sending registration-closed mail failed", "error", err)
+	}
+	return nil
+}
+
+// signInUser returns the account for email, creating it unless registration
+// is closed. With registration closed, an address without an account returns
+// users.ErrNotFound. q may be a transaction.
+func (s *Service) signInUser(ctx context.Context, q db.Querier, email string) (users.User, error) {
+	if s.RegistrationClosed {
+		return s.Users.GetByEmail(ctx, q, email)
+	}
+	return s.Users.EnsureByEmail(ctx, q, email)
 }
 
 // validBrowserSecret reports whether a login-request cookie value looks like one
@@ -198,7 +244,10 @@ func (s *Service) Redeem(ctx context.Context, token, userAgent, browserSecret st
 		return users.User{}, Session{}, err
 	}
 
-	user, err := s.Users.EnsureByEmail(ctx, tx, email)
+	user, err := s.signInUser(ctx, tx, email)
+	if errors.Is(err, users.ErrNotFound) {
+		return users.User{}, Session{}, ErrInvalidToken
+	}
 	if err != nil {
 		return users.User{}, Session{}, err
 	}
@@ -273,7 +322,10 @@ func (s *Service) RedeemCode(ctx context.Context, email, code, userAgent, browse
 	); err != nil {
 		return users.User{}, Session{}, err
 	}
-	user, err := s.Users.EnsureByEmail(ctx, tx, email)
+	user, err := s.signInUser(ctx, tx, email)
+	if errors.Is(err, users.ErrNotFound) {
+		return users.User{}, Session{}, ErrInvalidCode
+	}
 	if err != nil {
 		return users.User{}, Session{}, err
 	}
