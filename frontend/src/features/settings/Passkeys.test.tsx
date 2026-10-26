@@ -72,6 +72,7 @@ describe("settings tabs", () => {
 			"Profile",
 			"Passkeys",
 			"Connected apps",
+			"Import / Export",
 		]);
 		await waitFor(() =>
 			expect(tabs[0]).toHaveAttribute("aria-selected", "true"),

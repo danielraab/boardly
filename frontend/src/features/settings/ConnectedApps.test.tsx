@@ -67,6 +67,7 @@ describe("connected apps tab", () => {
 			"Profile",
 			"Passkeys",
 			"Connected apps",
+			"Import / Export",
 		]);
 		await user.click(tabs[2]);
 		await waitFor(() =>

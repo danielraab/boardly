@@ -1,0 +1,54 @@
+{
+  "id": 1,
+  "name": "Ann",
+  "username": "ann",
+  "email": "ann@example.org",
+  "collections": [
+    {
+      "id": 12,
+      "name": "Later",
+      "description": "",
+      "color": "#0ea5e9",
+      "parentId": 11,
+      "isPublic": false,
+      "links": [
+        {
+          "id": 101,
+          "name": "Rust book",
+          "type": "url",
+          "description": "",
+          "url": "https://doc.rust-lang.org/book/",
+          "createdAt": "2025-05-01T10:00:00.000Z",
+          "tags": [{"id": 1, "name": "rust"}]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Reading",
+      "description": "",
+      "parentId": null,
+      "links": [
+        {
+          "id": 100,
+          "name": "Go tour",
+          "type": "url",
+          "description": "A tour of Go",
+          "url": "https://go.dev/tour",
+          "createdAt": "2025-04-01T09:30:00.000Z",
+          "tags": [{"id": 2, "name": "go"}, {"id": 3, "name": "docs"}],
+          "pinnedBy": [{"id": 1}]
+        },
+        {
+          "id": 102,
+          "name": "Manual.pdf",
+          "type": "pdf",
+          "description": "",
+          "url": null,
+          "createdAt": "2025-04-02T09:30:00.000Z",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}

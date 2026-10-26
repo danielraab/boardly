@@ -105,7 +105,8 @@
 			"label": "Einstellungsbereiche",
 			"profile": "Profil",
 			"passkeys": "Passkeys",
-			"apps": "Verbundene Apps"
+			"apps": "Verbundene Apps",
+			"data": "Import / Export"
 		},
 		"apps": {
 			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst.",
@@ -165,6 +166,44 @@
 				"copied": "Kopiert",
 				"once": "Kopiere den API-Schlüssel jetzt. Er wird nicht noch einmal angezeigt.",
 				"done": "Fertig"
+			}
+		},
+		"import": {
+			"title": "Lesezeichen importieren",
+			"intro": "Übernimm deine Lesezeichen einmalig aus Karakeep, Linkwarden oder einem Browser. Ordner, Tags und Daten bleiben erhalten. Links, die schon in deinen Favoriten sind, werden übersprungen.",
+			"format": "Exportdatei",
+			"formats": {
+				"karakeep": "Karakeep (JSON)",
+				"linkwarden": "Linkwarden (JSON)",
+				"netscape": "Lesezeichen-Datei (HTML)"
+			},
+			"karakeepHint": "Verwende aus Karakeep den JSON-Export: Er enthält deine Listen, der HTML-Export nicht.",
+			"file": "Datei",
+			"folder": "Importieren in",
+			"folderHint": "Die Ordner der Datei werden in diesem Ordner angelegt. Gleichnamige Ordner, die es dort schon gibt, werden verwendet.",
+			"submit": "Importieren",
+			"importing": "Wird importiert …",
+			"errors": {
+				"invalidFile": "Diese Datei ist kein gültiger Export von {{format}}.",
+				"tooLarge": "Die Datei ist zu groß. Sie darf höchstens 10 MB haben.",
+				"invalidFolder": "Wähle einen deiner Ordner als Ziel."
+			},
+			"report": {
+				"imported": "{{links}} importiert und {{folders}} angelegt.",
+				"links_one": "{{count}} Link",
+				"links_other": "{{count}} Links",
+				"folders_one": "{{count}} Ordner",
+				"folders_other": "{{count}} Ordner",
+				"duplicates_one": "{{count}} Link war schon in deinen Favoriten",
+				"duplicates_other": "{{count}} Links waren schon in deinen Favoriten",
+				"invalidUrls_one": "{{count}} Eintrag hatte eine ungültige Adresse",
+				"invalidUrls_other": "{{count}} Einträge hatten eine ungültige Adresse",
+				"notLinks_one": "{{count}} Eintrag ist kein Link, etwa eine Notiz oder Datei",
+				"notLinks_other": "{{count}} Einträge sind keine Links, etwa Notizen oder Dateien",
+				"smartLists_one": "{{count}} intelligente Liste wurde ausgelassen",
+				"smartLists_other": "{{count}} intelligente Listen wurden ausgelassen",
+				"shortenedDescriptions_one": "{{count}} Beschreibung wurde auf 2048 Zeichen gekürzt",
+				"shortenedDescriptions_other": "{{count}} Beschreibungen wurden auf 2048 Zeichen gekürzt"
 			}
 		}
 	},

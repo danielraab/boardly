@@ -52,6 +52,36 @@ The tree is managed on the **Favourites** page (`/favourites`, linked from the u
 Dashboards (through navigation trees) and the Karakeep and Linkwarden APIs all read from and write to
 this tree. None of them keeps its own separate copy of the bookmarks.
 
+#### Importing bookmarks
+
+Bookmarks can be imported once from an export file on **Settings → Import / Export**
+(`/settings?tab=data`). Nothing is synced afterwards. The supported files are:
+
+- **Karakeep (JSON)**: Karakeep's JSON export. It contains your lists, so use it rather than
+  Karakeep's HTML export, which has no lists.
+- **Linkwarden (JSON)**: Linkwarden's data export, with collections, links and tags.
+- **Bookmarks file (HTML)**: the Netscape bookmark format that Karakeep, Linkwarden and web browsers
+  export.
+
+You choose the folder to import into. The top-level folder is allowed. The import works like this:
+
+- The file's folders (Karakeep lists, Linkwarden collections, browser folders) are created in that
+  folder. A folder that already exists there with the same name, ignoring case, is used instead of a
+  new one. Folders without links are created too.
+- Links keep their title, tags, description and creation date, and the order of the file. They are
+  added after the folder's existing content.
+- A link whose URL is already in your favourites, or appears earlier in the file, is skipped, and the
+  existing link is left as it is. Importing the same file twice therefore adds nothing the second
+  time.
+- A Karakeep bookmark that is in several lists goes into the first one. Karakeep notes and summaries
+  are added to the description (`Note: …`, `Summary: …`), which is cut to 2048 characters.
+- Not imported: Karakeep text and asset bookmarks, Karakeep smart lists, Linkwarden uploads without a
+  URL (PDFs, images), and archived, favourited and pinned flags.
+- The import is all or nothing, and the file can have at most 10 MB. Afterwards, the page shows how
+  many links and folders were added and what was skipped.
+- Favicons, descriptions and preview images of the imported links are fetched in the background, as
+  for any new link. A description from the file is kept.
+
 ### Dashboards
 
 A user can create any number of dashboards on the **Dashboards** page (`/dashboards`, linked from the

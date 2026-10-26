@@ -1,0 +1,70 @@
+{
+  "bookmarks": [
+    {
+      "createdAt": 1792670482,
+      "title": "Go by Example",
+      "tags": ["go", " Learning ", ""],
+      "lists": ["containers"],
+      "content": {"type": "link", "url": "https://gobyexample.com/"},
+      "note": null,
+      "archived": false
+    },
+    {
+      "createdAt": 1792513673,
+      "title": null,
+      "tags": [],
+      "lists": ["dev-sub", "linux"],
+      "content": {"type": "link", "url": "https://example.org/video?v=1&t=2"},
+      "note": "login with the family account",
+      "archived": true
+    },
+    {
+      "createdAt": 1791870278,
+      "title": "Text note",
+      "tags": [],
+      "lists": ["linux"],
+      "content": {"type": "text", "text": "remember this"},
+      "note": null,
+      "archived": false
+    },
+    {
+      "createdAt": 1791632526,
+      "title": "In a smart list only",
+      "tags": [],
+      "lists": ["youtube"],
+      "content": {"type": "link", "url": "https://example.org/top"},
+      "note": null,
+      "archived": false
+    },
+    {
+      "createdAt": 1791632374,
+      "title": "Bad",
+      "tags": [],
+      "lists": [],
+      "content": {"type": "link", "url": "javascript:alert(1)"},
+      "note": null,
+      "archived": false
+    },
+    {
+      "createdAt": 1791583937,
+      "title": "Linux docs",
+      "tags": ["linux"],
+      "lists": ["linux"],
+      "content": {"type": "link", "url": "https://kernel.org"},
+      "note": "",
+      "summary": "The kernel",
+      "archived": false,
+      "unknownField": {"nested": true}
+    }
+  ],
+  "lists": [
+    {"id": "containers", "name": "Containers", "description": "", "icon": "📦", "type": "manual", "query": null, "parentId": "docker"},
+    {"id": "docker", "name": "Docker", "description": "", "icon": "📦", "type": "manual", "query": null, "parentId": "dev"},
+    {"id": "youtube", "name": "Youtube", "description": "", "icon": "📁", "type": "smart", "query": "url:youtube", "parentId": null},
+    {"id": "dev", "name": "Dev", "description": "", "icon": "👨‍💻", "type": "manual", "query": null, "parentId": null},
+    {"id": "linux", "name": "Linux", "description": null, "icon": "🐧", "type": "manual", "query": null, "parentId": null},
+    {"id": "dev-sub", "name": "dev", "description": null, "icon": "📔", "type": "manual", "query": null, "parentId": "floccus"},
+    {"id": "floccus", "name": "Floccus", "description": null, "icon": "📔", "type": "manual", "query": null, "parentId": null},
+    {"id": "empty", "name": "Empty", "description": "", "icon": "📁", "type": "manual", "query": null, "parentId": null}
+  ]
+}

@@ -12,9 +12,10 @@ import { slugError } from "#/features/dashboards/slug";
 import { ApiError, api } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { ConnectedAppsTab } from "./ConnectedAppsTab";
+import { ImportExportTab } from "./ImportExportTab";
 import { PasskeysTab } from "./PasskeysTab";
 
-export type SettingsTab = "profile" | "passkeys" | "apps";
+export type SettingsTab = "profile" | "passkeys" | "apps" | "data";
 
 const tabClass =
 	"-mb-px border-b-2 border-transparent px-3 py-2 font-medium text-muted hover:text-ink data-[active]:border-ink data-[active]:text-ink";
@@ -55,6 +56,9 @@ export function SettingsPage({
 					<Tabs.Tab value="apps" className={tabClass}>
 						{t("settings.tabs.apps")}
 					</Tabs.Tab>
+					<Tabs.Tab value="data" className={tabClass}>
+						{t("settings.tabs.data")}
+					</Tabs.Tab>
 				</Tabs.List>
 				<Tabs.Panel value="profile" className="pt-6">
 					<ProfileTab user={me} />
@@ -64,6 +68,9 @@ export function SettingsPage({
 				</Tabs.Panel>
 				<Tabs.Panel value="apps" className="pt-6">
 					<ConnectedAppsTab />
+				</Tabs.Panel>
+				<Tabs.Panel value="data" className="pt-6">
+					<ImportExportTab />
 				</Tabs.Panel>
 			</Tabs.Root>
 		</div>
