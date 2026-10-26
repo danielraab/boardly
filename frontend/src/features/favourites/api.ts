@@ -80,6 +80,27 @@ export function refreshFavicon(url: string) {
 	});
 }
 
+/** The most nodes one bulk request takes. */
+export const MAX_BULK = 1000;
+
+export type BulkOp =
+	| { action: "delete"; ids: string[] }
+	| {
+			action: "addTags" | "removeTags" | "setTags";
+			ids: string[];
+			tags: string[];
+	  }
+	| { action: "move"; ids: string[]; parentId: string };
+
+/** Applies one action to many nodes, all or nothing. keepalive lets it finish while the page unloads. */
+export function bulkFavourites(op: BulkOp, keepalive = false) {
+	return api<void>("/api/favourites/bulk", {
+		method: "POST",
+		json: op,
+		keepalive,
+	});
+}
+
 export function suggestTags(prefix: string) {
 	return api<Tag[]>(`/api/tags?q=${encodeURIComponent(prefix)}`);
 }

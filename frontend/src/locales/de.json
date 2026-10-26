@@ -75,7 +75,8 @@
 	},
 	"common": {
 		"loading": "Wird geladen…",
-		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
+		"close": "Schließen"
 	},
 	"verify": {
 		"title": "Anmeldung abschließen",
@@ -283,6 +284,42 @@
 		"reorderHint": "Setze die Filter zurück, um die Reihenfolge zu ändern.",
 		"linkCount_one": "{{count}} Link",
 		"linkCount_other": "{{count}} Links",
+		"folderCount_one": "{{count}} Ordner",
+		"folderCount_other": "{{count}} Ordner",
+		"select": {
+			"start": "Auswählen",
+			"done": "Fertig",
+			"all": "Alle auswählen",
+			"row": "{{name}} auswählen"
+		},
+		"bulk": {
+			"selected": "{{items}} ausgewählt",
+			"and": " und ",
+			"tooMany": "Es können höchstens {{max}} Einträge auf einmal geändert werden.",
+			"addTags": "Tags hinzufügen",
+			"removeTags": "Tags entfernen",
+			"setTags": "Tags festlegen",
+			"move": "Verschieben nach…",
+			"delete_one": "{{count}} Link löschen",
+			"delete_other": "{{count}} Links löschen",
+			"addTagsTitle": "Tags hinzufügen",
+			"removeTagsTitle": "Tags entfernen",
+			"setTagsTitle": "Tags festlegen",
+			"moveTitle": "Verschieben nach…",
+			"appliesToLinks_one": "Gilt für {{count}} Link.",
+			"appliesToLinks_other": "Gilt für {{count}} Links.",
+			"appliesToItems_one": "Verschiebt {{count}} Eintrag ans Ende des gewählten Ordners.",
+			"appliesToItems_other": "Verschiebt {{count}} Einträge ans Ende des gewählten Ordners.",
+			"removeLabel": "Zu entfernende Tags",
+			"noTags": "Die ausgewählten Links haben keine Tags.",
+			"setWarning": "Die bisherigen Tags dieser Links werden durch die Tags oben ersetzt.",
+			"apply": "Übernehmen",
+			"moveConfirm": "Verschieben",
+			"deleted_one": "{{count}} Link gelöscht",
+			"deleted_other": "{{count}} Links gelöscht",
+			"undo": "Rückgängig",
+			"deleteFailed": "Die Links konnten nicht gelöscht werden. Bitte versuche es erneut."
+		},
 		"dialog": {
 			"newFolder": "Neuer Ordner",
 			"newLink": "Neuer Link",

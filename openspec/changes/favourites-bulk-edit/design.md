@@ -29,7 +29,7 @@ IDs that are no longer in the tree (deleted elsewhere) are dropped when the tree
 In selection mode `TreeRow` renders a checkbox (`aria-checked="mixed"` for partly checked) where the handle was, so the layout doesn't shift. Drag and drop is off, like while filtering. The last clicked row's index in the shown rows is kept for shift-click ranges.
 
 ### Bulk endpoint, one store method
-`POST /api/favourites/bulk` decodes `{ ids, action, tags?, parentId? }` and calls `Store.Bulk(ctx, userID, BulkOp)`. `Bulk` opens one transaction, loads all IDs with a single `user_id = ?` query (missing gives `ErrNotFound`), validates kinds, and then:
+`POST /api/favourites/bulk` decodes `{ ids, action, tags?, parentId? }` and calls `Store.Bulk(ctx, userID, BulkOp)`. `Bulk` validates the request shape, opens one transaction, loads every ID with the existing `load` (scoped to the user, so a missing or foreign ID gives `ErrNotFound`; 1000 indexed lookups in SQLite are cheap), validates kinds, and then:
 - `delete`: deletes the links, closes the position gaps per parent, runs `removeUnusedTags` once. No token revocation, because only folders can be token roots.
 - `addTags` / `removeTags` / `setTags`: normalizes names with `NormalizeTags`, then per link computes the new names and calls the existing `setTags` with the transaction. `removeUnusedTags` runs once at the end.
 - `move`: rejects overlapping IDs and a target inside a given node (one recursive CTE over the given IDs), then appends each node at the end of the target in the given order. The client sends tree order.

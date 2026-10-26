@@ -137,6 +137,37 @@ func (a *api) deleteFavourite(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (a *api) bulkFavourites(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		IDs      []string              `json:"ids"`
+		Action   favourites.BulkAction `json:"action"`
+		Tags     *[]string             `json:"tags"`
+		ParentID string                `json:"parentId"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	invalid := NewError(http.StatusBadRequest, "invalid_field", "Send 1 to 1000 different IDs, an action and its tags or folder; tag actions and delete only take links")
+	op := favourites.BulkOp{IDs: body.IDs, Action: body.Action, ParentID: body.ParentID}
+	switch body.Action {
+	case favourites.BulkAddTags, favourites.BulkRemoveTags, favourites.BulkSetTags:
+		if body.Tags == nil {
+			return invalid
+		}
+		op.Tags = *body.Tags
+	}
+	user, _ := CurrentUser(r.Context())
+	err := a.favourites.Bulk(r.Context(), user.ID, op)
+	if errors.Is(err, favourites.ErrInvalidField) {
+		return invalid
+	}
+	if err != nil {
+		return favouritesError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 func (a *api) suggestTags(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
 	tags, err := a.favourites.SuggestTags(r.Context(), user.ID, r.URL.Query().Get("q"))

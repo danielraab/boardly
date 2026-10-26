@@ -24,6 +24,18 @@ function ancestorsOf(root: FavouriteNode, id: string): Set<string> {
 	return new Set(walk(root, []) ?? []);
 }
 
+/** The given IDs and everything below them. */
+function subtreesOf(root: FavouriteNode, ids: ReadonlySet<string>) {
+	const out = new Set<string>();
+	const walk = (node: FavouriteNode, inside: boolean) => {
+		const blocked = inside || ids.has(node.id);
+		if (blocked) out.add(node.id);
+		for (const child of node.children ?? []) walk(child, blocked);
+	};
+	walk(root, false);
+	return out;
+}
+
 function hasLink(node: FavouriteNode): boolean {
 	return (node.children ?? []).some((c) => c.kind === "link" || hasLink(c));
 }
@@ -44,7 +56,8 @@ function matches(node: FavouriteNode, query: string) {
 /**
  * Chooses a folder or a link from the signed-in user's favourites: a tree
  * that can be expanded and collapsed, and searched by name and URL. A value
- * that isn't in the tree selects nothing.
+ * that isn't in the tree selects nothing. The nodes in disabledIds, and
+ * everything below them, can't be chosen.
  */
 export function FavouritePicker({
 	id,
@@ -52,12 +65,14 @@ export function FavouritePicker({
 	mode,
 	value,
 	onChange,
+	disabledIds,
 }: {
 	id: string;
 	label: string;
 	mode: PickerMode;
 	value: string;
 	onChange: (id: string) => void;
+	disabledIds?: ReadonlySet<string>;
 }) {
 	const { t } = useTranslation();
 	const favourites = useQuery(favouritesQueryOptions);
@@ -84,6 +99,7 @@ export function FavouritePicker({
 	}
 
 	const paths = pathsOf(root, t("favourites.title"));
+	const disabled = disabledIds ? subtreesOf(root, disabledIds) : new Set();
 	const open = expanded ?? ancestorsOf(root, value);
 	const toggle = (folderId: string) => {
 		const next = new Set(open);
@@ -100,14 +116,15 @@ export function FavouritePicker({
 	): ReactNode => (
 		<div
 			key={node.id}
-			className="flex min-w-0 flex-1 items-center rounded-md hover:bg-paper has-[:checked]:bg-accent/15 has-[:checked]:font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
+			className="flex min-w-0 flex-1 items-center rounded-md hover:bg-paper has-[:disabled]:opacity-50 has-[:disabled]:hover:bg-transparent has-[:checked]:bg-accent/15 has-[:checked]:font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
 			style={depth ? { marginLeft: `${depth * INDENT_REM}rem` } : undefined}
 		>
-			<label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1">
+			<label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 has-[:disabled]:cursor-not-allowed">
 				<input
 					type="radio"
 					name={id}
 					value={node.id}
+					disabled={disabled.has(node.id)}
 					checked={node.id === value}
 					onChange={() => onChange(node.id)}
 					aria-describedby={detail ? `${id}-${node.id}-path` : undefined}

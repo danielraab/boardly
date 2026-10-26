@@ -413,3 +413,147 @@ export function highlight(
 	}
 	return parts;
 }
+
+/** How a row's checkbox is shown in selection mode. */
+export type CheckState = "checked" | "mixed" | "unchecked";
+
+function descendants(node: FavouriteNode): FavouriteNode[] {
+	const out: FavouriteNode[] = [];
+	const visit = (n: FavouriteNode) => {
+		for (const child of n.children ?? []) {
+			out.push(child);
+			visit(child);
+		}
+	};
+	visit(node);
+	return out;
+}
+
+/**
+ * A link is checked when selected. A folder is checked when everything below
+ * it in the given tree is, mixed when some of it is, and, when empty, checked
+ * when selected itself.
+ */
+export function checkState(
+	node: FavouriteNode,
+	selected: ReadonlySet<string>,
+): CheckState {
+	if (node.kind === "link")
+		return selected.has(node.id) ? "checked" : "unchecked";
+	const below = descendants(node);
+	if (below.length === 0)
+		return selected.has(node.id) ? "checked" : "unchecked";
+	const count = below.filter((n) => selected.has(n.id)).length;
+	return count === below.length ? "checked" : count > 0 ? "mixed" : "unchecked";
+}
+
+/** The selection with node and everything below it (in the given tree) checked or unchecked. */
+export function toggleSelection(
+	node: FavouriteNode,
+	selected: ReadonlySet<string>,
+	on: boolean,
+): Set<string> {
+	const next = new Set(selected);
+	for (const n of [node, ...descendants(node)]) {
+		if (on) next.add(n.id);
+		else next.delete(n.id);
+	}
+	return next;
+}
+
+/** The selection with the rows from index `from` to `to` (either order) set like toggleSelection. */
+export function selectRange(
+	rows: FavouriteNode[],
+	from: number,
+	to: number,
+	selected: ReadonlySet<string>,
+	on: boolean,
+): Set<string> {
+	let next = new Set(selected);
+	for (let i = Math.min(from, to); i <= Math.max(from, to); i++) {
+		if (rows[i]) next = toggleSelection(rows[i], next, on);
+	}
+	return next;
+}
+
+/** The selected links of the tree, in tree order. */
+export function selectedLinks(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): FavouriteNode[] {
+	return descendants(root).filter(
+		(n) => n.kind === "link" && selected.has(n.id),
+	);
+}
+
+/**
+ * The nodes a move takes, in tree order: fully checked folders as a whole,
+ * and the selected nodes of other folders on their own.
+ */
+export function moveRoots(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): FavouriteNode[] {
+	const out: FavouriteNode[] = [];
+	const visit = (folder: FavouriteNode) => {
+		for (const child of folder.children ?? []) {
+			if (checkState(child, selected) === "checked") out.push(child);
+			else if (child.kind === "folder") visit(child);
+		}
+	};
+	visit(root);
+	return out;
+}
+
+/** How many links, and how many fully checked folders, the selection has. */
+export function selectionCounts(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): { links: number; folders: number } {
+	let links = 0;
+	let folders = 0;
+	for (const n of descendants(root)) {
+		if (n.kind === "link") links += selected.has(n.id) ? 1 : 0;
+		else folders += checkState(n, selected) === "checked" ? 1 : 0;
+	}
+	return { links, folders };
+}
+
+/** The tags of the selected links with how many of them have each, sorted by name. */
+export function selectionTagCounts(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): { name: string; count: number }[] {
+	return tagCounts({
+		id: root.id,
+		kind: "folder",
+		title: null,
+		children: selectedLinks(root, selected),
+	});
+}
+
+/** The selection without IDs that are no longer in the tree. */
+export function pruneSelection(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): ReadonlySet<string> {
+	const ids = new Set(descendants(root).map((n) => n.id));
+	return [...selected].every((id) => ids.has(id))
+		? selected
+		: new Set([...selected].filter((id) => ids.has(id)));
+}
+
+/** A copy of the tree without the nodes in ids (and what is below them). */
+export function withoutNodes(
+	root: FavouriteNode,
+	ids: ReadonlySet<string>,
+): FavouriteNode {
+	if (ids.size === 0) return root;
+	const visit = (folder: FavouriteNode): FavouriteNode => ({
+		...folder,
+		children: (folder.children ?? [])
+			.filter((child) => !ids.has(child.id))
+			.map((child) => (child.kind === "folder" ? visit(child) : child)),
+	});
+	return visit(root);
+}

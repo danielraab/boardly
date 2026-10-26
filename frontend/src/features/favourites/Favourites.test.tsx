@@ -56,6 +56,36 @@ function fakeServer(initial: FavouriteNode[], tags: string[] = []) {
 			if (parent) parent.children = [...(parent.children ?? []), node];
 			return { status: 201, body: node };
 		},
+		"POST /api/favourites/bulk": ({ body }) => {
+			const op = body as {
+				ids: string[];
+				action: string;
+				tags?: string[];
+				parentId?: string;
+			};
+			for (const id of op.ids) {
+				const found = findParent(tree, id);
+				if (!found)
+					return { status: 404, body: { error: { code: "not_found" } } };
+				const node = found.parent.children?.[found.index] as FavouriteNode;
+				if (op.action === "delete" || op.action === "move") {
+					found.parent.children?.splice(found.index, 1);
+				}
+				if (op.action === "move") {
+					const target = findNode(tree, op.parentId ?? "");
+					if (target) target.children = [...(target.children ?? []), node];
+				}
+				const tags = op.tags ?? [];
+				if (op.action === "addTags") {
+					node.tags = [...new Set([...(node.tags ?? []), ...tags])].sort();
+				}
+				if (op.action === "removeTags") {
+					node.tags = (node.tags ?? []).filter((t) => !tags.includes(t));
+				}
+				if (op.action === "setTags") node.tags = tags;
+			}
+			return { status: 204 };
+		},
 		"GET /api/tags": ({ url }) => {
 			const q = (url.searchParams.get("q") ?? "").toLowerCase();
 			return {
@@ -945,5 +975,285 @@ describe("expand and collapse", () => {
 		expect(rows()).toHaveLength(5);
 		expect(document.querySelector("[data-highlighted]")).toBeNull();
 		await waitFor(() => expect(router.state.location.search).toEqual({}));
+	});
+});
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  ├─ Git (dev)
+// │  │  └─ Wiki (dev, docs)
+// │  └─ Mail
+// ├─ Empty
+// └─ News
+function bulkTree() {
+	return fakeServer([
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				link("Git", { tags: ["dev"] }),
+				link("Wiki", { tags: ["dev", "docs"] }),
+			),
+			link("Mail"),
+		),
+		folder("Empty"),
+		link("News"),
+	]);
+}
+
+const checkbox = (name: string) =>
+	screen.getByRole("checkbox", { name: `Select ${name}` });
+
+async function startSelecting() {
+	const app = renderApp("/favourites");
+	await app.user.click(await screen.findByRole("button", { name: "Select" }));
+	return app;
+}
+
+describe("selection mode", () => {
+	it("shows checkboxes only in selection mode, in place of the handles", async () => {
+		bulkTree();
+		const { user } = renderApp("/favourites");
+		await screen.findByRole("link", { name: "Mail" });
+		expect(screen.queryByRole("checkbox")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Select" }));
+		expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+		expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+	});
+
+	it("checks a folder with everything below it", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Work"));
+		for (const name of ["Work", "Tools", "Git", "Wiki", "Mail"]) {
+			expect(checkbox(name)).toBeChecked();
+		}
+		expect(checkbox("News")).not.toBeChecked();
+		await user.click(checkbox("Mail"));
+		expect(checkbox("Work")).toBePartiallyChecked();
+		expect(checkbox("Tools")).toBeChecked();
+		await user.click(checkbox("Work"));
+		expect(checkbox("Git")).toBeChecked();
+		expect(checkbox("Mail")).toBeChecked();
+		await user.click(checkbox("Work"));
+		expect(checkbox("Git")).not.toBeChecked();
+	});
+
+	it("checks a range with shift-click and everything shown with Select all", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Git"));
+		await user.keyboard("{Shift>}");
+		await user.click(checkbox("Empty"));
+		await user.keyboard("{/Shift}");
+		for (const name of ["Git", "Wiki", "Mail", "Empty"]) {
+			expect(checkbox(name)).toBeChecked();
+		}
+		expect(checkbox("News")).not.toBeChecked();
+		await user.click(screen.getByRole("button", { name: "Select all" }));
+		expect(checkbox("News")).toBeChecked();
+	});
+
+	it("checks only the shown nodes of a folder while filtering", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.type(await searchBox(), "git");
+		await user.click(checkbox("Work"));
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		await waitFor(() => expect(checkbox("Wiki")).not.toBeChecked());
+		expect(checkbox("Git")).toBeChecked();
+		// The selection survived the filter change; Work and Tools are only partly checked.
+		expect(checkbox("Work")).toBePartiallyChecked();
+		expect(screen.getByText("1 link selected")).toBeVisible();
+	});
+
+	it("ends with Escape and clears the selection", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("News"));
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("checkbox")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Select" }));
+		expect(checkbox("News")).not.toBeChecked();
+	});
+});
+
+describe("selection bar", () => {
+	it("counts links and folders, including hidden ones", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		expect(screen.queryByText(/selected$/)).toBeNull();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("News"));
+		expect(screen.getByText("3 links and 1 folder selected")).toBeVisible();
+		await user.type(await searchBox(), "news");
+		expect(screen.getByText("3 links and 1 folder selected")).toBeVisible();
+	});
+
+	it("only offers moving for empty folders", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Empty"));
+		expect(screen.getByText("1 folder selected")).toBeVisible();
+		expect(screen.getByRole("button", { name: "Move to…" })).toBeEnabled();
+		for (const name of [
+			"Add tags",
+			"Remove tags",
+			"Set tags",
+			"Delete 0 links",
+		]) {
+			expect(screen.getByRole("button", { name })).toBeDisabled();
+		}
+	});
+});
+
+describe("bulk actions", () => {
+	it("adds tags to the selected links and keeps the selection", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("Empty"));
+		await user.click(screen.getByRole("button", { name: "Add tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Add tags" });
+		expect(dialog).toHaveTextContent("Applies to 2 links.");
+		await user.type(within(dialog).getByRole("combobox"), "later{Enter}");
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "addTags",
+			ids: ["Git", "Wiki"],
+			tags: ["later"],
+		});
+		expect(checkbox("Git")).toBeChecked();
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual([
+			"dev",
+			"docs",
+			"later",
+		]);
+	});
+
+	it("removes chosen tags, listing how many links have each", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(screen.getByRole("button", { name: "Remove tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Remove tags" });
+		const dev = within(dialog).getByRole("checkbox", { name: /dev/ });
+		expect(dev.closest("label")).toHaveTextContent("dev2");
+		await user.click(dev);
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual(["docs"]);
+	});
+
+	it("warns that setting tags replaces them", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(screen.getByRole("button", { name: "Set tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Set tags" });
+		expect(dialog).toHaveTextContent(
+			"current tags of these links are replaced",
+		);
+		await user.type(within(dialog).getByRole("combobox"), "archive{Enter}");
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(findNode(server.tree(), "Git")?.tags).toEqual(["archive"]);
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual(["archive"]);
+	});
+
+	it("moves full folders as a whole and can't move into them", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("News"));
+		await user.click(screen.getByRole("button", { name: "Move to…" }));
+		const dialog = await screen.findByRole("dialog", { name: "Move to…" });
+		expect(dialog).toHaveTextContent("Moves 2 items");
+		await user.click(
+			within(dialog).getByRole("button", { name: "Expand Work" }),
+		);
+		expect(within(dialog).getByRole("radio", { name: "Tools" })).toBeDisabled();
+		await user.click(within(dialog).getByRole("radio", { name: "Empty" }));
+		await user.click(within(dialog).getByRole("button", { name: "Move" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "move",
+			ids: ["Tools", "News"],
+			parentId: "Empty",
+		});
+		await waitFor(() =>
+			expect(server.titles("Empty")).toEqual(["Tools", "News"]),
+		);
+		expect(await screen.findByTestId("row-Tools")).toBeVisible();
+	});
+});
+
+describe("bulk delete", () => {
+	async function deleteGitAndMail() {
+		const server = bulkTree();
+		const app = await startSelecting();
+		await app.user.click(checkbox("Git"));
+		await app.user.click(checkbox("Mail"));
+		await app.user.click(
+			screen.getByRole("button", { name: "Delete 2 links" }),
+		);
+		return { server, ...app };
+	}
+
+	it("hides the links and can undo before anything is sent", async () => {
+		const { server, user } = await deleteGitAndMail();
+		expect(screen.getByText("2 links deleted")).toBeVisible();
+		expect(screen.queryByRole("link", { name: "Git" })).toBeNull();
+		expect(screen.queryByRole("link", { name: "Mail" })).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(screen.getByRole("link", { name: "Git" })).toBeVisible();
+		expect(screen.getByRole("link", { name: "Mail" })).toBeVisible();
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(0);
+	});
+
+	it("sends the delete when the message closes and keeps the folders", async () => {
+		const { server, user } = await deleteGitAndMail();
+		await user.click(screen.getByRole("button", { name: "Close" }));
+		await waitFor(() =>
+			expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(
+				1,
+			),
+		);
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "delete",
+			ids: ["Git", "Mail"],
+		});
+		await waitFor(() => expect(server.titles("Tools")).toEqual(["Wiki"]));
+		expect(screen.queryByRole("link", { name: "Git" })).toBeNull();
+		expect(screen.getByTestId("row-Work")).toBeVisible();
+	});
+
+	it("sends the delete when the page is left", async () => {
+		const { server, router } = await deleteGitAndMail();
+		await router.navigate({ to: "/" });
+		await waitFor(() =>
+			expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(
+				1,
+			),
+		);
+	});
+
+	it("brings the links back when the delete fails", async () => {
+		const { server, user } = await deleteGitAndMail();
+		server.api.set({
+			"POST /api/favourites/bulk": {
+				status: 500,
+				body: { error: { code: "x" } },
+			},
+		});
+		await user.click(screen.getByRole("button", { name: "Close" }));
+		expect(
+			await screen.findByText(
+				"The links couldn't be deleted. Please try again.",
+			),
+		).toBeVisible();
+		expect(screen.getByRole("link", { name: "Git" })).toBeVisible();
 	});
 });

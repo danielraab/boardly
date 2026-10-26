@@ -485,7 +485,14 @@ func (s *Store) Move(ctx context.Context, userID, id, parentID string, position 
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := s.move(ctx, tx, userID, id, parentID, position); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
+// move is Move inside the transaction tx.
+func (s *Store) move(ctx context.Context, tx *sql.Tx, userID, id, parentID string, position int) error {
 	r, err := load(ctx, tx, userID, id)
 	if err != nil {
 		return err
@@ -524,10 +531,7 @@ func (s *Store) Move(ctx context.Context, userID, id, parentID string, position 
 	position = min(max(position, 0), count)
 
 	// Close the gap in the old folder, then open one in the new folder.
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE favourite_nodes SET position = position - 1 WHERE parent_id = ? AND position > ?`,
-		r.parentID.String, r.position,
-	); err != nil {
+	if err := shiftAfter(ctx, tx, r.parentID.String, r.position, -1); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
@@ -536,13 +540,20 @@ func (s *Store) Move(ctx context.Context, userID, id, parentID string, position 
 	); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx,
+	_, err = tx.ExecContext(ctx,
 		`UPDATE favourite_nodes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?`,
 		parentID, position, db.FormatTime(s.Now()), id,
-	); err != nil {
-		return err
-	}
-	return tx.Commit()
+	)
+	return err
+}
+
+// shiftAfter moves the children of folder parentID behind position by `by` places.
+func shiftAfter(ctx context.Context, q db.Querier, parentID string, position, by int) error {
+	_, err := q.ExecContext(ctx,
+		`UPDATE favourite_nodes SET position = position + ? WHERE parent_id = ? AND position > ?`,
+		by, parentID, position,
+	)
+	return err
 }
 
 // Delete removes a node. A folder with children needs DeleteWithChildren,
@@ -583,10 +594,7 @@ func (s *Store) Delete(ctx context.Context, userID, id string, mode DeleteMode) 
 	if mode == DeleteMoveChildren {
 		shift = children - 1
 	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE favourite_nodes SET position = position + ? WHERE parent_id = ? AND position > ?`,
-		shift, r.parentID.String, r.position,
-	); err != nil {
+	if err := shiftAfter(ctx, tx, r.parentID.String, r.position, shift); err != nil {
 		return err
 	}
 	if mode == DeleteMoveChildren {

@@ -64,6 +64,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/favourites", a.requireUser(a.getFavourites))
 	mux.Handle("POST /api/favourites", a.requireUser(a.createFavourite))
 	mux.Handle("PATCH /api/favourites/{id}", a.requireUser(a.updateFavourite))
+	mux.Handle("POST /api/favourites/bulk", a.requireUser(a.bulkFavourites))
 	mux.Handle("POST /api/favourites/{id}/move", a.requireUser(a.moveFavourite))
 	mux.Handle("DELETE /api/favourites/{id}", a.requireUser(a.deleteFavourite))
 	mux.Handle("POST /api/favourites/import", a.requireUser(a.importFavourites))

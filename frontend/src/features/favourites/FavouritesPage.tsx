@@ -22,6 +22,7 @@ import {
 	Folder,
 	FolderPlus,
 	GripVertical,
+	ListChecks,
 	Pencil,
 	Plus,
 	Search,
@@ -34,6 +35,7 @@ import {
 import {
 	type KeyboardEvent,
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
@@ -47,19 +49,29 @@ import {
 } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { Toast, type ToastMessage } from "#/components/Toast";
 import { useMe } from "#/features/auth/session";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { useStoredIdSet } from "#/lib/useStoredIdSet";
 import {
+	bulkFavourites,
 	type FavouriteNode,
 	favouritesQueryKey,
 	favouritesQueryOptions,
 	moveFavourite,
 } from "./api";
+import {
+	BulkDialog,
+	type BulkDialogKind,
+	type BulkDialogTarget,
+	SelectionBar,
+} from "./BulkActions";
 import { DeleteDialog, type DeleteTarget } from "./DeleteDialog";
 import { NodeDialog, type NodeDialogTarget } from "./NodeDialog";
 import {
 	applyMove,
+	type CheckState,
+	checkState,
 	currentSlot,
 	filterTree,
 	findNode,
@@ -74,12 +86,20 @@ import {
 	keyboardSlots,
 	label,
 	linkCounts,
+	moveRoots,
 	pointerSlot,
+	pruneSelection,
 	ROOT_END,
 	type Slot,
 	sameSlot,
 	searchTerms,
+	selectedLinks,
+	selectionCounts,
+	selectionTagCounts,
+	selectRange,
 	tagCounts,
+	toggleSelection,
+	withoutNodes,
 } from "./tree";
 
 const INDENT_REM = 1.5;
@@ -124,6 +144,16 @@ export function FavouritesPage({
 	const [text, setText] = useState(search.q ?? "");
 	const searchInput = useRef<HTMLInputElement>(null);
 	const [highlighted, setHighlighted] = useState<string | null>(null);
+	const queryClient = useQueryClient();
+	const [selecting, setSelecting] = useState(false);
+	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+	const lastClicked = useRef<number | null>(null);
+	const [bulkDialog, setBulkDialog] = useState<BulkDialogTarget | null>(null);
+	const [toast, setToast] = useState<ToastMessage | null>(null);
+	const [bulkError, setBulkError] = useState(false);
+	// Links deleted in bulk are hidden until the delete is sent (see commitDelete).
+	const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+	const pendingDelete = useRef<string[] | null>(null);
 
 	// The URL changes the text only from outside the field (back, clear).
 	useEffect(() => {
@@ -132,7 +162,10 @@ export function FavouritesPage({
 		}
 	}, [search.q]);
 
-	const root = tree.data;
+	const root = useMemo(
+		() => tree.data && withoutNodes(tree.data, pendingIds),
+		[tree.data, pendingIds],
+	);
 	const tags = useMemo(() => search.tags ?? [], [search.tags]);
 	const filter = useMemo(
 		() => ({ terms: searchTerms(text), tags }),
@@ -192,6 +225,68 @@ export function FavouritesPage({
 		return () => clearTimeout(timer);
 	}, [highlighted]);
 
+	// Deleted or moved elsewhere: no longer selected.
+	useEffect(() => {
+		if (root) setSelected((prev) => pruneSelection(root, prev));
+	}, [root]);
+
+	/** Sends the pending bulk delete; keepalive when the page is being left. */
+	const commitDelete = useCallback(
+		(keepalive = false) => {
+			const ids = pendingDelete.current;
+			if (!ids) return;
+			pendingDelete.current = null;
+			const unhide = () =>
+				setPendingIds((prev) => {
+					const next = new Set(prev);
+					for (const id of ids) next.delete(id);
+					return next;
+				});
+			bulkFavourites({ action: "delete", ids }, keepalive)
+				.then(async () => {
+					void queryClient.invalidateQueries({ queryKey: ["tags"] });
+					await queryClient.invalidateQueries({
+						queryKey: favouritesQueryKey,
+					});
+					unhide();
+				})
+				.catch(() => {
+					unhide();
+					setBulkError(true);
+				});
+		},
+		[queryClient],
+	);
+
+	// Leaving the page or the app sends a pending delete.
+	useEffect(() => {
+		const onPageHide = () => commitDelete(true);
+		window.addEventListener("pagehide", onPageHide);
+		return () => {
+			window.removeEventListener("pagehide", onPageHide);
+			commitDelete(true);
+		};
+	}, [commitDelete]);
+
+	// Escape ends selection mode, unless a dialog, menu or field has it.
+	useEffect(() => {
+		if (!selecting) return;
+		const onKeyDown = (event: globalThis.KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			if (
+				event.key !== "Escape" ||
+				target?.closest("input:not([type=checkbox]), textarea, select") ||
+				document.querySelector("[role=dialog], [role=alertdialog], [role=menu]")
+			) {
+				return;
+			}
+			setSelecting(false);
+			setSelected(new Set());
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [selecting]);
+
 	// "/" focuses the search field, unless the user is typing or in a dialog.
 	useEffect(() => {
 		const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -246,6 +341,74 @@ export function FavouritesPage({
 	const isEmpty = root && (root.children ?? []).length === 0;
 	const shownFolders = shown ? folderIds(shown) : [];
 	const anyExpanded = shownFolders.some((id) => !collapsed.has(id));
+
+	const stopSelecting = () => {
+		setSelecting(false);
+		setSelected(new Set());
+		lastClicked.current = null;
+	};
+	const toggleRow = (index: number, shiftKey: boolean) => {
+		if (!shown) return;
+		const rows = flatten(shown, collapsed).map((item) => item.node);
+		const node = rows[index];
+		const on = checkState(node, selected) !== "checked";
+		setSelected(
+			shiftKey && lastClicked.current !== null
+				? selectRange(rows, lastClicked.current, index, selected, on)
+				: toggleSelection(node, selected, on),
+		);
+		lastClicked.current = index;
+	};
+	const counts = root
+		? selectionCounts(root, selected)
+		: { links: 0, folders: 0 };
+	const roots = root ? moveRoots(root, selected) : [];
+	const openBulk = (kind: BulkDialogKind) => {
+		if (!root) return;
+		setBulkError(false);
+		setBulkDialog(
+			kind === "move"
+				? {
+						kind,
+						nodes: roots,
+						blocked: new Set(
+							roots.filter((n) => n.kind === "folder").map((n) => n.id),
+						),
+					}
+				: {
+						kind,
+						links: selectedLinks(root, selected),
+						tags: selectionTagCounts(root, selected),
+					},
+		);
+	};
+	const deleteSelected = () => {
+		if (!root) return;
+		const ids = selectedLinks(root, selected).map((n) => n.id);
+		// An earlier delete still waiting for its undo is sent first.
+		commitDelete();
+		pendingDelete.current = ids;
+		setPendingIds((prev) => new Set([...prev, ...ids]));
+		setSelected(new Set());
+		lastClicked.current = null;
+		setBulkError(false);
+		setToast({
+			id: Date.now(),
+			text: t("favourites.bulk.deleted", { count: ids.length }),
+			action: {
+				label: t("favourites.bulk.undo"),
+				onClick: () => {
+					pendingDelete.current = null;
+					setPendingIds((prev) => {
+						const next = new Set(prev);
+						for (const id of ids) next.delete(id);
+						return next;
+					});
+					setToast(null);
+				},
+			},
+		});
+	};
 
 	return (
 		<section className="pt-12">
@@ -328,37 +491,70 @@ export function FavouritesPage({
 							</button>
 						)}
 					</div>
-					{filtering && (
-						<div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-							{tags.map((tag) => (
-								<span
-									key={tag}
-									className="inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-1 pl-2.5 text-muted"
-								>
-									{tag}
-									<button
-										type="button"
-										className="inline-flex size-5 items-center justify-center rounded-full hover:bg-surface hover:text-ink"
-										aria-label={t("favourites.tagFilter.remove", { tag })}
-										onClick={() =>
-											setTags(tags.filter((chosen) => chosen !== tag))
-										}
-									>
-										<X className="size-3" aria-hidden />
-									</button>
-								</span>
-							))}
-							{shown && (
+					<div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+						{tags.map((tag) => (
+							<span
+								key={tag}
+								className="inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-1 pl-2.5 text-muted"
+							>
+								{tag}
 								<button
 									type="button"
-									className="ml-auto text-muted underline-offset-2 hover:text-ink hover:underline"
+									className="inline-flex size-5 items-center justify-center rounded-full hover:bg-surface hover:text-ink"
+									aria-label={t("favourites.tagFilter.remove", { tag })}
+									onClick={() =>
+										setTags(tags.filter((chosen) => chosen !== tag))
+									}
+								>
+									<X className="size-3" aria-hidden />
+								</button>
+							</span>
+						))}
+						<div className="ml-auto flex items-center gap-4">
+							{filtering && shown && (
+								<button
+									type="button"
+									className="text-muted underline-offset-2 hover:text-ink hover:underline"
 									onClick={clearFilters}
 								>
 									{t("favourites.clearFilters")}
 								</button>
 							)}
+							{selecting && shown && (
+								<button
+									type="button"
+									className="text-muted underline-offset-2 hover:text-ink hover:underline"
+									onClick={() =>
+										setSelected(
+											(shown.children ?? []).reduce(
+												(acc, node) => toggleSelection(node, acc, true),
+												selected,
+											),
+										)
+									}
+								>
+									{t("favourites.select.all")}
+								</button>
+							)}
+							<button
+								type="button"
+								aria-pressed={selecting}
+								className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium hover:bg-surface aria-pressed:bg-surface"
+								onClick={() =>
+									selecting ? stopSelecting() : setSelecting(true)
+								}
+							>
+								{selecting ? (
+									t("favourites.select.done")
+								) : (
+									<>
+										<ListChecks className="size-4" aria-hidden />
+										{t("favourites.select.start")}
+									</>
+								)}
+							</button>
 						</div>
-					)}
+					</div>
 				</div>
 			)}
 			<div className="mt-4">
@@ -402,16 +598,38 @@ export function FavouritesPage({
 					</div>
 				) : (
 					<>
-						{filtering && (
+						{filtering && !selecting && (
 							<p className="mb-3 text-sm text-muted">
 								{t("favourites.reorderHint")}
 							</p>
+						)}
+						{bulkError && (
+							<p role="alert" className="mb-3 text-sm text-danger">
+								{t("favourites.bulk.deleteFailed")}
+							</p>
+						)}
+						{selecting && selected.size > 0 && (
+							<SelectionBar
+								links={counts.links}
+								folders={counts.folders}
+								moveCount={roots.length}
+								onAction={openBulk}
+								onDelete={deleteSelected}
+							/>
 						)}
 						<TreeView
 							root={shown}
 							collapsed={collapsed}
 							onCollapsedChange={setCollapsed}
-							movable={!filtering}
+							movable={!filtering && !selecting}
+							selection={
+								selecting
+									? {
+											state: (node) => checkState(node, selected),
+											onToggle: toggleRow,
+										}
+									: undefined
+							}
 							terms={filter.terms}
 							highlighted={highlighted}
 							actions={actions}
@@ -422,6 +640,14 @@ export function FavouritesPage({
 			</div>
 			<NodeDialog target={editing} onClose={() => setEditing(null)} />
 			<DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
+			<BulkDialog target={bulkDialog} onClose={() => setBulkDialog(null)} />
+			<Toast
+				toast={toast}
+				onClose={() => {
+					setToast(null);
+					commitDelete();
+				}}
+			/>
 		</section>
 	);
 }
@@ -517,6 +743,7 @@ function TreeView({
 	collapsed,
 	onCollapsedChange,
 	movable,
+	selection,
 	terms,
 	highlighted,
 	actions,
@@ -527,6 +754,11 @@ function TreeView({
 	onCollapsedChange: (ids: ReadonlySet<string>) => void;
 	/** Off while filtering: positions in a filtered tree aren't real ones. */
 	movable: boolean;
+	/** In selection mode: each row's checkbox, toggled by its row index. */
+	selection?: {
+		state: (node: FavouriteNode) => CheckState;
+		onToggle: (index: number, shiftKey: boolean) => void;
+	};
 	terms: string[];
 	highlighted: string | null;
 	actions: Actions;
@@ -710,7 +942,7 @@ function TreeView({
 				</p>
 			)}
 			<ul className="rounded-xl border border-line bg-surface py-1">
-				{flatten(root, collapsed).map(({ node, depth }) => (
+				{flatten(root, collapsed).map(({ node, depth }, index) => (
 					<TreeRow
 						key={node.id}
 						node={node}
@@ -725,6 +957,12 @@ function TreeView({
 							onCollapsedChange(next);
 						}}
 						movable={movable}
+						check={
+							selection && {
+								state: selection.state(node),
+								onToggle: (shiftKey) => selection.onToggle(index, shiftKey),
+							}
+						}
 						terms={terms}
 						highlighted={highlighted === node.id}
 						linkCount={counts.get(node.id) ?? 0}
@@ -794,6 +1032,7 @@ function TreeRow({
 	onHandleBlur,
 	registerHandle,
 	movable,
+	check,
 	terms,
 	highlighted,
 	linkCount,
@@ -810,6 +1049,7 @@ function TreeRow({
 	onHandleBlur: () => void;
 	registerHandle: (el: HTMLButtonElement | null) => void;
 	movable: boolean;
+	check?: { state: CheckState; onToggle: (shiftKey: boolean) => void };
 	terms: string[];
 	highlighted: boolean;
 	linkCount: number;
@@ -894,7 +1134,21 @@ function TreeRow({
 					style={{ left: `${indicator.depth * INDENT_REM + 2.25}rem` }}
 				/>
 			)}
-			{movable ? (
+			{check ? (
+				<span className="inline-flex size-7 shrink-0 items-center justify-center">
+					<input
+						type="checkbox"
+						readOnly
+						checked={check.state === "checked"}
+						ref={(el) => {
+							if (el) el.indeterminate = check.state === "mixed";
+						}}
+						aria-label={t("favourites.select.row", { name })}
+						className="size-4 accent-ink"
+						onClick={(event) => check.onToggle(event.shiftKey)}
+					/>
+				</span>
+			) : movable ? (
 				<button
 					type="button"
 					ref={(el) => {

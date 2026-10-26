@@ -75,7 +75,8 @@
 	},
 	"common": {
 		"loading": "Loading…",
-		"genericError": "Something went wrong. Please try again."
+		"genericError": "Something went wrong. Please try again.",
+		"close": "Close"
 	},
 	"verify": {
 		"title": "Complete sign-in",
@@ -283,6 +284,42 @@
 		"reorderHint": "Clear the filters to reorder.",
 		"linkCount_one": "{{count}} link",
 		"linkCount_other": "{{count}} links",
+		"folderCount_one": "{{count}} folder",
+		"folderCount_other": "{{count}} folders",
+		"select": {
+			"start": "Select",
+			"done": "Done",
+			"all": "Select all",
+			"row": "Select {{name}}"
+		},
+		"bulk": {
+			"selected": "{{items}} selected",
+			"and": " and ",
+			"tooMany": "At most {{max}} items can be changed at once.",
+			"addTags": "Add tags",
+			"removeTags": "Remove tags",
+			"setTags": "Set tags",
+			"move": "Move to…",
+			"delete_one": "Delete {{count}} link",
+			"delete_other": "Delete {{count}} links",
+			"addTagsTitle": "Add tags",
+			"removeTagsTitle": "Remove tags",
+			"setTagsTitle": "Set tags",
+			"moveTitle": "Move to…",
+			"appliesToLinks_one": "Applies to {{count}} link.",
+			"appliesToLinks_other": "Applies to {{count}} links.",
+			"appliesToItems_one": "Moves {{count}} item to the end of the chosen folder.",
+			"appliesToItems_other": "Moves {{count}} items to the end of the chosen folder.",
+			"removeLabel": "Tags to remove",
+			"noTags": "The selected links have no tags.",
+			"setWarning": "The current tags of these links are replaced by the tags above.",
+			"apply": "Apply",
+			"moveConfirm": "Move",
+			"deleted_one": "{{count}} link deleted",
+			"deleted_other": "{{count}} links deleted",
+			"undo": "Undo",
+			"deleteFailed": "The links couldn't be deleted. Please try again."
+		},
 		"dialog": {
 			"newFolder": "New folder",
 			"newLink": "New link",
