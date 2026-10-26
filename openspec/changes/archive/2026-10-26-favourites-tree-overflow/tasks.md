@@ -13,9 +13,9 @@
 
 - [x] 3.1 Give names on the favourites page and in the explorer a maximum width of 24rem with the full name as `title`; verify tests for the class and the tooltip
 
-- [ ] 3.2 Put a link's tags in a box that gives way before the name and shows only whole tags, with all tags as tooltip; verify a test for the box and the tooltip
+- [x] 3.2 Put a link's tags in a box that gives way before the name and shows only whole tags, with all tags as tooltip; verify a test for the box and the tooltip
 
 ## 4. Verification
 
-- [ ] 4.1 Run frontend lint, typecheck and `vitest` and verify they pass
-- [ ] 4.2 Run the app with a ten-level tree at 375px and 1200px: names visible, tree scrolls sideways, page doesn't, buttons not overlapping, drag and drop works while scrolled, and a narrow explorer widget scrolls, a 300-character title ends with "…" at 24rem, a link with twelve tags keeps its name and shows only whole tags; check light and dark themes
+- [x] 4.1 Run frontend lint, typecheck and `vitest` and verify they pass
+- [x] 4.2 Run the app with a ten-level tree at 375px and 1200px: names visible, tree scrolls sideways, page doesn't, buttons not overlapping, drag and drop works while scrolled, and a narrow explorer widget scrolls, a 300-character title ends with "…" at 24rem, a link with twelve tags keeps its name and shows only whole tags; check light and dark themes
