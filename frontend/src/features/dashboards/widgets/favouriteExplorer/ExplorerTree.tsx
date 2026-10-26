@@ -84,7 +84,8 @@ export function ExplorerTree({
 			{nodes.map((node) => {
 				const name = label(node);
 				const indent = { paddingLeft: `${depth * style.indent}px` };
-				const row = `flex w-full min-w-0 items-center gap-1.5 rounded ${style.row} hover:bg-paper`;
+				// At least as wide as the widget, wider when a deep row needs it.
+				const row = `flex w-min min-w-[100cqw] items-center gap-1.5 rounded ${style.row} hover:bg-paper`;
 				if (node.kind === "folder") {
 					const open = expanded.has(node.id);
 					return (
@@ -104,7 +105,7 @@ export function ExplorerTree({
 									className={`${style.icon} shrink-0 text-muted`}
 									aria-hidden
 								/>
-								<span className="truncate font-medium">{name}</span>
+								<span className="min-w-24 truncate font-medium">{name}</span>
 							</button>
 							{open && renderNodes(node.children ?? [], depth + 1)}
 						</li>
@@ -114,14 +115,18 @@ export function ExplorerTree({
 					<>
 						<span className={`${style.icon} shrink-0`} />
 						<ImageIcon imageId={node.iconImageId} className={style.icon} />
-						<span className="truncate">{name}</span>
+						<span className="min-w-24 truncate">{name}</span>
 					</>
 				);
-				const linkRow = onDetails ? `${row} flex-1` : row;
+				const linkRow = onDetails
+					? `flex min-w-0 flex-1 items-center gap-1.5 rounded ${style.row} hover:bg-paper`
+					: row;
 				return (
 					<li
 						key={node.id}
-						className={onDetails ? "flex min-w-0 items-center" : undefined}
+						className={
+							onDetails ? "flex w-min min-w-[100cqw] items-center" : undefined
+						}
 					>
 						{editing ? (
 							<span className={linkRow} style={indent} title={node.url}>
@@ -167,7 +172,12 @@ export function ExplorerTree({
 			</p>
 		);
 	} else {
-		body = renderNodes(children, 0);
+		// Deep rows scroll sideways inside the widget instead of hiding names.
+		body = (
+			<div className="@container overflow-x-auto" data-testid="explorer-scroll">
+				<div className="w-max min-w-full">{renderNodes(children, 0)}</div>
+			</div>
+		);
 	}
 
 	const toggleAll = folders.length > 0 && (

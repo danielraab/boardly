@@ -1470,3 +1470,25 @@ describe("manage tags", () => {
 		);
 	});
 });
+
+describe("deep nesting", () => {
+	it("indents with the shared variable and scrolls inside the frame", async () => {
+		fakeServer([folder("A", folder("B", link("Deep")))]);
+		renderApp("/favourites");
+		const deep = await screen.findByTestId("row-Deep");
+		expect(deep.style.paddingLeft).toBe("calc(var(--indent) * 2 + 0.25rem)");
+		// Half the indent below sm.
+		const list = deep.parentElement as HTMLElement;
+		expect(list).toHaveClass(
+			"w-max",
+			"min-w-full",
+			"[--indent:0.75rem]",
+			"sm:[--indent:1.5rem]",
+		);
+		expect(list.parentElement).toHaveClass("@container", "overflow-x-auto");
+		// At least as wide as the frame, wider when needed; names keep a minimum.
+		expect(deep).toHaveClass("w-min", "min-w-[calc(100cqw-0.5rem)]");
+		const name = screen.getByRole("link", { name: "Deep" }).parentElement;
+		expect(name).toHaveClass("min-w-24", "sm:min-w-32");
+	});
+});

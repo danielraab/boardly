@@ -600,3 +600,21 @@ describe("explorer title link", () => {
 		expect(screen.queryByRole("link", { name: "Work links" })).toBeNull();
 	});
 });
+
+describe("explorer deep nesting", () => {
+	it("scrolls sideways instead of hiding names", () => {
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="M"
+				data={{ children: [tools, mail] }}
+				editing={false}
+			/>,
+		);
+		const scroll = screen.getByTestId("explorer-scroll");
+		expect(scroll).toHaveClass("@container", "overflow-x-auto");
+		const folderRow = screen.getByRole("button", { name: "Tools" });
+		expect(folderRow).toHaveClass("w-min", "min-w-[100cqw]");
+		expect(within(folderRow).getByText("Tools")).toHaveClass("min-w-24");
+	});
+});

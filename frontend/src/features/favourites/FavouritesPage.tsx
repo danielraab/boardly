@@ -104,8 +104,6 @@ import {
 	withoutNodes,
 } from "./tree";
 
-const INDENT_REM = 1.5;
-
 type Actions = {
 	add: (kind: "folder" | "link", parent: FavouriteNode) => void;
 	edit: (node: FavouriteNode) => void;
@@ -971,43 +969,48 @@ function TreeView({
 					{t("favourites.errors.moveFailed")}
 				</p>
 			)}
-			<ul className="rounded-xl border border-line bg-surface py-1">
-				{flatten(root, collapsed).map(({ node, depth }, index) => (
-					<TreeRow
-						key={node.id}
-						node={node}
-						depth={depth}
-						indicator={indicator?.rowId === node.id ? indicator : null}
-						dimmed={!!draggedId && isInSubtree(root, draggedId, node.id)}
-						picked={keyboard?.id === node.id}
-						expanded={!collapsed.has(node.id)}
-						onToggle={() => {
-							const next = new Set(collapsed);
-							if (!next.delete(node.id)) next.add(node.id);
-							onCollapsedChange(next);
-						}}
-						movable={movable}
-						check={
-							selection && {
-								state: selection.state(node),
-								onToggle: (shiftKey) => selection.onToggle(index, shiftKey),
+			{/* Deep rows scroll sideways inside the frame instead of squeezing their
+			    names to nothing. Each row is as wide as it needs, but at least as
+			    wide as the frame, so shallow rows keep their buttons at its edge. */}
+			<div className="@container overflow-x-auto rounded-xl border border-line bg-surface">
+				<ul className="w-max min-w-full py-1 [--indent:0.75rem] sm:[--indent:1.5rem]">
+					{flatten(root, collapsed).map(({ node, depth }, index) => (
+						<TreeRow
+							key={node.id}
+							node={node}
+							depth={depth}
+							indicator={indicator?.rowId === node.id ? indicator : null}
+							dimmed={!!draggedId && isInSubtree(root, draggedId, node.id)}
+							picked={keyboard?.id === node.id}
+							expanded={!collapsed.has(node.id)}
+							onToggle={() => {
+								const next = new Set(collapsed);
+								if (!next.delete(node.id)) next.add(node.id);
+								onCollapsedChange(next);
+							}}
+							movable={movable}
+							check={
+								selection && {
+									state: selection.state(node),
+									onToggle: (shiftKey) => selection.onToggle(index, shiftKey),
+								}
 							}
-						}
-						terms={terms}
-						highlighted={highlighted === node.id}
-						linkCount={counts.get(node.id) ?? 0}
-						onHandleKeyDown={(event) => onHandleKeyDown(event, node)}
-						onHandleBlur={() => {
-							if (keyboard?.id === node.id) setKeyboard(null);
-						}}
-						registerHandle={(el) => {
-							if (el) handles.current.set(node.id, el);
-							else handles.current.delete(node.id);
-						}}
-						actions={actions}
-					/>
-				))}
-			</ul>
+							terms={terms}
+							highlighted={highlighted === node.id}
+							linkCount={counts.get(node.id) ?? 0}
+							onHandleKeyDown={(event) => onHandleKeyDown(event, node)}
+							onHandleBlur={() => {
+								if (keyboard?.id === node.id) setKeyboard(null);
+							}}
+							registerHandle={(el) => {
+								if (el) handles.current.set(node.id, el);
+								else handles.current.delete(node.id);
+							}}
+							actions={actions}
+						/>
+					))}
+				</ul>
+			</div>
 			<RootEnd visible={activeId !== null} />
 			<output aria-live="assertive" className="sr-only">
 				{announcement}
@@ -1154,14 +1157,14 @@ function TreeRow({
 			}}
 			data-testid={`row-${node.id}`}
 			data-highlighted={highlighted || undefined}
-			className={`relative mx-1 flex items-center gap-1 rounded-lg py-1 pr-1 transition-colors motion-reduce:transition-none ${indicator?.edge === "inside" || highlighted ? "bg-accent/10 ring-2 ring-accent" : ""} ${dimmed ? "opacity-40" : ""}`}
-			style={{ paddingLeft: `${depth * INDENT_REM + 0.25}rem` }}
+			className={`relative mx-1 flex w-min min-w-[calc(100cqw-0.5rem)] items-center gap-1 rounded-lg py-1 pr-1 transition-colors motion-reduce:transition-none ${indicator?.edge === "inside" || highlighted ? "bg-accent/10 ring-2 ring-accent" : ""} ${dimmed ? "opacity-40" : ""}`}
+			style={{ paddingLeft: `calc(var(--indent) * ${depth} + 0.25rem)` }}
 		>
 			{indicator && indicator.edge !== "inside" && (
 				<span
 					aria-hidden
 					className={`pointer-events-none absolute right-2 h-0.5 rounded-full bg-accent ${indicator.edge === "top" ? "-top-px" : "-bottom-px"}`}
-					style={{ left: `${indicator.depth * INDENT_REM + 2.25}rem` }}
+					style={{ left: `calc(var(--indent) * ${indicator.depth} + 2.25rem)` }}
 				/>
 			)}
 			{check ? (
@@ -1224,7 +1227,7 @@ function TreeRow({
 			) : (
 				<ImageIcon imageId={node.iconImageId} className="size-4" />
 			)}
-			<div className="ml-1.5 flex min-w-0 flex-1 items-center gap-2">
+			<div className="ml-1.5 flex min-w-24 flex-1 items-center gap-2 sm:min-w-32">
 				{isFolder ? (
 					<>
 						<span className="truncate font-medium">
