@@ -29,6 +29,7 @@ import {
 	SearchX,
 	Star,
 	Tag as TagIcon,
+	Tags as TagsIcon,
 	Trash2,
 	X,
 } from "lucide-react";
@@ -67,6 +68,7 @@ import {
 	SelectionBar,
 } from "./BulkActions";
 import { DeleteDialog, type DeleteTarget } from "./DeleteDialog";
+import { ManageTagsDialog, type TagChange } from "./ManageTagsDialog";
 import { NodeDialog, type NodeDialogTarget } from "./NodeDialog";
 import {
 	applyMove,
@@ -149,6 +151,7 @@ export function FavouritesPage({
 	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 	const lastClicked = useRef<number | null>(null);
 	const [bulkDialog, setBulkDialog] = useState<BulkDialogTarget | null>(null);
+	const [managingTags, setManagingTags] = useState(false);
 	const [toast, setToast] = useState<ToastMessage | null>(null);
 	const [bulkError, setBulkError] = useState(false);
 	// Links deleted in bulk are hidden until the delete is sent (see commitDelete).
@@ -333,6 +336,16 @@ export function FavouritesPage({
 	};
 	const setTags = (next: string[]) =>
 		onSearchChange({ tags: next.length > 0 ? next : undefined });
+	// Keeps the tag filter pointing at tags that exist after managing them.
+	const onTagChange = (change: TagChange) => {
+		const name = change.kind === "renamed" ? change.from : change.name;
+		if (!tags.some((chosen) => sameTag(chosen, name))) return;
+		const rest = tags.filter((chosen) => !sameTag(chosen, name));
+		const to = change.kind === "renamed" ? change.to : null;
+		setTags(
+			to && !rest.some((chosen) => sameTag(chosen, to)) ? [...rest, to] : rest,
+		);
+	};
 	const clearFilters = () => {
 		setText("");
 		onSearchChange({ q: undefined, tags: undefined });
@@ -538,6 +551,14 @@ export function FavouritesPage({
 							)}
 							<button
 								type="button"
+								className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium hover:bg-surface"
+								onClick={() => setManagingTags(true)}
+							>
+								<TagsIcon className="size-4" aria-hidden />
+								{t("favourites.manageTags.button")}
+							</button>
+							<button
+								type="button"
 								aria-pressed={selecting}
 								className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium hover:bg-surface aria-pressed:bg-surface"
 								onClick={() =>
@@ -641,6 +662,15 @@ export function FavouritesPage({
 			<NodeDialog target={editing} onClose={() => setEditing(null)} />
 			<DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
 			<BulkDialog target={bulkDialog} onClose={() => setBulkDialog(null)} />
+			<ManageTagsDialog
+				open={managingTags}
+				onClose={() => setManagingTags(false)}
+				onFilter={(tag) => {
+					setManagingTags(false);
+					onSearchChange({ tags: [tag] });
+				}}
+				onChange={onTagChange}
+			/>
 			<Toast
 				toast={toast}
 				onClose={() => {

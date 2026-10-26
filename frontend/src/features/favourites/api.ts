@@ -104,3 +104,24 @@ export function bulkFavourites(op: BulkOp, keepalive = false) {
 export function suggestTags(prefix: string) {
 	return api<Tag[]>(`/api/tags?q=${encodeURIComponent(prefix)}`);
 }
+
+/** A tag with how many links have it. */
+export type TagUsage = Tag & { linkCount: number };
+
+export const tagUsageQueryKey = ["tagUsage"] as const;
+
+export function listTags() {
+	return api<TagUsage[]>("/api/tags?all=true");
+}
+
+/** Renames a tag; with merge, a name another tag has merges this tag into it. */
+export function renameTag(id: string, name: string, merge = false) {
+	return api<Tag>(`/api/tags/${encodeURIComponent(id)}`, {
+		method: "PATCH",
+		json: merge ? { name, merge } : { name },
+	});
+}
+
+export function deleteTag(id: string) {
+	return api<void>(`/api/tags/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

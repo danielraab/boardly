@@ -279,6 +279,23 @@
 			"add": "Nach Tag {{tag}} filtern",
 			"remove": "Tag-Filter {{tag}} entfernen"
 		},
+		"manageTags": {
+			"button": "Tags verwalten",
+			"title": "Tags verwalten",
+			"empty": "Noch keine Tags",
+			"search": "Tags durchsuchen",
+			"newName": "Neuer Name für {{name}}",
+			"mergeQuestion": "„{{into}}“ gibt es schon. „{{from}}“ mit „{{into}}“ zusammenführen?",
+			"merge": "Zusammenführen",
+			"deleteQuestion_one": "„{{name}}“ von {{count}} Link entfernen?",
+			"deleteQuestion_other": "„{{name}}“ von {{count}} Links entfernen?",
+			"delete": "Entfernen",
+			"show_one": "Den {{count}} Link mit {{name}} zeigen",
+			"show_other": "Die {{count}} Links mit {{name}} zeigen",
+			"rename": "{{name}} umbenennen",
+			"deleteTag": "{{name}} löschen",
+			"invalidName": "Tag-Namen brauchen 1 bis 100 Zeichen."
+		},
 		"clearFilters": "Filter zurücksetzen",
 		"noMatch": "Keine passenden Favoriten",
 		"reorderHint": "Setze die Filter zurück, um die Reihenfolge zu ändern.",

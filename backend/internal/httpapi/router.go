@@ -69,6 +69,8 @@ func New(d Deps) http.Handler {
 	mux.Handle("DELETE /api/favourites/{id}", a.requireUser(a.deleteFavourite))
 	mux.Handle("POST /api/favourites/import", a.requireUser(a.importFavourites))
 	mux.Handle("GET /api/tags", a.requireUser(a.suggestTags))
+	mux.Handle("PATCH /api/tags/{id}", a.requireUser(a.renameTag))
+	mux.Handle("DELETE /api/tags/{id}", a.requireUser(a.deleteTag))
 	mux.Handle("GET /api/dashboards", a.requireUser(a.listDashboards))
 	mux.Handle("POST /api/dashboards", a.requireUser(a.createDashboard))
 	mux.Handle("PATCH /api/dashboards/{id}", a.requireUser(a.updateDashboard))

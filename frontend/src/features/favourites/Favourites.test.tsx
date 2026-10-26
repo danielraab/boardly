@@ -1257,3 +1257,216 @@ describe("bulk delete", () => {
 		expect(screen.getByRole("link", { name: "Git" })).toBeVisible();
 	});
 });
+
+// root
+// ├─ A (Reading, old)
+// ├─ B (Reading, reading-list)
+// └─ C (reading-list)
+function tagServer() {
+	const server = fakeServer([
+		link("A", { tags: ["Reading", "old"] }),
+		link("B", { tags: ["Reading", "reading-list"] }),
+		link("C", { tags: ["reading-list"] }),
+	]);
+	const links = () => server.tree().children ?? [];
+	const names = () => [...new Set(links().flatMap((l) => l.tags ?? []))];
+	const usage = () =>
+		names()
+			.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+			.map((name) => ({
+				id: `t-${name}`,
+				name,
+				linkCount: links().filter((l) => l.tags?.includes(name)).length,
+			}));
+	const replace = (from: string, to: string | null) => {
+		for (const l of links()) {
+			if (!l.tags?.includes(from)) continue;
+			const rest = l.tags.filter((t) => t !== from);
+			l.tags = to && !rest.includes(to) ? [...rest, to] : rest;
+		}
+	};
+	const routes: Parameters<typeof server.api.set>[0] = {
+		"GET /api/tags": ({ url }) =>
+			url.searchParams.get("all") === "true" ? { body: usage() } : { body: [] },
+	};
+	for (const name of ["Reading", "old", "reading-list"]) {
+		routes[`PATCH /api/tags/t-${name}`] = ({ body }) => {
+			const b = body as { name: string; merge?: boolean };
+			const other = names().find(
+				(n) => n !== name && n.toLowerCase() === b.name.toLowerCase(),
+			);
+			if (other && !b.merge) {
+				return { status: 409, body: { error: { code: "tag_exists" } } };
+			}
+			replace(name, other ?? b.name);
+			const to = other ?? b.name;
+			return { body: { id: `t-${to}`, name: to } };
+		};
+		routes[`DELETE /api/tags/t-${name}`] = () => {
+			replace(name, null);
+			return { status: 204 };
+		};
+	}
+	server.api.set(routes);
+	return server;
+}
+
+async function openManageTags(path = "/favourites") {
+	const app = renderApp(path);
+	await app.user.click(
+		await screen.findByRole("button", { name: "Manage tags" }),
+	);
+	const dialog = await screen.findByRole("dialog", { name: "Manage tags" });
+	await within(dialog).findByText("old");
+	return { ...app, dialog };
+}
+
+describe("manage tags", () => {
+	it("lists the tags with their link counts", async () => {
+		tagServer();
+		const { dialog } = await openManageTags();
+		const items = within(dialog)
+			.getAllByRole("listitem")
+			.map((li) => li.textContent);
+		expect(items).toEqual(["old1", "Reading2", "reading-list2"]);
+	});
+
+	it("says when there are no tags", async () => {
+		const server = fakeServer([link("A")]);
+		server.api.set({ "GET /api/tags": { body: [] } });
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Manage tags" }),
+		);
+		expect(await screen.findByText("No tags yet")).toBeVisible();
+	});
+
+	it("renames a tag on all its links", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "archive{Enter}");
+		expect(await within(dialog).findByText("archive")).toBeVisible();
+		expect(server.api.callsTo("PATCH", "/api/tags/t-old")).toHaveLength(1);
+		expect(findNode(server.tree(), "A")?.tags).toEqual(["Reading", "archive"]);
+	});
+
+	it("changes only the case without asking to merge", async () => {
+		tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "Old{Enter}");
+		expect(await within(dialog).findByText("Old")).toBeVisible();
+		expect(within(dialog).queryByText(/Merge/)).toBeNull();
+	});
+
+	it("asks before merging into an existing tag, and can cancel", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename reading-list" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for reading-list",
+		});
+		await user.clear(input);
+		await user.type(input, "reading{Enter}");
+		expect(
+			await within(dialog).findByText(
+				"“Reading” already exists. Merge “reading-list” into “Reading”?",
+			),
+		).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		expect(within(dialog).getByText("reading-list")).toBeVisible();
+		expect(findNode(server.tree(), "C")?.tags).toEqual(["reading-list"]);
+
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename reading-list" }),
+		);
+		const again = within(dialog).getByRole("textbox", {
+			name: "New name for reading-list",
+		});
+		await user.clear(again);
+		await user.type(again, "reading{Enter}");
+		await user.click(
+			await within(dialog).findByRole("button", { name: "Merge" }),
+		);
+		await waitFor(() =>
+			expect(within(dialog).queryByText("reading-list")).toBeNull(),
+		);
+		expect(findNode(server.tree(), "B")?.tags).toEqual(["Reading"]);
+		expect(findNode(server.tree(), "C")?.tags).toEqual(["Reading"]);
+		expect(
+			server.api.callsTo("PATCH", "/api/tags/t-reading-list").at(-1)?.body,
+		).toEqual({ name: "reading", merge: true });
+	});
+
+	it("deletes a tag after confirming, keeping the links", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Delete Reading" }),
+		);
+		expect(
+			within(dialog).getByText("Remove “Reading” from 2 links?"),
+		).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+		await waitFor(() =>
+			expect(within(dialog).queryByText("Reading")).toBeNull(),
+		);
+		expect(findNode(server.tree(), "A")?.tags).toEqual(["old"]);
+		expect(server.titles()).toEqual(["A", "B", "C"]);
+	});
+
+	it("filters by a tag from its count", async () => {
+		tagServer();
+		const { user, dialog, router } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", {
+				name: "Show the 2 links with reading-list",
+			}),
+		);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(router.state.location.search).toEqual({ tags: ["reading-list"] });
+		await waitFor(() => expect(rows()).toEqual(["B", "C"]));
+	});
+
+	it("keeps the tag filter in sync after a rename or delete", async () => {
+		tagServer();
+		const { user, dialog, router } = await openManageTags(
+			"/favourites?tags=%5B%22old%22%2C%22Reading%22%5D",
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "archive{Enter}");
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({
+				tags: ["Reading", "archive"],
+			}),
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Delete Reading" }),
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({ tags: ["archive"] }),
+		);
+	});
+});

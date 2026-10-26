@@ -60,6 +60,8 @@ func TestFavouritesRequireSignIn(t *testing.T) {
 		{"POST", "/api/favourites/bulk", `{}`},
 		{"DELETE", "/api/favourites/x", ""},
 		{"GET", "/api/tags", ""},
+		{"PATCH", "/api/tags/x", `{}`},
+		{"DELETE", "/api/tags/x", ""},
 	} {
 		if rec := s.req(tt.method, tt.path, tt.body); rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s %s: %d, want 401", tt.method, tt.path, rec.Code)
@@ -272,5 +274,73 @@ func TestFavouritesBulkErrors(t *testing.T) {
 	}
 	if got := childTitles(s.tree(t, ann)); !reflect.DeepEqual(got, []string{"Work", "https://example.org"}) {
 		t.Fatalf("tree changed: %q", got)
+	}
+}
+
+func TestTagManagement(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	s.create(t, ann, map[string]any{"kind": "link", "title": "A", "url": "https://example.org/a", "tags": []string{"Reading"}})
+	s.create(t, ann, map[string]any{"kind": "link", "title": "B", "url": "https://example.org/b", "tags": []string{"Reading", "reading-list"}})
+	s.create(t, ann, map[string]any{"kind": "link", "title": "C", "url": "https://example.org/c", "tags": []string{"reading-list", "old"}})
+
+	list := func() map[string]favourites.TagUsage {
+		rec := s.req("GET", "/api/tags?all=true", "", withCookie(ann))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("list: %d %s", rec.Code, rec.Body)
+		}
+		out := map[string]favourites.TagUsage{}
+		for _, tag := range decodeJSONBody[[]favourites.TagUsage](t, rec) {
+			out[tag.Name] = tag
+		}
+		return out
+	}
+	tags := list()
+	if len(tags) != 3 || tags["Reading"].LinkCount != 2 || tags["reading-list"].LinkCount != 2 || tags["old"].LinkCount != 1 {
+		t.Fatalf("tags = %+v", tags)
+	}
+	// Suggestions are unchanged without all=true.
+	if rec := s.req("GET", "/api/tags?q=rea", "", withCookie(ann)); len(decodeJSONBody[[]favourites.Tag](t, rec)) != 2 {
+		t.Fatalf("suggestions: %s", rec.Body)
+	}
+
+	listID := tags["reading-list"].ID
+	rename := func(id, body, cookie string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/tags/"+id, body, withCookie(cookie))
+	}
+	if rec := rename(listID, `{"name":"reading"}`, ann); rec.Code != http.StatusConflict || errorCode(t, rec) != "tag_exists" {
+		t.Fatalf("taken name: %d %s", rec.Code, rec.Body)
+	}
+	if rec := rename(listID, `{"name":" "}`, ann); rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_tag" {
+		t.Fatalf("empty name: %d %s", rec.Code, rec.Body)
+	}
+	if rec := rename(listID, `{"name":"x"}`, bob); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {
+		t.Fatalf("bob renames: %d %s", rec.Code, rec.Body)
+	}
+	rec := rename(listID, `{"name":"reading","merge":true}`, ann)
+	if tag := decodeJSONBody[favourites.Tag](t, rec); rec.Code != http.StatusOK || tag.Name != "Reading" || tag.ID != tags["Reading"].ID {
+		t.Fatalf("merge: %d %s", rec.Code, rec.Body)
+	}
+	tags = list()
+	if len(tags) != 2 || tags["Reading"].LinkCount != 3 {
+		t.Fatalf("after merge = %+v", tags)
+	}
+
+	if rec := rename(tags["old"].ID, `{"name":"Archive"}`, ann); rec.Code != http.StatusOK {
+		t.Fatalf("rename: %d %s", rec.Code, rec.Body)
+	}
+	archive := list()["Archive"].ID
+	if rec := s.req("DELETE", "/api/tags/"+archive, "", withCookie(bob)); rec.Code != http.StatusNotFound {
+		t.Fatalf("bob deletes: %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.req("DELETE", "/api/tags/"+archive, "", withCookie(ann)); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body)
+	}
+	if _, ok := list()["Archive"]; ok {
+		t.Fatal("deleted tag still listed")
+	}
+	if got := childTitles(s.tree(t, ann)); !reflect.DeepEqual(got, []string{"A", "B", "C"}) {
+		t.Fatalf("links after delete = %q", got)
 	}
 }

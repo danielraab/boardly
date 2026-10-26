@@ -279,6 +279,23 @@
 			"add": "Filter by tag {{tag}}",
 			"remove": "Remove tag filter {{tag}}"
 		},
+		"manageTags": {
+			"button": "Manage tags",
+			"title": "Manage tags",
+			"empty": "No tags yet",
+			"search": "Search tags",
+			"newName": "New name for {{name}}",
+			"mergeQuestion": "“{{into}}” already exists. Merge “{{from}}” into “{{into}}”?",
+			"merge": "Merge",
+			"deleteQuestion_one": "Remove “{{name}}” from {{count}} link?",
+			"deleteQuestion_other": "Remove “{{name}}” from {{count}} links?",
+			"delete": "Remove",
+			"show_one": "Show the {{count}} link with {{name}}",
+			"show_other": "Show the {{count}} links with {{name}}",
+			"rename": "Rename {{name}}",
+			"deleteTag": "Delete {{name}}",
+			"invalidName": "Tag names need 1 to 100 characters."
+		},
 		"clearFilters": "Clear filters",
 		"noMatch": "No favourites match",
 		"reorderHint": "Clear the filters to reorder.",
