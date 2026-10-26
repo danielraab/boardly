@@ -1,22 +1,7 @@
-import { useCallback, useState } from "react";
+import { useStoredIdSet } from "#/lib/useStoredIdSet";
 
 export function storageKey(widgetId: string) {
 	return `boardly.explorer.${widgetId}`;
-}
-
-function read(widgetId: string): Set<string> {
-	try {
-		const ids: unknown = JSON.parse(
-			localStorage.getItem(storageKey(widgetId)) ?? "[]",
-		);
-		return new Set(
-			Array.isArray(ids)
-				? ids.filter((id): id is string => typeof id === "string")
-				: [],
-		);
-	} catch {
-		return new Set();
-	}
 }
 
 /**
@@ -24,17 +9,5 @@ function read(widgetId: string): Set<string> {
  * per widget. Everything starts collapsed, also when storage is blocked.
  */
 export function useExpanded(widgetId: string) {
-	const [expanded, setExpanded] = useState(() => read(widgetId));
-	const update = useCallback(
-		(next: Set<string>) => {
-			setExpanded(next);
-			try {
-				localStorage.setItem(storageKey(widgetId), JSON.stringify([...next]));
-			} catch {
-				// Blocked storage: the state lasts until the page is left.
-			}
-		},
-		[widgetId],
-	);
-	return [expanded, update] as const;
+	return useStoredIdSet(storageKey(widgetId));
 }

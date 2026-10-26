@@ -75,7 +75,8 @@
 	},
 	"common": {
 		"loading": "Wird geladen…",
-		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
+		"close": "Schließen"
 	},
 	"verify": {
 		"title": "Anmeldung abschließen",
@@ -265,6 +266,77 @@
 		"dropAtEnd": "Hier ablegen, um auf die oberste Ebene zu verschieben",
 		"emptyTitle": "Noch keine Favoriten",
 		"emptyText": "Lege einen Ordner an, um deine Links zu gruppieren, oder füge gleich deinen ersten Link hinzu.",
+		"expandAll": "Alle aufklappen",
+		"collapseAll": "Alle zuklappen",
+		"search": {
+			"label": "Favoriten durchsuchen",
+			"placeholder": "Nach Titel, URL oder Tag suchen (Taste /)"
+		},
+		"tagFilter": {
+			"button": "Tags",
+			"buttonCount_one": "{{count}} Tag",
+			"buttonCount_other": "{{count}} Tags",
+			"add": "Nach Tag {{tag}} filtern",
+			"remove": "Tag-Filter {{tag}} entfernen"
+		},
+		"manageTags": {
+			"button": "Tags verwalten",
+			"title": "Tags verwalten",
+			"empty": "Noch keine Tags",
+			"search": "Tags durchsuchen",
+			"newName": "Neuer Name für {{name}}",
+			"mergeQuestion": "„{{into}}“ gibt es schon. „{{from}}“ mit „{{into}}“ zusammenführen?",
+			"merge": "Zusammenführen",
+			"deleteQuestion_one": "„{{name}}“ von {{count}} Link entfernen?",
+			"deleteQuestion_other": "„{{name}}“ von {{count}} Links entfernen?",
+			"delete": "Entfernen",
+			"show_one": "Den {{count}} Link mit {{name}} zeigen",
+			"show_other": "Die {{count}} Links mit {{name}} zeigen",
+			"rename": "{{name}} umbenennen",
+			"deleteTag": "{{name}} löschen",
+			"invalidName": "Tag-Namen brauchen 1 bis 100 Zeichen."
+		},
+		"clearFilters": "Filter zurücksetzen",
+		"noMatch": "Keine passenden Favoriten",
+		"reorderHint": "Setze die Filter zurück, um die Reihenfolge zu ändern.",
+		"linkCount_one": "{{count}} Link",
+		"linkCount_other": "{{count}} Links",
+		"folderCount_one": "{{count}} Ordner",
+		"folderCount_other": "{{count}} Ordner",
+		"select": {
+			"start": "Auswählen",
+			"done": "Fertig",
+			"all": "Alle auswählen",
+			"row": "{{name}} auswählen"
+		},
+		"bulk": {
+			"selected": "{{items}} ausgewählt",
+			"and": " und ",
+			"tooMany": "Es können höchstens {{max}} Einträge auf einmal geändert werden.",
+			"addTags": "Tags hinzufügen",
+			"removeTags": "Tags entfernen",
+			"setTags": "Tags festlegen",
+			"move": "Verschieben nach…",
+			"delete_one": "{{count}} Link löschen",
+			"delete_other": "{{count}} Links löschen",
+			"addTagsTitle": "Tags hinzufügen",
+			"removeTagsTitle": "Tags entfernen",
+			"setTagsTitle": "Tags festlegen",
+			"moveTitle": "Verschieben nach…",
+			"appliesToLinks_one": "Gilt für {{count}} Link.",
+			"appliesToLinks_other": "Gilt für {{count}} Links.",
+			"appliesToItems_one": "Verschiebt {{count}} Eintrag ans Ende des gewählten Ordners.",
+			"appliesToItems_other": "Verschiebt {{count}} Einträge ans Ende des gewählten Ordners.",
+			"removeLabel": "Zu entfernende Tags",
+			"noTags": "Die ausgewählten Links haben keine Tags.",
+			"setWarning": "Die bisherigen Tags dieser Links werden durch die Tags oben ersetzt.",
+			"apply": "Übernehmen",
+			"moveConfirm": "Verschieben",
+			"deleted_one": "{{count}} Link gelöscht",
+			"deleted_other": "{{count}} Links gelöscht",
+			"undo": "Rückgängig",
+			"deleteFailed": "Die Links konnten nicht gelöscht werden. Bitte versuche es erneut."
+		},
 		"dialog": {
 			"newFolder": "Neuer Ordner",
 			"newLink": "Neuer Link",

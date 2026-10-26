@@ -15,7 +15,7 @@ A favourite explorer SHALL have a root folder, an optional title (at most 200 ch
 - **THEN** the server responds 400 with `invalid_layout`
 
 ### Requirement: Explorer tree
-The explorer SHALL show the children of its root folder as a tree, not the root folder itself, in the order of the favourites. A folder shows a folder icon and its name and can be expanded and collapsed. A link shows its favicon, or a globe icon when it has none, and its title, or its URL when it has no title. Activating a link opens its URL in a new tab. Long names are cut off with "…" at the widget's width. An empty root folder shows "This folder is empty" / "Dieser Ordner ist leer". The tree always shows the current favourites.
+The explorer SHALL show the children of its root folder as a tree, not the root folder itself, in the order of the favourites. A folder shows a folder icon and its name and can be expanded and collapsed. A link shows its favicon, or a globe icon when it has none, and its title, or its URL when it has no title. Activating a link opens its URL in a new tab. Long names are cut off with "…" at the widget's width, but every name keeps a minimum width of about 6rem (shorter names keep their own width) and has a maximum width of 24rem; a folder shows its full name as a tooltip, a link its URL as before; when deeply nested rows don't fit, the tree scrolls horizontally inside the widget instead of hiding names, and the info buttons never overlap a name. An empty root folder shows "This folder is empty" / "Dieser Ordner ist leer". The tree always shows the current favourites.
 
 #### Scenario: Tree
 - **WHEN** the root folder "Work" contains the folder "Tools" with the link "GitLab", and the link "Mail"
@@ -29,8 +29,12 @@ The explorer SHALL show the children of its root folder as a tree, not the root 
 - **WHEN** Ann renames a link inside the root folder on `/favourites` and opens the dashboard again
 - **THEN** the explorer shows the new name
 
+#### Scenario: Deep nesting in a narrow widget
+- **WHEN** an explorer one column wide shows ten expanded nested folders
+- **THEN** every name is at least partly visible and the tree scrolls sideways inside the widget
+
 ### Requirement: Explorer title
-An explorer with a title SHALL show it as a heading at its top, cut off with "…" when it doesn't fit, with the expand-all button on the same line. Its heading level is that of a section's title at the same place in the layout. An explorer without a title shows no heading.
+An explorer with a title SHALL show it as a heading at its top, cut off with "…" when it doesn't fit, with the expand-all button on the same line. Its heading level is that of a section's title at the same place in the layout. An explorer without a title shows no heading. When the signed-in owner views their dashboard outside edit mode and the root folder exists, the title SHALL be a link to `/favourites?folder=<root folder ID>` (to `/favourites` when the root folder is the tree's root), opening in the same tab. For visitors, in edit mode, or when the root folder no longer exists, the title is plain text.
 
 #### Scenario: With title
 - **WHEN** Ann gives an explorer the title "Work links"
@@ -39,6 +43,22 @@ An explorer with a title SHALL show it as a heading at its top, cut off with "�
 #### Scenario: Without title
 - **WHEN** an explorer has no title
 - **THEN** the tree starts at the top of the widget
+
+#### Scenario: Owner follows the title
+- **WHEN** Ann views her dashboard with an explorer titled "Work links" for the folder "Work" and activates the title
+- **THEN** the browser shows `/favourites` with "Work" expanded, scrolled into view and highlighted
+
+#### Scenario: Tree root
+- **WHEN** the explorer's root folder is the tree's root and Ann activates its title
+- **THEN** the browser shows `/favourites`
+
+#### Scenario: Visitor
+- **WHEN** a visitor opens Ann's public dashboard with an explorer titled "Work links"
+- **THEN** the title is not a link
+
+#### Scenario: Edit mode
+- **WHEN** Ann edits the layout of her dashboard
+- **THEN** the explorer's title is not a link
 
 ### Requirement: Explorer size
 The size SHALL set the icon size, the font size and the padding of the rows: S is the smallest, L the largest, and M is in between.

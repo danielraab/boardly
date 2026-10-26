@@ -57,8 +57,11 @@ func TestFavouritesRequireSignIn(t *testing.T) {
 		{"POST", "/api/favourites", `{}`},
 		{"PATCH", "/api/favourites/x", `{}`},
 		{"POST", "/api/favourites/x/move", `{}`},
+		{"POST", "/api/favourites/bulk", `{}`},
 		{"DELETE", "/api/favourites/x", ""},
 		{"GET", "/api/tags", ""},
+		{"PATCH", "/api/tags/x", `{}`},
+		{"DELETE", "/api/tags/x", ""},
 	} {
 		if rec := s.req(tt.method, tt.path, tt.body); rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s %s: %d, want 401", tt.method, tt.path, rec.Code)
@@ -193,5 +196,151 @@ func TestFavouritesErrors(t *testing.T) {
 
 	if got := len(s.tree(t, bob).Children); got != 0 {
 		t.Fatalf("bob sees %d nodes, want 0", got)
+	}
+}
+
+func TestFavouritesBulk(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	work := s.create(t, ann, map[string]any{"kind": "folder", "title": "Work"})
+	a := s.create(t, ann, map[string]any{"kind": "link", "title": "A", "url": "https://example.org/a", "tags": []string{"old"}})
+	b := s.create(t, ann, map[string]any{"kind": "link", "title": "B", "url": "https://example.org/b"})
+	c := s.create(t, ann, map[string]any{"kind": "link", "title": "C", "url": "https://example.org/c"})
+
+	bulk := func(body map[string]any) *httptest.ResponseRecorder {
+		return s.req("POST", "/api/favourites/bulk", mustJSON(body), withCookie(ann))
+	}
+	if rec := bulk(map[string]any{"ids": []string{a.ID, b.ID}, "action": "addTags", "tags": []string{"reading"}}); rec.Code != http.StatusNoContent {
+		t.Fatalf("add tags: %d %s", rec.Code, rec.Body)
+	}
+	if rec := bulk(map[string]any{"ids": []string{a.ID, b.ID}, "action": "move", "parentId": work.ID}); rec.Code != http.StatusNoContent {
+		t.Fatalf("move: %d %s", rec.Code, rec.Body)
+	}
+	root := s.tree(t, ann)
+	if got := childTitles(root); !reflect.DeepEqual(got, []string{"Work", "C"}) {
+		t.Fatalf("root = %q", got)
+	}
+	if got := root.Children[0].Children[0].Tags; !reflect.DeepEqual(got, []string{"old", "reading"}) {
+		t.Fatalf("A's tags = %q", got)
+	}
+
+	// All or nothing: one unknown ID deletes nothing.
+	if rec := bulk(map[string]any{"ids": []string{c.ID, "nope"}, "action": "delete"}); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {
+		t.Fatalf("unknown ID: %d %s", rec.Code, rec.Body)
+	}
+	if rec := bulk(map[string]any{"ids": []string{c.ID, a.ID}, "action": "delete"}); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body)
+	}
+	if got := childTitles(s.tree(t, ann)); !reflect.DeepEqual(got, []string{"Work"}) {
+		t.Fatalf("root after delete = %q", got)
+	}
+}
+
+func TestFavouritesBulkErrors(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	work := s.create(t, ann, map[string]any{"kind": "folder", "title": "Work"})
+	tools := s.create(t, ann, map[string]any{"parentId": work.ID, "kind": "folder", "title": "Tools"})
+	link := s.create(t, ann, map[string]any{"kind": "link", "url": "https://example.org"})
+	ids := func(ids ...string) string { return string(mustJSON(ids)) }
+	many := make([]string, favourites.MaxBulkNodes+1)
+	for i := range many {
+		many[i] = link.ID + string(rune('a'+i%26)) + string(rune('a'+i/26%26)) + string(rune('a'+i/676))
+	}
+
+	for _, tt := range []struct {
+		name, body, cookie string
+		status             int
+		code               string
+	}{
+		{"invalid JSON", `{`, ann, 400, "invalid_request"},
+		{"no IDs", `{"ids":[],"action":"delete"}`, ann, 400, "invalid_field"},
+		{"too many IDs", `{"ids":` + ids(many...) + `,"action":"delete"}`, ann, 400, "invalid_field"},
+		{"duplicate IDs", `{"ids":` + ids(link.ID, link.ID) + `,"action":"delete"}`, ann, 400, "invalid_field"},
+		{"unknown action", `{"ids":` + ids(link.ID) + `,"action":"copy"}`, ann, 400, "invalid_field"},
+		{"tags missing", `{"ids":` + ids(link.ID) + `,"action":"setTags"}`, ann, 400, "invalid_field"},
+		{"bad tag", `{"ids":` + ids(link.ID) + `,"action":"addTags","tags":[" "]}`, ann, 400, "invalid_tag"},
+		{"folder delete", `{"ids":` + ids(link.ID, work.ID) + `,"action":"delete"}`, ann, 400, "invalid_field"},
+		{"folder tags", `{"ids":` + ids(work.ID) + `,"action":"addTags","tags":["x"]}`, ann, 400, "invalid_field"},
+		{"move into subtree", `{"ids":` + ids(work.ID) + `,"action":"move","parentId":"` + tools.ID + `"}`, ann, 400, "invalid_move"},
+		{"link as target", `{"ids":` + ids(work.ID) + `,"action":"move","parentId":"` + link.ID + `"}`, ann, 400, "invalid_parent"},
+		{"foreign IDs", `{"ids":` + ids(link.ID) + `,"action":"delete"}`, bob, 404, "not_found"},
+	} {
+		rec := s.req("POST", "/api/favourites/bulk", tt.body, withCookie(tt.cookie))
+		if rec.Code != tt.status || errorCode(t, rec) != tt.code {
+			t.Errorf("%s: %d %s, want %d %s", tt.name, rec.Code, rec.Body, tt.status, tt.code)
+		}
+	}
+	if got := childTitles(s.tree(t, ann)); !reflect.DeepEqual(got, []string{"Work", "https://example.org"}) {
+		t.Fatalf("tree changed: %q", got)
+	}
+}
+
+func TestTagManagement(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	s.create(t, ann, map[string]any{"kind": "link", "title": "A", "url": "https://example.org/a", "tags": []string{"Reading"}})
+	s.create(t, ann, map[string]any{"kind": "link", "title": "B", "url": "https://example.org/b", "tags": []string{"Reading", "reading-list"}})
+	s.create(t, ann, map[string]any{"kind": "link", "title": "C", "url": "https://example.org/c", "tags": []string{"reading-list", "old"}})
+
+	list := func() map[string]favourites.TagUsage {
+		rec := s.req("GET", "/api/tags?all=true", "", withCookie(ann))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("list: %d %s", rec.Code, rec.Body)
+		}
+		out := map[string]favourites.TagUsage{}
+		for _, tag := range decodeJSONBody[[]favourites.TagUsage](t, rec) {
+			out[tag.Name] = tag
+		}
+		return out
+	}
+	tags := list()
+	if len(tags) != 3 || tags["Reading"].LinkCount != 2 || tags["reading-list"].LinkCount != 2 || tags["old"].LinkCount != 1 {
+		t.Fatalf("tags = %+v", tags)
+	}
+	// Suggestions are unchanged without all=true.
+	if rec := s.req("GET", "/api/tags?q=rea", "", withCookie(ann)); len(decodeJSONBody[[]favourites.Tag](t, rec)) != 2 {
+		t.Fatalf("suggestions: %s", rec.Body)
+	}
+
+	listID := tags["reading-list"].ID
+	rename := func(id, body, cookie string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/tags/"+id, body, withCookie(cookie))
+	}
+	if rec := rename(listID, `{"name":"reading"}`, ann); rec.Code != http.StatusConflict || errorCode(t, rec) != "tag_exists" {
+		t.Fatalf("taken name: %d %s", rec.Code, rec.Body)
+	}
+	if rec := rename(listID, `{"name":" "}`, ann); rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_tag" {
+		t.Fatalf("empty name: %d %s", rec.Code, rec.Body)
+	}
+	if rec := rename(listID, `{"name":"x"}`, bob); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {
+		t.Fatalf("bob renames: %d %s", rec.Code, rec.Body)
+	}
+	rec := rename(listID, `{"name":"reading","merge":true}`, ann)
+	if tag := decodeJSONBody[favourites.Tag](t, rec); rec.Code != http.StatusOK || tag.Name != "Reading" || tag.ID != tags["Reading"].ID {
+		t.Fatalf("merge: %d %s", rec.Code, rec.Body)
+	}
+	tags = list()
+	if len(tags) != 2 || tags["Reading"].LinkCount != 3 {
+		t.Fatalf("after merge = %+v", tags)
+	}
+
+	if rec := rename(tags["old"].ID, `{"name":"Archive"}`, ann); rec.Code != http.StatusOK {
+		t.Fatalf("rename: %d %s", rec.Code, rec.Body)
+	}
+	archive := list()["Archive"].ID
+	if rec := s.req("DELETE", "/api/tags/"+archive, "", withCookie(bob)); rec.Code != http.StatusNotFound {
+		t.Fatalf("bob deletes: %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.req("DELETE", "/api/tags/"+archive, "", withCookie(ann)); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body)
+	}
+	if _, ok := list()["Archive"]; ok {
+		t.Fatal("deleted tag still listed")
+	}
+	if got := childTitles(s.tree(t, ann)); !reflect.DeepEqual(got, []string{"A", "B", "C"}) {
+		t.Fatalf("links after delete = %q", got)
 	}
 }

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
 	ChevronRight,
 	ChevronsDownUp,
@@ -11,6 +12,7 @@ import { iconButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { DetailsButton } from "#/features/favourites/FavouriteDetails";
+import type { FavouritesSearch } from "#/features/favourites/FavouritesPage";
 import { label } from "#/features/favourites/tree";
 import { sizeStyles, type WidgetSize } from "../sizes";
 import { useExpanded } from "./useExpanded";
@@ -46,6 +48,7 @@ export function ExplorerTree({
 	headingLevel = 2,
 	onAdd,
 	onDetails,
+	titleLink,
 }: {
 	widgetId: string;
 	size: WidgetSize;
@@ -55,6 +58,8 @@ export function ExplorerTree({
 	headingLevel?: number;
 	onAdd?: () => void;
 	onDetails?: (id: string) => void;
+	/** Makes the title a link to /favourites with these search params. */
+	titleLink?: FavouritesSearch;
 }) {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useExpanded(widgetId);
@@ -79,7 +84,8 @@ export function ExplorerTree({
 			{nodes.map((node) => {
 				const name = label(node);
 				const indent = { paddingLeft: `${depth * style.indent}px` };
-				const row = `flex w-full min-w-0 items-center gap-1.5 rounded ${style.row} hover:bg-paper`;
+				// At least as wide as the widget, wider when a deep row needs it.
+				const row = `flex w-min min-w-[100cqw] items-center gap-1.5 rounded ${style.row} hover:bg-paper`;
 				if (node.kind === "folder") {
 					const open = expanded.has(node.id);
 					return (
@@ -99,7 +105,12 @@ export function ExplorerTree({
 									className={`${style.icon} shrink-0 text-muted`}
 									aria-hidden
 								/>
-								<span className="truncate font-medium">{name}</span>
+								<span
+									className="min-w-24 max-w-sm flex-1 truncate font-medium contain-inline-size"
+									title={name}
+								>
+									{name}
+								</span>
 							</button>
 							{open && renderNodes(node.children ?? [], depth + 1)}
 						</li>
@@ -109,14 +120,20 @@ export function ExplorerTree({
 					<>
 						<span className={`${style.icon} shrink-0`} />
 						<ImageIcon imageId={node.iconImageId} className={style.icon} />
-						<span className="truncate">{name}</span>
+						<span className="min-w-24 max-w-sm flex-1 truncate contain-inline-size">
+							{name}
+						</span>
 					</>
 				);
-				const linkRow = onDetails ? `${row} flex-1` : row;
+				const linkRow = onDetails
+					? `flex min-w-0 flex-1 items-center gap-1.5 rounded ${style.row} hover:bg-paper`
+					: row;
 				return (
 					<li
 						key={node.id}
-						className={onDetails ? "flex min-w-0 items-center" : undefined}
+						className={
+							onDetails ? "flex w-min min-w-[100cqw] items-center" : undefined
+						}
 					>
 						{editing ? (
 							<span className={linkRow} style={indent} title={node.url}>
@@ -162,7 +179,12 @@ export function ExplorerTree({
 			</p>
 		);
 	} else {
-		body = renderNodes(children, 0);
+		// Deep rows scroll sideways inside the widget instead of hiding names.
+		body = (
+			<div className="@container overflow-x-auto" data-testid="explorer-scroll">
+				<div className="w-max min-w-full">{renderNodes(children, 0)}</div>
+			</div>
+		);
 	}
 
 	const toggleAll = folders.length > 0 && (
@@ -206,7 +228,17 @@ export function ExplorerTree({
 			<div className={style.text}>
 				<div className="flex items-center gap-1">
 					<Heading className="min-w-0 flex-1 truncate font-medium">
-						{title}
+						{titleLink ? (
+							<Link
+								to="/favourites"
+								search={titleLink}
+								className="hover:underline"
+							>
+								{title}
+							</Link>
+						) : (
+							title
+						)}
 					</Heading>
 					{buttons}
 				</div>

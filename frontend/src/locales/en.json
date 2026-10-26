@@ -75,7 +75,8 @@
 	},
 	"common": {
 		"loading": "Loading…",
-		"genericError": "Something went wrong. Please try again."
+		"genericError": "Something went wrong. Please try again.",
+		"close": "Close"
 	},
 	"verify": {
 		"title": "Complete sign-in",
@@ -265,6 +266,77 @@
 		"dropAtEnd": "Drop here to move to the top level",
 		"emptyTitle": "No favourites yet",
 		"emptyText": "Add a folder to group your links, or add your first link right away.",
+		"expandAll": "Expand all",
+		"collapseAll": "Collapse all",
+		"search": {
+			"label": "Search favourites",
+			"placeholder": "Search by title, URL or tag (press /)"
+		},
+		"tagFilter": {
+			"button": "Tags",
+			"buttonCount_one": "{{count}} tag",
+			"buttonCount_other": "{{count}} tags",
+			"add": "Filter by tag {{tag}}",
+			"remove": "Remove tag filter {{tag}}"
+		},
+		"manageTags": {
+			"button": "Manage tags",
+			"title": "Manage tags",
+			"empty": "No tags yet",
+			"search": "Search tags",
+			"newName": "New name for {{name}}",
+			"mergeQuestion": "“{{into}}” already exists. Merge “{{from}}” into “{{into}}”?",
+			"merge": "Merge",
+			"deleteQuestion_one": "Remove “{{name}}” from {{count}} link?",
+			"deleteQuestion_other": "Remove “{{name}}” from {{count}} links?",
+			"delete": "Remove",
+			"show_one": "Show the {{count}} link with {{name}}",
+			"show_other": "Show the {{count}} links with {{name}}",
+			"rename": "Rename {{name}}",
+			"deleteTag": "Delete {{name}}",
+			"invalidName": "Tag names need 1 to 100 characters."
+		},
+		"clearFilters": "Clear filters",
+		"noMatch": "No favourites match",
+		"reorderHint": "Clear the filters to reorder.",
+		"linkCount_one": "{{count}} link",
+		"linkCount_other": "{{count}} links",
+		"folderCount_one": "{{count}} folder",
+		"folderCount_other": "{{count}} folders",
+		"select": {
+			"start": "Select",
+			"done": "Done",
+			"all": "Select all",
+			"row": "Select {{name}}"
+		},
+		"bulk": {
+			"selected": "{{items}} selected",
+			"and": " and ",
+			"tooMany": "At most {{max}} items can be changed at once.",
+			"addTags": "Add tags",
+			"removeTags": "Remove tags",
+			"setTags": "Set tags",
+			"move": "Move to…",
+			"delete_one": "Delete {{count}} link",
+			"delete_other": "Delete {{count}} links",
+			"addTagsTitle": "Add tags",
+			"removeTagsTitle": "Remove tags",
+			"setTagsTitle": "Set tags",
+			"moveTitle": "Move to…",
+			"appliesToLinks_one": "Applies to {{count}} link.",
+			"appliesToLinks_other": "Applies to {{count}} links.",
+			"appliesToItems_one": "Moves {{count}} item to the end of the chosen folder.",
+			"appliesToItems_other": "Moves {{count}} items to the end of the chosen folder.",
+			"removeLabel": "Tags to remove",
+			"noTags": "The selected links have no tags.",
+			"setWarning": "The current tags of these links are replaced by the tags above.",
+			"apply": "Apply",
+			"moveConfirm": "Move",
+			"deleted_one": "{{count}} link deleted",
+			"deleted_other": "{{count}} links deleted",
+			"undo": "Undo",
+			"deleteFailed": "The links couldn't be deleted. Please try again."
+		},
 		"dialog": {
 			"newFolder": "New folder",
 			"newLink": "New link",

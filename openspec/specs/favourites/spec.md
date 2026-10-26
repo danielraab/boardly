@@ -254,3 +254,308 @@ The dialog to edit a folder SHALL NOT show these fields.
 #### Scenario: Folder dialog
 - **WHEN** the user opens the edit dialog of a folder
 - **THEN** it shows only the name field
+
+### Requirement: Search favourites
+`/favourites` SHALL have a search field ("Search favourites" / "Favoriten durchsuchen"). The text is split at whitespace into terms, and matching ignores case. A link matches when every term occurs in its title, its URL or one of its tag names, or in the name of one of its folders below the root. While the field has text, the tree SHALL show only matching links and the folders that contain them, and a folder whose name contains every term together with all its contents (subject to the tag filter). Every shown folder is expanded. Matching text in the shown names SHALL be highlighted. Pressing `/` outside a text field SHALL focus the search field.
+
+#### Scenario: Find by title
+- **WHEN** "Work / Tools" contains the link "Grafana" and the user types "graf"
+- **THEN** the tree shows "Work", "Tools" and "Grafana", expanded, and no other node
+
+#### Scenario: Find by URL
+- **WHEN** a link titled "Dashboards" has the URL `https://grafana.example.com` and the user types "grafana"
+- **THEN** the tree shows "Dashboards"
+
+#### Scenario: Find by tag
+- **WHEN** a link has the tag "monitoring" and the user types "monitor"
+- **THEN** the tree shows that link
+
+#### Scenario: Several terms
+- **WHEN** the user types "work graf"
+- **THEN** "Grafana" in "Work / Tools" is shown, and a link "Grafana" outside "Work" is not
+
+#### Scenario: Folder name matches
+- **WHEN** the user types "tools"
+- **THEN** "Tools" is shown with all its contents
+
+#### Scenario: Keyboard shortcut
+- **WHEN** focus is not in a text field and the user presses `/`
+- **THEN** the search field is focused
+
+### Requirement: Filter favourites by tag
+`/favourites` SHALL offer a tag filter that lists every tag on the user's links, sorted by name, with the number of links that have it. The user can choose several tags; the tree then shows only links that have all chosen tags, together with the folders that contain them, expanded. The chosen tags are shown as chips that can each be removed. Activating a tag on a link row SHALL add it to the filter. The tag filter and the search apply together.
+
+#### Scenario: One tag
+- **WHEN** the user chooses the tag "reading"
+- **THEN** the tree shows only links with "reading" and their folders
+
+#### Scenario: Several tags
+- **WHEN** the user chooses "reading" and "later"
+- **THEN** only links with both tags are shown
+
+#### Scenario: Tag on a row
+- **WHEN** no tag is chosen and the user activates the tag "reading" on a link row
+- **THEN** "reading" is chosen in the tag filter
+
+#### Scenario: Search and tag
+- **WHEN** the tag "reading" is chosen and the user types "rust"
+- **THEN** only links with "reading" that match "rust" are shown
+
+### Requirement: Filter state and clearing
+The search text and the chosen tags SHALL be kept in the page URL, so a reload or going back restores them. While a filter is active, a "Clear filters" / "Filter zurücksetzen" action SHALL clear both. When nothing matches, the page SHALL show "No favourites match" / "Keine passenden Favoriten" with the same action instead of the tree.
+
+#### Scenario: Reload
+- **WHEN** the user has typed "graf" and chosen "tools", and reloads the page
+- **THEN** the search field shows "graf", "tools" is chosen, and the tree is filtered
+
+#### Scenario: Nothing matches
+- **WHEN** the user types a text no link matches
+- **THEN** the page shows "No favourites match" and "Clear filters"
+
+#### Scenario: Clear
+- **WHEN** the user activates "Clear filters"
+- **THEN** the search field is empty, no tag is chosen, and the whole tree is shown with the remembered collapse state
+
+### Requirement: No moving while filtered
+While a search or tag filter is active, nodes SHALL NOT be movable on `/favourites`, by pointer or keyboard, and the page SHALL show "Clear the filters to reorder." / "Setze die Filter zurück, um die Reihenfolge zu ändern." Editing, deleting and adding nodes stay possible.
+
+#### Scenario: Drag handles off
+- **WHEN** a filter is active
+- **THEN** no row offers a move action, and the hint is shown
+
+#### Scenario: Edit while filtered
+- **WHEN** a filter is active and the user edits a shown link
+- **THEN** the change is saved and the filter stays active
+
+### Requirement: Expand and collapse all on the favourites page
+`/favourites` SHALL have a button that expands all folders, or collapses all of them when any folder is expanded. Its label says which ("Expand all" / "Alle aufklappen", "Collapse all" / "Alle zuklappen").
+
+#### Scenario: Collapse all
+- **WHEN** some folders are expanded and the user activates "Collapse all"
+- **THEN** every folder at every level is collapsed, and the button says "Expand all"
+
+#### Scenario: Expand all
+- **WHEN** all folders are collapsed and the user activates "Expand all"
+- **THEN** every folder at every level is expanded
+
+### Requirement: Remembered collapse state on the favourites page
+On a first visit, every folder on `/favourites` SHALL be expanded. The folders the user expands or collapses, also with "Expand all" or "Collapse all", SHALL be remembered in their browser and restored when the page is opened again. Nothing about it is stored on the server. Expanding or collapsing while a filter is active SHALL NOT change the remembered state.
+
+#### Scenario: Remembered
+- **WHEN** the user collapses "Work" and reloads the page
+- **THEN** "Work" is still collapsed
+
+#### Scenario: Filter doesn't change it
+- **WHEN** "Work" is collapsed, the user searches for a link inside it and then clears the filters
+- **THEN** "Work" is collapsed again
+
+### Requirement: Folder link counts
+Every folder row on `/favourites` SHALL show the number of links it contains at all levels below it. While a filter is active, it SHALL show the number of shown links below it instead.
+
+#### Scenario: Count
+- **WHEN** "Work" contains two links and the folder "Tools" with three links
+- **THEN** the row of "Work" shows 5 and the row of "Tools" shows 3
+
+#### Scenario: Count while filtered
+- **WHEN** a filter is active and one link inside "Work" matches
+- **THEN** the row of "Work" shows 1
+
+### Requirement: Link to a folder on the favourites page
+`/favourites?folder=<id>` SHALL expand that folder and all folders above it, scroll its row into view and highlight it briefly. The expanded folders are remembered like other expansions. An unknown ID, or the ID of a link, is ignored.
+
+#### Scenario: Open a nested folder
+- **WHEN** "Work" and "Tools" are collapsed and the user opens `/favourites?folder=<id of Tools>`
+- **THEN** "Work" and "Tools" are expanded, and the row of "Tools" is scrolled into view and highlighted
+
+#### Scenario: Unknown folder
+- **WHEN** the user opens `/favourites?folder=unknown`
+- **THEN** the page shows the tree as usual
+
+### Requirement: Selection mode
+`/favourites` SHALL have a "Select" / "Auswählen" button that turns selection mode on. Only in selection mode, every row SHALL show a checkbox in place of its drag handle, and nodes can't be moved by drag and drop. "Done" / "Fertig" or Escape turns it off and clears the selection. Checking a folder SHALL check every node below it, and unchecking it unchecks them. A folder is checked when all nodes below it are checked, partly checked when some are, and unchecked otherwise (an empty folder is checked on its own). Shift-clicking a checkbox SHALL set every shown row between it and the last clicked one to the clicked state. "Select all" / "Alle auswählen" SHALL check every shown row. While a filter is active, checking a folder SHALL check only its shown nodes. The selection SHALL be kept when the filter changes.
+
+#### Scenario: Checkboxes only in selection mode
+- **WHEN** the user opens `/favourites`
+- **THEN** no row shows a checkbox, until the user activates "Select"
+
+#### Scenario: Check a folder
+- **WHEN** "Work" contains "Tools" with two links, and the link "Mail", and the user checks "Work"
+- **THEN** "Work", "Tools", both links and "Mail" are checked
+
+#### Scenario: Uncheck one child
+- **WHEN** "Work" is checked and the user unchecks "Mail"
+- **THEN** "Work" is shown as partly checked and "Tools" stays checked
+
+#### Scenario: Range
+- **WHEN** the user checks the first of five shown links and shift-clicks the fifth
+- **THEN** all five are checked
+
+#### Scenario: Filtered folder
+- **WHEN** a search shows two of the four links in "Work" and the user checks "Work"
+- **THEN** only those two links are checked
+
+#### Scenario: Leave selection mode
+- **WHEN** links are checked and the user presses Escape
+- **THEN** selection mode ends and nothing is selected
+
+### Requirement: Selection bar
+While anything is selected, `/favourites` SHALL show a bar that stays visible while scrolling. It shows how many links and folders are selected, including selected nodes the filter hides, and offers "Add tags", "Remove tags", "Set tags", "Move to…" and "Delete". Tag actions and "Delete" SHALL be disabled when no link is selected. Each action states how many links it applies to.
+
+#### Scenario: Counts
+- **WHEN** the user checks "Tools", which holds two links, and one other link
+- **THEN** the bar says that 3 links and 1 folder are selected
+
+#### Scenario: Only folders
+- **WHEN** only empty folders are selected
+- **THEN** "Move to…" is enabled, and the tag actions and "Delete" are disabled
+
+### Requirement: Bulk tag actions
+"Add tags" / "Tags hinzufügen" SHALL add the entered tags to every selected link and keep their other tags. "Remove tags" / "Tags entfernen" SHALL list the tags of the selected links with how many of them have each, and remove the chosen ones from every selected link. "Set tags" / "Tags festlegen" SHALL replace the tags of every selected link with the entered ones, and its dialog SHALL say that the links' current tags are replaced. The tag rules and suggestions of single links apply. Tags on no link afterwards are removed. Folders in the selection are ignored. The selection is kept after a tag action.
+
+#### Scenario: Add a tag
+- **WHEN** three links are selected, one of them already has "reading", and the user adds "reading" and "later"
+- **THEN** all three have "reading" and "later", plus their other tags, and none has "reading" twice
+
+#### Scenario: Remove a tag
+- **WHEN** two of three selected links have "old" and the user removes "old"
+- **THEN** none of the three has "old", and "old" is removed when no other link has it
+
+#### Scenario: Set tags
+- **WHEN** the selected links have various tags and the user sets "archive"
+- **THEN** every selected link has only "archive"
+
+### Requirement: Bulk move
+"Move to…" / "Verschieben nach…" SHALL open a dialog to choose a folder, including the root. Folders that are selected, or are inside a selected folder, can't be chosen. A fully selected folder SHALL be moved with its contents, and its contents are not moved on their own. Any other selected node is moved on its own. The moved nodes SHALL be added at the end of the chosen folder in their order in the tree. The move is all or nothing.
+
+#### Scenario: Move links
+- **WHEN** the user selects "A" from "Inbox" and "B" from "Work" and moves them to "Archive"
+- **THEN** "Archive" ends with "A" and then "B", and neither is in its old folder
+
+#### Scenario: Move a folder as a whole
+- **WHEN** "Tools" is fully selected and the user moves the selection to "Old"
+- **THEN** "Old" contains "Tools" with all its contents
+
+#### Scenario: Partly selected folder
+- **WHEN** one of two links in "Tools" is selected and moved to "Old"
+- **THEN** only that link is moved and "Tools" stays where it is
+
+#### Scenario: Not into itself
+- **WHEN** "Work" is selected and the user opens "Move to…"
+- **THEN** "Work" and the folders inside it can't be chosen
+
+### Requirement: Bulk delete with undo
+"Delete" / "Löschen" SHALL delete the selected links. Folders SHALL NOT be deleted in bulk, also when all their contents are selected, and they stay in the tree, possibly empty. There is no confirmation dialog. The links disappear right away, and a message "N links deleted" / "N Links gelöscht" with "Undo" / "Rückgängig" is shown for 8 seconds. "Undo" SHALL bring the links back unchanged. The delete is sent to the server when the message closes, when another delete starts, or when the page is left. Tags on no link afterwards are removed. The selection is cleared.
+
+#### Scenario: Delete links
+- **WHEN** three links are selected and the user activates "Delete"
+- **THEN** the three links disappear, and "3 links deleted" with "Undo" is shown
+
+#### Scenario: Undo
+- **WHEN** the user activates "Undo" while the message is shown
+- **THEN** the three links are shown again in their places, and nothing is deleted on the server
+
+#### Scenario: Folder stays
+- **WHEN** "Tools" and both its links are selected and the user deletes
+- **THEN** both links are deleted and "Tools" stays, empty
+
+#### Scenario: Committed
+- **WHEN** the message closes without "Undo" and the user reloads the page
+- **THEN** the three links are gone
+
+### Requirement: Bulk API
+`POST /api/favourites/bulk` SHALL take `ids` (1 to 1000 node IDs, no duplicates), `action` (`delete`, `addTags`, `removeTags`, `setTags` or `move`), `tags` for the tag actions and `parentId` for `move`. It SHALL apply the action to all nodes in one transaction and respond 204, or change nothing and respond with an error. A node ID of another user, or one that doesn't exist, responds 404. A folder ID with `delete` or a tag action, the root, or a missing or invalid field responds 400 with `invalid_field`. With `move`, a node inside another given node, or a target folder inside a given node, responds 400 with `invalid_move`. Invalid tag names respond as on a single link.
+
+#### Scenario: All or nothing
+- **WHEN** a request deletes three links and one of the IDs doesn't exist
+- **THEN** the server responds 404 and none of the three links is deleted
+
+#### Scenario: Folder delete rejected
+- **WHEN** a request with `action: "delete"` contains a folder ID
+- **THEN** the server responds 400 with `invalid_field` and nothing is deleted
+
+#### Scenario: Move into own subtree
+- **WHEN** a move request contains "Work" and has the target "Work / Tools"
+- **THEN** the server responds 400 with `invalid_move`
+
+### Requirement: Manage tags dialog
+`/favourites` SHALL have a "Manage tags" / "Tags verwalten" button that opens a dialog listing all of the user's tags, sorted by name, each with the number of links that have it, a rename action and a delete action. The list can be searched by name. Activating a tag's count SHALL close the dialog and set the tag filter to that tag alone. With no tags, the dialog says "No tags yet" / "Noch keine Tags".
+
+#### Scenario: List
+- **WHEN** the user has the tag "reading" on three links and "tools" on one, and opens "Manage tags"
+- **THEN** the dialog lists "reading" with 3 and "tools" with 1
+
+#### Scenario: Filter from the dialog
+- **WHEN** the user activates the count of "reading"
+- **THEN** the dialog closes and the tree shows only links with "reading"
+
+### Requirement: Rename and merge tags
+Renaming a tag SHALL change its name on all its links. The tag-name rules apply. Renaming to a name that differs only in case from the old name SHALL just change the case. When another tag already has the new name, ignoring case, the dialog SHALL ask whether to merge "<old>" into "<other>"; merging gives every link of the renamed tag the other tag, keeps the other tag's name, and removes the renamed tag. Cancelling changes nothing.
+
+#### Scenario: Rename
+- **WHEN** the user renames "reding" to "reading" and no tag "reading" exists
+- **THEN** every link that had "reding" now shows "reading"
+
+#### Scenario: Change case
+- **WHEN** the user renames "reading" to "Reading"
+- **THEN** the tag is called "Reading" and no merge is offered
+
+#### Scenario: Merge
+- **WHEN** "Reading" is on links A and B, "reading-list" is on B and C, and the user renames "reading-list" to "reading" and confirms the merge
+- **THEN** A, B and C have "Reading", B has it once, and "reading-list" no longer exists
+
+#### Scenario: Cancel merge
+- **WHEN** the merge question is shown and the user cancels
+- **THEN** both tags are unchanged
+
+### Requirement: Delete tags
+Deleting a tag SHALL ask for confirmation, saying on how many links it is ("Remove "<name>" from N links?" / "„<name>“ von N Links entfernen?"). Confirming removes the tag from all its links and deletes it. The links themselves are kept.
+
+#### Scenario: Delete
+- **WHEN** the user deletes "old", which is on two links, and confirms
+- **THEN** both links are kept without "old", and "old" is no longer listed or suggested
+
+### Requirement: Tag management API
+`GET /api/tags?all=true` SHALL return all of the user's tags as `{id, name, linkCount}`, sorted by name ignoring case. Without `all`, `GET /api/tags` keeps suggesting by prefix as before. `PATCH /api/tags/{id}` with `{name}` SHALL rename the tag and respond with it; when another tag of the user has that name, ignoring case, it SHALL respond 409 with `tag_exists` and change nothing, unless the body has `"merge": true`, in which case it merges the tag into that other tag and responds with the other tag. `DELETE /api/tags/{id}` SHALL remove the tag from all links and delete it, responding 204. A tag of another user, or one that doesn't exist, responds 404. An invalid name responds 400 as for tags on a link.
+
+#### Scenario: Name taken
+- **WHEN** the user has "Reading" and "reading-list" and sends `PATCH /api/tags/<reading-list>` with `{"name": "reading"}`
+- **THEN** the server responds 409 with `tag_exists` and both tags are unchanged
+
+#### Scenario: Merge through the API
+- **WHEN** the same request has `"merge": true`
+- **THEN** the server responds with the tag "Reading", which is now on all links that had either tag
+
+#### Scenario: Other user's tag
+- **WHEN** a user sends `DELETE /api/tags/<id>` for another user's tag
+- **THEN** the server responds 404 and the tag is unchanged
+
+### Requirement: Deeply nested trees stay readable
+On `/favourites`, every name in the tree SHALL keep a minimum width (about 6rem below the `sm` breakpoint, 8rem from it; shorter names keep their own width) and a maximum width of 24rem; a name that doesn't fit SHALL be cut off with "…", and its full text SHALL be shown as a tooltip. The action buttons of a row SHALL come after its name, link count and tags and never overlap them. When a link has more tags than fit, the tags SHALL give way before the name: the name keeps its width (up to its maximum), only the tags that fit completely are shown, and all tags are listed in a tooltip. Each row SHALL be at least as wide as the tree; a row that needs more room SHALL be wider, and then the tree SHALL scroll horizontally on its own, while the page SHALL NOT scroll horizontally. Rows that fit SHALL keep their action buttons at the right edge of the tree. Below the `sm` breakpoint the indentation per level SHALL be half of the indentation on wider screens, and the drop indicator of drag and drop SHALL use the same indentation as the rows. Drag and drop SHALL also work while the tree is scrolled sideways.
+
+#### Scenario: Deep nesting on a phone
+- **WHEN** the tree has ten nested folders and is shown 375px wide
+- **THEN** every folder name is at least partly visible, the tree can be scrolled sideways, and the page has no horizontal scrollbar
+
+#### Scenario: Buttons don't overlap
+- **WHEN** a deep folder row is wider than the tree
+- **THEN** its action buttons come after its name and link count, and scrolling the tree sideways shows them
+
+#### Scenario: Drag while scrolled
+- **WHEN** the tree is scrolled sideways and the user drags a deep link onto a folder
+- **THEN** the link is moved into that folder
+
+#### Scenario: Shallow tree
+- **WHEN** all rows fit into the tree's width
+- **THEN** the tree has no horizontal scrollbar and looks as before
+
+#### Scenario: Very long name
+- **WHEN** a link's title is 300 characters long and the page is wide
+- **THEN** the title is shown at most 24rem wide and ends with "…", its tags follow right after it, and hovering it shows the full title
+
+#### Scenario: Many tags
+- **WHEN** a link titled "Tagged" has twelve tags and the row is too narrow for all of them
+- **THEN** "Tagged" is shown in full, as many whole tags as fit follow it, the rest are hidden, and hovering the tags lists all twelve
+
+#### Scenario: Smaller indentation on phones
+- **WHEN** the page is narrower than the `sm` breakpoint
+- **THEN** each level is indented half as much as on a wide screen

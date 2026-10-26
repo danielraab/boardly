@@ -80,6 +80,48 @@ export function refreshFavicon(url: string) {
 	});
 }
 
+/** The most nodes one bulk request takes. */
+export const MAX_BULK = 1000;
+
+export type BulkOp =
+	| { action: "delete"; ids: string[] }
+	| {
+			action: "addTags" | "removeTags" | "setTags";
+			ids: string[];
+			tags: string[];
+	  }
+	| { action: "move"; ids: string[]; parentId: string };
+
+/** Applies one action to many nodes, all or nothing. keepalive lets it finish while the page unloads. */
+export function bulkFavourites(op: BulkOp, keepalive = false) {
+	return api<void>("/api/favourites/bulk", {
+		method: "POST",
+		json: op,
+		keepalive,
+	});
+}
+
 export function suggestTags(prefix: string) {
 	return api<Tag[]>(`/api/tags?q=${encodeURIComponent(prefix)}`);
+}
+
+/** A tag with how many links have it. */
+export type TagUsage = Tag & { linkCount: number };
+
+export const tagUsageQueryKey = ["tagUsage"] as const;
+
+export function listTags() {
+	return api<TagUsage[]>("/api/tags?all=true");
+}
+
+/** Renames a tag; with merge, a name another tag has merges this tag into it. */
+export function renameTag(id: string, name: string, merge = false) {
+	return api<Tag>(`/api/tags/${encodeURIComponent(id)}`, {
+		method: "PATCH",
+		json: merge ? { name, merge } : { name },
+	});
+}
+
+export function deleteTag(id: string) {
+	return api<void>(`/api/tags/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

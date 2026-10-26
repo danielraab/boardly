@@ -56,6 +56,36 @@ function fakeServer(initial: FavouriteNode[], tags: string[] = []) {
 			if (parent) parent.children = [...(parent.children ?? []), node];
 			return { status: 201, body: node };
 		},
+		"POST /api/favourites/bulk": ({ body }) => {
+			const op = body as {
+				ids: string[];
+				action: string;
+				tags?: string[];
+				parentId?: string;
+			};
+			for (const id of op.ids) {
+				const found = findParent(tree, id);
+				if (!found)
+					return { status: 404, body: { error: { code: "not_found" } } };
+				const node = found.parent.children?.[found.index] as FavouriteNode;
+				if (op.action === "delete" || op.action === "move") {
+					found.parent.children?.splice(found.index, 1);
+				}
+				if (op.action === "move") {
+					const target = findNode(tree, op.parentId ?? "");
+					if (target) target.children = [...(target.children ?? []), node];
+				}
+				const tags = op.tags ?? [];
+				if (op.action === "addTags") {
+					node.tags = [...new Set([...(node.tags ?? []), ...tags])].sort();
+				}
+				if (op.action === "removeTags") {
+					node.tags = (node.tags ?? []).filter((t) => !tags.includes(t));
+				}
+				if (op.action === "setTags") node.tags = tags;
+			}
+			return { status: 204 };
+		},
 		"GET /api/tags": ({ url }) => {
 			const q = (url.searchParams.get("q") ?? "").toLowerCase();
 			return {
@@ -731,5 +761,765 @@ describe("delete with connected apps", () => {
 		);
 		await waitFor(() => expect(dialog).toHaveTextContent("Delete folder?"));
 		expect(within(dialog).queryByText(warning)).toBeNull();
+	});
+});
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  └─ Grafana (monitoring)
+// │  └─ Mail (reading)
+// └─ Long read (reading, later)
+function searchTree() {
+	return fakeServer([
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				link("Grafana", {
+					url: "https://grafana.example.com",
+					tags: ["monitoring"],
+				}),
+			),
+			link("Mail", { tags: ["reading"] }),
+		),
+		link("Long read", { tags: ["reading", "later"] }),
+	]);
+}
+
+const searchBox = () =>
+	screen.findByRole("searchbox", { name: "Search favourites" });
+
+describe("search and filter", () => {
+	it("shows matching links with their folders", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.type(await searchBox(), "graf");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana"]);
+		expect(screen.getByText("Graf", { selector: "mark" })).toBeVisible();
+	});
+
+	it("matches URLs, tags and folder names on the path", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const box = await searchBox();
+		await user.type(box, "grafana.example");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana"]);
+		await user.clear(box);
+		await user.type(box, "work read");
+		expect(rows()).toEqual(["Work", "Mail"]);
+	});
+
+	it("keeps the filter in the URL across a reload", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.type(await searchBox(), "mail");
+		await waitFor(() =>
+			expect(first.router.state.location.search).toEqual({ q: "mail" }),
+		);
+		first.unmount();
+		renderApp("/favourites?q=mail");
+		expect(await searchBox()).toHaveValue("mail");
+		await waitFor(() => expect(rows()).toEqual(["Work", "Mail"]));
+	});
+
+	it("filters by every chosen tag", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await screen.findByRole("link", { name: "Mail" });
+		await user.click(screen.getByRole("button", { name: "Tags" }));
+		const reading = await screen.findByRole("menuitemcheckbox", {
+			name: /reading/,
+		});
+		expect(reading).toHaveTextContent("2");
+		await user.click(reading);
+		await waitFor(() => expect(rows()).toEqual(["Work", "Mail", "Long read"]));
+		await user.click(screen.getByRole("menuitemcheckbox", { name: /later/ }));
+		await waitFor(() => expect(rows()).toEqual(["Long read"]));
+	});
+
+	it("adds a row's tag to the filter and removes it again", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Filter by tag monitoring" }),
+		);
+		await waitFor(() => expect(rows()).toEqual(["Work", "Tools", "Grafana"]));
+		await user.click(
+			screen.getByRole("button", { name: "Remove tag filter monitoring" }),
+		);
+		await waitFor(() => expect(rows()).toHaveLength(5));
+	});
+
+	it("shows when nothing matches and clears the filters", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites?tags=%5B%22later%22%5D");
+		await user.type(await searchBox(), "nothing");
+		expect(
+			screen.getByRole("heading", { name: "No favourites match" }),
+		).toBeVisible();
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		expect(await searchBox()).toHaveValue("");
+		await waitFor(() => expect(rows()).toHaveLength(5));
+	});
+
+	it("can't move nodes while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		expect(
+			await screen.findByRole("button", { name: "Move Mail" }),
+		).toBeVisible();
+		await user.type(await searchBox(), "mail");
+		expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+		expect(screen.getByText("Clear the filters to reorder.")).toBeVisible();
+	});
+
+	it("keeps the filter after editing a shown link", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.type(await searchBox(), "mail");
+		const dialog = await openEdit(user, "Mail");
+		const title = within(dialog).getByLabelText("Title (optional)");
+		await user.clear(title);
+		await user.type(title, "Mailbox");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("link", { name: "Mailbox" })).toBeVisible();
+		expect(await searchBox()).toHaveValue("mail");
+		expect(rows()).toEqual(["Work", "Mailbox"]);
+	});
+
+	it("focuses the search field with /", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const box = await searchBox();
+		await user.keyboard("/");
+		expect(box).toHaveFocus();
+		expect(box).toHaveValue("");
+	});
+
+	it("shows how many links a folder contains, also while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const work = await screen.findByTestId("row-Work");
+		expect(within(work).getByText("2 links")).toBeInTheDocument();
+		expect(
+			within(screen.getByTestId("row-Tools")).getByText("1 link"),
+		).toBeInTheDocument();
+		await user.type(await searchBox(), "mail");
+		expect(
+			within(screen.getByTestId("row-Work")).getByText("1 link"),
+		).toBeInTheDocument();
+	});
+});
+
+describe("expand and collapse", () => {
+	it("collapses and expands all folders", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Collapse all" }),
+		);
+		expect(rows()).toEqual(["Work", "Long read"]);
+		await user.click(screen.getByRole("button", { name: "Expand all" }));
+		expect(rows()).toHaveLength(5);
+		expect(screen.getByRole("button", { name: "Collapse all" })).toBeVisible();
+	});
+
+	it("remembers collapsed folders", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.click(
+			await screen.findByRole("button", { name: "Collapse Work" }),
+		);
+		first.unmount();
+		renderApp("/favourites");
+		await screen.findByRole("button", { name: "Expand Work" });
+		expect(rows()).toEqual(["Work", "Long read"]);
+	});
+
+	it("doesn't change the remembered state while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Collapse Work" }),
+		);
+		await user.type(await searchBox(), "mail");
+		expect(rows()).toEqual(["Work", "Mail"]);
+		await user.click(screen.getByRole("button", { name: "Collapse all" }));
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		await waitFor(() => expect(rows()).toEqual(["Work", "Long read"]));
+		await user.click(screen.getByRole("button", { name: "Expand Work" }));
+		expect(
+			screen.getByRole("button", { name: "Collapse Tools" }),
+		).toBeVisible();
+	});
+
+	it("opens a folder from the URL", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.click(
+			await screen.findByRole("button", { name: "Collapse all" }),
+		);
+		first.unmount();
+		const { router } = renderApp("/favourites?folder=Tools");
+		const tools = await screen.findByTestId("row-Tools");
+		expect(tools).toHaveAttribute("data-highlighted", "true");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana", "Mail", "Long read"]);
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+	});
+
+	it("ignores an unknown folder or a link in the URL", async () => {
+		searchTree();
+		const { router } = renderApp("/favourites?folder=Mail");
+		await screen.findByRole("link", { name: "Mail" });
+		expect(rows()).toHaveLength(5);
+		expect(document.querySelector("[data-highlighted]")).toBeNull();
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+	});
+});
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  ├─ Git (dev)
+// │  │  └─ Wiki (dev, docs)
+// │  └─ Mail
+// ├─ Empty
+// └─ News
+function bulkTree() {
+	return fakeServer([
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				link("Git", { tags: ["dev"] }),
+				link("Wiki", { tags: ["dev", "docs"] }),
+			),
+			link("Mail"),
+		),
+		folder("Empty"),
+		link("News"),
+	]);
+}
+
+const checkbox = (name: string) =>
+	screen.getByRole("checkbox", { name: `Select ${name}` });
+
+async function startSelecting() {
+	const app = renderApp("/favourites");
+	await app.user.click(await screen.findByRole("button", { name: "Select" }));
+	return app;
+}
+
+describe("selection mode", () => {
+	it("shows checkboxes only in selection mode, in place of the handles", async () => {
+		bulkTree();
+		const { user } = renderApp("/favourites");
+		await screen.findByRole("link", { name: "Mail" });
+		expect(screen.queryByRole("checkbox")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Select" }));
+		expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+		expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+	});
+
+	it("checks a folder with everything below it", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Work"));
+		for (const name of ["Work", "Tools", "Git", "Wiki", "Mail"]) {
+			expect(checkbox(name)).toBeChecked();
+		}
+		expect(checkbox("News")).not.toBeChecked();
+		await user.click(checkbox("Mail"));
+		expect(checkbox("Work")).toBePartiallyChecked();
+		expect(checkbox("Tools")).toBeChecked();
+		await user.click(checkbox("Work"));
+		expect(checkbox("Git")).toBeChecked();
+		expect(checkbox("Mail")).toBeChecked();
+		await user.click(checkbox("Work"));
+		expect(checkbox("Git")).not.toBeChecked();
+	});
+
+	it("checks a range with shift-click and everything shown with Select all", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Git"));
+		await user.keyboard("{Shift>}");
+		await user.click(checkbox("Empty"));
+		await user.keyboard("{/Shift}");
+		for (const name of ["Git", "Wiki", "Mail", "Empty"]) {
+			expect(checkbox(name)).toBeChecked();
+		}
+		expect(checkbox("News")).not.toBeChecked();
+		await user.click(screen.getByRole("button", { name: "Select all" }));
+		expect(checkbox("News")).toBeChecked();
+	});
+
+	it("checks only the shown nodes of a folder while filtering", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.type(await searchBox(), "git");
+		await user.click(checkbox("Work"));
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		await waitFor(() => expect(checkbox("Wiki")).not.toBeChecked());
+		expect(checkbox("Git")).toBeChecked();
+		// The selection survived the filter change; Work and Tools are only partly checked.
+		expect(checkbox("Work")).toBePartiallyChecked();
+		expect(screen.getByText("1 link selected")).toBeVisible();
+	});
+
+	it("ends with Escape and clears the selection", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("News"));
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("checkbox")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Select" }));
+		expect(checkbox("News")).not.toBeChecked();
+	});
+});
+
+describe("selection bar", () => {
+	it("counts links and folders, including hidden ones", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		expect(screen.queryByText(/selected$/)).toBeNull();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("News"));
+		expect(screen.getByText("3 links and 1 folder selected")).toBeVisible();
+		await user.type(await searchBox(), "news");
+		expect(screen.getByText("3 links and 1 folder selected")).toBeVisible();
+	});
+
+	it("only offers moving for empty folders", async () => {
+		bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Empty"));
+		expect(screen.getByText("1 folder selected")).toBeVisible();
+		expect(screen.getByRole("button", { name: "Move to…" })).toBeEnabled();
+		for (const name of [
+			"Add tags",
+			"Remove tags",
+			"Set tags",
+			"Delete 0 links",
+		]) {
+			expect(screen.getByRole("button", { name })).toBeDisabled();
+		}
+	});
+});
+
+describe("bulk actions", () => {
+	it("adds tags to the selected links and keeps the selection", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("Empty"));
+		await user.click(screen.getByRole("button", { name: "Add tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Add tags" });
+		expect(dialog).toHaveTextContent("Applies to 2 links.");
+		await user.type(within(dialog).getByRole("combobox"), "later{Enter}");
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "addTags",
+			ids: ["Git", "Wiki"],
+			tags: ["later"],
+		});
+		expect(checkbox("Git")).toBeChecked();
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual([
+			"dev",
+			"docs",
+			"later",
+		]);
+	});
+
+	it("removes chosen tags, listing how many links have each", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(screen.getByRole("button", { name: "Remove tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Remove tags" });
+		const dev = within(dialog).getByRole("checkbox", { name: /dev/ });
+		expect(dev.closest("label")).toHaveTextContent("dev2");
+		await user.click(dev);
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual(["docs"]);
+	});
+
+	it("warns that setting tags replaces them", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(screen.getByRole("button", { name: "Set tags" }));
+		const dialog = await screen.findByRole("dialog", { name: "Set tags" });
+		expect(dialog).toHaveTextContent(
+			"current tags of these links are replaced",
+		);
+		await user.type(within(dialog).getByRole("combobox"), "archive{Enter}");
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(findNode(server.tree(), "Git")?.tags).toEqual(["archive"]);
+		expect(findNode(server.tree(), "Wiki")?.tags).toEqual(["archive"]);
+	});
+
+	it("moves full folders as a whole and can't move into them", async () => {
+		const server = bulkTree();
+		const { user } = await startSelecting();
+		await user.click(checkbox("Tools"));
+		await user.click(checkbox("News"));
+		await user.click(screen.getByRole("button", { name: "Move to…" }));
+		const dialog = await screen.findByRole("dialog", { name: "Move to…" });
+		expect(dialog).toHaveTextContent("Moves 2 items");
+		await user.click(
+			within(dialog).getByRole("button", { name: "Expand Work" }),
+		);
+		expect(within(dialog).getByRole("radio", { name: "Tools" })).toBeDisabled();
+		await user.click(within(dialog).getByRole("radio", { name: "Empty" }));
+		await user.click(within(dialog).getByRole("button", { name: "Move" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "move",
+			ids: ["Tools", "News"],
+			parentId: "Empty",
+		});
+		await waitFor(() =>
+			expect(server.titles("Empty")).toEqual(["Tools", "News"]),
+		);
+		expect(await screen.findByTestId("row-Tools")).toBeVisible();
+	});
+});
+
+describe("bulk delete", () => {
+	async function deleteGitAndMail() {
+		const server = bulkTree();
+		const app = await startSelecting();
+		await app.user.click(checkbox("Git"));
+		await app.user.click(checkbox("Mail"));
+		await app.user.click(
+			screen.getByRole("button", { name: "Delete 2 links" }),
+		);
+		return { server, ...app };
+	}
+
+	it("hides the links and can undo before anything is sent", async () => {
+		const { server, user } = await deleteGitAndMail();
+		expect(screen.getByText("2 links deleted")).toBeVisible();
+		expect(screen.queryByRole("link", { name: "Git" })).toBeNull();
+		expect(screen.queryByRole("link", { name: "Mail" })).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Undo" }));
+		expect(screen.getByRole("link", { name: "Git" })).toBeVisible();
+		expect(screen.getByRole("link", { name: "Mail" })).toBeVisible();
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(0);
+	});
+
+	it("sends the delete when the message closes and keeps the folders", async () => {
+		const { server, user } = await deleteGitAndMail();
+		await user.click(screen.getByRole("button", { name: "Close" }));
+		await waitFor(() =>
+			expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(
+				1,
+			),
+		);
+		expect(server.api.callsTo("POST", "/api/favourites/bulk")[0].body).toEqual({
+			action: "delete",
+			ids: ["Git", "Mail"],
+		});
+		await waitFor(() => expect(server.titles("Tools")).toEqual(["Wiki"]));
+		expect(screen.queryByRole("link", { name: "Git" })).toBeNull();
+		expect(screen.getByTestId("row-Work")).toBeVisible();
+	});
+
+	it("sends the delete when the page is left", async () => {
+		const { server, router } = await deleteGitAndMail();
+		await router.navigate({ to: "/" });
+		await waitFor(() =>
+			expect(server.api.callsTo("POST", "/api/favourites/bulk")).toHaveLength(
+				1,
+			),
+		);
+	});
+
+	it("brings the links back when the delete fails", async () => {
+		const { server, user } = await deleteGitAndMail();
+		server.api.set({
+			"POST /api/favourites/bulk": {
+				status: 500,
+				body: { error: { code: "x" } },
+			},
+		});
+		await user.click(screen.getByRole("button", { name: "Close" }));
+		expect(
+			await screen.findByText(
+				"The links couldn't be deleted. Please try again.",
+			),
+		).toBeVisible();
+		expect(screen.getByRole("link", { name: "Git" })).toBeVisible();
+	});
+});
+
+// root
+// ├─ A (Reading, old)
+// ├─ B (Reading, reading-list)
+// └─ C (reading-list)
+function tagServer() {
+	const server = fakeServer([
+		link("A", { tags: ["Reading", "old"] }),
+		link("B", { tags: ["Reading", "reading-list"] }),
+		link("C", { tags: ["reading-list"] }),
+	]);
+	const links = () => server.tree().children ?? [];
+	const names = () => [...new Set(links().flatMap((l) => l.tags ?? []))];
+	const usage = () =>
+		names()
+			.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+			.map((name) => ({
+				id: `t-${name}`,
+				name,
+				linkCount: links().filter((l) => l.tags?.includes(name)).length,
+			}));
+	const replace = (from: string, to: string | null) => {
+		for (const l of links()) {
+			if (!l.tags?.includes(from)) continue;
+			const rest = l.tags.filter((t) => t !== from);
+			l.tags = to && !rest.includes(to) ? [...rest, to] : rest;
+		}
+	};
+	const routes: Parameters<typeof server.api.set>[0] = {
+		"GET /api/tags": ({ url }) =>
+			url.searchParams.get("all") === "true" ? { body: usage() } : { body: [] },
+	};
+	for (const name of ["Reading", "old", "reading-list"]) {
+		routes[`PATCH /api/tags/t-${name}`] = ({ body }) => {
+			const b = body as { name: string; merge?: boolean };
+			const other = names().find(
+				(n) => n !== name && n.toLowerCase() === b.name.toLowerCase(),
+			);
+			if (other && !b.merge) {
+				return { status: 409, body: { error: { code: "tag_exists" } } };
+			}
+			replace(name, other ?? b.name);
+			const to = other ?? b.name;
+			return { body: { id: `t-${to}`, name: to } };
+		};
+		routes[`DELETE /api/tags/t-${name}`] = () => {
+			replace(name, null);
+			return { status: 204 };
+		};
+	}
+	server.api.set(routes);
+	return server;
+}
+
+async function openManageTags(path = "/favourites") {
+	const app = renderApp(path);
+	await app.user.click(
+		await screen.findByRole("button", { name: "Manage tags" }),
+	);
+	const dialog = await screen.findByRole("dialog", { name: "Manage tags" });
+	await within(dialog).findByText("old");
+	return { ...app, dialog };
+}
+
+describe("manage tags", () => {
+	it("lists the tags with their link counts", async () => {
+		tagServer();
+		const { dialog } = await openManageTags();
+		const items = within(dialog)
+			.getAllByRole("listitem")
+			.map((li) => li.textContent);
+		expect(items).toEqual(["old1", "Reading2", "reading-list2"]);
+	});
+
+	it("says when there are no tags", async () => {
+		const server = fakeServer([link("A")]);
+		server.api.set({ "GET /api/tags": { body: [] } });
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Manage tags" }),
+		);
+		expect(await screen.findByText("No tags yet")).toBeVisible();
+	});
+
+	it("renames a tag on all its links", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "archive{Enter}");
+		expect(await within(dialog).findByText("archive")).toBeVisible();
+		expect(server.api.callsTo("PATCH", "/api/tags/t-old")).toHaveLength(1);
+		expect(findNode(server.tree(), "A")?.tags).toEqual(["Reading", "archive"]);
+	});
+
+	it("changes only the case without asking to merge", async () => {
+		tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "Old{Enter}");
+		expect(await within(dialog).findByText("Old")).toBeVisible();
+		expect(within(dialog).queryByText(/Merge/)).toBeNull();
+	});
+
+	it("asks before merging into an existing tag, and can cancel", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename reading-list" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for reading-list",
+		});
+		await user.clear(input);
+		await user.type(input, "reading{Enter}");
+		expect(
+			await within(dialog).findByText(
+				"“Reading” already exists. Merge “reading-list” into “Reading”?",
+			),
+		).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		expect(within(dialog).getByText("reading-list")).toBeVisible();
+		expect(findNode(server.tree(), "C")?.tags).toEqual(["reading-list"]);
+
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename reading-list" }),
+		);
+		const again = within(dialog).getByRole("textbox", {
+			name: "New name for reading-list",
+		});
+		await user.clear(again);
+		await user.type(again, "reading{Enter}");
+		await user.click(
+			await within(dialog).findByRole("button", { name: "Merge" }),
+		);
+		await waitFor(() =>
+			expect(within(dialog).queryByText("reading-list")).toBeNull(),
+		);
+		expect(findNode(server.tree(), "B")?.tags).toEqual(["Reading"]);
+		expect(findNode(server.tree(), "C")?.tags).toEqual(["Reading"]);
+		expect(
+			server.api.callsTo("PATCH", "/api/tags/t-reading-list").at(-1)?.body,
+		).toEqual({ name: "reading", merge: true });
+	});
+
+	it("deletes a tag after confirming, keeping the links", async () => {
+		const server = tagServer();
+		const { user, dialog } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", { name: "Delete Reading" }),
+		);
+		expect(
+			within(dialog).getByText("Remove “Reading” from 2 links?"),
+		).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+		await waitFor(() =>
+			expect(within(dialog).queryByText("Reading")).toBeNull(),
+		);
+		expect(findNode(server.tree(), "A")?.tags).toEqual(["old"]);
+		expect(server.titles()).toEqual(["A", "B", "C"]);
+	});
+
+	it("filters by a tag from its count", async () => {
+		tagServer();
+		const { user, dialog, router } = await openManageTags();
+		await user.click(
+			within(dialog).getByRole("button", {
+				name: "Show the 2 links with reading-list",
+			}),
+		);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(router.state.location.search).toEqual({ tags: ["reading-list"] });
+		await waitFor(() => expect(rows()).toEqual(["B", "C"]));
+	});
+
+	it("keeps the tag filter in sync after a rename or delete", async () => {
+		tagServer();
+		const { user, dialog, router } = await openManageTags(
+			"/favourites?tags=%5B%22old%22%2C%22Reading%22%5D",
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Rename old" }),
+		);
+		const input = within(dialog).getByRole("textbox", {
+			name: "New name for old",
+		});
+		await user.clear(input);
+		await user.type(input, "archive{Enter}");
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({
+				tags: ["Reading", "archive"],
+			}),
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Delete Reading" }),
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({ tags: ["archive"] }),
+		);
+	});
+});
+
+describe("deep nesting", () => {
+	it("indents with the shared variable and scrolls inside the frame", async () => {
+		fakeServer([folder("A", folder("B", link("Deep")))]);
+		renderApp("/favourites");
+		const deep = await screen.findByTestId("row-Deep");
+		expect(deep.style.paddingLeft).toBe("calc(var(--indent) * 2 + 0.25rem)");
+		// Half the indent below sm.
+		const list = deep.parentElement as HTMLElement;
+		expect(list).toHaveClass(
+			"w-max",
+			"min-w-full",
+			"[--indent:0.75rem]",
+			"sm:[--indent:1.5rem]",
+		);
+		expect(list.parentElement).toHaveClass("@container", "overflow-x-auto");
+		// At least as wide as the frame, wider when needed; names keep a minimum.
+		expect(deep).toHaveClass("w-min", "min-w-[calc(100cqw-0.5rem)]");
+		const name = screen.getByRole("link", { name: "Deep" }).parentElement;
+		expect(name).toHaveClass("min-w-24", "sm:min-w-32");
+	});
+
+	it("caps long names with the full name as a tooltip", async () => {
+		const long = "A very long title ".repeat(20).trim();
+		fakeServer([folder("Work", link("L", { title: long }))]);
+		renderApp("/favourites");
+		const title = await screen.findByRole("link", { name: long });
+		expect(title).toHaveClass("max-w-sm", "truncate");
+		expect(title).toHaveAttribute("title", long);
+		const work = within(screen.getByTestId("row-Work")).getByText("Work");
+		expect(work.closest("[title]")).toHaveClass("max-w-sm", "truncate");
+		expect(work.closest("[title]")).toHaveAttribute("title", "Work");
+	});
+
+	it("lets many tags give way before the name", async () => {
+		const tags = Array.from({ length: 12 }, (_, i) => `tag${i}`);
+		fakeServer([link("Tagged", { tags })]);
+		renderApp("/favourites");
+		const tag = await screen.findByRole("button", {
+			name: "Filter by tag tag0",
+		});
+		const box = tag.parentElement as HTMLElement;
+		expect(box).toHaveClass(
+			"min-w-0",
+			"flex-1",
+			"flex-wrap",
+			"h-5",
+			"overflow-hidden",
+		);
+		expect(box).toHaveAttribute("title", tags.join(", "));
+		expect(within(box).getAllByRole("button")).toHaveLength(12);
 	});
 });

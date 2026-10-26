@@ -42,7 +42,15 @@ const tree: FavouriteNode = {
 	],
 };
 
-function Harness({ mode, initial }: { mode: PickerMode; initial: string }) {
+function Harness({
+	mode,
+	initial,
+	disabledIds,
+}: {
+	mode: PickerMode;
+	initial: string;
+	disabledIds?: ReadonlySet<string>;
+}) {
 	const [value, setValue] = useState(initial);
 	return (
 		<>
@@ -52,6 +60,7 @@ function Harness({ mode, initial }: { mode: PickerMode; initial: string }) {
 				mode={mode}
 				value={value}
 				onChange={setValue}
+				disabledIds={disabledIds}
 			/>
 			<output data-testid="value">{value}</output>
 		</>
@@ -62,12 +71,13 @@ function renderPicker(
 	mode: PickerMode,
 	initial = "",
 	data: FavouriteNode = tree,
+	disabledIds?: ReadonlySet<string>,
 ) {
 	const client = new QueryClient();
 	client.setQueryData(favouritesQueryKey, data);
 	render(
 		<QueryClientProvider client={client}>
-			<Harness mode={mode} initial={initial} />
+			<Harness mode={mode} initial={initial} disabledIds={disabledIds} />
 		</QueryClientProvider>,
 	);
 	return {
@@ -176,5 +186,22 @@ describe("FavouritePicker", () => {
 		const { group } = renderPicker("folder", "gone");
 		expect(within(group).queryByRole("radio", { checked: true })).toBeNull();
 		expect(screen.queryByText(/^Selected:/)).toBeNull();
+	});
+
+	it("can't choose disabled folders or anything below them", async () => {
+		const { user, group, value } = renderPicker(
+			"folder",
+			"",
+			tree,
+			new Set(["work"]),
+		);
+		await user.click(
+			within(group).getByRole("button", { name: "Expand Work" }),
+		);
+		expect(within(group).getByRole("radio", { name: "Work" })).toBeDisabled();
+		expect(within(group).getByRole("radio", { name: "Tools" })).toBeDisabled();
+		expect(within(group).getByRole("radio", { name: "Empty" })).toBeEnabled();
+		await user.click(within(group).getByRole("radio", { name: "Tools" }));
+		expect(value()).toBe("");
 	});
 });

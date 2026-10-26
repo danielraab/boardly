@@ -72,6 +72,13 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				headingLevel={headingLevel}
 				onAdd={canAdd ? () => setAdding(true) : undefined}
 				onDetails={canShowDetails ? setDetailsId : undefined}
+				titleLink={
+					canAdd
+						? folder.id === favourites.data?.id
+							? {}
+							: { folder: folder.id }
+						: undefined
+				}
 			/>
 			{canShowDetails && (
 				<FavouriteDetailsDialog

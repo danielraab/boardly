@@ -2,12 +2,26 @@ import { describe, expect, it } from "vitest";
 import type { FavouriteNode } from "./api";
 import {
 	applyMove,
+	checkState,
 	currentSlot,
+	filterTree,
 	flatten,
+	folderPath,
+	highlight,
 	indicatorFor,
 	keyboardSlots,
+	linkCounts,
+	moveRoots,
 	pointerSlot,
+	pruneSelection,
 	ROOT_END,
+	searchTerms,
+	selectedLinks,
+	selectionCounts,
+	selectionTagCounts,
+	selectRange,
+	tagCounts,
+	toggleSelection,
 } from "./tree";
 
 const link = (id: string): FavouriteNode => ({
@@ -218,5 +232,220 @@ describe("applyMove", () => {
 	it("leaves the original tree unchanged", () => {
 		applyMove(tree, "A", "Work", 0);
 		expect(titles(tree)).toEqual(["A", "Work", "Empty", "B"]);
+	});
+});
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  ├─ Grafana (monitoring, Tools)   https://grafana.example.com
+// │  │  └─ Empty
+// │  └─ Mail (reading)
+// ├─ Grafana                          https://other.example.org
+// └─ Long read (reading, later)
+const tagged: FavouriteNode = {
+	id: "root",
+	kind: "folder",
+	title: null,
+	children: [
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				{
+					id: "graf",
+					kind: "link",
+					title: "Grafana",
+					url: "https://grafana.example.com",
+					tags: ["monitoring", "Tools"],
+				},
+				folder("Empty"),
+			),
+			{ ...link("Mail"), tags: ["reading"] },
+		),
+		{
+			id: "graf2",
+			kind: "link",
+			title: "Grafana",
+			url: "https://other.example.org",
+		},
+		{ ...link("Long read"), tags: ["reading", "later"] },
+	],
+};
+
+const ids = (n: FavouriteNode | null) =>
+	n ? flatten(n, none).map((i) => i.node.id) : null;
+const search = (text: string, tags: string[] = []) =>
+	ids(filterTree(tagged, { terms: searchTerms(text), tags }));
+
+describe("filterTree", () => {
+	it("returns the tree unchanged without a filter", () => {
+		expect(filterTree(tagged, { terms: [], tags: [] })).toBe(tagged);
+	});
+
+	it("finds links by title with their folders", () => {
+		expect(search("GRAF")).toEqual(["Work", "Tools", "graf", "graf2"]);
+	});
+
+	it("finds links by URL and tag", () => {
+		expect(search("grafana.example")).toEqual(["Work", "Tools", "graf"]);
+		expect(search("monitor")).toEqual(["Work", "Tools", "graf"]);
+	});
+
+	it("needs every term, also from folder names on the path", () => {
+		expect(search("work graf")).toEqual(["Work", "Tools", "graf"]);
+	});
+
+	it("keeps a matching folder with everything inside it", () => {
+		expect(search("tools")).toEqual(["Work", "Tools", "graf", "Empty"]);
+	});
+
+	it("needs every chosen tag, ignoring case", () => {
+		expect(search("", ["reading"])).toEqual(["Work", "Mail", "Long read"]);
+		expect(search("", ["Reading", "later"])).toEqual(["Long read"]);
+	});
+
+	it("doesn't keep whole folders by name while filtering by tag", () => {
+		expect(search("tools", ["reading"])).toBeNull();
+		expect(search("work", ["reading"])).toEqual(["Work", "Mail"]);
+	});
+
+	it("returns null when nothing matches", () => {
+		expect(search("nothing")).toBeNull();
+	});
+});
+
+describe("tagCounts", () => {
+	it("counts links per tag, sorted by name", () => {
+		expect(tagCounts(tagged)).toEqual([
+			{ name: "later", count: 1 },
+			{ name: "monitoring", count: 1 },
+			{ name: "reading", count: 2 },
+			{ name: "Tools", count: 1 },
+		]);
+	});
+});
+
+describe("linkCounts", () => {
+	it("counts links at all levels below a folder", () => {
+		const counts = linkCounts(tagged);
+		expect(counts.get("root")).toBe(4);
+		expect(counts.get("Work")).toBe(2);
+		expect(counts.get("Tools")).toBe(1);
+		expect(counts.get("Empty")).toBe(0);
+	});
+});
+
+describe("folderPath", () => {
+	it("lists the folders down to a node", () => {
+		expect(folderPath(tagged, "Empty")).toEqual(["Work", "Tools", "Empty"]);
+		expect(folderPath(tagged, "unknown")).toEqual([]);
+	});
+});
+
+describe("highlight", () => {
+	it("marks matches ignoring case and merges overlaps", () => {
+		expect(highlight("Grafana", ["afa", "fan"])).toEqual([
+			{ text: "Gr", match: false },
+			{ text: "afan", match: true },
+			{ text: "a", match: false },
+		]);
+	});
+
+	it("returns the text unmarked without terms", () => {
+		expect(highlight("Mail", [])).toEqual([{ text: "Mail", match: false }]);
+	});
+});
+
+describe("selection", () => {
+	const node = (id: string) => {
+		const found = flatten(tree, none).find((i) => i.node.id === id)?.node;
+		if (!found) throw new Error(id);
+		return found;
+	};
+	const sorted = (ids: Iterable<string>) => [...ids].sort();
+	const state = (id: string, selected: Set<string>) =>
+		checkState(node(id), selected);
+
+	it("checks a folder with everything below it, and unchecks it", () => {
+		const on = toggleSelection(node("Work"), new Set(), true);
+		expect(sorted(on)).toEqual(["Docs", "Git", "Tools", "Work"]);
+		expect(sorted(toggleSelection(node("Work"), on, false))).toEqual([]);
+	});
+
+	it("shows a folder as mixed when only some of it is checked", () => {
+		const on = toggleSelection(node("Work"), new Set(), true);
+		const less = toggleSelection(node("Docs"), on, false);
+		expect(state("Work", less)).toBe("mixed");
+		expect(state("Tools", less)).toBe("checked");
+		expect(state("Work", new Set())).toBe("unchecked");
+		// Checking every child checks the folder too.
+		expect(state("Work", new Set(["Tools", "Git", "Docs"]))).toBe("checked");
+	});
+
+	it("checks an empty folder on its own", () => {
+		expect(state("Empty", new Set())).toBe("unchecked");
+		expect(
+			state("Empty", toggleSelection(node("Empty"), new Set(), true)),
+		).toBe("checked");
+	});
+
+	it("checks only the shown nodes of a filtered folder", () => {
+		const shown = filterTree(tree, { terms: ["git"], tags: [] });
+		const work = shown?.children?.[0];
+		if (!work) throw new Error("no Work");
+		expect(sorted(toggleSelection(work, new Set(), true))).toEqual([
+			"Git",
+			"Tools",
+			"Work",
+		]);
+	});
+
+	it("sets a range of rows", () => {
+		const rows = flatten(tree, new Set(["Work"])).map((i) => i.node);
+		// A, Work (collapsed), Empty, B: rows 3 back to 1.
+		expect(sorted(selectRange(rows, 3, 1, new Set(), true))).toEqual([
+			"B",
+			"Docs",
+			"Empty",
+			"Git",
+			"Tools",
+			"Work",
+		]);
+	});
+
+	it("lists selected links and counts", () => {
+		const selected = new Set(["Tools", "Git", "B", "Empty"]);
+		expect(selectedLinks(tree, selected).map((n) => n.id)).toEqual([
+			"Git",
+			"B",
+		]);
+		expect(selectionCounts(tree, selected)).toEqual({ links: 2, folders: 2 });
+	});
+
+	it("moves fully checked folders as a whole, others by their nodes", () => {
+		const ids = (s: Set<string>) => moveRoots(tree, s).map((n) => n.id);
+		expect(ids(toggleSelection(node("Work"), new Set(["B"]), true))).toEqual([
+			"Work",
+			"B",
+		]);
+		expect(ids(new Set(["Work", "Git", "Tools"]))).toEqual(["Tools"]);
+		expect(ids(new Set(["Work", "Docs"]))).toEqual(["Docs"]);
+	});
+
+	it("counts the tags of selected links", () => {
+		const tagged = (id: string, tags: string[]) => ({ ...link(id), tags });
+		const root = folder("root", tagged("x", ["a", "b"]), tagged("y", ["a"]));
+		expect(selectionTagCounts(root, new Set(["x", "y"]))).toEqual([
+			{ name: "a", count: 2 },
+			{ name: "b", count: 1 },
+		]);
+	});
+
+	it("drops IDs that are no longer in the tree", () => {
+		const selected = new Set(["A", "gone"]);
+		expect(sorted(pruneSelection(tree, selected))).toEqual(["A"]);
+		const kept = new Set(["A"]);
+		expect(pruneSelection(tree, kept)).toBe(kept);
 	});
 });

@@ -276,3 +276,284 @@ export function applyMove(
 	};
 	return insert(without(root));
 }
+
+/** What the favourites page filters by: search terms and tags a link must all have. */
+export type TreeFilter = { terms: string[]; tags: string[] };
+
+/** The search terms of a search text: split at whitespace, lower case. */
+export function searchTerms(text: string): string[] {
+	return text.toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+export function isFiltering(filter: TreeFilter) {
+	return filter.terms.length > 0 || filter.tags.length > 0;
+}
+
+const containsAll = (texts: string[], terms: string[]) =>
+	terms.every((term) => texts.some((text) => text.includes(term)));
+
+/**
+ * A copy of the tree with only what the filter shows, or null when nothing
+ * matches. A link is shown when it has every tag and every term occurs in its
+ * title, URL, a tag or a folder name on its path. A folder is shown when
+ * something below it is, or, without tags, with everything below it when its
+ * own name contains every term.
+ */
+export function filterTree(
+	root: FavouriteNode,
+	filter: TreeFilter,
+): FavouriteNode | null {
+	if (!isFiltering(filter)) return root;
+	const tags = filter.tags.map((tag) => tag.toLowerCase());
+	const visit = (
+		folder: FavouriteNode,
+		path: string[],
+	): FavouriteNode | null => {
+		const children: FavouriteNode[] = [];
+		for (const child of folder.children ?? []) {
+			if (child.kind === "link") {
+				const own = (child.tags ?? []).map((tag) => tag.toLowerCase());
+				const texts = [
+					(child.title ?? "").toLowerCase(),
+					(child.url ?? "").toLowerCase(),
+					...own,
+					...path,
+				];
+				if (
+					tags.every((tag) => own.includes(tag)) &&
+					containsAll(texts, filter.terms)
+				) {
+					children.push(child);
+				}
+				continue;
+			}
+			const name = label(child).toLowerCase();
+			if (
+				tags.length === 0 &&
+				filter.terms.length > 0 &&
+				containsAll([name], filter.terms)
+			) {
+				children.push(child);
+				continue;
+			}
+			const kept = visit(child, [...path, name]);
+			if (kept) children.push(kept);
+		}
+		return children.length > 0 ? { ...folder, children } : null;
+	};
+	return visit(root, []);
+}
+
+/** Every tag on the tree's links with how many links have it, sorted by name. */
+export function tagCounts(
+	root: FavouriteNode,
+): { name: string; count: number }[] {
+	const counts = new Map<string, number>();
+	const visit = (node: FavouriteNode) => {
+		for (const tag of node.tags ?? [])
+			counts.set(tag, (counts.get(tag) ?? 0) + 1);
+		for (const child of node.children ?? []) visit(child);
+	};
+	visit(root);
+	return [...counts]
+		.map(([name, count]) => ({ name, count }))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+		);
+}
+
+/** How many links each folder of the tree contains at all levels. */
+export function linkCounts(root: FavouriteNode): Map<string, number> {
+	const counts = new Map<string, number>();
+	const visit = (node: FavouriteNode): number => {
+		if (node.kind === "link") return 1;
+		let count = 0;
+		for (const child of node.children ?? []) count += visit(child);
+		counts.set(node.id, count);
+		return count;
+	};
+	visit(root);
+	return counts;
+}
+
+/** The IDs of the folders from the root's child down to id, or [] when id isn't in the tree. */
+export function folderPath(root: FavouriteNode, id: string): string[] {
+	const visit = (folder: FavouriteNode): string[] | null => {
+		for (const child of folder.children ?? []) {
+			if (child.id === id) return [child.id];
+			const below = visit(child);
+			if (below) return [child.id, ...below];
+		}
+		return null;
+	};
+	return visit(root) ?? [];
+}
+
+/** text split into parts, with the parts that match a term marked; matching ignores case. */
+export function highlight(
+	text: string,
+	terms: string[],
+): { text: string; match: boolean }[] {
+	const lower = text.toLowerCase();
+	const marked = new Array<boolean>(text.length).fill(false);
+	for (const term of terms) {
+		for (
+			let at = lower.indexOf(term);
+			at >= 0;
+			at = lower.indexOf(term, at + 1)
+		) {
+			marked.fill(true, at, at + term.length);
+		}
+	}
+	const parts: { text: string; match: boolean }[] = [];
+	for (let i = 0; i < text.length; i++) {
+		const last = parts.at(-1);
+		if (last && last.match === marked[i]) last.text += text[i];
+		else parts.push({ text: text[i], match: marked[i] });
+	}
+	return parts;
+}
+
+/** How a row's checkbox is shown in selection mode. */
+export type CheckState = "checked" | "mixed" | "unchecked";
+
+function descendants(node: FavouriteNode): FavouriteNode[] {
+	const out: FavouriteNode[] = [];
+	const visit = (n: FavouriteNode) => {
+		for (const child of n.children ?? []) {
+			out.push(child);
+			visit(child);
+		}
+	};
+	visit(node);
+	return out;
+}
+
+/**
+ * A link is checked when selected. A folder is checked when everything below
+ * it in the given tree is, mixed when some of it is, and, when empty, checked
+ * when selected itself.
+ */
+export function checkState(
+	node: FavouriteNode,
+	selected: ReadonlySet<string>,
+): CheckState {
+	if (node.kind === "link")
+		return selected.has(node.id) ? "checked" : "unchecked";
+	const below = descendants(node);
+	if (below.length === 0)
+		return selected.has(node.id) ? "checked" : "unchecked";
+	const count = below.filter((n) => selected.has(n.id)).length;
+	return count === below.length ? "checked" : count > 0 ? "mixed" : "unchecked";
+}
+
+/** The selection with node and everything below it (in the given tree) checked or unchecked. */
+export function toggleSelection(
+	node: FavouriteNode,
+	selected: ReadonlySet<string>,
+	on: boolean,
+): Set<string> {
+	const next = new Set(selected);
+	for (const n of [node, ...descendants(node)]) {
+		if (on) next.add(n.id);
+		else next.delete(n.id);
+	}
+	return next;
+}
+
+/** The selection with the rows from index `from` to `to` (either order) set like toggleSelection. */
+export function selectRange(
+	rows: FavouriteNode[],
+	from: number,
+	to: number,
+	selected: ReadonlySet<string>,
+	on: boolean,
+): Set<string> {
+	let next = new Set(selected);
+	for (let i = Math.min(from, to); i <= Math.max(from, to); i++) {
+		if (rows[i]) next = toggleSelection(rows[i], next, on);
+	}
+	return next;
+}
+
+/** The selected links of the tree, in tree order. */
+export function selectedLinks(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): FavouriteNode[] {
+	return descendants(root).filter(
+		(n) => n.kind === "link" && selected.has(n.id),
+	);
+}
+
+/**
+ * The nodes a move takes, in tree order: fully checked folders as a whole,
+ * and the selected nodes of other folders on their own.
+ */
+export function moveRoots(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): FavouriteNode[] {
+	const out: FavouriteNode[] = [];
+	const visit = (folder: FavouriteNode) => {
+		for (const child of folder.children ?? []) {
+			if (checkState(child, selected) === "checked") out.push(child);
+			else if (child.kind === "folder") visit(child);
+		}
+	};
+	visit(root);
+	return out;
+}
+
+/** How many links, and how many fully checked folders, the selection has. */
+export function selectionCounts(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): { links: number; folders: number } {
+	let links = 0;
+	let folders = 0;
+	for (const n of descendants(root)) {
+		if (n.kind === "link") links += selected.has(n.id) ? 1 : 0;
+		else folders += checkState(n, selected) === "checked" ? 1 : 0;
+	}
+	return { links, folders };
+}
+
+/** The tags of the selected links with how many of them have each, sorted by name. */
+export function selectionTagCounts(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): { name: string; count: number }[] {
+	return tagCounts({
+		id: root.id,
+		kind: "folder",
+		title: null,
+		children: selectedLinks(root, selected),
+	});
+}
+
+/** The selection without IDs that are no longer in the tree. */
+export function pruneSelection(
+	root: FavouriteNode,
+	selected: ReadonlySet<string>,
+): ReadonlySet<string> {
+	const ids = new Set(descendants(root).map((n) => n.id));
+	return [...selected].every((id) => ids.has(id))
+		? selected
+		: new Set([...selected].filter((id) => ids.has(id)));
+}
+
+/** A copy of the tree without the nodes in ids (and what is below them). */
+export function withoutNodes(
+	root: FavouriteNode,
+	ids: ReadonlySet<string>,
+): FavouriteNode {
+	if (ids.size === 0) return root;
+	const visit = (folder: FavouriteNode): FavouriteNode => ({
+		...folder,
+		children: (folder.children ?? [])
+			.filter((child) => !ids.has(child.id))
+			.map((child) => (child.kind === "folder" ? visit(child) : child)),
+	});
+	return visit(root);
+}

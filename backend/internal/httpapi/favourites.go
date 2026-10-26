@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"boardly/internal/favourites"
 )
@@ -137,12 +138,95 @@ func (a *api) deleteFavourite(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (a *api) bulkFavourites(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		IDs      []string              `json:"ids"`
+		Action   favourites.BulkAction `json:"action"`
+		Tags     *[]string             `json:"tags"`
+		ParentID string                `json:"parentId"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	invalid := NewError(http.StatusBadRequest, "invalid_field", "Send 1 to 1000 different IDs, an action and its tags or folder; tag actions and delete only take links")
+	op := favourites.BulkOp{IDs: body.IDs, Action: body.Action, ParentID: body.ParentID}
+	switch body.Action {
+	case favourites.BulkAddTags, favourites.BulkRemoveTags, favourites.BulkSetTags:
+		if body.Tags == nil {
+			return invalid
+		}
+		op.Tags = *body.Tags
+	}
+	user, _ := CurrentUser(r.Context())
+	err := a.favourites.Bulk(r.Context(), user.ID, op)
+	if errors.Is(err, favourites.ErrInvalidField) {
+		return invalid
+	}
+	if err != nil {
+		return favouritesError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 func (a *api) suggestTags(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
+	if r.URL.Query().Get("all") == "true" {
+		tags, err := a.favourites.ListTags(r.Context(), user.ID)
+		if err != nil {
+			return err
+		}
+		WriteJSON(w, http.StatusOK, tags)
+		return nil
+	}
 	tags, err := a.favourites.SuggestTags(r.Context(), user.ID, r.URL.Query().Get("q"))
 	if err != nil {
 		return err
 	}
 	WriteJSON(w, http.StatusOK, tags)
+	return nil
+}
+
+// tagsError maps store errors of the tag routes to API errors.
+func tagsError(err error) error {
+	switch {
+	case errors.Is(err, favourites.ErrNotFound):
+		return NewError(http.StatusNotFound, "not_found", "Tag not found")
+	case errors.Is(err, favourites.ErrTagExists):
+		return NewError(http.StatusConflict, "tag_exists", "Another tag already has this name")
+	}
+	return favouritesError(err)
+}
+
+func (a *api) renameTag(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		Name  string `json:"name"`
+		Merge bool   `json:"merge"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		return err
+	}
+	user, _ := CurrentUser(r.Context())
+	id := r.PathValue("id")
+	tag, err := a.favourites.RenameTag(r.Context(), user.ID, id, body.Name)
+	if errors.Is(err, favourites.ErrTagExists) && body.Merge {
+		var target favourites.Tag
+		if target, err = a.favourites.TagByName(r.Context(), user.ID, strings.TrimSpace(body.Name)); err == nil {
+			tag, err = a.favourites.MergeTag(r.Context(), user.ID, id, target.ID)
+		}
+	}
+	if err != nil {
+		return tagsError(err)
+	}
+	WriteJSON(w, http.StatusOK, tag)
+	return nil
+}
+
+func (a *api) deleteTag(w http.ResponseWriter, r *http.Request) error {
+	user, _ := CurrentUser(r.Context())
+	if err := a.favourites.DeleteTag(r.Context(), user.ID, r.PathValue("id")); err != nil {
+		return tagsError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
