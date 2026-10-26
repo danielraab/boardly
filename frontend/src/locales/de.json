@@ -265,6 +265,24 @@
 		"dropAtEnd": "Hier ablegen, um auf die oberste Ebene zu verschieben",
 		"emptyTitle": "Noch keine Favoriten",
 		"emptyText": "Lege einen Ordner an, um deine Links zu gruppieren, oder füge gleich deinen ersten Link hinzu.",
+		"expandAll": "Alle aufklappen",
+		"collapseAll": "Alle zuklappen",
+		"search": {
+			"label": "Favoriten durchsuchen",
+			"placeholder": "Nach Titel, URL oder Tag suchen (Taste /)"
+		},
+		"tagFilter": {
+			"button": "Tags",
+			"buttonCount_one": "{{count}} Tag",
+			"buttonCount_other": "{{count}} Tags",
+			"add": "Nach Tag {{tag}} filtern",
+			"remove": "Tag-Filter {{tag}} entfernen"
+		},
+		"clearFilters": "Filter zurücksetzen",
+		"noMatch": "Keine passenden Favoriten",
+		"reorderHint": "Setze die Filter zurück, um die Reihenfolge zu ändern.",
+		"linkCount_one": "{{count}} Link",
+		"linkCount_other": "{{count}} Links",
 		"dialog": {
 			"newFolder": "Neuer Ordner",
 			"newLink": "Neuer Link",

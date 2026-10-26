@@ -276,3 +276,140 @@ export function applyMove(
 	};
 	return insert(without(root));
 }
+
+/** What the favourites page filters by: search terms and tags a link must all have. */
+export type TreeFilter = { terms: string[]; tags: string[] };
+
+/** The search terms of a search text: split at whitespace, lower case. */
+export function searchTerms(text: string): string[] {
+	return text.toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+export function isFiltering(filter: TreeFilter) {
+	return filter.terms.length > 0 || filter.tags.length > 0;
+}
+
+const containsAll = (texts: string[], terms: string[]) =>
+	terms.every((term) => texts.some((text) => text.includes(term)));
+
+/**
+ * A copy of the tree with only what the filter shows, or null when nothing
+ * matches. A link is shown when it has every tag and every term occurs in its
+ * title, URL, a tag or a folder name on its path. A folder is shown when
+ * something below it is, or, without tags, with everything below it when its
+ * own name contains every term.
+ */
+export function filterTree(
+	root: FavouriteNode,
+	filter: TreeFilter,
+): FavouriteNode | null {
+	if (!isFiltering(filter)) return root;
+	const tags = filter.tags.map((tag) => tag.toLowerCase());
+	const visit = (
+		folder: FavouriteNode,
+		path: string[],
+	): FavouriteNode | null => {
+		const children: FavouriteNode[] = [];
+		for (const child of folder.children ?? []) {
+			if (child.kind === "link") {
+				const own = (child.tags ?? []).map((tag) => tag.toLowerCase());
+				const texts = [
+					(child.title ?? "").toLowerCase(),
+					(child.url ?? "").toLowerCase(),
+					...own,
+					...path,
+				];
+				if (
+					tags.every((tag) => own.includes(tag)) &&
+					containsAll(texts, filter.terms)
+				) {
+					children.push(child);
+				}
+				continue;
+			}
+			const name = label(child).toLowerCase();
+			if (
+				tags.length === 0 &&
+				filter.terms.length > 0 &&
+				containsAll([name], filter.terms)
+			) {
+				children.push(child);
+				continue;
+			}
+			const kept = visit(child, [...path, name]);
+			if (kept) children.push(kept);
+		}
+		return children.length > 0 ? { ...folder, children } : null;
+	};
+	return visit(root, []);
+}
+
+/** Every tag on the tree's links with how many links have it, sorted by name. */
+export function tagCounts(
+	root: FavouriteNode,
+): { name: string; count: number }[] {
+	const counts = new Map<string, number>();
+	const visit = (node: FavouriteNode) => {
+		for (const tag of node.tags ?? [])
+			counts.set(tag, (counts.get(tag) ?? 0) + 1);
+		for (const child of node.children ?? []) visit(child);
+	};
+	visit(root);
+	return [...counts]
+		.map(([name, count]) => ({ name, count }))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+		);
+}
+
+/** How many links each folder of the tree contains at all levels. */
+export function linkCounts(root: FavouriteNode): Map<string, number> {
+	const counts = new Map<string, number>();
+	const visit = (node: FavouriteNode): number => {
+		if (node.kind === "link") return 1;
+		let count = 0;
+		for (const child of node.children ?? []) count += visit(child);
+		counts.set(node.id, count);
+		return count;
+	};
+	visit(root);
+	return counts;
+}
+
+/** The IDs of the folders from the root's child down to id, or [] when id isn't in the tree. */
+export function folderPath(root: FavouriteNode, id: string): string[] {
+	const visit = (folder: FavouriteNode): string[] | null => {
+		for (const child of folder.children ?? []) {
+			if (child.id === id) return [child.id];
+			const below = visit(child);
+			if (below) return [child.id, ...below];
+		}
+		return null;
+	};
+	return visit(root) ?? [];
+}
+
+/** text split into parts, with the parts that match a term marked; matching ignores case. */
+export function highlight(
+	text: string,
+	terms: string[],
+): { text: string; match: boolean }[] {
+	const lower = text.toLowerCase();
+	const marked = new Array<boolean>(text.length).fill(false);
+	for (const term of terms) {
+		for (
+			let at = lower.indexOf(term);
+			at >= 0;
+			at = lower.indexOf(term, at + 1)
+		) {
+			marked.fill(true, at, at + term.length);
+		}
+	}
+	const parts: { text: string; match: boolean }[] = [];
+	for (let i = 0; i < text.length; i++) {
+		const last = parts.at(-1);
+		if (last && last.match === marked[i]) last.text += text[i];
+		else parts.push({ text: text[i], match: marked[i] });
+	}
+	return parts;
+}

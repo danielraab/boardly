@@ -265,6 +265,24 @@
 		"dropAtEnd": "Drop here to move to the top level",
 		"emptyTitle": "No favourites yet",
 		"emptyText": "Add a folder to group your links, or add your first link right away.",
+		"expandAll": "Expand all",
+		"collapseAll": "Collapse all",
+		"search": {
+			"label": "Search favourites",
+			"placeholder": "Search by title, URL or tag (press /)"
+		},
+		"tagFilter": {
+			"button": "Tags",
+			"buttonCount_one": "{{count}} tag",
+			"buttonCount_other": "{{count}} tags",
+			"add": "Filter by tag {{tag}}",
+			"remove": "Remove tag filter {{tag}}"
+		},
+		"clearFilters": "Clear filters",
+		"noMatch": "No favourites match",
+		"reorderHint": "Clear the filters to reorder.",
+		"linkCount_one": "{{count}} link",
+		"linkCount_other": "{{count}} links",
 		"dialog": {
 			"newFolder": "New folder",
 			"newLink": "New link",

@@ -733,3 +733,217 @@ describe("delete with connected apps", () => {
 		expect(within(dialog).queryByText(warning)).toBeNull();
 	});
 });
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  └─ Grafana (monitoring)
+// │  └─ Mail (reading)
+// └─ Long read (reading, later)
+function searchTree() {
+	return fakeServer([
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				link("Grafana", {
+					url: "https://grafana.example.com",
+					tags: ["monitoring"],
+				}),
+			),
+			link("Mail", { tags: ["reading"] }),
+		),
+		link("Long read", { tags: ["reading", "later"] }),
+	]);
+}
+
+const searchBox = () =>
+	screen.findByRole("searchbox", { name: "Search favourites" });
+
+describe("search and filter", () => {
+	it("shows matching links with their folders", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.type(await searchBox(), "graf");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana"]);
+		expect(screen.getByText("Graf", { selector: "mark" })).toBeVisible();
+	});
+
+	it("matches URLs, tags and folder names on the path", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const box = await searchBox();
+		await user.type(box, "grafana.example");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana"]);
+		await user.clear(box);
+		await user.type(box, "work read");
+		expect(rows()).toEqual(["Work", "Mail"]);
+	});
+
+	it("keeps the filter in the URL across a reload", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.type(await searchBox(), "mail");
+		await waitFor(() =>
+			expect(first.router.state.location.search).toEqual({ q: "mail" }),
+		);
+		first.unmount();
+		renderApp("/favourites?q=mail");
+		expect(await searchBox()).toHaveValue("mail");
+		await waitFor(() => expect(rows()).toEqual(["Work", "Mail"]));
+	});
+
+	it("filters by every chosen tag", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await screen.findByRole("link", { name: "Mail" });
+		await user.click(screen.getByRole("button", { name: "Tags" }));
+		const reading = await screen.findByRole("menuitemcheckbox", {
+			name: /reading/,
+		});
+		expect(reading).toHaveTextContent("2");
+		await user.click(reading);
+		await waitFor(() => expect(rows()).toEqual(["Work", "Mail", "Long read"]));
+		await user.click(screen.getByRole("menuitemcheckbox", { name: /later/ }));
+		await waitFor(() => expect(rows()).toEqual(["Long read"]));
+	});
+
+	it("adds a row's tag to the filter and removes it again", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Filter by tag monitoring" }),
+		);
+		await waitFor(() => expect(rows()).toEqual(["Work", "Tools", "Grafana"]));
+		await user.click(
+			screen.getByRole("button", { name: "Remove tag filter monitoring" }),
+		);
+		await waitFor(() => expect(rows()).toHaveLength(5));
+	});
+
+	it("shows when nothing matches and clears the filters", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites?tags=%5B%22later%22%5D");
+		await user.type(await searchBox(), "nothing");
+		expect(
+			screen.getByRole("heading", { name: "No favourites match" }),
+		).toBeVisible();
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		expect(await searchBox()).toHaveValue("");
+		await waitFor(() => expect(rows()).toHaveLength(5));
+	});
+
+	it("can't move nodes while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		expect(
+			await screen.findByRole("button", { name: "Move Mail" }),
+		).toBeVisible();
+		await user.type(await searchBox(), "mail");
+		expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+		expect(screen.getByText("Clear the filters to reorder.")).toBeVisible();
+	});
+
+	it("keeps the filter after editing a shown link", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.type(await searchBox(), "mail");
+		const dialog = await openEdit(user, "Mail");
+		const title = within(dialog).getByLabelText("Title (optional)");
+		await user.clear(title);
+		await user.type(title, "Mailbox");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("link", { name: "Mailbox" })).toBeVisible();
+		expect(await searchBox()).toHaveValue("mail");
+		expect(rows()).toEqual(["Work", "Mailbox"]);
+	});
+
+	it("focuses the search field with /", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const box = await searchBox();
+		await user.keyboard("/");
+		expect(box).toHaveFocus();
+		expect(box).toHaveValue("");
+	});
+
+	it("shows how many links a folder contains, also while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		const work = await screen.findByTestId("row-Work");
+		expect(within(work).getByText("2 links")).toBeInTheDocument();
+		expect(
+			within(screen.getByTestId("row-Tools")).getByText("1 link"),
+		).toBeInTheDocument();
+		await user.type(await searchBox(), "mail");
+		expect(
+			within(screen.getByTestId("row-Work")).getByText("1 link"),
+		).toBeInTheDocument();
+	});
+});
+
+describe("expand and collapse", () => {
+	it("collapses and expands all folders", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Collapse all" }),
+		);
+		expect(rows()).toEqual(["Work", "Long read"]);
+		await user.click(screen.getByRole("button", { name: "Expand all" }));
+		expect(rows()).toHaveLength(5);
+		expect(screen.getByRole("button", { name: "Collapse all" })).toBeVisible();
+	});
+
+	it("remembers collapsed folders", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.click(
+			await screen.findByRole("button", { name: "Collapse Work" }),
+		);
+		first.unmount();
+		renderApp("/favourites");
+		await screen.findByRole("button", { name: "Expand Work" });
+		expect(rows()).toEqual(["Work", "Long read"]);
+	});
+
+	it("doesn't change the remembered state while filtering", async () => {
+		searchTree();
+		const { user } = renderApp("/favourites");
+		await user.click(
+			await screen.findByRole("button", { name: "Collapse Work" }),
+		);
+		await user.type(await searchBox(), "mail");
+		expect(rows()).toEqual(["Work", "Mail"]);
+		await user.click(screen.getByRole("button", { name: "Collapse all" }));
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		await waitFor(() => expect(rows()).toEqual(["Work", "Long read"]));
+		await user.click(screen.getByRole("button", { name: "Expand Work" }));
+		expect(
+			screen.getByRole("button", { name: "Collapse Tools" }),
+		).toBeVisible();
+	});
+
+	it("opens a folder from the URL", async () => {
+		searchTree();
+		const first = renderApp("/favourites");
+		await first.user.click(
+			await screen.findByRole("button", { name: "Collapse all" }),
+		);
+		first.unmount();
+		const { router } = renderApp("/favourites?folder=Tools");
+		const tools = await screen.findByTestId("row-Tools");
+		expect(tools).toHaveAttribute("data-highlighted", "true");
+		expect(rows()).toEqual(["Work", "Tools", "Grafana", "Mail", "Long read"]);
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+	});
+
+	it("ignores an unknown folder or a link in the URL", async () => {
+		searchTree();
+		const { router } = renderApp("/favourites?folder=Mail");
+		await screen.findByRole("link", { name: "Mail" });
+		expect(rows()).toHaveLength(5);
+		expect(document.querySelector("[data-highlighted]")).toBeNull();
+		await waitFor(() => expect(router.state.location.search).toEqual({}));
+	});
+});

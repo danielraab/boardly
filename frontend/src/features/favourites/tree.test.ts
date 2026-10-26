@@ -3,11 +3,17 @@ import type { FavouriteNode } from "./api";
 import {
 	applyMove,
 	currentSlot,
+	filterTree,
 	flatten,
+	folderPath,
+	highlight,
 	indicatorFor,
 	keyboardSlots,
+	linkCounts,
 	pointerSlot,
 	ROOT_END,
+	searchTerms,
+	tagCounts,
 } from "./tree";
 
 const link = (id: string): FavouriteNode => ({
@@ -218,5 +224,127 @@ describe("applyMove", () => {
 	it("leaves the original tree unchanged", () => {
 		applyMove(tree, "A", "Work", 0);
 		expect(titles(tree)).toEqual(["A", "Work", "Empty", "B"]);
+	});
+});
+
+// root
+// ├─ Work
+// │  ├─ Tools
+// │  │  ├─ Grafana (monitoring, Tools)   https://grafana.example.com
+// │  │  └─ Empty
+// │  └─ Mail (reading)
+// ├─ Grafana                          https://other.example.org
+// └─ Long read (reading, later)
+const tagged: FavouriteNode = {
+	id: "root",
+	kind: "folder",
+	title: null,
+	children: [
+		folder(
+			"Work",
+			folder(
+				"Tools",
+				{
+					id: "graf",
+					kind: "link",
+					title: "Grafana",
+					url: "https://grafana.example.com",
+					tags: ["monitoring", "Tools"],
+				},
+				folder("Empty"),
+			),
+			{ ...link("Mail"), tags: ["reading"] },
+		),
+		{
+			id: "graf2",
+			kind: "link",
+			title: "Grafana",
+			url: "https://other.example.org",
+		},
+		{ ...link("Long read"), tags: ["reading", "later"] },
+	],
+};
+
+const ids = (n: FavouriteNode | null) =>
+	n ? flatten(n, none).map((i) => i.node.id) : null;
+const search = (text: string, tags: string[] = []) =>
+	ids(filterTree(tagged, { terms: searchTerms(text), tags }));
+
+describe("filterTree", () => {
+	it("returns the tree unchanged without a filter", () => {
+		expect(filterTree(tagged, { terms: [], tags: [] })).toBe(tagged);
+	});
+
+	it("finds links by title with their folders", () => {
+		expect(search("GRAF")).toEqual(["Work", "Tools", "graf", "graf2"]);
+	});
+
+	it("finds links by URL and tag", () => {
+		expect(search("grafana.example")).toEqual(["Work", "Tools", "graf"]);
+		expect(search("monitor")).toEqual(["Work", "Tools", "graf"]);
+	});
+
+	it("needs every term, also from folder names on the path", () => {
+		expect(search("work graf")).toEqual(["Work", "Tools", "graf"]);
+	});
+
+	it("keeps a matching folder with everything inside it", () => {
+		expect(search("tools")).toEqual(["Work", "Tools", "graf", "Empty"]);
+	});
+
+	it("needs every chosen tag, ignoring case", () => {
+		expect(search("", ["reading"])).toEqual(["Work", "Mail", "Long read"]);
+		expect(search("", ["Reading", "later"])).toEqual(["Long read"]);
+	});
+
+	it("doesn't keep whole folders by name while filtering by tag", () => {
+		expect(search("tools", ["reading"])).toBeNull();
+		expect(search("work", ["reading"])).toEqual(["Work", "Mail"]);
+	});
+
+	it("returns null when nothing matches", () => {
+		expect(search("nothing")).toBeNull();
+	});
+});
+
+describe("tagCounts", () => {
+	it("counts links per tag, sorted by name", () => {
+		expect(tagCounts(tagged)).toEqual([
+			{ name: "later", count: 1 },
+			{ name: "monitoring", count: 1 },
+			{ name: "reading", count: 2 },
+			{ name: "Tools", count: 1 },
+		]);
+	});
+});
+
+describe("linkCounts", () => {
+	it("counts links at all levels below a folder", () => {
+		const counts = linkCounts(tagged);
+		expect(counts.get("root")).toBe(4);
+		expect(counts.get("Work")).toBe(2);
+		expect(counts.get("Tools")).toBe(1);
+		expect(counts.get("Empty")).toBe(0);
+	});
+});
+
+describe("folderPath", () => {
+	it("lists the folders down to a node", () => {
+		expect(folderPath(tagged, "Empty")).toEqual(["Work", "Tools", "Empty"]);
+		expect(folderPath(tagged, "unknown")).toEqual([]);
+	});
+});
+
+describe("highlight", () => {
+	it("marks matches ignoring case and merges overlaps", () => {
+		expect(highlight("Grafana", ["afa", "fan"])).toEqual([
+			{ text: "Gr", match: false },
+			{ text: "afan", match: true },
+			{ text: "a", match: false },
+		]);
+	});
+
+	it("returns the text unmarked without terms", () => {
+		expect(highlight("Mail", [])).toEqual([{ text: "Mail", match: false }]);
 	});
 });

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
 	ChevronRight,
 	ChevronsDownUp,
@@ -11,6 +12,7 @@ import { iconButton } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { DetailsButton } from "#/features/favourites/FavouriteDetails";
+import type { FavouritesSearch } from "#/features/favourites/FavouritesPage";
 import { label } from "#/features/favourites/tree";
 import { sizeStyles, type WidgetSize } from "../sizes";
 import { useExpanded } from "./useExpanded";
@@ -46,6 +48,7 @@ export function ExplorerTree({
 	headingLevel = 2,
 	onAdd,
 	onDetails,
+	titleLink,
 }: {
 	widgetId: string;
 	size: WidgetSize;
@@ -55,6 +58,8 @@ export function ExplorerTree({
 	headingLevel?: number;
 	onAdd?: () => void;
 	onDetails?: (id: string) => void;
+	/** Makes the title a link to /favourites with these search params. */
+	titleLink?: FavouritesSearch;
 }) {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useExpanded(widgetId);
@@ -206,7 +211,17 @@ export function ExplorerTree({
 			<div className={style.text}>
 				<div className="flex items-center gap-1">
 					<Heading className="min-w-0 flex-1 truncate font-medium">
-						{title}
+						{titleLink ? (
+							<Link
+								to="/favourites"
+								search={titleLink}
+								className="hover:underline"
+							>
+								{title}
+							</Link>
+						) : (
+							title
+						)}
 					</Heading>
 					{buttons}
 				</div>

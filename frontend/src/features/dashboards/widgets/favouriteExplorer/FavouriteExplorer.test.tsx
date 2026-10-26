@@ -547,3 +547,56 @@ describe("explorer details", () => {
 		expect(screen.queryByRole("button", { name: /^Details for/ })).toBeNull();
 	});
 });
+
+describe("explorer title link", () => {
+	const viewRoutes = (sections: Widget[], fields = {}) => ({
+		"GET /api/me": signedIn(),
+		"GET /api/u/ann/home": { body: viewData(sections, fields) },
+		"GET /api/favourites": { body: favourites },
+	});
+	const titled = (config = {}, data: ExplorerData = { children: [mail] }) =>
+		section(
+			"Work",
+			{},
+			explorer("e1", { title: "Work links", ...config }, data),
+		);
+
+	it("links the owner to the folder on the favourites page", async () => {
+		mockApi(viewRoutes([titled()]));
+		const { user, router } = renderApp("/ann/home");
+		const title = await screen.findByRole("link", { name: "Work links" });
+		expect(title).toHaveAttribute("href", "/favourites?folder=work");
+		await user.click(title);
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/favourites"),
+		);
+	});
+
+	it("links to the favourites page for the tree's root", async () => {
+		mockApi(viewRoutes([titled({ rootFolderId: "root" })]));
+		renderApp("/ann/home");
+		expect(
+			await screen.findByRole("link", { name: "Work links" }),
+		).toHaveAttribute("href", "/favourites");
+	});
+
+	it("is plain text for visitors", async () => {
+		mockApi(viewRoutes([titled()], { isOwner: false, id: undefined }));
+		renderApp("/ann/home");
+		await screen.findByRole("heading", { name: "Work links" });
+		expect(screen.queryByRole("link", { name: "Work links" })).toBeNull();
+	});
+
+	it("is plain text in edit mode", async () => {
+		await openEditor([titled()]);
+		await screen.findByRole("heading", { name: "Work links" });
+		expect(screen.queryByRole("link", { name: "Work links" })).toBeNull();
+	});
+
+	it("is plain text for a deleted folder", async () => {
+		mockApi(viewRoutes([titled({ rootFolderId: "gone" }, { missing: true })]));
+		renderApp("/ann/home");
+		await screen.findByText("This folder no longer exists");
+		expect(screen.queryByRole("link", { name: "Work links" })).toBeNull();
+	});
+});
