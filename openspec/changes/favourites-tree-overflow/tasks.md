@@ -9,7 +9,11 @@
 
 - [x] 2.1 Wrap the explorer list in an `overflow-x-auto` container with the list `w-max min-w-full` and give names a minimum width; verify the explorer tests pass and a test asserts the scroll container
 
-## 3. Verification
+## 3. Maximum name width
 
-- [x] 3.1 Run frontend lint, typecheck and `vitest` and verify they pass
-- [x] 3.2 Run the app with a ten-level tree at 375px and 1200px: names visible, tree scrolls sideways, page doesn't, buttons not overlapping, drag and drop works while scrolled, and a narrow explorer widget scrolls; check light and dark themes
+- [x] 3.1 Give names on the favourites page and in the explorer a maximum width of 24rem with the full name as `title`; verify tests for the class and the tooltip
+
+## 4. Verification
+
+- [x] 4.1 Run frontend lint, typecheck and `vitest` and verify they pass
+- [x] 4.2 Run the app with a ten-level tree at 375px and 1200px: names visible, tree scrolls sideways, page doesn't, buttons not overlapping, drag and drop works while scrolled, and a narrow explorer widget scrolls, a 300-character title ends with "…" at 24rem; check light and dark themes

@@ -21,7 +21,7 @@ The `<ul>` is wrapped in a `div` with `overflow-x-auto` that keeps the border an
 *Alternatives:* all rows as wide as the widest row (`ul w-min min-w-full`) pushed the buttons of every row out of view as soon as one deep row overflowed; `overflow-x-auto` per row would scroll rows independently. Both rejected.
 
 ### Minimum name width
-The name box (name, link count, tags) is `flex-1` with `min-w-24` (6rem) below `sm` and `min-w-32` (8rem) from `sm`; the name inside keeps `truncate`. The minimum raises the row's min-content width, which is what makes a deep row grow and the frame scroll. A short name leaves empty space inside the box, which isn't visible. 6rem on phones keeps folder rows up to depth 1 (and link rows deeper) within a 375px screen.
+The name box (name, link count, tags) is `flex-1` with `min-w-24` (6rem) below `sm` and `min-w-32` (8rem) from `sm`; the name inside keeps `truncate`. The name itself also gets `max-w-sm` (24rem) and a `title` with the full name, so a very long title ends with "…" there instead of filling the row, and its tags follow right after it. The name box also has `contain: inline-size`: without it the browser counts the full name (up to the 24rem cap) into the row's min-content width, so long names in shallow rows pushed their buttons out of view on phones; contained, the box contributes only its minimum. The minimum raises the row's min-content width, which is what makes a deep row grow and the frame scroll. A short name leaves empty space inside the box, which isn't visible. 6rem on phones keeps folder rows up to depth 1 (and link rows deeper) within a 375px screen.
 
 ### No pinned buttons
 The action buttons stay a `shrink-0` flex item after the name box, so by construction they can't overlap it. Pinning them to the frame's edge with `position: sticky` was tried first and dropped: in rows wider than the frame, the pinned buttons covered the end of the name and the link count, which is exactly the overlap this change removes.
@@ -30,7 +30,7 @@ The action buttons stay a `shrink-0` flex item after the name box, so by constru
 The `<ul>` sets `--indent: 0.75rem` and `sm:[--indent:1.5rem]`. Rows use `padding-left: calc(var(--indent) * depth + 0.25rem)` and the drop indicator `left: calc(var(--indent) * depth + 2.25rem)`, so both follow the breakpoint without JavaScript. `INDENT_REM` is removed.
 
 ### Explorer widget
-`ExplorerTree`'s list is wrapped the same way (`@container overflow-x-auto`, list `w-max min-w-full`), each row is `w-min min-w-[100cqw]`, names get `min-w-24` (6rem; the widget is narrower and has smaller text), and the info button stays a `shrink-0` flex item after the link. Its indentation stays as it is: one or two widget columns are narrow on every screen, so a breakpoint wouldn't help.
+`ExplorerTree`'s list is wrapped the same way (`@container overflow-x-auto`, list `w-max min-w-full`), each row is `w-min min-w-[100cqw]`, names get `min-w-24` (6rem; the widget is narrower and has smaller text) and `max-w-sm`; folders get a `title` with the full name, links keep their row's URL `title`, and the info button stays a `shrink-0` flex item after the link. Its indentation stays as it is: one or two widget columns are narrow on every screen, so a breakpoint wouldn't help.
 
 ## Risks / Trade-offs
 

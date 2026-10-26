@@ -1227,10 +1227,11 @@ function TreeRow({
 			) : (
 				<ImageIcon imageId={node.iconImageId} className="size-4" />
 			)}
-			<div className="ml-1.5 flex min-w-24 flex-1 items-center gap-2 sm:min-w-32">
+			{/* Contained, so a long name doesn't widen the row beyond its minimum. */}
+			<div className="ml-1.5 flex min-w-24 flex-1 items-center gap-2 contain-inline-size sm:min-w-32">
 				{isFolder ? (
 					<>
-						<span className="truncate font-medium">
+						<span className="max-w-sm truncate font-medium" title={name}>
 							<Highlighted text={name} terms={terms} />
 						</span>
 						<span className="shrink-0 text-xs text-muted tabular-nums">
@@ -1245,7 +1246,8 @@ function TreeRow({
 						href={node.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="truncate hover:underline"
+						className="max-w-sm truncate hover:underline"
+						title={name}
 					>
 						<Highlighted text={name} terms={terms} />
 					</a>

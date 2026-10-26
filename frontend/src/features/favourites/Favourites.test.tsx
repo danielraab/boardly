@@ -1491,4 +1491,16 @@ describe("deep nesting", () => {
 		const name = screen.getByRole("link", { name: "Deep" }).parentElement;
 		expect(name).toHaveClass("min-w-24", "sm:min-w-32");
 	});
+
+	it("caps long names with the full name as a tooltip", async () => {
+		const long = "A very long title ".repeat(20).trim();
+		fakeServer([folder("Work", link("L", { title: long }))]);
+		renderApp("/favourites");
+		const title = await screen.findByRole("link", { name: long });
+		expect(title).toHaveClass("max-w-sm", "truncate");
+		expect(title).toHaveAttribute("title", long);
+		const work = within(screen.getByTestId("row-Work")).getByText("Work");
+		expect(work.closest("[title]")).toHaveClass("max-w-sm", "truncate");
+		expect(work.closest("[title]")).toHaveAttribute("title", "Work");
+	});
 });

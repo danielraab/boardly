@@ -615,6 +615,8 @@ describe("explorer deep nesting", () => {
 		expect(scroll).toHaveClass("@container", "overflow-x-auto");
 		const folderRow = screen.getByRole("button", { name: "Tools" });
 		expect(folderRow).toHaveClass("w-min", "min-w-[100cqw]");
-		expect(within(folderRow).getByText("Tools")).toHaveClass("min-w-24");
+		const name = within(folderRow).getByText("Tools");
+		expect(name).toHaveClass("min-w-24", "max-w-sm", "truncate");
+		expect(name).toHaveAttribute("title", "Tools");
 	});
 });

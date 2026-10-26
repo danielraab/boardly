@@ -105,7 +105,12 @@ export function ExplorerTree({
 									className={`${style.icon} shrink-0 text-muted`}
 									aria-hidden
 								/>
-								<span className="min-w-24 truncate font-medium">{name}</span>
+								<span
+									className="min-w-24 max-w-sm flex-1 truncate font-medium contain-inline-size"
+									title={name}
+								>
+									{name}
+								</span>
 							</button>
 							{open && renderNodes(node.children ?? [], depth + 1)}
 						</li>
@@ -115,7 +120,9 @@ export function ExplorerTree({
 					<>
 						<span className={`${style.icon} shrink-0`} />
 						<ImageIcon imageId={node.iconImageId} className={style.icon} />
-						<span className="min-w-24 truncate">{name}</span>
+						<span className="min-w-24 max-w-sm flex-1 truncate contain-inline-size">
+							{name}
+						</span>
 					</>
 				);
 				const linkRow = onDetails
