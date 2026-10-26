@@ -32,5 +32,5 @@
 
 - [x] 5.1 Document the import in README.md (formats, import folder, folder reuse, duplicates, dates, what isn't imported, size limit), and recommend the Karakeep JSON export over HTML
 - [x] 5.2 `make check` and `make test` pass
-- [ ] 5.3 Manual check: import the user's real Karakeep JSON and HTML exports in a local instance, and compare the counts with the expected report
+- [x] 5.3 Manual check: import the user's real Karakeep JSON and HTML exports in a local instance, and compare the counts with the expected report
 - [ ] 5.4 Verify the Linkwarden parser against a real Linkwarden JSON export (ask the user for one) and adjust the design and spec if the format differs
