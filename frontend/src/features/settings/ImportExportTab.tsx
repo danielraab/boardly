@@ -29,9 +29,11 @@ export function ImportExportTab() {
 	const [format, setFormat] = useState<ImportFormat>("karakeep");
 	const [file, setFile] = useState<File | null>(null);
 	const [folderId, setFolderId] = useState("");
+	const [skipDuplicates, setSkipDuplicates] = useState(true);
 
 	const run = useMutation({
-		mutationFn: () => importBookmarks(format, folderId, file as File),
+		mutationFn: () =>
+			importBookmarks(format, folderId, file as File, skipDuplicates),
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: ["tags"] });
@@ -125,6 +127,24 @@ export function ImportExportTab() {
 					<p className="mt-1 text-sm text-muted">
 						{t("settings.import.folderHint")}
 					</p>
+				</div>
+				<div className="flex items-center gap-3">
+					<input
+						id="import-skip-duplicates"
+						type="checkbox"
+						checked={skipDuplicates}
+						onChange={(e) => {
+							setSkipDuplicates(e.target.checked);
+							run.reset();
+						}}
+						className="size-4 accent-ink"
+					/>
+					<label
+						htmlFor="import-skip-duplicates"
+						className="text-sm font-medium"
+					>
+						{t("settings.import.skipDuplicates")}
+					</label>
 				</div>
 				{error && (
 					<p role="alert" className="text-sm text-danger">

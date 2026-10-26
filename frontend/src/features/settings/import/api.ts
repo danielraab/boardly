@@ -30,13 +30,19 @@ export type ImportErrorCode =
 /**
  * Imports the file into the folder. The file is the raw body, like an image
  * upload, because the server's cross-site check doesn't allow form posts.
+ * Without skipDuplicates, links that are already saved are imported again.
  */
 export function importBookmarks(
 	format: ImportFormat,
 	folderId: string,
 	file: Blob,
+	skipDuplicates: boolean,
 ) {
-	const query = new URLSearchParams({ format, folderId });
+	const query = new URLSearchParams({
+		format,
+		folderId,
+		skipDuplicates: String(skipDuplicates),
+	});
 	return api<ImportReport>(`/api/favourites/import?${query}`, {
 		method: "POST",
 		file,

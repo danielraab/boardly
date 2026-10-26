@@ -62,7 +62,7 @@ type importer struct {
 	userID string
 	now    time.Time
 	// urls holds the comparable URLs of the user's links, including those
-	// imported so far.
+	// imported so far, or is nil when duplicates are imported.
 	urls   map[string]bool
 	report ImportReport
 }
@@ -71,9 +71,10 @@ type importer struct {
 // (the root is allowed) in one transaction, and returns the tree's report
 // with the imported links and folders and the skipped duplicates added. A
 // folder whose name equals an existing child folder's, ignoring case, is
-// reused. Links whose URL is already in the user's tree are skipped. Imported
-// nodes go after the existing children, in the order of the tree.
-func (s *Store) Import(ctx context.Context, userID, folderID string, tree ImportTree) (ImportReport, error) {
+// reused. With skipDuplicates, links whose URL is already in the user's tree
+// are skipped. Imported nodes go after the existing children, in the order of
+// the tree.
+func (s *Store) Import(ctx context.Context, userID, folderID string, tree ImportTree, skipDuplicates bool) (ImportReport, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return ImportReport{}, err
@@ -91,22 +92,11 @@ func (s *Store) Import(ctx context.Context, userID, folderID string, tree Import
 		return ImportReport{}, ErrInvalidParent
 	}
 
-	im := &importer{s: s, q: tx, userID: userID, now: s.Now(), urls: map[string]bool{}, report: tree.Report}
-	rows, err := tx.QueryContext(ctx, `SELECT url FROM favourite_nodes WHERE user_id = ? AND kind = 'link'`, userID)
-	if err != nil {
-		return ImportReport{}, err
-	}
-	for rows.Next() {
-		var u string
-		if err := rows.Scan(&u); err != nil {
-			_ = rows.Close()
+	im := &importer{s: s, q: tx, userID: userID, now: s.Now(), report: tree.Report}
+	if skipDuplicates {
+		if im.urls, err = linkURLs(ctx, tx, userID); err != nil {
 			return ImportReport{}, err
 		}
-		im.urls[comparableURL(u)] = true
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
-		return ImportReport{}, err
 	}
 
 	if err := im.add(ctx, folderID, tree.Root.Items); err != nil {
@@ -117,6 +107,24 @@ func (s *Store) Import(ctx context.Context, userID, folderID string, tree Import
 	}
 	s.notifyFetches(im.report.Links > 0)
 	return im.report, nil
+}
+
+// linkURLs returns the comparable URLs of the user's links.
+func linkURLs(ctx context.Context, q db.Querier, userID string) (map[string]bool, error) {
+	rows, err := q.QueryContext(ctx, `SELECT url FROM favourite_nodes WHERE user_id = ? AND kind = 'link'`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	urls := map[string]bool{}
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		urls[comparableURL(u)] = true
+	}
+	return urls, rows.Err()
 }
 
 // add appends the items to the folder parentID, reusing its child folders.
@@ -186,8 +194,8 @@ func (im *importer) add(ctx context.Context, parentID string, items []ImportItem
 	return nil
 }
 
-// addLink inserts the link at the position, unless its URL is invalid or
-// already in the tree, and reports whether it did.
+// addLink inserts the link at the position, unless its URL is invalid or a
+// skipped duplicate, and reports whether it did.
 func (im *importer) addLink(ctx context.Context, parentID string, position int, l *ImportLink) (bool, error) {
 	link, err := NormalizeURL(l.URL)
 	if err != nil {
@@ -230,7 +238,9 @@ func (im *importer) addLink(ctx context.Context, parentID string, position int, 
 	if err := im.s.queueFetches(ctx, im.q, im.userID, id, link); err != nil {
 		return false, err
 	}
-	im.urls[key] = true
+	if im.urls != nil {
+		im.urls[key] = true
+	}
 	im.report.Links++
 	return true, nil
 }

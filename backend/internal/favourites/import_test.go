@@ -20,7 +20,12 @@ func importFolder(name string, items ...ImportItem) ImportItem {
 
 func (f *fixture) importItems(folderID string, items ...ImportItem) ImportReport {
 	f.t.Helper()
-	report, err := f.s.Import(f.ctx, f.user, folderID, ImportTree{Root: ImportFolder{Items: items}})
+	return f.importItemsWith(true, folderID, items...)
+}
+
+func (f *fixture) importItemsWith(skipDuplicates bool, folderID string, items ...ImportItem) ImportReport {
+	f.t.Helper()
+	report, err := f.s.Import(f.ctx, f.user, folderID, ImportTree{Root: ImportFolder{Items: items}}, skipDuplicates)
 	if err != nil {
 		f.t.Fatalf("import: %v", err)
 	}
@@ -118,6 +123,40 @@ func TestImportSkipsDuplicates(t *testing.T) {
 	}
 }
 
+func TestImportAllowsDuplicates(t *testing.T) {
+	f := newFixture(t)
+	work := f.folder("", "Work")
+	if _, err := f.s.Create(f.ctx, f.user, NewNode{ParentID: work, Kind: KindLink, URL: ptr("https://go.dev/"), Tags: []string{"work"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	items := []ImportItem{
+		importFolder("Dev", importLink("https://go.dev", "dev")),
+		importLink("https://example.org/a"),
+		importLink("https://example.org/a#again"),
+	}
+	report := f.importItemsWith(false, f.tree().ID, items...)
+	if want := (ImportReport{Links: 3, Folders: 1}); report != want {
+		t.Fatalf("report = %+v, want %+v", report, want)
+	}
+	if got := f.titles(""); !reflect.DeepEqual(got, []string{"Work", "Dev", "https://example.org/a", "https://example.org/a#again"}) {
+		t.Fatalf("root = %v", got)
+	}
+	goLink := find(f.tree(), work).Children[0]
+	if !reflect.DeepEqual(goLink.Tags, []string{"work"}) {
+		t.Fatalf("existing link's tags = %v, want unchanged", goLink.Tags)
+	}
+
+	// The same items again are imported again, into the reused folder.
+	again := f.importItemsWith(false, f.tree().ID, items...)
+	if want := (ImportReport{Links: 3}); again != want {
+		t.Fatalf("second import = %+v, want %+v", again, want)
+	}
+	if got := f.titles(f.child("", "Dev")); !reflect.DeepEqual(got, []string{"https://go.dev", "https://go.dev"}) {
+		t.Fatalf("Dev = %v", got)
+	}
+}
+
 func TestImportKeepsDataAndCreationDate(t *testing.T) {
 	f := newFixture(t)
 	f.link("", "Existing", "Dev")
@@ -169,7 +208,7 @@ func TestImportIsAllOrNothing(t *testing.T) {
 	_, err := f.s.Import(f.ctx, f.user, f.tree().ID, ImportTree{Root: ImportFolder{Items: []ImportItem{
 		importFolder("Dev", importLink("https://go.dev")),
 		importLink("https://example.org", ""),
-	}}})
+	}}}, true)
 	if !errors.Is(err, ErrInvalidTag) {
 		t.Fatalf("err = %v, want ErrInvalidTag", err)
 	}
@@ -196,7 +235,7 @@ func TestImportFolderMustBeOwnFolder(t *testing.T) {
 		{"link", link, ErrInvalidParent},
 		{"other user's root", other, ErrNotFound},
 	} {
-		if _, err := f.s.Import(f.ctx, f.user, tt.id, ImportTree{}); !errors.Is(err, tt.want) {
+		if _, err := f.s.Import(f.ctx, f.user, tt.id, ImportTree{}, true); !errors.Is(err, tt.want) {
 			t.Errorf("%s: err = %v, want %v", tt.name, err, tt.want)
 		}
 	}

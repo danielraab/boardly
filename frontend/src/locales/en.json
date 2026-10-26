@@ -182,6 +182,7 @@
 			"file": "File",
 			"folder": "Import into",
 			"folderHint": "Folders of the file are created in this folder. Folders that already exist there with the same name are used.",
+			"skipDuplicates": "Skip links that are already saved",
 			"submit": "Import",
 			"importing": "Importing…",
 			"errors": {
