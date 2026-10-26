@@ -1503,4 +1503,23 @@ describe("deep nesting", () => {
 		expect(work.closest("[title]")).toHaveClass("max-w-sm", "truncate");
 		expect(work.closest("[title]")).toHaveAttribute("title", "Work");
 	});
+
+	it("lets many tags give way before the name", async () => {
+		const tags = Array.from({ length: 12 }, (_, i) => `tag${i}`);
+		fakeServer([link("Tagged", { tags })]);
+		renderApp("/favourites");
+		const tag = await screen.findByRole("button", {
+			name: "Filter by tag tag0",
+		});
+		const box = tag.parentElement as HTMLElement;
+		expect(box).toHaveClass(
+			"min-w-0",
+			"flex-1",
+			"flex-wrap",
+			"h-5",
+			"overflow-hidden",
+		);
+		expect(box).toHaveAttribute("title", tags.join(", "));
+		expect(within(box).getAllByRole("button")).toHaveLength(12);
+	});
 });

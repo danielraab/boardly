@@ -10,6 +10,7 @@ With many nested folders, the tree on `/favourites` breaks: the indentation grow
 - When the rows don't fit, the tree gets its own horizontal scrollbar; the page itself never scrolls sideways.
 - The action buttons of a row come after its name and link count and never cover them. Rows that fit keep their buttons at the right edge of the tree; deeper rows are wider than the tree, and their buttons are reached by scrolling sideways.
 - The indentation per level is halved on narrow screens (below the `sm` breakpoint), so more levels fit before scrolling is needed. The drop indicator of drag and drop uses the same indentation.
+- Links with many tags keep their name: the tags give way first, only whole tags are shown, and all of them are listed in a tooltip.
 - The favourite explorer widget gets the same minimum and maximum name width and horizontal scrolling.
 
 ## Capabilities

@@ -1252,17 +1252,26 @@ function TreeRow({
 						<Highlighted text={name} terms={terms} />
 					</a>
 				)}
-				{node.tags?.map((tag) => (
-					<button
-						type="button"
-						key={tag}
-						className="hidden shrink-0 rounded-full bg-paper px-2 py-0.5 text-xs text-muted hover:text-ink sm:inline"
-						aria-label={t("favourites.tagFilter.add", { tag })}
-						onClick={() => actions.filterTag(tag)}
+				{node.tags && node.tags.length > 0 && (
+					// Only takes the room the name leaves; tags that don't fit wrap
+					// onto a hidden second line, so only whole tags are shown.
+					<div
+						className="hidden h-5 min-w-0 flex-1 flex-wrap gap-2 overflow-hidden sm:flex"
+						title={node.tags.join(", ")}
 					>
-						{tag}
-					</button>
-				))}
+						{node.tags.map((tag) => (
+							<button
+								type="button"
+								key={tag}
+								className="shrink-0 rounded-full bg-paper px-2 py-0.5 text-xs text-muted hover:text-ink"
+								aria-label={t("favourites.tagFilter.add", { tag })}
+								onClick={() => actions.filterTag(tag)}
+							>
+								{tag}
+							</button>
+						))}
+					</div>
+				)}
 			</div>
 			<div className="flex shrink-0 items-center">{actionButtons}</div>
 		</li>
