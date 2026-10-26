@@ -182,6 +182,7 @@
 			"file": "Datei",
 			"folder": "Importieren in",
 			"folderHint": "Die Ordner der Datei werden in diesem Ordner angelegt. Gleichnamige Ordner, die es dort schon gibt, werden verwendet.",
+			"skipDuplicates": "Bereits gespeicherte Links überspringen",
 			"submit": "Importieren",
 			"importing": "Wird importiert …",
 			"errors": {

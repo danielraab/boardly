@@ -109,10 +109,37 @@ describe("import / export tab", () => {
 		expect(body).toBeInstanceOf(File);
 		expect(search.get("format")).toBe("linkwarden");
 		expect(search.get("folderId")).toBe("root");
+		expect(search.get("skipDuplicates")).toBe("true");
 		await waitFor(() =>
 			expect(api.callsTo("GET", "/api/favourites").length).toBeGreaterThan(
 				reloads,
 			),
+		);
+	});
+
+	it("can import links that are already saved", async () => {
+		const { panel, user, api } = await openTab();
+		let search: URLSearchParams | null = null;
+		api.set({
+			"POST /api/favourites/import": ({ url }) => {
+				search = url.searchParams;
+				return { body: report };
+			},
+		});
+		const skip = within(panel).getByRole("checkbox", {
+			name: "Skip links that are already saved",
+		});
+		expect(skip).toBeChecked();
+		await user.click(skip);
+		await user.upload(within(panel).getByLabelText("File"), file());
+		await user.click(
+			await within(panel).findByRole("radio", { name: "Reading" }),
+		);
+		await user.click(within(panel).getByRole("button", { name: "Import" }));
+
+		await within(panel).findByRole("status");
+		expect((search as URLSearchParams | null)?.get("skipDuplicates")).toBe(
+			"false",
 		);
 	});
 

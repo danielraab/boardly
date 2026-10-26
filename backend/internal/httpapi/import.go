@@ -16,7 +16,8 @@ const maxImportBytes = 10 << 20
 
 // importFavourites imports the bookmark file in the body, sent as
 // application/octet-stream like image uploads, into the folder ?folderId= of
-// the user's tree and returns the report. ?format= is the file's format.
+// the user's tree and returns the report. ?format= is the file's format, and
+// ?skipDuplicates=false imports links whose URL is already saved.
 func (a *api) importFavourites(w http.ResponseWriter, r *http.Request) error {
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImportBytes))
 	if tooLarge := new(http.MaxBytesError); errors.As(err, &tooLarge) {
@@ -32,6 +33,14 @@ func (a *api) importFavourites(w http.ResponseWriter, r *http.Request) error {
 	if folderID == "" {
 		return errInvalidImportFolder()
 	}
+	skipDuplicates := true
+	switch r.URL.Query().Get("skipDuplicates") {
+	case "", "true":
+	case "false":
+		skipDuplicates = false
+	default:
+		return NewError(http.StatusBadRequest, "invalid_request", "skipDuplicates must be true or false")
+	}
 
 	tree, ok, err := importer.Parse(importer.Format(r.URL.Query().Get("format")), bytes.NewReader(data))
 	switch {
@@ -44,7 +53,7 @@ func (a *api) importFavourites(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	user, _ := CurrentUser(r.Context())
-	report, err := a.favourites.Import(r.Context(), user.ID, folderID, tree)
+	report, err := a.favourites.Import(r.Context(), user.ID, folderID, tree, skipDuplicates)
 	if errors.Is(err, favourites.ErrNotFound) || errors.Is(err, favourites.ErrInvalidParent) {
 		return errInvalidImportFolder()
 	}

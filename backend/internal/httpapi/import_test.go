@@ -86,6 +86,7 @@ func TestImportErrors(t *testing.T) {
 		{"no folder", map[string]string{"format": "karakeep"}, karakeep, 400, "invalid_folder"},
 		{"link as folder", map[string]string{"format": "karakeep", "folderId": link}, karakeep, 400, "invalid_folder"},
 		{"other user's folder", map[string]string{"format": "karakeep", "folderId": bobRoot}, karakeep, 400, "invalid_folder"},
+		{"invalid skipDuplicates", map[string]string{"format": "karakeep", "folderId": root, "skipDuplicates": "yes"}, karakeep, 400, "invalid_request"},
 		{"too large", map[string]string{"format": "netscape", "folderId": root}, strings.Repeat("x", maxImportBytes+1), 413, "file_too_large"},
 	} {
 		rec := s.importFile(t, ann, tt.fields, tt.file)
@@ -98,6 +99,30 @@ func TestImportErrors(t *testing.T) {
 	}
 	if got := childTitles(s.tree(t, bob)); len(got) != 0 {
 		t.Fatalf("bob's tree = %v", got)
+	}
+}
+
+func TestImportSkipDuplicates(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	root := s.tree(t, ann).ID
+	file := testdata(t, "browser.html")
+	for _, tt := range []struct {
+		skip       string
+		links, dup int
+	}{
+		{"", 4, 0},
+		{"", 0, 4},
+		{"true", 0, 4},
+		{"false", 4, 0},
+	} {
+		rec := s.importFile(t, ann, map[string]string{"format": "netscape", "folderId": root, "skipDuplicates": tt.skip}, file)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("skipDuplicates=%q: %d %s", tt.skip, rec.Code, rec.Body)
+		}
+		if got := decodeJSONBody[favourites.ImportReport](t, rec); got.Links != tt.links || got.Skipped.Duplicates != tt.dup {
+			t.Fatalf("skipDuplicates=%q: report = %+v, want %d links and %d duplicates", tt.skip, got, tt.links, tt.dup)
+		}
 	}
 }
 
