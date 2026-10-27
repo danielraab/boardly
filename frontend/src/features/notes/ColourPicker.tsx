@@ -75,7 +75,7 @@ export function ColourButton({
 				<Palette className="size-5" aria-hidden />
 			</Popover.Trigger>
 			<Popover.Portal>
-				<Popover.Positioner sideOffset={6} align="end">
+				<Popover.Positioner sideOffset={6} align="end" className="z-50">
 					<Popover.Popup className="max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-3 text-ink shadow-[0_8px_24px_-12px_var(--color-shadow)] outline-none">
 						<Popover.Title className="sr-only">
 							{t("notes.colours.label")}

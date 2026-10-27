@@ -25,7 +25,7 @@ export function UserMenu() {
 				<CircleUserRound className="size-6" strokeWidth={1.75} aria-hidden />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" sideOffset={6}>
+				<Menu.Positioner align="end" sideOffset={6} className="z-50">
 					<Menu.Popup className={menuPopup}>
 						{isPending ? (
 							<output className="flex items-center gap-2 px-3 py-2 text-muted">

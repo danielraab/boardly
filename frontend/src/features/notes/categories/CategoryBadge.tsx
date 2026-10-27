@@ -62,7 +62,7 @@ export function CategoryBadge({
 				</Menu.Trigger>
 			)}
 			<Menu.Portal>
-				<Menu.Positioner align="start" sideOffset={6}>
+				<Menu.Positioner align="start" sideOffset={6} className="z-50">
 					<Menu.Popup
 						className={`${menuPopup} max-h-80 max-w-[calc(100vw-2rem)] overflow-auto`}
 						aria-label={t("notes.categories.badge.picker")}

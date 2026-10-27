@@ -57,7 +57,7 @@ export function ThemeSwitcher() {
 				<Palette className="size-5" aria-hidden />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" sideOffset={6}>
+				<Menu.Positioner align="end" sideOffset={6} className="z-50">
 					<Menu.Popup className={menuPopup}>
 						<Menu.RadioGroup
 							value={choice}

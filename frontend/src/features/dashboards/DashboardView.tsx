@@ -131,7 +131,7 @@ function DashboardActions({
 					<Ellipsis className="size-4" aria-hidden />
 				</Menu.Trigger>
 				<Menu.Portal>
-					<Menu.Positioner align="end" sideOffset={6}>
+					<Menu.Positioner align="end" sideOffset={6} className="z-50">
 						<Menu.Popup className={menuPopup}>
 							<Menu.Item className={menuItem} onClick={onEditLayout}>
 								<LayoutGrid className="size-4 text-muted" aria-hidden />

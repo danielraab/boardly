@@ -249,7 +249,7 @@ function LinkButton({
 				<Link className="size-4" aria-hidden />
 			</Popover.Trigger>
 			<Popover.Portal>
-				<Popover.Positioner sideOffset={6} align="start">
+				<Popover.Positioner sideOffset={6} align="start" className="z-50">
 					<Popover.Popup
 						className={`${menuPopup} w-80 max-w-[calc(100vw-2rem)] p-3`}
 					>

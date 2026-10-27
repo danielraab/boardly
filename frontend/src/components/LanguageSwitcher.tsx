@@ -14,7 +14,7 @@ export function LanguageSwitcher() {
 				<Languages className="size-5" aria-hidden />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" sideOffset={6}>
+				<Menu.Positioner align="end" sideOffset={6} className="z-50">
 					<Menu.Popup className={menuPopup}>
 						<Menu.RadioGroup
 							value={i18n.resolvedLanguage}

@@ -186,7 +186,7 @@ function Panel({
 							<Ellipsis className="size-4" aria-hidden />
 						</Menu.Trigger>
 						<Menu.Portal>
-							<Menu.Positioner align="end" sideOffset={4}>
+							<Menu.Positioner align="end" sideOffset={4} className="z-50">
 								<Menu.Popup className={menuPopup}>
 									<Menu.Item
 										className={menuItem}
