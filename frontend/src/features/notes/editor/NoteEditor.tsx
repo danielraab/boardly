@@ -1,3 +1,4 @@
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
 import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -27,15 +28,21 @@ import { noteTransformers } from "./transformers";
 /**
  * The rich text editor of a note. It starts from initial and reports every
  * change of the content as a document; later changes of initial are ignored.
+ * Without toolbar, it is the compact editor of a card on /notes.
  */
 export function NoteEditor({
 	initial,
 	onChange,
 	editable = true,
+	toolbar = true,
+	autoFocus = false,
 }: {
 	initial: NoteDoc;
 	onChange: (doc: NoteDoc) => void;
 	editable?: boolean;
+	toolbar?: boolean;
+	/** Puts the cursor at the end of the content on mount. */
+	autoFocus?: boolean;
 }) {
 	const { t } = useTranslation();
 	const initialRef = useRef(initial);
@@ -54,9 +61,11 @@ export function NoteEditor({
 				},
 			}}
 		>
-			<div className="sticky top-0 z-10 -mx-2 mb-3 rounded-lg bg-inherit px-2 py-1">
-				<Toolbar disabled={!editable} />
-			</div>
+			{toolbar && (
+				<div className="sticky top-0 z-10 -mx-2 mb-3 rounded-lg bg-inherit px-2 py-1">
+					<Toolbar disabled={!editable} />
+				</div>
+			)}
 			<div className="relative">
 				<RichTextPlugin
 					contentEditable={
@@ -68,12 +77,13 @@ export function NoteEditor({
 									{placeholder}
 								</div>
 							}
-							className="min-h-64 space-y-2 break-words outline-none"
+							className={`${toolbar ? "min-h-64" : "min-h-16 text-sm"} space-y-2 break-words outline-none`}
 						/>
 					}
 					ErrorBoundary={LexicalErrorBoundary}
 				/>
 			</div>
+			{autoFocus && <AutoFocusPlugin defaultSelection="rootEnd" />}
 			<HistoryPlugin />
 			<ListPlugin />
 			<CheckListPlugin />

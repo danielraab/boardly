@@ -47,3 +47,23 @@ export function isLinkUrl(url: string): boolean {
 		return false;
 	}
 }
+
+/** doc with the task item id checked or unchecked. */
+export function setTaskChecked(
+	doc: NoteDoc,
+	id: string,
+	checked: boolean,
+): NoteDoc {
+	const inList = (list: ListBlock): ListBlock => ({
+		...list,
+		items: list.items.map((item) => ({
+			...item,
+			...(item.id === id && { checked }),
+			...(item.children && { children: inList(item.children) }),
+		})),
+	});
+	return {
+		...doc,
+		blocks: doc.blocks.map((b) => (b.type === "list" ? inList(b) : b)),
+	};
+}

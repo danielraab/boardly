@@ -762,6 +762,8 @@
 		"newNote": "Neue Notiz",
 		"untitled": "Unbenannte Notiz",
 		"open": "{{title}} öffnen",
+		"openNote": "Notiz öffnen",
+		"edit": "{{title}} bearbeiten",
 		"empty": "Noch keine Notizen",
 		"emptyHint": "Schreib Aufgaben, Listen und Ideen auf. Sie werden beim Tippen gespeichert.",
 		"emptyCategory": "Keine Notizen in dieser Kategorie",

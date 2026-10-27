@@ -28,7 +28,8 @@ import { displayTitle } from "./document/text";
 import { emptyDoc } from "./document/types";
 import { NoteEditor } from "./editor/NoteEditor";
 import { iconChoice, noteIcon } from "./noteIcon";
-import { type SaveStatus, useAutosave } from "./useAutosave";
+import { SaveIndicator } from "./SaveIndicator";
+import { useAutosave } from "./useAutosave";
 
 /**
  * The editor page of a note, or of a new one (note null) that is created on
@@ -183,41 +184,6 @@ export function NoteEditorPage({
 				}}
 			/>
 		</section>
-	);
-}
-
-function SaveIndicator({
-	status,
-	onRetry,
-}: {
-	status: SaveStatus;
-	onRetry: () => void;
-}) {
-	const { t } = useTranslation();
-	if (status === "idle" || status === "conflict") return null;
-	if (status === "failed") {
-		return (
-			<span
-				role="status"
-				className="flex items-center gap-2 text-sm text-danger"
-			>
-				{t("notes.editor.status.failed")}
-				<button
-					type="button"
-					className={`${secondaryButton} px-3 py-1`}
-					onClick={onRetry}
-				>
-					{t("notes.editor.status.retry")}
-				</button>
-			</span>
-		);
-	}
-	return (
-		<span role="status" className="text-sm text-muted">
-			{status === "saving"
-				? t("notes.editor.status.saving")
-				: t("notes.editor.status.saved")}
-		</span>
 	);
 }
 

@@ -32,7 +32,7 @@ function Inlines({ content }: { content: Inline[] }) {
 		const key = i;
 		if (inline.type === "break") return <br key={key} />;
 		if (inline.type === "link")
-			// Inert on cards: activating the card opens the note.
+			// Inert on cards: activating it starts editing like the rest.
 			return (
 				<span key={key} className="text-accent underline">
 					{inline.content.map((run, j) => (
@@ -45,10 +45,21 @@ function Inlines({ content }: { content: Inline[] }) {
 	});
 }
 
-function List({ list }: { list: ListBlock }) {
+/** Called when a task item's checkbox is toggled. */
+type OnToggleTask = (id: string, checked: boolean) => void;
+
+function List({
+	list,
+	onToggleTask,
+}: {
+	list: ListBlock;
+	onToggleTask?: OnToggleTask;
+}) {
 	const items = list.items.map((item, i) => {
 		const key = item.id ?? i;
-		const nested = item.children && <List list={item.children} />;
+		const nested = item.children && (
+			<List list={item.children} onToggleTask={onToggleTask} />
+		);
 		if (list.style !== "task") {
 			return (
 				<li key={key}>
@@ -60,15 +71,19 @@ function List({ list }: { list: ListBlock }) {
 		return (
 			<li key={key} className="list-none">
 				<span className="flex items-start gap-2">
-					{/* Inert on cards: activating the card opens the note. */}
+					{/* Inert without onToggleTask. Above the card's edit button with it. */}
 					<input
 						type="checkbox"
 						checked={item.checked === true}
-						disabled
-						readOnly
-						tabIndex={-1}
+						disabled={!onToggleTask}
+						readOnly={!onToggleTask}
+						tabIndex={onToggleTask ? undefined : -1}
+						onChange={(e) => {
+							if (item.id) onToggleTask?.(item.id, e.target.checked);
+						}}
+						onClick={(e) => e.stopPropagation()}
 						aria-label={inlineText(item.content)}
-						className="mt-[0.2em] size-4 shrink-0 accent-accent disabled:opacity-100"
+						className="pointer-events-auto mt-[0.2em] size-4 shrink-0 accent-accent disabled:opacity-100"
 					/>
 					<span
 						className={item.checked ? "text-muted line-through" : undefined}
@@ -95,7 +110,13 @@ function List({ list }: { list: ListBlock }) {
 	);
 }
 
-function BlockView({ block }: { block: Block }): ReactNode {
+function BlockView({
+	block,
+	onToggleTask,
+}: {
+	block: Block;
+	onToggleTask?: OnToggleTask;
+}): ReactNode {
 	switch (block.type) {
 		case "paragraph":
 			return (
@@ -127,21 +148,27 @@ function BlockView({ block }: { block: Block }): ReactNode {
 		case "divider":
 			return <hr className="border-line" />;
 		case "list":
-			return <List list={block} />;
+			return <List list={block} onToggleTask={onToggleTask} />;
 	}
 }
 
 /**
  * A note's content as read-only React elements, for the cards of /notes.
- * Headings start one level below the card's title. Links and checkboxes
- * don't react to activation.
+ * Headings start one level below the card's title. Links don't react to
+ * activation; checkboxes only do with onToggleTask.
  */
-export function NoteRenderer({ doc }: { doc: NoteDoc }) {
+export function NoteRenderer({
+	doc,
+	onToggleTask,
+}: {
+	doc: NoteDoc;
+	onToggleTask?: OnToggleTask;
+}) {
 	return (
 		<div className="space-y-1.5 text-sm break-words">
 			{doc.blocks.map((block, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
-				<BlockView key={i} block={block} />
+				<BlockView key={i} block={block} onToggleTask={onToggleTask} />
 			))}
 		</div>
 	);
