@@ -27,7 +27,9 @@ Things in the codebase this change builds on:
 
 ### Editor: Lexical, our own document format, a mapper in between
 
-The editor is Lexical (MIT, no commercial tier), with `@lexical/react`, `rich-text`, `list` (incl. check lists), `markdown` (shortcut transformers), `link` and `history`. Versions are pinned exactly, because Lexical is still 0.x.
+The editor is Lexical (MIT, no commercial tier), with `@lexical/react`, `rich-text`, `list` (incl. check lists), `markdown` (shortcut transformers), `link`, `history`, `code` (the code block node), `selection` and `utils`. Versions are pinned exactly, because Lexical is still 0.x.
+
+**Shortcuts Lexical doesn't cover.** Lexical's own transformers allow headings up to level 6 and have no divider, so the editor uses its own `HEADING` (levels 1–3) and `DIVIDER` transformers, and a `LINK` wrapper that only accepts http, https and mailto. Lexical runs block shortcuts only at the start of a top-level paragraph, so after `- ` has made a bullet item, the following `[ ] ` would stay text. A small `TaskShortcutPlugin` turns a bullet or numbered item that starts with `[ ] `, `[] ` or `[x] ` into a task, splitting the list around it when it has other items.
 
 The stored format is **not** Lexical's serialized JSON. A TypeScript mapper `lexicalToDoc` / `docToLexical` in `frontend/src/features/notes/document/` converts between the editor state and `NoteDoc`:
 
@@ -112,19 +114,19 @@ The composite foreign key keeps a parent inside the owner's categories, like `fa
 ### Frontend structure
 
 ```
-frontend/src/routes/notes.tsx            layout: side panel + <Outlet/>
-frontend/src/routes/notes.index.tsx      card grid   (?category=<id>|none)
-frontend/src/routes/notes.$noteId.tsx    editor      ($noteId = "new" for a draft)
+frontend/src/routes/notes.tsx            layout: sign-in check + <Outlet/>
+frontend/src/routes/notes.index.tsx      card grid with side panel (?category=<id>|none)
+frontend/src/routes/notes.$noteId.tsx    editor      ($noteId = "new" for a draft, ?category=<id> preselects)
 frontend/src/features/notes/
-  api.ts            TanStack Query hooks: notes list/get/create/patch/delete, categories
-  NotesGrid.tsx, NoteCard.tsx, NoteRenderer.tsx (read-only NoteDoc → React, no Lexical)
-  NoteEditorPage.tsx, editor/ (Lexical composer, toolbar, plugins, task-ID transform)
+  api.ts            query options and requests: notes list/get/create/patch/delete, categories
+  NotesPage.tsx, NoteCard.tsx, NoteRenderer.tsx (read-only NoteDoc → React, no Lexical)
+  NoteEditorPage.tsx, useAutosave.ts, editor/ (Lexical composer, toolbar, plugins, transformers)
   document/ (types, lexical mapper, displayTitle, tests)
-  categories/ (SidePanel, CategoryTree, CategoryDialog, CategoryPicker, Badge, tree helpers)
-  colours.ts        palette names ↔ CSS variables
+  categories/ (SidePanel, CategoryDialog, DeleteCategoryDialog, CategoryBadge with picker, tree helpers)
+  ColourPicker.tsx, colours.ts (palette names ↔ CSS variables), noteIcon.ts
 ```
 
-`NoteRenderer` renders cards straight from `NoteDoc`, so the grid doesn't load Lexical. The editor route is lazy-loaded, which keeps Lexical out of the main bundle.
+`NoteRenderer` renders cards straight from `NoteDoc`, so the grid doesn't load Lexical. The router's automatic code splitting puts the editor route, and with it Lexical, into its own chunk. The side panel lives on the grid only; "New note" passes the chosen category to `/notes/new` as `?category=`.
 
 **Filtering and counts** happen on the client: `GET /api/notes` returns every note (personal scale), and the side panel derives the subtree sets from `GET /api/note-categories`. A `?category=` filter on the server can come later without changing the specs.
 
@@ -138,7 +140,7 @@ Badge changes on cards send a PATCH with the card's `version` from the list quer
 
 ### Note colours
 
-`styles.css` gets `--color-note-<name>` for the 9 colours in the default block and in each of the 7 `[data-theme]` blocks: light tints for light themes, dark shades for dark themes. `contrast.test.ts` is extended with ink/muted ≥ 4.5 and accent ≥ 3 against each note colour, and a minimum difference from `paper` (contrast ratio ≥ 1.1). Categories use the same tokens for their badges.
+`styles.css` gets `--color-note-<name>` for the 9 colours in the default block and in each of the 7 `[data-theme]` blocks: light tints for light themes, dark shades for dark themes. `contrast.test.ts` is extended with ink/muted ≥ 4.5 and accent ≥ 3 against each note colour, and a minimum difference from `paper` (RGB distance ≥ 24, since light tints on a light paper differ in hue more than in luminance). Categories use the same tokens for their badges.
 
 ### Image cleanup
 

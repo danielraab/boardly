@@ -6,6 +6,7 @@ real user accounts.
 
 - **Dashboards** like Homepage, but built and edited visually in the browser (WYSIWYG) instead of YAML files.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
+- **Notes** with todos, written with Markdown shortcuts and sorted into nested categories.
 - **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly.
 - **Passwordless login** with magic links and passkeys.
 
@@ -156,6 +157,31 @@ A new dashboard is empty. Sections can only be added in edit mode.
 Sections are available now. Link and navigation-tree widgets will follow. More widget types can be
 added later. The widget model is meant to be extended.
 
+### Notes
+
+The **Notes** page (`/notes`, linked from the user menu) holds your notes as cards, last edited
+first. A card shows the note's icon, title and the beginning of its content on the note's colour;
+click it to open the note.
+
+- **Writing**: a note has an optional title and rich content. Markdown shortcuts format while you
+  type: `# `, `## ` and `### ` for headings, `- ` or `* ` for bullet lists, `1. ` for numbered
+  lists, `- [ ] ` or `[] ` for todos (`- [x] ` for a done one), `> ` for quotes, ```` ``` ```` for
+  code blocks, `---` for a divider, and `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``
+  and `[text](https://…)` inline. A toolbar offers the same, which helps on phones. Tick a todo by
+  clicking its checkbox. Links open with Ctrl or Cmd held. Changes are saved a second after you
+  stop typing. A note without a title is shown by its first line.
+- **Icon and colour**: a note can have a symbol or an uploaded image as its icon, and one of nine
+  colours. The colours have a light and a dark shade, so they suit every theme.
+- **Categories**: each note can be in one category. Categories have a title, an optional icon and
+  colour, and can be nested. They are listed in the side panel of the Notes page (a drawer on
+  phones), with the number of notes in each, including their subcategories. Choose one to show its
+  notes; create, edit, move and delete categories from there. A category stays when it has no
+  notes. Deleting one makes its notes uncategorized and moves its subcategories up a level. The
+  category of a note is shown as a badge; click the badge to change it.
+- **Storage**: note content is stored as a JSON document of Boardly's own, not as Markdown. Each
+  todo has a stable ID, so later features (todo widgets, link tagging, Markdown import and export,
+  a Memos-compatible API) can refer to it.
+
 ### Karakeep-compatible server
 
 The Karakeep browser extension and the Karakeep mobile app (iOS/Android) can connect to Boardly as
@@ -282,6 +308,7 @@ User
 │       ├── Link widget        │
 │       ├── Section widget (nests widgets)
 │       └── Navigation tree widget ──┘ (bound to a node)
+├── Notes ──── Note categories (nested, one per note)
 └── Connected apps (API keys) ─┘ (each bound to a folder)
 ```
 
@@ -540,8 +567,8 @@ Mailpit instead (http://localhost:8025).
   `BOARDLY_FETCH_ALLOW_PRIVATE=true` to get their favicons and previews too; only do that if you
   trust everyone who can sign up.
 - **Images are stored as files** in `BOARDLY_DATA_DIR/images`, next to the database in the
-  container's `/data` volume. Uploaded images that nothing uses are deleted after 24 hours, and
-  previews that no link uses any more after about an hour.
+  container's `/data` volume. Uploaded images that nothing uses (no widget, note or note category)
+  are deleted after 24 hours, and previews that no link uses any more after about an hour.
 
 ### Passkeys
 

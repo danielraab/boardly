@@ -47,10 +47,10 @@ import {
 } from "lucide-react";
 
 /**
- * The icons a link widget can show, by the key stored in its config. Keep in
- * sync with linkIcons in backend/internal/widgets/link.go.
+ * The symbols that link widgets, notes and note categories can show, by the
+ * key that is stored. Keep in sync with backend/internal/symbols/symbols.go.
  */
-export const linkIcons = {
+export const symbols = {
 	"book-open": BookOpen,
 	bookmark: Bookmark,
 	briefcase: Briefcase,
@@ -97,8 +97,8 @@ export const linkIcons = {
 	wrench: Wrench,
 } satisfies Record<string, LucideIcon>;
 
-export type LinkIconKey = keyof typeof linkIcons;
+export type SymbolKey = keyof typeof symbols;
 
-export function findIcon(key: string | null): LucideIcon | undefined {
-	return key && key in linkIcons ? linkIcons[key as LinkIconKey] : undefined;
+export function findSymbol(key: string | null): LucideIcon | undefined {
+	return key && key in symbols ? symbols[key as SymbolKey] : undefined;
 }

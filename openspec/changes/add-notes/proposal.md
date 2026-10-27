@@ -32,5 +32,5 @@ Non-goals (later changes): note and todo dashboard widgets, Karakeep / Linkwarde
 ## Impact
 
 - Backend: new package `backend/internal/notes` (store, document validation), new migration with `note_categories` and `notes`, new endpoints under `/api/notes` and `/api/note-categories`, the symbol list moved out of `widgets` so notes can validate symbols, `images` cleanup query extended.
-- Frontend: new dependencies `lexical`, `@lexical/react`, `@lexical/rich-text`, `@lexical/list`, `@lexical/markdown`, `@lexical/link`, `@lexical/history` (all MIT, versions pinned); new feature folder `frontend/src/features/notes`, routes `notes.tsx` / `notes.$noteId.tsx`, the `IconChooser` made reusable without the "Website icon" tab, note colour tokens in the theme definitions, en + de translations.
+- Frontend: new dependencies `lexical`, `@lexical/react`, `@lexical/rich-text`, `@lexical/list`, `@lexical/markdown`, `@lexical/link`, `@lexical/history`, `@lexical/code`, `@lexical/selection`, `@lexical/utils` (all MIT, versions pinned); new feature folder `frontend/src/features/notes`, routes `notes.tsx` / `notes.index.tsx` / `notes.$noteId.tsx`, the `IconChooser` made reusable without the "Website icon" tab, note colour tokens in the theme definitions, en + de translations.
 - No change to dashboards, favourites, Karakeep or Linkwarden APIs.

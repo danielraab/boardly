@@ -5,6 +5,7 @@ import {
 	LayoutGrid,
 	LogIn,
 	LogOut,
+	NotebookPen,
 	Settings,
 	Star,
 } from "lucide-react";
@@ -63,6 +64,14 @@ export function UserMenu() {
 								>
 									<Star className="size-4 text-muted" aria-hidden />
 									{t("shell.favourites")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/notes" />}
+								>
+									<NotebookPen className="size-4 text-muted" aria-hidden />
+									{t("shell.notes")}
 								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick

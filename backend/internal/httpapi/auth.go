@@ -15,6 +15,7 @@ import (
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/notes"
 	"boardly/internal/ratelimit"
 	"boardly/internal/users"
 )
@@ -36,6 +37,7 @@ type api struct {
 	users      *users.Store
 	favourites *favourites.Store
 	dashboards *dashboards.Store
+	notes      *notes.Store
 	images     *images.Store
 	favicons   *images.Favicons
 	previews   *images.Previews

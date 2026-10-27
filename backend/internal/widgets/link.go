@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"unicode/utf8"
 
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/symbols"
 )
 
 // KindLink shows one link, from the owner's favourites or a plain URL.
@@ -24,7 +24,7 @@ const (
 )
 
 // Icon sources: the favicon of the link's current URL, an uploaded image, a
-// symbol from linkIcons, or none (a globe).
+// symbol from the symbols package, or none (a globe).
 const (
 	IconFavicon = "favicon"
 	IconImage   = "image"
@@ -36,21 +36,6 @@ const (
 const (
 	maxFavouriteTitle = 1000
 )
-
-// linkIcons are the icons a link widget may show. Keep in sync with
-// frontend/src/features/dashboards/widgets/link/icons.ts.
-var linkIcons = map[string]bool{}
-
-func init() {
-	for _, icon := range strings.Fields(`
-		book-open bookmark briefcase calendar camera chart-bar cloud code cpu
-		database file-text film folder gamepad globe hard-drive heart home image
-		inbox key lock mail map-pin message-square monitor music network newspaper
-		phone printer router rss search server settings shield shopping-cart star
-		terminal tv users wifi wrench`) {
-		linkIcons[icon] = true
-	}
-}
 
 // linkConfig is a link widget's config. URL is always set: for a favourite it
 // is the favourite's last known URL, so the widget still works when the
@@ -173,7 +158,7 @@ func Link(fav *favourites.Store, icons *images.Favicons) dashboards.Kind {
 				}
 				c.Icon = nil
 			case IconSymbol:
-				if c.Icon == nil || !linkIcons[*c.Icon] {
+				if c.Icon == nil || !symbols.Valid(*c.Icon) {
 					return nil, invalid("unknown icon")
 				}
 				c.ImageID = nil

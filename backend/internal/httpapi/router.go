@@ -11,6 +11,7 @@ import (
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/notes"
 	"boardly/internal/ratelimit"
 	"boardly/internal/users"
 )
@@ -29,6 +30,7 @@ type Deps struct {
 	Users      *users.Store
 	Favourites *favourites.Store
 	Dashboards *dashboards.Store
+	Notes      *notes.Store
 	Images     *images.Store
 	Favicons   *images.Favicons
 	// Previews takes preview images that connected apps send.
@@ -45,7 +47,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, images: d.Images, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, images: d.Images, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -76,6 +78,15 @@ func New(d Deps) http.Handler {
 	mux.Handle("PATCH /api/dashboards/{id}", a.requireUser(a.updateDashboard))
 	mux.Handle("DELETE /api/dashboards/{id}", a.requireUser(a.deleteDashboard))
 	mux.Handle("PUT /api/dashboards/{id}/layout", a.requireUser(a.saveLayout))
+	mux.Handle("GET /api/notes", a.requireUser(a.listNotes))
+	mux.Handle("POST /api/notes", a.requireUser(a.createNote))
+	mux.Handle("GET /api/notes/{id}", a.requireUser(a.getNote))
+	mux.Handle("PATCH /api/notes/{id}", a.requireUser(a.updateNote))
+	mux.Handle("DELETE /api/notes/{id}", a.requireUser(a.deleteNote))
+	mux.Handle("GET /api/note-categories", a.requireUser(a.listNoteCategories))
+	mux.Handle("POST /api/note-categories", a.requireUser(a.createNoteCategory))
+	mux.Handle("PATCH /api/note-categories/{id}", a.requireUser(a.updateNoteCategory))
+	mux.Handle("DELETE /api/note-categories/{id}", a.requireUser(a.deleteNoteCategory))
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
 	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
 	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))

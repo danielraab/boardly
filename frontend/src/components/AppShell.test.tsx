@@ -112,18 +112,18 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Dashboards, Favourites, Settings and Sign out in this order", async () => {
+	it("shows name, email, Dashboards, Favourites, Notes, Settings and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"Annann@example.orgDashboardsFavouritesSettingsSign out",
+			"Annann@example.orgDashboardsFavouritesNotesSettingsSign out",
 		);
 		expect(
 			within(menu)
 				.getAllByRole("menuitem")
 				.map((i) => i.textContent),
-		).toEqual(["Dashboards", "Favourites", "Settings", "Sign out"]);
+		).toEqual(["Dashboards", "Favourites", "Notes", "Settings", "Sign out"]);
 	});
 
 	it("shows the email without an empty name line when there is no name", async () => {
@@ -131,7 +131,7 @@ describe("signed-in user menu", () => {
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"ann@example.orgDashboardsFavouritesSettingsSign out",
+			"ann@example.orgDashboardsFavouritesNotesSettingsSign out",
 		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
@@ -175,6 +175,19 @@ describe("signed-in user menu", () => {
 		await waitFor(() =>
 			expect(router.state.location.pathname).toBe("/favourites"),
 		);
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+	});
+
+	it("goes to /notes from the Notes item and closes the menu", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/notes": { body: [] },
+			"GET /api/note-categories": { body: [] },
+		});
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(within(menu).getByRole("menuitem", { name: "Notes" }));
+		await waitFor(() => expect(router.state.location.pathname).toBe("/notes"));
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 	});
 

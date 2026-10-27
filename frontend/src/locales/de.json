@@ -7,6 +7,7 @@
 		"loading": "Wird geladen…",
 		"dashboards": "Dashboards",
 		"favourites": "Favoriten",
+		"notes": "Notizen",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden",
 		"addLink": "Link hinzufügen"
@@ -601,95 +602,12 @@
 				"urlLabel": "URL",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Ohne Titel wird der Titel des Favoriten gezeigt, oder nur die URL.",
-				"icons": {
-					"book-open": "Buch",
-					"bookmark": "Lesezeichen",
-					"briefcase": "Aktentasche",
-					"calendar": "Kalender",
-					"camera": "Kamera",
-					"chart-bar": "Diagramm",
-					"cloud": "Cloud",
-					"code": "Code",
-					"cpu": "Prozessor",
-					"database": "Datenbank",
-					"file-text": "Dokument",
-					"film": "Film",
-					"folder": "Ordner",
-					"gamepad": "Gamecontroller",
-					"globe": "Globus",
-					"hard-drive": "Festplatte",
-					"heart": "Herz",
-					"home": "Zuhause",
-					"image": "Bild",
-					"inbox": "Posteingang",
-					"key": "Schlüssel",
-					"lock": "Schloss",
-					"mail": "E-Mail",
-					"map-pin": "Kartenpin",
-					"message-square": "Chat",
-					"monitor": "Bildschirm",
-					"music": "Musik",
-					"network": "Netzwerk",
-					"newspaper": "Zeitung",
-					"phone": "Telefon",
-					"printer": "Drucker",
-					"router": "Router",
-					"rss": "RSS-Feed",
-					"search": "Suche",
-					"server": "Server",
-					"settings": "Einstellungen",
-					"shield": "Schild",
-					"shopping-cart": "Einkaufswagen",
-					"star": "Stern",
-					"terminal": "Terminal",
-					"tv": "Fernseher",
-					"users": "Personen",
-					"wifi": "WLAN",
-					"wrench": "Schraubenschlüssel"
-				},
 				"targetLabel": "Öffnen in",
 				"target": {
 					"_blank": "Neuer Tab",
 					"_self": "Gleicher Tab"
 				},
-				"errors": {
-					"unsupported_image": "Dieser Dateityp wird nicht unterstützt. Verwende PNG, JPEG, WebP, GIF oder ICO.",
-					"image_too_large": "Das Bild ist größer als 1 MB.",
-					"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal."
-				},
-				"newFavourite": "Neuer Favorit…",
-				"iconChooser": {
-					"label": "Icon",
-					"button": "Icon: {{name}}",
-					"tabs": {
-						"favicon": "Website-Icon",
-						"image": "Eigenes Bild",
-						"symbol": "Symbol",
-						"none": "Keines"
-					},
-					"favicon": {
-						"noUrl": "Wähle zuerst einen Favoriten oder gib eine URL ein.",
-						"loading": "Website-Icon wird gesucht…",
-						"none": "Für {{host}} wurde kein Website-Icon gefunden. Stattdessen wird ein Globus gezeigt.",
-						"found": "Das Website-Icon von {{host}}. Es folgt dem Link, wenn er auf eine andere Website zeigt.",
-						"use": "Website-Icon verwenden"
-					},
-					"image": {
-						"hint": "PNG, JPEG, WebP, GIF oder ICO, höchstens 1 MB.",
-						"upload": "Bild hochladen",
-						"replace": "Anderes Bild hochladen",
-						"use": "Dieses Bild verwenden"
-					},
-					"symbol": {
-						"filter": "Symbole filtern",
-						"group": "Symbole",
-						"noMatches": "Kein Symbol passt."
-					},
-					"inUse": "Wird verwendet",
-					"remove": "Icon entfernen",
-					"removed": "Kein Icon",
-					"done": "Fertig"
-				}
+				"newFavourite": "Neuer Favorit…"
 			},
 			"linkList": {
 				"name": "Linkliste",
@@ -750,5 +668,197 @@
 		"savedText": "Er ist jetzt in „{{folder}}“.",
 		"openFavourites": "Favoriten öffnen",
 		"saveAnother": "Weiteren Link speichern"
+	},
+	"symbols": {
+		"book-open": "Buch",
+		"bookmark": "Lesezeichen",
+		"briefcase": "Aktentasche",
+		"calendar": "Kalender",
+		"camera": "Kamera",
+		"chart-bar": "Diagramm",
+		"cloud": "Cloud",
+		"code": "Code",
+		"cpu": "Prozessor",
+		"database": "Datenbank",
+		"file-text": "Dokument",
+		"film": "Film",
+		"folder": "Ordner",
+		"gamepad": "Gamecontroller",
+		"globe": "Globus",
+		"hard-drive": "Festplatte",
+		"heart": "Herz",
+		"home": "Zuhause",
+		"image": "Bild",
+		"inbox": "Posteingang",
+		"key": "Schlüssel",
+		"lock": "Schloss",
+		"mail": "E-Mail",
+		"map-pin": "Kartenpin",
+		"message-square": "Chat",
+		"monitor": "Bildschirm",
+		"music": "Musik",
+		"network": "Netzwerk",
+		"newspaper": "Zeitung",
+		"phone": "Telefon",
+		"printer": "Drucker",
+		"router": "Router",
+		"rss": "RSS-Feed",
+		"search": "Suche",
+		"server": "Server",
+		"settings": "Einstellungen",
+		"shield": "Schild",
+		"shopping-cart": "Einkaufswagen",
+		"star": "Stern",
+		"terminal": "Terminal",
+		"tv": "Fernseher",
+		"users": "Personen",
+		"wifi": "WLAN",
+		"wrench": "Schraubenschlüssel"
+	},
+	"iconChooser": {
+		"label": "Icon",
+		"button": "Icon: {{name}}",
+		"tabs": {
+			"favicon": "Website-Icon",
+			"image": "Eigenes Bild",
+			"symbol": "Symbol",
+			"none": "Keines"
+		},
+		"favicon": {
+			"noUrl": "Wähle zuerst einen Favoriten oder gib eine URL ein.",
+			"loading": "Website-Icon wird gesucht…",
+			"none": "Für {{host}} wurde kein Website-Icon gefunden. Stattdessen wird ein Globus gezeigt.",
+			"found": "Das Website-Icon von {{host}}. Es folgt dem Link, wenn er auf eine andere Website zeigt.",
+			"use": "Website-Icon verwenden"
+		},
+		"image": {
+			"hint": "PNG, JPEG, WebP, GIF oder ICO, höchstens 1 MB.",
+			"upload": "Bild hochladen",
+			"replace": "Anderes Bild hochladen",
+			"use": "Dieses Bild verwenden"
+		},
+		"symbol": {
+			"filter": "Symbole filtern",
+			"group": "Symbole",
+			"noMatches": "Kein Symbol passt."
+		},
+		"inUse": "Wird verwendet",
+		"remove": "Icon entfernen",
+		"removed": "Kein Icon",
+		"done": "Fertig",
+		"errors": {
+			"unsupported_image": "Dieser Dateityp wird nicht unterstützt. Verwende PNG, JPEG, WebP, GIF oder ICO.",
+			"image_too_large": "Das Bild ist größer als 1 MB.",
+			"uploadFailed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal."
+		}
+	},
+	"notes": {
+		"title": "Notizen",
+		"intro": "Listen, Aufgaben und Ideen, zuletzt bearbeitete zuerst.",
+		"newNote": "Neue Notiz",
+		"untitled": "Unbenannte Notiz",
+		"open": "{{title}} öffnen",
+		"empty": "Noch keine Notizen",
+		"emptyHint": "Schreib Aufgaben, Listen und Ideen auf. Sie werden beim Tippen gespeichert.",
+		"emptyCategory": "Keine Notizen in dieser Kategorie",
+		"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
+		"changedElsewhere": "Die Notiz wurde woanders geändert. Ihre Karte zeigt den aktuellen Stand.",
+		"colours": {
+			"label": "Farbe",
+			"button": "Farbe: {{name}}",
+			"none": "Keine Farbe",
+			"red": "Rot",
+			"orange": "Orange",
+			"yellow": "Gelb",
+			"green": "Grün",
+			"teal": "Petrol",
+			"blue": "Blau",
+			"purple": "Lila",
+			"pink": "Rosa",
+			"grey": "Grau"
+		},
+		"categories": {
+			"heading": "Kategorien",
+			"all": "Alle Notizen",
+			"none": "Ohne Kategorie",
+			"new": "Neue Kategorie",
+			"newSub": "Neue Unterkategorie",
+			"edit": "Bearbeiten",
+			"delete": "Löschen",
+			"actions": "Aktionen für {{title}}",
+			"expand": "{{title}} aufklappen",
+			"collapse": "{{title}} zuklappen",
+			"count_one": "{{count}} Notiz",
+			"count_other": "{{count}} Notizen",
+			"open": "Kategorien",
+			"close": "Schließen",
+			"dialog": {
+				"newTitle": "Neue Kategorie",
+				"editTitle": "Kategorie bearbeiten",
+				"title": "Titel",
+				"titleRequired": "Gib einen Titel ein.",
+				"titleTooLong": "Der Titel darf höchstens 200 Zeichen lang sein.",
+				"parent": "Übergeordnete Kategorie",
+				"noParent": "Keine",
+				"save": "Speichern",
+				"cancel": "Abbrechen"
+			},
+			"deleteDialog": {
+				"title": "Kategorie löschen?",
+				"text": "„{{title}}“ wird gelöscht.",
+				"notes_one": "Ihre Notiz ist danach ohne Kategorie.",
+				"notes_other": "Ihre {{count}} Notizen sind danach ohne Kategorie.",
+				"subcategories_one": "Ihre Unterkategorie rückt eine Ebene nach oben.",
+				"subcategories_other": "Ihre {{count}} Unterkategorien rücken eine Ebene nach oben.",
+				"confirm": "Löschen",
+				"cancel": "Abbrechen"
+			},
+			"badge": {
+				"change": "Kategorie: {{path}}. Kategorie ändern",
+				"add": "Kategorie hinzufügen",
+				"none": "Keine Kategorie",
+				"picker": "Kategorie"
+			}
+		},
+		"editor": {
+			"back": "Notizen",
+			"title": "Titel",
+			"content": "Inhalt",
+			"placeholder": "Schreib etwas…",
+			"menu": "Weitere Aktionen",
+			"delete": "Notiz löschen",
+			"deleteDialog": {
+				"title": "Notiz löschen?",
+				"text": "„{{title}}“ wird gelöscht. Das kann nicht rückgängig gemacht werden.",
+				"confirm": "Löschen",
+				"cancel": "Abbrechen"
+			},
+			"status": {
+				"saving": "Wird gespeichert…",
+				"saved": "Gespeichert",
+				"failed": "Nicht gespeichert",
+				"retry": "Erneut versuchen"
+			},
+			"conflict": "Diese Notiz wurde woanders geändert. Lade sie neu, um weiterzuschreiben; deine letzten Änderungen hier wurden nicht gespeichert.",
+			"reload": "Neu laden",
+			"toolbar": {
+				"label": "Formatierung",
+				"heading": "Überschrift",
+				"bullet": "Aufzählung",
+				"ordered": "Nummerierte Liste",
+				"task": "Aufgabenliste",
+				"bold": "Fett",
+				"italic": "Kursiv",
+				"strike": "Durchgestrichen",
+				"code": "Code",
+				"link": "Link"
+			},
+			"link": {
+				"label": "Link-Adresse",
+				"apply": "Übernehmen",
+				"remove": "Link entfernen",
+				"invalid": "Gib eine http-, https- oder mailto-Adresse ein."
+			}
+		}
 	}
 }

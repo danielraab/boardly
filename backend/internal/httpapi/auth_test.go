@@ -21,6 +21,7 @@ import (
 	"boardly/internal/images"
 	"boardly/internal/jobs"
 	"boardly/internal/mail"
+	"boardly/internal/notes"
 	"boardly/internal/users"
 	"boardly/internal/widgets"
 )
@@ -123,7 +124,7 @@ func newServer(t *testing.T) *server {
 	appTokens.Now = c.Now
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore,
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: notes.NewStore(database),
 		Images: imageStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})

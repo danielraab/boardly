@@ -1,19 +1,19 @@
 import { Popover } from "@base-ui/react/popover";
 import { Tabs } from "@base-ui/react/tabs";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search, SmilePlus } from "lucide-react";
 import { type ChangeEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { ApiError } from "#/lib/api";
-import { uploadImage } from "./api";
-import { type LinkIconKey, linkIcons } from "./icons";
-import { LinkIcon } from "./LinkView";
+import { uploadImage } from "#/lib/images";
+import { ChosenIcon } from "./icons/ChosenIcon";
+import { symbols as allSymbols, type SymbolKey } from "./icons/symbols";
 
 export type IconSource = "favicon" | "image" | "symbol" | "none";
 
 /**
- * A link widget's icon while its settings are open. The image and the symbol
- * are kept while another source is chosen, so switching back restores them.
+ * An icon while it is being chosen. The image and the symbol are kept while
+ * another source is chosen, so switching back restores them.
  */
 export type IconChoice = {
 	source: IconSource;
@@ -21,11 +21,20 @@ export type IconChoice = {
 	icon: string | null;
 };
 
-/** "none" has no tab: it is chosen with the footer's "Remove icon" button. */
-const tabs: IconSource[] = ["favicon", "image", "symbol"];
+/**
+ * "none" has no tab: it is chosen with the footer's "Remove icon" button.
+ * Without a website icon there is no "favicon" tab either.
+ */
+const tabsFor = (withFavicon: boolean): IconSource[] =>
+	withFavicon ? ["favicon", "image", "symbol"] : ["image", "symbol"];
 
 /** The tab the chooser opens on for a source. */
-const tabFor = (source: IconSource) => (source === "none" ? "favicon" : source);
+const tabFor = (source: IconSource, withFavicon: boolean) =>
+	source === "none" || (source === "favicon" && !withFavicon)
+		? withFavicon
+			? "favicon"
+			: "symbol"
+		: source;
 
 const imageTypes = "image/png,image/jpeg,image/webp,image/gif,image/x-icon";
 
@@ -46,37 +55,44 @@ export function shownIcon(choice: IconChoice, faviconId: string | null) {
 }
 
 /**
- * The icon field of the link settings: a button with the current icon that
- * opens a chooser with one tab per source. Choices apply right away; the
- * chooser stays open until Done, Escape or a click outside.
+ * An icon field: a button with the current icon that opens a chooser with one
+ * tab per source. Choices apply right away; the chooser stays open until
+ * Done, Escape or a click outside. Without favicon, there is no "Website
+ * icon" tab. The "field" variant is a labelled full-width button for forms,
+ * "button" a square icon button.
  */
 export function IconChooser({
 	value,
 	onChange,
 	favicon,
-	host,
+	host = null,
+	variant = "field",
 }: {
 	value: IconChoice;
 	onChange: (value: IconChoice) => void;
 	/** The website icon of the link's URL; id null when there is none. */
-	favicon: { id: string | null; loading: boolean };
+	favicon?: { id: string | null; loading: boolean };
 	/** The host of the link's URL, or null without a URL. */
-	host: string | null;
+	host?: string | null;
+	variant?: "field" | "button";
 }) {
 	const { t } = useTranslation();
+	const withFavicon = favicon !== undefined;
+	const tabs = tabsFor(withFavicon);
 	const [open, setOpen] = useState(false);
-	const [tabValue, setTabValue] = useState<IconSource>(tabFor(value.source));
+	const [tabValue, setTabValue] = useState<IconSource>(
+		tabFor(value.source, withFavicon),
+	);
 	const [filter, setFilter] = useState("");
 	const [uploadError, setUploadError] = useState<string | null>(null);
 	const [uploading, setUploading] = useState(false);
 
-	const symbolName = (key: string) =>
-		t(`dashboards.widgets.link.icons.${key as LinkIconKey}`);
+	const symbolName = (key: string) => t(`symbols.${key as SymbolKey}`);
 	const kindName =
 		value.source === "symbol" && value.icon
 			? symbolName(value.icon)
-			: t(`dashboards.widgets.link.iconChooser.tabs.${value.source}`);
-	const shown = shownIcon(value, favicon.id);
+			: t(`iconChooser.tabs.${value.source}`);
+	const shown = shownIcon(value, favicon?.id ?? null);
 	const choose = (source: IconSource, fields: Partial<IconChoice> = {}) =>
 		onChange({ ...value, ...fields, source });
 
@@ -92,8 +108,8 @@ export function IconChooser({
 			const code = err instanceof ApiError ? err.code : "";
 			setUploadError(
 				code === "unsupported_image" || code === "image_too_large"
-					? t(`dashboards.widgets.link.errors.${code}`)
-					: t("dashboards.widgets.link.errors.uploadFailed"),
+					? t(`iconChooser.errors.${code}`)
+					: t("iconChooser.errors.uploadFailed"),
 			);
 		} finally {
 			setUploading(false);
@@ -108,7 +124,7 @@ export function IconChooser({
 		source: IconSource,
 		label: string,
 		fields = {},
-		inUseLabel = t("dashboards.widgets.link.iconChooser.inUse"),
+		inUseLabel = t("iconChooser.inUse"),
 	) => {
 		const inUse = value.source === source;
 		return (
@@ -131,51 +147,66 @@ export function IconChooser({
 	);
 
 	let faviconText: string;
-	if (!host)
-		faviconText = t("dashboards.widgets.link.iconChooser.favicon.noUrl");
-	else if (favicon.loading)
-		faviconText = t("dashboards.widgets.link.iconChooser.favicon.loading");
-	else if (!favicon.id)
-		faviconText = t("dashboards.widgets.link.iconChooser.favicon.none", {
+	if (!host) faviconText = t("iconChooser.favicon.noUrl");
+	else if (favicon?.loading) faviconText = t("iconChooser.favicon.loading");
+	else if (!favicon?.id)
+		faviconText = t("iconChooser.favicon.none", {
 			host,
 		});
 	else
-		faviconText = t("dashboards.widgets.link.iconChooser.favicon.found", {
+		faviconText = t("iconChooser.favicon.found", {
 			host,
 		});
 
 	const q = filter.trim().toLowerCase();
-	const symbols = (Object.keys(linkIcons) as LinkIconKey[]).filter(
+	const symbols = (Object.keys(allSymbols) as SymbolKey[]).filter(
 		(key) => !q || symbolName(key).toLowerCase().includes(q) || key.includes(q),
 	);
 
 	return (
 		<div>
-			<span className="block text-sm font-medium">
-				{t("dashboards.widgets.link.iconChooser.label")}
-			</span>
+			{variant === "field" && (
+				<span className="block text-sm font-medium">
+					{t("iconChooser.label")}
+				</span>
+			)}
 			<Popover.Root
 				open={open}
 				onOpenChange={(next) => {
 					setOpen(next);
-					if (next) setTabValue(tabFor(value.source));
+					if (next) setTabValue(tabFor(value.source, withFavicon));
 				}}
 			>
 				<Popover.Trigger
-					aria-label={t("dashboards.widgets.link.iconChooser.button", {
+					aria-label={t("iconChooser.button", {
 						name: kindName,
 					})}
-					className={`${secondaryButton} mt-2 w-full justify-start`}
+					title={variant === "button" ? kindName : undefined}
+					className={
+						variant === "field"
+							? `${secondaryButton} mt-2 w-full justify-start`
+							: `${secondaryButton} size-10 justify-center p-0`
+					}
 				>
-					<LinkIcon {...shown} className="size-5" />
-					<span className="min-w-0 flex-1 truncate text-left">{kindName}</span>
-					<ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+					<ChosenIcon
+						{...shown}
+						className="size-5"
+						fallback={withFavicon ? undefined : SmilePlus}
+					/>
+					{variant === "field" && (
+						<>
+							<span className="min-w-0 flex-1 truncate text-left">
+								{kindName}
+							</span>
+							<ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+						</>
+					)}
 				</Popover.Trigger>
 				<Popover.Portal>
 					<Popover.Positioner sideOffset={6} align="start">
 						<Popover.Popup className="w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-3 text-ink shadow-[0_8px_24px_-12px_var(--color-shadow)] outline-none origin-[var(--transform-origin)] transition-[opacity,scale] duration-100 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none">
 							<Popover.Title className="sr-only">
-								{t("dashboards.widgets.link.iconChooser.label")}
+								{t("iconChooser.label")}
 							</Popover.Title>
 							<Tabs.Root
 								value={tabValue}
@@ -184,41 +215,40 @@ export function IconChooser({
 								<Tabs.List className="flex gap-1 border-b border-line pb-2">
 									{tabs.map((s) => (
 										<Tabs.Tab key={s} value={s} className={tab}>
-											{t(`dashboards.widgets.link.iconChooser.tabs.${s}`)}
+											{t(`iconChooser.tabs.${s}`)}
 										</Tabs.Tab>
 									))}
 								</Tabs.List>
 
-								<Tabs.Panel value="favicon" className="pt-3">
-									<div className="flex items-center gap-3">
-										{preview(
-											<LinkIcon
-												imageId={favicon.id}
-												icon={null}
-												className="size-8"
-											/>,
-										)}
-										<p className="text-sm text-muted">{faviconText}</p>
-									</div>
-									<div className="mt-3">
-										{chooseButton(
-											"favicon",
-											t("dashboards.widgets.link.iconChooser.favicon.use"),
-										)}
-									</div>
-								</Tabs.Panel>
+								{withFavicon && (
+									<Tabs.Panel value="favicon" className="pt-3">
+										<div className="flex items-center gap-3">
+											{preview(
+												<ChosenIcon
+													imageId={favicon?.id ?? null}
+													icon={null}
+													className="size-8"
+												/>,
+											)}
+											<p className="text-sm text-muted">{faviconText}</p>
+										</div>
+										<div className="mt-3">
+											{chooseButton("favicon", t("iconChooser.favicon.use"))}
+										</div>
+									</Tabs.Panel>
+								)}
 
 								<Tabs.Panel value="image" className="pt-3">
 									<div className="flex items-center gap-3">
 										{preview(
-											<LinkIcon
+											<ChosenIcon
 												imageId={value.imageId}
 												icon={null}
 												className="size-8"
 											/>,
 										)}
 										<p className="text-sm text-muted">
-											{t("dashboards.widgets.link.iconChooser.image.hint")}
+											{t("iconChooser.image.hint")}
 										</p>
 									</div>
 									<div className="mt-3 flex flex-wrap items-center gap-2">
@@ -227,8 +257,8 @@ export function IconChooser({
 										>
 											{t(
 												value.imageId
-													? "dashboards.widgets.link.iconChooser.image.replace"
-													: "dashboards.widgets.link.iconChooser.image.upload",
+													? "iconChooser.image.replace"
+													: "iconChooser.image.upload",
 											)}
 											<input
 												type="file"
@@ -239,10 +269,7 @@ export function IconChooser({
 											/>
 										</label>
 										{value.imageId &&
-											chooseButton(
-												"image",
-												t("dashboards.widgets.link.iconChooser.image.use"),
-											)}
+											chooseButton("image", t("iconChooser.image.use"))}
 									</div>
 									{uploadError && (
 										<p role="alert" className="mt-2 text-sm text-red-700">
@@ -261,24 +288,18 @@ export function IconChooser({
 											type="search"
 											value={filter}
 											onChange={(e) => setFilter(e.target.value)}
-											placeholder={t(
-												"dashboards.widgets.link.iconChooser.symbol.filter",
-											)}
-											aria-label={t(
-												"dashboards.widgets.link.iconChooser.symbol.filter",
-											)}
+											placeholder={t("iconChooser.symbol.filter")}
+											aria-label={t("iconChooser.symbol.filter")}
 											className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none"
 										/>
 									</div>
 									<div
 										role="radiogroup"
-										aria-label={t(
-											"dashboards.widgets.link.iconChooser.symbol.group",
-										)}
+										aria-label={t("iconChooser.symbol.group")}
 										className="mt-2 grid max-h-52 grid-cols-6 gap-1 overflow-auto p-0.5"
 									>
 										{symbols.map((key) => {
-											const Icon = linkIcons[key];
+											const Icon = allSymbols[key];
 											return (
 												<label
 													key={key}
@@ -287,7 +308,7 @@ export function IconChooser({
 												>
 													<input
 														type="radio"
-														name="link-symbol"
+														name="icon-symbol"
 														value={key}
 														checked={
 															value.source === "symbol" && value.icon === key
@@ -303,9 +324,7 @@ export function IconChooser({
 									</div>
 									{symbols.length === 0 && (
 										<p className="mt-2 text-sm text-muted">
-											{t(
-												"dashboards.widgets.link.iconChooser.symbol.noMatches",
-											)}
+											{t("iconChooser.symbol.noMatches")}
 										</p>
 									)}
 								</Tabs.Panel>
@@ -313,12 +332,12 @@ export function IconChooser({
 							<div className="mt-3 flex justify-between gap-2 border-t border-line pt-3">
 								{chooseButton(
 									"none",
-									t("dashboards.widgets.link.iconChooser.remove"),
+									t("iconChooser.remove"),
 									{},
-									t("dashboards.widgets.link.iconChooser.removed"),
+									t("iconChooser.removed"),
 								)}
 								<Popover.Close className={primaryButton}>
-									{t("dashboards.widgets.link.iconChooser.done")}
+									{t("iconChooser.done")}
 								</Popover.Close>
 							</div>
 						</Popover.Popup>

@@ -12,12 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
+import { Route as NotesRouteImport } from './routes/notes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as UserSlugIndexRouteImport } from './routes/$userSlug/index'
 import { Route as UserSlugDashboardSlugRouteImport } from './routes/$userSlug/$dashboardSlug'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as LoginVerifyRouteImport } from './routes/login/verify'
+import { Route as NotesIndexRouteImport } from './routes/notes.index'
+import { Route as NotesNoteIdRouteImport } from './routes/notes.$noteId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -32,6 +35,11 @@ const DashboardsRoute = DashboardsRouteImport.update({
 const FavouritesRoute = FavouritesRouteImport.update({
   id: '/favourites',
   path: '/favourites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -64,17 +72,30 @@ const LoginVerifyRoute = LoginVerifyRouteImport.update({
   path: '/login/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotesIndexRoute = NotesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotesRoute,
+} as any)
+const NotesNoteIdRoute = NotesNoteIdRouteImport.update({
+  id: '/$noteId',
+  path: '/$noteId',
+  getParentRoute: () => NotesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/notes': typeof NotesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/notes/$noteId': typeof NotesNoteIdRoute
   '/$userSlug/': typeof UserSlugIndexRoute
   '/login/': typeof LoginIndexRoute
+  '/notes/': typeof NotesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,20 +105,25 @@ export interface FileRoutesByTo {
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/notes/$noteId': typeof NotesNoteIdRoute
   '/$userSlug': typeof UserSlugIndexRoute
   '/login': typeof LoginIndexRoute
+  '/notes': typeof NotesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/notes': typeof NotesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/notes/$noteId': typeof NotesNoteIdRoute
   '/$userSlug/': typeof UserSlugIndexRoute
   '/login/': typeof LoginIndexRoute
+  '/notes/': typeof NotesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,12 +131,15 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboards'
     | '/favourites'
+    | '/notes'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
+    | '/notes/$noteId'
     | '/$userSlug/'
     | '/login/'
+    | '/notes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -120,25 +149,31 @@ export interface FileRouteTypes {
     | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
+    | '/notes/$noteId'
     | '/$userSlug'
     | '/login'
+    | '/notes'
   id:
     | '__root__'
     | '/'
     | '/dashboards'
     | '/favourites'
+    | '/notes'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
+    | '/notes/$noteId'
     | '/$userSlug/'
     | '/login/'
+    | '/notes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
+  NotesRoute: typeof NotesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   ShareRoute: typeof ShareRoute
   UserSlugDashboardSlugRoute: typeof UserSlugDashboardSlugRoute
@@ -168,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/favourites'
       fullPath: '/favourites'
       preLoaderRoute: typeof FavouritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -212,13 +254,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notes/': {
+      id: '/notes/'
+      path: '/'
+      fullPath: '/notes/'
+      preLoaderRoute: typeof NotesIndexRouteImport
+      parentRoute: typeof NotesRoute
+    }
+    '/notes/$noteId': {
+      id: '/notes/$noteId'
+      path: '/$noteId'
+      fullPath: '/notes/$noteId'
+      preLoaderRoute: typeof NotesNoteIdRouteImport
+      parentRoute: typeof NotesRoute
+    }
   }
 }
+
+interface NotesRouteChildren {
+  NotesNoteIdRoute: typeof NotesNoteIdRoute
+  NotesIndexRoute: typeof NotesIndexRoute
+}
+
+const NotesRouteChildren: NotesRouteChildren = {
+  NotesNoteIdRoute: NotesNoteIdRoute,
+  NotesIndexRoute: NotesIndexRoute,
+}
+
+const NotesRouteWithChildren = NotesRoute._addFileChildren(NotesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
+  NotesRoute: NotesRouteWithChildren,
   SettingsRoute: SettingsRoute,
   ShareRoute: ShareRoute,
   UserSlugDashboardSlugRoute: UserSlugDashboardSlugRoute,
