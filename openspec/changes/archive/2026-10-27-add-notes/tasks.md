@@ -57,4 +57,4 @@
 - [x] 9.1 Add all en + de strings (page, cards, empty states, editor, toolbar, autosave, categories, dialogs, colour names, menu entry) and verify the i18n test passes
 - [x] 9.2 Document notes and categories in README.md (feature section) and verify the README describes the Notes page, categories and that content is stored as JSON
 - [x] 9.3 Run `make check` and `make test` and verify both pass
-- [ ] 9.4 Run the app and check by hand: create a note with Markdown shortcuts and tasks, tick tasks, autosave and reload, two-tab conflict, colours in a light and a dark theme, nested categories with filter and delete, badge change from a card, phone width with the drawer
+- [x] 9.4 Run the app and check by hand: create a note with Markdown shortcuts and tasks, tick tasks, autosave and reload, two-tab conflict, colours in a light and a dark theme, nested categories with filter and delete, badge change from a card, phone width with the drawer
