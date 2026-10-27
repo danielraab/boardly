@@ -203,7 +203,8 @@ export function IconChooser({
 					)}
 				</Popover.Trigger>
 				<Popover.Portal>
-					<Popover.Positioner sideOffset={6} align="start">
+					{/* Above dialogs (z-40), which the chooser is often opened from. */}
+					<Popover.Positioner sideOffset={6} align="start" className="z-50">
 						<Popover.Popup className="w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-3 text-ink shadow-[0_8px_24px_-12px_var(--color-shadow)] outline-none origin-[var(--transform-origin)] transition-[opacity,scale] duration-100 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none">
 							<Popover.Title className="sr-only">
 								{t("iconChooser.label")}
