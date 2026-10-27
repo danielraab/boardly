@@ -484,6 +484,10 @@
 			"actions": "Dashboard-Aktionen",
 			"settings": "Einstellungen"
 		},
+		"section": {
+			"expand": "{{title}} aufklappen",
+			"collapse": "{{title}} zuklappen"
+		},
 		"editor": {
 			"editLayout": "Layout bearbeiten",
 			"saveAndExit": "Speichern und beenden",
