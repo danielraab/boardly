@@ -100,6 +100,7 @@ function View({ widget, editing }: WidgetViewProps) {
 export const linkKind: WidgetKind = {
 	kind: "link",
 	icon: Link,
+	group: "favourites",
 	labelKey: "dashboards.widgets.link.name",
 	descriptionKey: "dashboards.widgets.link.description",
 	defaultConfig: (): LinkConfig => ({

@@ -231,3 +231,29 @@ func TestRecentFavouritesWidget(t *testing.T) {
 		}
 	}
 }
+
+func TestNoteWidget(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	s.setSlug(t, ann, "ann")
+	home := s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
+	rec := s.req("POST", "/api/notes", `{"title":"Groceries"}`, withCookie(ann))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create note: %d %s", rec.Code, rec.Body)
+	}
+	note := decodeJSONBody[struct{ ID string }](t, rec)
+
+	rec = s.req("PUT", "/api/dashboards/"+home.ID+"/layout", `{"version":0,"sections":[{"kind":"section","width":6,"children":[
+		{"kind":"note","width":2,"config":{"noteId":"`+note.ID+`","size":"M","showIfPublic":true}}]}]}`, withCookie(ann))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", rec.Code, rec.Body)
+	}
+	owner := s.req("GET", "/api/u/ann/home", "", withCookie(ann)).Body.String()
+	if !strings.Contains(owner, `"title":"Groceries"`) || !strings.Contains(owner, `"version":1`) {
+		t.Errorf("owner: %s", owner)
+	}
+	visitor := s.req("GET", "/api/u/ann/home", "").Body.String()
+	if !strings.Contains(visitor, `"title":"Groceries"`) || strings.Contains(visitor, `"version":1`) {
+		t.Errorf("visitor: %s", visitor)
+	}
+}

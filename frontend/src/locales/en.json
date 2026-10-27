@@ -548,7 +548,11 @@
 		},
 		"widgetPicker": {
 			"title": "Add widget",
-			"text": "Choose what the new widget shows."
+			"text": "Choose what the new widget shows.",
+			"groups": {
+				"favourites": "Favourites",
+				"notes": "Notes"
+			}
 		},
 		"discard": {
 			"title": "Discard changes?",
@@ -662,6 +666,19 @@
 				"emptyDays_one": "No favourites in the last day",
 				"emptyDays_other": "No favourites in the last {{count}} days",
 				"missing": "This folder no longer exists"
+			},
+			"note": {
+				"name": "Note",
+				"description": "Shows one of your notes, with its todos.",
+				"addTitle": "Add note",
+				"editTitle": "Edit note",
+				"noteLabel": "Note",
+				"notePlaceholder": "Choose a note",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the whole note, but can't change it. Otherwise only you see the widget.",
+				"missing": "This note no longer exists",
+				"changeFailed": "The note couldn't be changed. Please try again.",
+				"changedElsewhere": "The note was changed elsewhere. The widget shows the current state."
 			}
 		}
 	},

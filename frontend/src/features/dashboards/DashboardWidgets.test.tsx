@@ -1,9 +1,10 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import i18n from "#/i18n";
 import { mockApi, signedIn } from "#/test/api";
 import { section, viewData } from "#/test/dashboards";
 import { renderApp } from "#/test/renderApp";
-import { note, noteKind } from "#/test/widgets";
+import { textKind, textWidget } from "#/test/widgets";
 import type { Widget } from "./api";
 import { widgetKinds } from "./widgets/registry";
 
@@ -11,10 +12,10 @@ const frame = (id: string) => screen.getByTestId(`section-${id}`);
 const widget = (id: string) => screen.getByTestId(`widget-${id}`);
 
 beforeAll(() => {
-	widgetKinds.push(noteKind);
+	widgetKinds.push(textKind);
 });
 afterAll(() => {
-	widgetKinds.splice(widgetKinds.indexOf(noteKind), 1);
+	widgetKinds.splice(widgetKinds.indexOf(textKind), 1);
 });
 
 async function openEditor(sections: Widget[], more = {}) {
@@ -37,8 +38,8 @@ describe("content widgets in view mode", () => {
 						section(
 							"Work",
 							{ width: 4 },
-							note("n1", { width: 2, height: 2, data: "resolved" }),
-							note("n2", { width: 6 }),
+							textWidget("n1", { width: 2, height: 2, data: "resolved" }),
+							textWidget("n2", { width: 6 }),
 						),
 					],
 					{ isOwner: false, id: undefined },
@@ -63,7 +64,7 @@ describe("content widgets in view mode", () => {
 
 describe("editing controls for widgets", () => {
 	it("offers Add widget in sections, but not at the top level", async () => {
-		await openEditor([section("Work", {}, note("n1"))]);
+		await openEditor([section("Work", {}, textWidget("n1"))]);
 		expect(
 			within(frame("Work")).getByRole("button", { name: "Add widget" }),
 		).toBeVisible();
@@ -71,8 +72,12 @@ describe("editing controls for widgets", () => {
 			1,
 		);
 		expect(widget("n1")).toHaveClass("outline-dashed");
-		expect(screen.getByRole("button", { name: "Move Note" })).toBeVisible();
-		expect(screen.getByRole("button", { name: "Edit Note" })).toBeVisible();
+		expect(
+			screen.getByRole("button", { name: "Move Text widget" }),
+		).toBeVisible();
+		expect(
+			screen.getByRole("button", { name: "Edit Text widget" }),
+		).toBeVisible();
 		expect(screen.getByText("n1 (editing)")).toBeVisible();
 	});
 
@@ -99,9 +104,11 @@ describe("adding, editing and deleting widgets", () => {
 			within(frame("Work")).getAllByRole("button", { name: "Add widget" })[1],
 		);
 		const picker = await screen.findByRole("dialog", { name: "Add widget" });
-		await user.click(within(picker).getByRole("button", { name: /Note/ }));
+		await user.click(
+			within(picker).getByRole("button", { name: /Text widget/ }),
+		);
 
-		const dialog = await screen.findByRole("dialog", { name: "New note" });
+		const dialog = await screen.findByRole("dialog", { name: "New text" });
 		expect(within(dialog).getByLabelText("Width")).toHaveValue("4");
 		expect(within(dialog).getByLabelText("Fit the content")).toBeChecked();
 		const add = within(dialog).getByRole("button", { name: "Add" });
@@ -118,12 +125,55 @@ describe("adding, editing and deleting widgets", () => {
 		expect(children).toEqual(["section", "widget"]);
 	});
 
+	it("groups the kinds in the picker", async () => {
+		const { user } = await openEditor([section("Work")]);
+		await user.click(screen.getByRole("button", { name: "Add widget" }));
+		const picker = await screen.findByRole("dialog", { name: "Add widget" });
+		const groups = within(picker).getAllByRole("region");
+		expect(groups.map((g) => g.getAttribute("aria-labelledby"))).toEqual([
+			"widget-group-favourites",
+			"widget-group-notes",
+		]);
+		const names = (group: HTMLElement) =>
+			within(group)
+				.getAllByRole("button")
+				.map((b) => b.querySelector(".font-medium")?.textContent);
+		expect(
+			names(within(picker).getByRole("region", { name: "Favourites" })),
+		).toEqual([
+			"Favourite explorer",
+			"Link",
+			"Link list",
+			"Recent favourites",
+			"Text widget",
+		]);
+		expect(
+			names(within(picker).getByRole("region", { name: "Notes" })),
+		).toEqual(["Note"]);
+	});
+
+	it("shows the picker's group headings in German", async () => {
+		const { user } = await openEditor([section("Work")]);
+		await act(() => i18n.changeLanguage("de"));
+		await user.click(screen.getByRole("button", { name: "Widget hinzufügen" }));
+		const picker = await screen.findByRole("dialog", {
+			name: "Widget hinzufügen",
+		});
+		expect(
+			within(picker)
+				.getAllByRole("heading", { level: 3 })
+				.map((h) => h.textContent),
+		).toEqual(["Favoriten", "Notizen"]);
+	});
+
 	it("adds nothing when the settings are cancelled", async () => {
 		const { user } = await openEditor([section("Work")]);
 		await user.click(screen.getByRole("button", { name: "Add widget" }));
 		const picker = await screen.findByRole("dialog", { name: "Add widget" });
-		await user.click(within(picker).getByRole("button", { name: /Note/ }));
-		const dialog = await screen.findByRole("dialog", { name: "New note" });
+		await user.click(
+			within(picker).getByRole("button", { name: /Text widget/ }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "New text" });
 		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -134,9 +184,9 @@ describe("adding, editing and deleting widgets", () => {
 	});
 
 	it("edits a widget's settings and height", async () => {
-		const { user } = await openEditor([section("Work", {}, note("n1"))]);
-		await user.click(screen.getByRole("button", { name: "Edit Note" }));
-		const dialog = await screen.findByRole("dialog", { name: "Edit note" });
+		const { user } = await openEditor([section("Work", {}, textWidget("n1"))]);
+		await user.click(screen.getByRole("button", { name: "Edit Text widget" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit text" });
 		const text = within(dialog).getByLabelText("Text");
 		await user.clear(text);
 		await user.type(text, "Changed");
@@ -153,15 +203,15 @@ describe("adding, editing and deleting widgets", () => {
 	});
 
 	it("deletes a widget after confirming", async () => {
-		const { user } = await openEditor([section("Work", {}, note("n1"))]);
-		await user.click(screen.getByRole("button", { name: "Edit Note" }));
+		const { user } = await openEditor([section("Work", {}, textWidget("n1"))]);
+		await user.click(screen.getByRole("button", { name: "Edit Text widget" }));
 		await user.click(
 			await screen.findByRole("button", { name: "Delete widget" }),
 		);
 		const confirm = await screen.findByRole("alertdialog", {
 			name: "Delete widget?",
 		});
-		expect(confirm).toHaveTextContent("“Note” will be deleted.");
+		expect(confirm).toHaveTextContent("“Text widget” will be deleted.");
 		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
 		await waitFor(() => expect(screen.queryByTestId("widget-n1")).toBeNull());
@@ -172,10 +222,10 @@ describe("adding, editing and deleting widgets", () => {
 describe("moving and saving widgets", () => {
 	it("moves a widget into another section with the keyboard", async () => {
 		const { user } = await openEditor([
-			section("Work", {}, note("n1")),
+			section("Work", {}, textWidget("n1")),
 			section("Home"),
 		]);
-		screen.getByRole("button", { name: "Move Note" }).focus();
+		screen.getByRole("button", { name: "Move Text widget" }).focus();
 		// The only places are inside Work and inside Home, none at the top level.
 		await user.keyboard(" {ArrowDown} ");
 		await waitFor(() =>
@@ -187,7 +237,7 @@ describe("moving and saving widgets", () => {
 
 	it("saves widgets with kind and config, without resolved data", async () => {
 		const { api, user, router } = await openEditor(
-			[section("Work", {}, note("n1", { data: "resolved" }))],
+			[section("Work", {}, textWidget("n1", { data: "resolved" }))],
 			{
 				"PUT /api/dashboards/d1/layout": ({ body }: { body: unknown }) => ({
 					body: {
@@ -204,7 +254,7 @@ describe("moving and saving widgets", () => {
 		const sent = (call.body as { sections: Widget[] }).sections;
 		expect(sent[0]).toMatchObject({
 			kind: "section",
-			children: [{ id: "n1", kind: "note", config: { text: "n1" } }],
+			children: [{ id: "n1", kind: "text", config: { text: "n1" } }],
 		});
 		expect(JSON.stringify(sent)).not.toContain("resolved");
 	});

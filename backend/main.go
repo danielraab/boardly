@@ -100,7 +100,8 @@ func run() error {
 	favouriteStore := favourites.NewStore(database)
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
-	widgets.Register(dashboardStore, favouriteStore, favicons)
+	noteStore := notes.NewStore(database)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)
 
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
@@ -111,7 +112,7 @@ func run() error {
 			Users:             userStore,
 			Favourites:        favouriteStore,
 			Dashboards:        dashboardStore,
-			Notes:             notes.NewStore(database),
+			Notes:             noteStore,
 			Images:            imageStore,
 			Favicons:          favicons,
 			Previews:          previews,

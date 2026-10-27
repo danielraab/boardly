@@ -314,6 +314,7 @@ function Settings(props: WidgetSettingsProps) {
 export const linkListKind: WidgetKind = {
 	kind: "link_list",
 	icon: List,
+	group: "favourites",
 	labelKey: "dashboards.widgets.linkList.name",
 	descriptionKey: "dashboards.widgets.linkList.description",
 	defaultConfig: (): LinkListConfig => ({

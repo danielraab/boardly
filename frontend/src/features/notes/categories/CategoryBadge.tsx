@@ -4,12 +4,42 @@ import { useTranslation } from "react-i18next";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
 import { menuItem, menuPopup } from "#/components/menuStyles";
 import type { NoteCategory } from "../api";
+import type { NoteColour } from "../colours";
 import { noteBackground } from "../colours";
 import { iconProps } from "../noteIcon";
 import { buildTree, categoryPath, flatten } from "./tree";
 
 /** The value of the picker for "No category". */
 const noCategory = "";
+
+/** The look of a category badge, on the category's colour. */
+const badgeClass = (color: NoteColour | null) =>
+	`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium text-ink ${color ? "" : "border border-line bg-surface"}`;
+
+/** The parts of a category a read-only badge shows. */
+export type ShownCategory = Pick<NoteCategory, "title" | "icon" | "color">;
+
+/** A category badge that only shows the category, with tooltip as its title. */
+export function ReadOnlyCategoryBadge({
+	category,
+	tooltip,
+}: {
+	category: ShownCategory;
+	tooltip: string;
+}) {
+	return (
+		<span
+			title={tooltip}
+			className={badgeClass(category.color)}
+			style={{ background: noteBackground(category.color) }}
+		>
+			{category.icon && (
+				<ChosenIcon {...iconProps(category.icon)} className="size-3.5" />
+			)}
+			<span className="truncate">{category.title}</span>
+		</span>
+	);
+}
 
 /**
  * A note's category as a badge that opens a picker for another category.
@@ -44,7 +74,7 @@ export function CategoryBadge({
 					disabled={disabled}
 					title={path}
 					aria-label={t("notes.categories.badge.change", { path })}
-					className={`relative inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium text-ink hover:ring-1 hover:ring-ink/40 disabled:opacity-60 data-[popup-open]:ring-2 data-[popup-open]:ring-ink ${category.color ? "" : "border border-line bg-surface"}`}
+					className={`${badgeClass(category.color)} relative hover:ring-1 hover:ring-ink/40 disabled:opacity-60 data-[popup-open]:ring-2 data-[popup-open]:ring-ink`}
 					style={{ background: noteBackground(category.color) }}
 				>
 					{category.icon && (

@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 import { secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import type { ContentWidget } from "../api";
-import { findKind, type WidgetKind, widgetKinds } from "../widgets/registry";
+import {
+	findKind,
+	type WidgetKind,
+	widgetGroups,
+	widgetKinds,
+} from "../widgets/registry";
 
 /** Lists the widget kinds; picking one closes the picker. */
 export function WidgetPicker({
@@ -29,27 +34,45 @@ export function WidgetPicker({
 					<Dialog.Description className="mt-1 text-sm text-muted">
 						{t("dashboards.widgetPicker.text")}
 					</Dialog.Description>
-					<ul className="mt-5 space-y-2">
-						{widgetKinds.map((kind) => (
-							<li key={kind.kind}>
-								<button
-									type="button"
-									onClick={() => onPick(kind)}
-									className="flex w-full items-start gap-3 rounded-lg border border-line px-4 py-3 text-left hover:border-ink"
+					{widgetGroups.map((group) => {
+						const kinds = widgetKinds.filter((k) => k.group === group);
+						if (kinds.length === 0) return null;
+						const headingId = `widget-group-${group}`;
+						return (
+							<section key={group} aria-labelledby={headingId} className="mt-5">
+								<h3
+									id={headingId}
+									className="text-xs font-semibold tracking-wide text-muted uppercase"
 								>
-									<kind.icon className="mt-0.5 size-5 shrink-0" aria-hidden />
-									<span className="min-w-0">
-										<span className="block font-medium">
-											{t(kind.labelKey)}
-										</span>
-										<span className="block text-sm text-muted">
-											{t(kind.descriptionKey)}
-										</span>
-									</span>
-								</button>
-							</li>
-						))}
-					</ul>
+									{t(`dashboards.widgetPicker.groups.${group}`)}
+								</h3>
+								<ul className="mt-2 space-y-2">
+									{kinds.map((kind) => (
+										<li key={kind.kind}>
+											<button
+												type="button"
+												onClick={() => onPick(kind)}
+												className="flex w-full items-start gap-3 rounded-lg border border-line px-4 py-3 text-left hover:border-ink"
+											>
+												<kind.icon
+													className="mt-0.5 size-5 shrink-0"
+													aria-hidden
+												/>
+												<span className="min-w-0">
+													<span className="block font-medium">
+														{t(kind.labelKey)}
+													</span>
+													<span className="block text-sm text-muted">
+														{t(kind.descriptionKey)}
+													</span>
+												</span>
+											</button>
+										</li>
+									))}
+								</ul>
+							</section>
+						);
+					})}
 					<div className="mt-6 flex justify-end">
 						<Dialog.Close className={secondaryButton}>
 							{t("dashboards.widgetDialog.cancel")}

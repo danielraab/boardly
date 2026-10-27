@@ -118,13 +118,14 @@ func newServer(t *testing.T) *server {
 	}
 	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
 	favouriteStore.Jobs = queue
-	widgets.Register(dashboardStore, favouriteStore, favicons)
+	noteStore := notes.NewStore(database)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)
 
 	appTokens := apptokens.NewStore(database)
 	appTokens.Now = c.Now
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: notes.NewStore(database),
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore,
 		Images: imageStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})

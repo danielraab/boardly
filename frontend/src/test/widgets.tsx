@@ -1,18 +1,18 @@
 import type { ParseKeys } from "i18next";
-import { StickyNote } from "lucide-react";
+import { Type } from "lucide-react";
 import { useState } from "react";
 import type { ContentWidget } from "#/features/dashboards/api";
 import type { WidgetKind } from "#/features/dashboards/widgets/registry";
 import { WidgetSettingsForm } from "#/features/dashboards/widgets/WidgetSettingsForm";
 
-/** A content widget of the test-only kind "note". */
-export function note(
+/** A content widget of the test-only kind "text". */
+export function textWidget(
 	id: string,
 	fields: Partial<ContentWidget> = {},
 ): ContentWidget {
 	return {
 		id,
-		kind: "note",
+		kind: "text",
 		width: 2,
 		height: "auto",
 		config: { text: id },
@@ -21,13 +21,14 @@ export function note(
 }
 
 /**
- * The test-only kind "note": it shows its text and, when the server resolved
+ * The test-only kind "text": it shows its text and, when the server resolved
  * any, its data. Its settings have one required text field.
  */
-export const noteKind: WidgetKind = {
-	kind: "note",
-	icon: StickyNote,
-	labelKey: "Note" as ParseKeys,
+export const textKind: WidgetKind = {
+	kind: "text",
+	icon: Type,
+	group: "favourites",
+	labelKey: "Text widget" as ParseKeys,
 	descriptionKey: "Shows a text" as ParseKeys,
 	defaultConfig: () => ({ text: "" }),
 	View: ({ widget, editing }) => (
@@ -43,7 +44,7 @@ export const noteKind: WidgetKind = {
 		);
 		return (
 			<WidgetSettingsForm
-				title={props.isNew ? "New note" : "Edit note"}
+				title={props.isNew ? "New text" : "Edit text"}
 				widget={props.widget}
 				isNew={props.isNew}
 				desktopColumns={props.desktopColumns}

@@ -548,7 +548,11 @@
 		},
 		"widgetPicker": {
 			"title": "Widget hinzufügen",
-			"text": "Wähle, was das neue Widget zeigt."
+			"text": "Wähle, was das neue Widget zeigt.",
+			"groups": {
+				"favourites": "Favoriten",
+				"notes": "Notizen"
+			}
 		},
 		"discard": {
 			"title": "Änderungen verwerfen?",
@@ -662,6 +666,19 @@
 				"emptyDays_one": "Keine Favoriten am letzten Tag",
 				"emptyDays_other": "Keine Favoriten in den letzten {{count}} Tagen",
 				"missing": "Dieser Ordner existiert nicht mehr"
+			},
+			"note": {
+				"name": "Notiz",
+				"description": "Zeigt eine deiner Notizen mit ihren Todos.",
+				"addTitle": "Notiz hinzufügen",
+				"editTitle": "Notiz bearbeiten",
+				"noteLabel": "Notiz",
+				"notePlaceholder": "Notiz wählen",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die ganze Notiz, können sie aber nicht ändern. Sonst siehst nur du das Widget.",
+				"missing": "Diese Notiz existiert nicht mehr",
+				"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
+				"changedElsewhere": "Die Notiz wurde woanders geändert. Das Widget zeigt den aktuellen Stand."
 			}
 		}
 	},

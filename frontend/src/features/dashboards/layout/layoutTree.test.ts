@@ -40,10 +40,10 @@ const shape = (tree: Widget[]): string =>
 		)
 		.join(",");
 
-/** A content widget of the kind "note". */
+/** A content widget of the kind "text". */
 const w = (id: string, data?: unknown): ContentWidget => ({
 	id,
-	kind: "note",
+	kind: "text",
 	width: 2,
 	height: "auto",
 	config: { text: id },
