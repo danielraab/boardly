@@ -22,4 +22,4 @@
 ## 4. Check
 
 - [x] 4.1 Run `make check` and `make test` and verify both pass
-- [ ] 4.2 Run the app, add a recent favourites widget with a day limit, and verify the list, the empty state and the public dashboard view by hand
+- [x] 4.2 Run the app, add a recent favourites widget with a day limit, and verify the list, the empty state and the public dashboard view by hand
