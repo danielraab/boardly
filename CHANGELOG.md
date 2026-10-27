@@ -6,8 +6,29 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-27
+
 ### Added
 
+- Bookmark import on Settings → Import / Export: upload a Karakeep JSON, Linkwarden JSON or browser
+  (Netscape HTML) export. Folders are recreated, creation dates and order are kept, and a report
+  lists what was added and skipped. Skipping links that are already saved is optional.
+- Search on the Favourites page: filter the tree by title, URL, tag and folder path, with
+  highlighted matches. A tag filter, expand/collapse all, folder link counts and `?folder=<id>`
+  deep links to a folder.
+- Bulk edit on the Favourites page: select links and folders, then add, remove or set tags, move
+  them to a folder, or delete them with Undo.
+- A "Manage tags" dialog to rename, merge and delete tags.
+- "Recent favourites" dashboard widget, listing the newest links of a folder and its subfolders,
+  limited by count and optionally by age.
+- Link list widgets get an optional tag filter and a sort setting (favourites order, newest first,
+  alphabetical).
+- `BOARDLY_APP_TITLE` renames the instance (e.g. "Boardly Staging") in the web app, its manifest
+  and the sign-in emails.
+- `BOARDLY_ALLOW_REGISTRATION=false` stops sign-in from creating new accounts; unknown addresses
+  get a "registration closed" email instead.
+- `BOARDLY_ANALYTICS_SNIPPET` inserts an analytics script (Umami, Plausible, Matomo, …) into the
+  web app's HTML without a new build.
 - A default folder for new links, chosen in Settings → Profile and stored on the account. The
   "Save link" page (share target and "Add link" shortcut) starts in it on every device.
 
@@ -17,6 +38,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   default folder, or the root folder when none is set.
 - Pages are wider on large screens: the header and content now use up to 1536 px instead of
   1152 px, so dashboards get more room.
+- Deeply nested folders scroll sideways in the Favourites tree and the favourite explorer widget
+  instead of squeezing names.
 
 ## [0.1.0] - 2026-10-25
 
@@ -73,6 +96,7 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/danielraab/boardly/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielraab/boardly/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/danielraab/boardly/releases/tag/v0.0.1
