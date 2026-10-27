@@ -15,6 +15,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 - The "Save link" page no longer remembers the last used folder in the browser; it starts in the
   default folder, or the root folder when none is set.
+- Pages are wider on large screens: the header and content now use up to 1536 px instead of
+  1152 px, so dashboards get more room.
 
 ## [0.1.0] - 2026-10-25
 
