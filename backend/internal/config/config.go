@@ -21,6 +21,10 @@ type Config struct {
 	// so an instance such as a staging system can be told apart.
 	AppTitle string
 
+	// AnalyticsSnippet is HTML, such as an analytics <script> tag, that the
+	// web app's HTML document carries before </head>. Empty means none.
+	AnalyticsSnippet string
+
 	// BaseURL is the public URL of the web app, without a trailing slash.
 	// It is used for sign-in links, the Origin check and the cookie's Secure flag.
 	BaseURL *url.URL
@@ -114,6 +118,8 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	if v := strings.TrimSpace(getenv("BOARDLY_APP_TITLE")); v != "" {
 		cfg.AppTitle = v
 	}
+
+	cfg.AnalyticsSnippet = strings.TrimSpace(getenv("BOARDLY_ANALYTICS_SNIPPET"))
 
 	if v := getenv("BOARDLY_LOG_FORMAT"); v != "" {
 		if v != "json" && v != "text" {

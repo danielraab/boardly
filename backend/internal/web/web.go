@@ -24,20 +24,25 @@ const (
 	metaMarker  = `<meta name="application-name" content="Boardly" />`
 )
 
-// Handler serves the embedded frontend build under the given app title.
-func Handler(appTitle string) http.Handler {
+// headEnd closes the head of index.html; the analytics snippet goes before it.
+const headEnd = "</head>"
+
+// Handler serves the embedded frontend build under the given app title, with
+// analyticsSnippet (may be empty) in the HTML document's head.
+func Handler(appTitle, analyticsSnippet string) http.Handler {
 	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
 		panic(err)
 	}
-	return NewHandler(sub, appTitle)
+	return NewHandler(sub, appTitle, analyticsSnippet)
 }
 
 // NewHandler serves files from fsys and falls back to index.html for paths
 // that match no file, so client-side routes work on reload. index.html and the
-// web app manifests are served with appTitle as the product name.
-func NewHandler(fsys fs.FS, appTitle string) http.Handler {
-	titled, err := titledFiles(fsys, appTitle)
+// web app manifests are served with appTitle as the product name, and
+// index.html carries analyticsSnippet unescaped right before </head>.
+func NewHandler(fsys fs.FS, appTitle, analyticsSnippet string) http.Handler {
+	titled, err := titledFiles(fsys, appTitle, analyticsSnippet)
 	if err != nil {
 		panic(err)
 	}
@@ -100,14 +105,19 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, titled map[st
 }
 
 // titledFiles returns index.html and the root *.webmanifest files of fsys with
-// appTitle filled in, keyed by name. Files that don't exist are left out.
-func titledFiles(fsys fs.FS, appTitle string) (map[string][]byte, error) {
+// appTitle filled in, and index.html with analyticsSnippet added, keyed by name.
+// Files that don't exist are left out.
+func titledFiles(fsys fs.FS, appTitle, analyticsSnippet string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 
 	if index, err := fs.ReadFile(fsys, "index.html"); err == nil {
 		escaped := html.EscapeString(appTitle)
 		index = bytes.Replace(index, []byte(titleMarker), []byte("<title>"+escaped+"</title>"), 1)
 		index = bytes.Replace(index, []byte(metaMarker), []byte(`<meta name="application-name" content="`+escaped+`" />`), 1)
+		if analyticsSnippet != "" {
+			// The operator's HTML goes in as written; escaping would break it.
+			index = bytes.Replace(index, []byte(headEnd), []byte(analyticsSnippet+headEnd), 1)
+		}
 		out["index.html"] = index
 	}
 

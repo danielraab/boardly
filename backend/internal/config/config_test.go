@@ -278,3 +278,28 @@ func TestAppTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestAnalyticsSnippet(t *testing.T) {
+	snippet := `<script defer src="https://stats.example.org/script.js" data-website-id="abc"></script>`
+	tests := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"unset is empty", nil, ""},
+		{"kept as written", map[string]string{"BOARDLY_ANALYTICS_SNIPPET": snippet}, snippet},
+		{"trimmed", map[string]string{"BOARDLY_ANALYTICS_SNIPPET": "\n  " + snippet + "\n"}, snippet},
+		{"blank is empty", map[string]string{"BOARDLY_ANALYTICS_SNIPPET": "   "}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(withBaseURL(tt.vars)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.AnalyticsSnippet != tt.want {
+				t.Fatalf("AnalyticsSnippet = %q, want %q", cfg.AnalyticsSnippet, tt.want)
+			}
+		})
+	}
+}
