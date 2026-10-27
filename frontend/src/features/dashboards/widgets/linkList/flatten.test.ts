@@ -52,3 +52,64 @@ describe("flattenLinks", () => {
 		]);
 	});
 });
+
+describe("flattenLinks with a tag and a sort", () => {
+	const tagged = (
+		title: string | null,
+		url: string,
+		createdAt: string,
+		tags: string[] = [],
+	): FavouriteNode => ({
+		id: url,
+		kind: "link",
+		title,
+		url,
+		createdAt,
+		tags,
+	});
+	const nodes: FavouriteNode[] = [
+		tagged("zoo", "https://zoo/", "2026-03-01T00:00:00.000Z", ["monitoring"]),
+		{
+			id: "tools",
+			kind: "folder",
+			title: "Tools",
+			children: [
+				tagged("Ärzte", "https://aerzte/", "2026-03-03T00:00:00.000Z", [
+					"monitoring",
+				]),
+			],
+		},
+		tagged(null, "https://beta/", "2026-03-02T00:00:00.000Z"),
+	];
+	const shown = (
+		subfolders: boolean,
+		tag: string | null,
+		sort: "favourites" | "newest" | "alphabetical",
+	) => flattenLinks(nodes, subfolders, tag, sort).map((l) => l.title ?? l.url);
+
+	it("keeps only links with the tag", () => {
+		expect(shown(true, "monitoring", "favourites")).toEqual(["zoo", "Ärzte"]);
+		expect(shown(false, "monitoring", "favourites")).toEqual(["zoo"]);
+		expect(shown(true, "other", "favourites")).toEqual([]);
+	});
+
+	it("sorts newest first", () => {
+		expect(shown(true, null, "newest")).toEqual([
+			"Ärzte",
+			"https://beta/",
+			"zoo",
+		]);
+	});
+
+	it("sorts alphabetically by the shown text, ignoring case and accents", () => {
+		expect(shown(true, null, "alphabetical")).toEqual([
+			"Ärzte",
+			"https://beta/",
+			"zoo",
+		]);
+		expect(shown(false, null, "alphabetical")).toEqual([
+			"https://beta/",
+			"zoo",
+		]);
+	});
+});
