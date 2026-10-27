@@ -21,17 +21,21 @@ export type SaveStatus = "idle" | "saving" | "saved" | "failed" | "conflict";
  * Saves a note's changes 1 second after the last one, and right away when
  * the page is left. Without a note, the first save creates it with all of
  * draft and calls onCreated. Only one request runs at a time; changes made
- * meanwhile are sent after it. A version conflict stops all saving.
+ * meanwhile are sent after it. A version conflict stops all saving. A newer
+ * version of note, changed elsewhere, is taken over while nothing is pending.
  */
 export function useAutosave({
 	note,
 	draft,
 	onCreated,
+	onError,
 }: {
 	note: Note | null;
 	/** All fields of the note as edited, for creating it. */
 	draft: NoteFields;
-	onCreated: (note: Note) => void;
+	onCreated?: (note: Note) => void;
+	/** Called when a save fails, after the status has changed. */
+	onError?: (err: unknown) => void;
 }) {
 	const queryClient = useQueryClient();
 	const [status, setStatus] = useState<SaveStatus>("idle");
@@ -44,6 +48,20 @@ export function useAutosave({
 	draftRef.current = draft;
 	const onCreatedRef = useRef(onCreated);
 	onCreatedRef.current = onCreated;
+	const onErrorRef = useRef(onError);
+	onErrorRef.current = onError;
+
+	const idle = useCallback(
+		() => !running.current && !hasFields(pending.current),
+		[],
+	);
+
+	useEffect(() => {
+		const current = saved.current;
+		if (note && current && note.version > current.version && idle()) {
+			saved.current = note;
+		}
+	}, [note, idle]);
 
 	const flush = useCallback(
 		async (keepalive = false) => {
@@ -65,7 +83,7 @@ export function useAutosave({
 					queryKey: notesQueryKey,
 					exact: true,
 				});
-				if (!current) onCreatedRef.current(result);
+				if (!current) onCreatedRef.current?.(result);
 				setStatus("saved");
 			} catch (err) {
 				if (isVersionConflict(err)) {
@@ -75,6 +93,7 @@ export function useAutosave({
 					pending.current = { ...fields, ...pending.current };
 					setStatus("failed");
 				}
+				onErrorRef.current?.(err);
 				return;
 			} finally {
 				running.current = false;
@@ -91,6 +110,16 @@ export function useAutosave({
 			Object.assign(pending.current, fields);
 			clearTimeout(timer.current);
 			timer.current = setTimeout(() => void flush(), autosaveDelay);
+		},
+		[flush],
+	);
+
+	/** Records changed fields and saves them right away. */
+	const saveNow = useCallback(
+		(fields: Partial<NoteFields> = {}) => {
+			if (stopped.current) return;
+			Object.assign(pending.current, fields);
+			void flush();
 		},
 		[flush],
 	);
@@ -119,5 +148,19 @@ export function useAutosave({
 		stopped.current = true;
 	}, []);
 
-	return { status, change, retry: () => void flush(), discard };
+	/** Drops unsaved changes, but keeps saving later ones. */
+	const drop = useCallback(() => {
+		clearTimeout(timer.current);
+		pending.current = {};
+	}, []);
+
+	return {
+		status,
+		change,
+		saveNow,
+		retry: () => void flush(),
+		discard,
+		drop,
+		idle,
+	};
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { NoteDoc } from "./document/types";
 import { NoteRenderer } from "./NoteRenderer";
 
@@ -40,6 +40,26 @@ describe("NoteRenderer", () => {
 		expect(
 			screen.getByRole("checkbox", { name: "staging" }),
 		).toBeInTheDocument();
+	});
+
+	it("toggles task items with onToggleTask", () => {
+		const onToggleTask = vi.fn();
+		const outer = vi.fn();
+		render(
+			// biome-ignore lint/a11y/noStaticElementInteractions: only listens for bubbling clicks
+			// biome-ignore lint/a11y/useKeyWithClickEvents: only listens for bubbling clicks
+			<div onClick={outer}>
+				<NoteRenderer doc={allTypes} onToggleTask={onToggleTask} />
+			</div>,
+		);
+		const review = screen.getByRole("checkbox", { name: "review PR" });
+		expect(review).toBeEnabled();
+		expect(review).not.toHaveAttribute("tabindex");
+		fireEvent.click(review);
+		expect(outer).not.toHaveBeenCalled();
+		expect(onToggleTask).toHaveBeenCalledWith("t1", true);
+		fireEvent.click(screen.getByRole("checkbox", { name: "deploy" }));
+		expect(onToggleTask).toHaveBeenLastCalledWith(expect.any(String), false);
 	});
 
 	it("doesn't render links as links", () => {

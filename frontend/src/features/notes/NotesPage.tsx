@@ -1,22 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { NotebookPen, Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
 import { Toast, type ToastMessage } from "#/components/Toast";
 import { usePageTitle } from "#/lib/usePageTitle";
 import {
-	isVersionConflict,
 	type Note,
 	noteCategoriesQueryOptions,
 	notesQueryKey,
 	notesQueryOptions,
-	updateNote,
 } from "./api";
 import { SidePanel } from "./categories/SidePanel";
 import { type CategoryFilter, filterNotes } from "./categories/tree";
-import { NoteCard } from "./NoteCard";
+import { type EditFocus, NoteCard } from "./NoteCard";
 
 /** The category search param of /notes: a category ID, or "none". */
 export type NotesSearch = { category?: string };
@@ -29,6 +27,23 @@ export function filterOf(search: NotesSearch): CategoryFilter {
 export function searchOf(filter: CategoryFilter): NotesSearch {
 	if (filter === "all") return { category: undefined };
 	return { category: filter === "none" ? "none" : filter.id };
+}
+
+/**
+ * Keeps notes in the order they first had, so a card doesn't jump while it is
+ * changed on the page. Notes that weren't there yet come first, in the order
+ * given.
+ */
+function useStableOrder(notes: Note[]): Note[] {
+	const order = useRef<string[]>([]);
+	const position = new Map(order.current.map((id, i) => [id, i]));
+	const fresh = notes.filter((n) => !position.has(n.id));
+	const known = notes
+		.filter((n) => position.has(n.id))
+		.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
+	const result = [...fresh, ...known];
+	if (fresh.length > 0) order.current = result.map((n) => n.id);
+	return result;
 }
 
 /** /notes: the card grid of the user's notes with the category side panel. */
@@ -45,6 +60,11 @@ export function NotesPage({
 	const notes = useQuery(notesQueryOptions);
 	const categories = useQuery(noteCategoriesQueryOptions);
 	const [toast, setToast] = useState<ToastMessage | null>(null);
+	const [editing, setEditing] = useState<{
+		id: string;
+		focus: EditFocus;
+	} | null>(null);
+	const ordered = useStableOrder(notes.data ?? []);
 
 	const allCategories = categories.data ?? [];
 	let filter = filterOf(search);
@@ -56,26 +76,19 @@ export function NotesPage({
 	) {
 		filter = "all";
 	}
-	const shown = filterNotes(notes.data ?? [], allCategories, filter);
+	const shown = filterNotes(ordered, allCategories, filter);
 
-	const changeCategory = useMutation({
-		mutationFn: ({
-			note,
-			categoryId,
-		}: {
-			note: Note;
-			categoryId: string | null;
-		}) => updateNote(note.id, note.version, { categoryId }),
-		onError: (err) =>
-			setToast({
-				id: Date.now(),
-				text: isVersionConflict(err)
+	const onSaveError = (id: string, error: "conflict" | "failed") => {
+		if (error === "conflict") setEditing((e) => (e?.id === id ? null : e));
+		void queryClient.invalidateQueries({ queryKey: notesQueryKey });
+		setToast({
+			id: Date.now(),
+			text:
+				error === "conflict"
 					? t("notes.changedElsewhere")
 					: t("notes.changeFailed"),
-			}),
-		onSettled: () =>
-			void queryClient.invalidateQueries({ queryKey: notesQueryKey }),
-	});
+		});
+	};
 
 	const newNoteSearch =
 		typeof filter === "object" ? { category: filter.id } : {};
@@ -140,9 +153,12 @@ export function NotesPage({
 									<NoteCard
 										note={note}
 										categories={allCategories}
-										onCategoryChange={(categoryId) =>
-											changeCategory.mutate({ note, categoryId })
+										editing={editing?.id === note.id ? editing.focus : null}
+										onEditStart={(focus) => setEditing({ id: note.id, focus })}
+										onEditEnd={() =>
+											setEditing((e) => (e?.id === note.id ? null : e))
 										}
+										onSaveError={(error) => onSaveError(note.id, error)}
 									/>
 								</li>
 							))}

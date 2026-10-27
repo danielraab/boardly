@@ -1,6 +1,9 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { $getSelection, $isRangeSelection } from "lexical";
 import { describe, expect, it } from "vitest";
-import { mockApi } from "#/test/api";
+import type { NoteDoc } from "#/features/notes/document/types";
+import { apiError, mockApi } from "#/test/api";
+import { editorOf, selectAll, typeInEditor } from "#/test/lexical";
 import { category, fakeNotesServer, note, paragraphs } from "#/test/notes";
 import { renderApp } from "#/test/renderApp";
 
@@ -379,5 +382,208 @@ describe("category badge", () => {
 		await waitFor(() =>
 			expect(screen.queryByRole("button", { name: /^Category:/ })).toBeNull(),
 		);
+	});
+});
+
+const tasks = (...items: [string, boolean][]): NoteDoc => ({
+	v: 1,
+	blocks: [
+		{
+			type: "list",
+			style: "task",
+			items: items.map(([text, checked], i) => ({
+				id: `t${i + 1}`,
+				checked,
+				content: [{ type: "text", text }],
+			})),
+		},
+	],
+});
+
+// Typing goes through the editor one character at a time, and inline edits
+// wait for the autosave delay.
+const slow = { timeout: 20_000 };
+
+describe("checkboxes on cards", () => {
+	it("toggles a task right away without opening the note", async () => {
+		const { notes } = fakeNotesServer([
+			note("Groceries", { content: tasks(["milk", false], ["eggs", false]) }),
+		]);
+		const { user, router } = renderApp("/notes");
+		const milk = await screen.findByRole("checkbox", { name: "milk" });
+		await user.click(milk);
+		await user.click(screen.getByRole("checkbox", { name: "eggs" }));
+		expect(milk).toBeChecked();
+		await waitFor(() => expect(notes[0].version).toBe(3));
+		expect(notes[0].content).toEqual(tasks(["milk", true], ["eggs", true]));
+		expect(router.state.location.pathname).toBe("/notes");
+		expect(screen.queryByRole("textbox", { name: "Content" })).toBeNull();
+	});
+
+	it("shows the saved state again when a toggle fails", async () => {
+		const { api } = fakeNotesServer([
+			note("Groceries", { content: tasks(["milk", false]) }),
+		]);
+		const { user } = renderApp("/notes");
+		const milk = await screen.findByRole("checkbox", { name: "milk" });
+		api.set({ "PATCH /api/notes/Groceries": apiError(500, "error") });
+		await user.click(milk);
+		expect(
+			await screen.findByText(
+				"The note couldn't be changed. Please try again.",
+			),
+		).toBeInTheDocument();
+		await waitFor(() =>
+			expect(screen.getByRole("checkbox", { name: "milk" })).not.toBeChecked(),
+		);
+	});
+});
+
+describe("inline editing", () => {
+	it("edits the content in place without a toolbar", slow, async () => {
+		const { notes } = fakeNotesServer([note("Groceries")]);
+		const { user, router } = renderApp("/notes");
+		await user.click(
+			await screen.findByRole("button", { name: "Edit Groceries" }),
+		);
+		const content = await screen.findByRole("textbox", { name: "Content" });
+		expect(screen.queryByRole("button", { name: "Bold" })).toBeNull();
+		await waitFor(() => expect(content).toHaveFocus());
+		await waitFor(() =>
+			editorOf(content)
+				.getEditorState()
+				.read(() => {
+					const selection = $getSelection();
+					expect($isRangeSelection(selection) && selection.anchor.offset).toBe(
+						"Groceries text".length,
+					);
+				}),
+		);
+		await selectAll(content);
+		fireEvent.keyDown(content, { key: "b", code: "KeyB", ctrlKey: true });
+		await waitFor(() => expect(notes[0].version).toBe(2), { timeout: 3000 });
+		expect(notes[0].content).toEqual({
+			v: 1,
+			blocks: [
+				{
+					type: "paragraph",
+					content: [{ type: "text", text: "Groceries text", marks: ["bold"] }],
+				},
+			],
+		});
+		fireEvent.keyDown(content, { key: "Escape" });
+		await waitFor(() =>
+			expect(screen.queryByRole("textbox", { name: "Content" })).toBeNull(),
+		);
+		expect(
+			screen.getByRole("button", { name: "Edit Groceries" }),
+		).toHaveFocus();
+		expect(screen.getByText("Groceries text")).toHaveClass("font-semibold");
+		expect(router.state.location.pathname).toBe("/notes");
+	});
+
+	it("makes tasks with Markdown shortcuts inline", slow, async () => {
+		const { notes } = fakeNotesServer([
+			note("Groceries", { content: { v: 1, blocks: [] } }),
+		]);
+		const { user } = renderApp("/notes");
+		await user.click(
+			await screen.findByRole("button", { name: "Edit Groceries" }),
+		);
+		await typeInEditor(
+			await screen.findByRole("textbox", { name: "Content" }),
+			"- [ ] bread",
+		);
+		await waitFor(() => expect(notes[0].version).toBe(2), { timeout: 3000 });
+		expect(notes[0].content.blocks[0]).toMatchObject({
+			type: "list",
+			style: "task",
+			items: [{ checked: false, content: [{ text: "bread" }] }],
+		});
+	});
+
+	it("edits the title and saves it when editing ends", async () => {
+		const { notes } = fakeNotesServer([
+			note("u", { title: null, content: paragraphs("bread") }),
+		]);
+		const { user } = renderApp("/notes");
+		await user.click(await screen.findByRole("button", { name: "Edit bread" }));
+		await user.type(
+			await screen.findByRole("textbox", { name: "Title" }),
+			"Shopping",
+		);
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(notes[0].title).toBe("Shopping"));
+		expect(
+			await screen.findByRole("heading", { name: "Shopping" }),
+		).toBeInTheDocument();
+	});
+
+	it("edits one card at a time", async () => {
+		fakeNotesServer([note("Groceries"), note("Sprint")]);
+		const { user } = renderApp("/notes");
+		await user.click(
+			await screen.findByRole("button", { name: "Edit Groceries" }),
+		);
+		await screen.findByRole("textbox", { name: "Content" });
+		await user.click(screen.getByRole("button", { name: "Edit Sprint" }));
+		await waitFor(() =>
+			expect(screen.getAllByRole("textbox", { name: "Content" })).toHaveLength(
+				1,
+			),
+		);
+		expect(
+			screen.getByRole("button", { name: "Edit Groceries" }),
+		).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Edit Sprint" })).toBeNull();
+	});
+
+	it("keeps the card's place until /notes is opened again", slow, async () => {
+		const { notes } = fakeNotesServer([
+			note("Groceries"),
+			note("Sprint"),
+			note("Ideas"),
+		]);
+		const { user, router } = renderApp("/notes");
+		await waitFor(() =>
+			expect(cardNames()).toEqual(["Ideas", "Sprint", "Groceries"]),
+		);
+		await user.click(screen.getByRole("button", { name: "Edit Groceries" }));
+		await typeInEditor(
+			await screen.findByRole("textbox", { name: "Content" }),
+			"!",
+		);
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(notes[0].version).toBe(2));
+		await waitFor(() => expect(router.state.isLoading).toBe(false));
+		expect(cardNames()).toEqual(["Ideas", "Sprint", "Groceries"]);
+		await user.click(screen.getByRole("link", { name: "Open Ideas" }));
+		await screen.findByRole("textbox", { name: "Content" });
+		await user.click(screen.getByRole("link", { name: "Notes" }));
+		await waitFor(() =>
+			expect(cardNames()).toEqual(["Groceries", "Ideas", "Sprint"]),
+		);
+	});
+
+	it("ends editing when the note was changed elsewhere", slow, async () => {
+		const { notes } = fakeNotesServer([note("Groceries")]);
+		const { user } = renderApp("/notes");
+		await user.click(
+			await screen.findByRole("button", { name: "Edit Groceries" }),
+		);
+		const content = await screen.findByRole("textbox", { name: "Content" });
+		// Another tab saves first.
+		notes[0].version = 5;
+		notes[0].content = paragraphs("from the other tab");
+		await typeInEditor(content, "mine");
+		expect(
+			await screen.findByText(
+				"The note was changed elsewhere. Its card shows the current state.",
+				{},
+				{ timeout: 3000 },
+			),
+		).toBeInTheDocument();
+		expect(screen.queryByRole("textbox", { name: "Content" })).toBeNull();
+		expect(await screen.findByText("from the other tab")).toBeInTheDocument();
 	});
 });

@@ -762,6 +762,8 @@
 		"newNote": "New note",
 		"untitled": "Untitled note",
 		"open": "Open {{title}}",
+		"openNote": "Open note",
+		"edit": "Edit {{title}}",
 		"empty": "No notes yet",
 		"emptyHint": "Write down todos, lists and ideas. They are saved as you type.",
 		"emptyCategory": "No notes in this category",
