@@ -19,6 +19,13 @@ describe("app shell", () => {
 		},
 	);
 
+	it("gives the header and the content the same width", async () => {
+		renderApp("/");
+		await screen.findByRole("link", { name: "Boardly" });
+		expect(screen.getByRole("banner")).toHaveClass("max-w-screen-2xl");
+		expect(screen.getByRole("main")).toHaveClass("max-w-screen-2xl");
+	});
+
 	it("places the theme switcher directly before the language switcher", async () => {
 		renderApp("/");
 		const theme = await screen.findByRole("button", { name: "Theme" });

@@ -12,11 +12,16 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { UserMenu } from "./UserMenu";
 
+/** Shared by header and main so the logo lines up with page content. */
+const container = "mx-auto w-full max-w-screen-2xl px-4 sm:px-6";
+
 export function AppShell({ children }: { children: ReactNode }) {
 	return (
 		<CurrentDashboardProvider>
 			<div className="flex min-h-screen flex-col">
-				<header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+				<header
+					className={`${container} flex items-center justify-between py-3`}
+				>
 					<div className="flex min-w-0 items-center gap-1.5">
 						<Link
 							to="/"
@@ -34,9 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 						<UserMenu />
 					</div>
 				</header>
-				<main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 sm:px-6">
-					{children}
-				</main>
+				<main className={`${container} flex-1 pb-16`}>{children}</main>
 			</div>
 		</CurrentDashboardProvider>
 	);
