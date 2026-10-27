@@ -717,7 +717,7 @@ function TagFilter({
 					: t("favourites.tagFilter.button")}
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" sideOffset={6}>
+				<Menu.Positioner align="end" sideOffset={6} className="z-50">
 					<Menu.Popup className={`${menuPopup} max-h-80 overflow-y-auto`}>
 						{available.map(({ name, count }) => {
 							const checked = chosen.some((tag) => sameTag(tag, name));

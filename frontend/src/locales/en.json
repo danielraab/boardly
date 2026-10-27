@@ -7,6 +7,7 @@
 		"loading": "Loading…",
 		"dashboards": "Dashboards",
 		"favourites": "Favourites",
+		"notes": "Notes",
 		"settings": "Settings",
 		"signOut": "Sign out",
 		"addLink": "Add link"
@@ -605,95 +606,12 @@
 				"urlLabel": "URL",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Without one, the favourite's title is shown, or only the URL.",
-				"icons": {
-					"book-open": "Book",
-					"bookmark": "Bookmark",
-					"briefcase": "Briefcase",
-					"calendar": "Calendar",
-					"camera": "Camera",
-					"chart-bar": "Chart",
-					"cloud": "Cloud",
-					"code": "Code",
-					"cpu": "Processor",
-					"database": "Database",
-					"file-text": "Document",
-					"film": "Film",
-					"folder": "Folder",
-					"gamepad": "Game controller",
-					"globe": "Globe",
-					"hard-drive": "Hard drive",
-					"heart": "Heart",
-					"home": "Home",
-					"image": "Image",
-					"inbox": "Inbox",
-					"key": "Key",
-					"lock": "Lock",
-					"mail": "Mail",
-					"map-pin": "Map pin",
-					"message-square": "Chat",
-					"monitor": "Monitor",
-					"music": "Music",
-					"network": "Network",
-					"newspaper": "Newspaper",
-					"phone": "Phone",
-					"printer": "Printer",
-					"router": "Router",
-					"rss": "RSS feed",
-					"search": "Search",
-					"server": "Server",
-					"settings": "Settings",
-					"shield": "Shield",
-					"shopping-cart": "Shopping cart",
-					"star": "Star",
-					"terminal": "Terminal",
-					"tv": "TV",
-					"users": "People",
-					"wifi": "Wi-Fi",
-					"wrench": "Wrench"
-				},
 				"targetLabel": "Open in",
 				"target": {
 					"_blank": "New tab",
 					"_self": "Same tab"
 				},
-				"errors": {
-					"unsupported_image": "This file type isn't supported. Use PNG, JPEG, WebP, GIF or ICO.",
-					"image_too_large": "The image is larger than 1 MB.",
-					"uploadFailed": "The image couldn't be uploaded. Please try again."
-				},
-				"newFavourite": "New favourite…",
-				"iconChooser": {
-					"label": "Icon",
-					"button": "Icon: {{name}}",
-					"tabs": {
-						"favicon": "Website icon",
-						"image": "Own image",
-						"symbol": "Symbol",
-						"none": "None"
-					},
-					"favicon": {
-						"noUrl": "Choose a favourite or enter a URL first.",
-						"loading": "Looking for the website icon…",
-						"none": "No website icon found for {{host}}. A globe is shown instead.",
-						"found": "The website icon of {{host}}. It follows the link to other sites.",
-						"use": "Use the website icon"
-					},
-					"image": {
-						"hint": "PNG, JPEG, WebP, GIF or ICO, at most 1 MB.",
-						"upload": "Upload image",
-						"replace": "Upload another image",
-						"use": "Use this image"
-					},
-					"symbol": {
-						"filter": "Filter symbols",
-						"group": "Symbols",
-						"noMatches": "No symbol matches."
-					},
-					"inUse": "In use",
-					"remove": "Remove icon",
-					"removed": "No icon",
-					"done": "Done"
-				}
+				"newFavourite": "New favourite…"
 			},
 			"linkList": {
 				"name": "Link list",
@@ -754,5 +672,197 @@
 		"savedText": "It's now in “{{folder}}”.",
 		"openFavourites": "Open favourites",
 		"saveAnother": "Save another link"
+	},
+	"symbols": {
+		"book-open": "Book",
+		"bookmark": "Bookmark",
+		"briefcase": "Briefcase",
+		"calendar": "Calendar",
+		"camera": "Camera",
+		"chart-bar": "Chart",
+		"cloud": "Cloud",
+		"code": "Code",
+		"cpu": "Processor",
+		"database": "Database",
+		"file-text": "Document",
+		"film": "Film",
+		"folder": "Folder",
+		"gamepad": "Game controller",
+		"globe": "Globe",
+		"hard-drive": "Hard drive",
+		"heart": "Heart",
+		"home": "Home",
+		"image": "Image",
+		"inbox": "Inbox",
+		"key": "Key",
+		"lock": "Lock",
+		"mail": "Mail",
+		"map-pin": "Map pin",
+		"message-square": "Chat",
+		"monitor": "Monitor",
+		"music": "Music",
+		"network": "Network",
+		"newspaper": "Newspaper",
+		"phone": "Phone",
+		"printer": "Printer",
+		"router": "Router",
+		"rss": "RSS feed",
+		"search": "Search",
+		"server": "Server",
+		"settings": "Settings",
+		"shield": "Shield",
+		"shopping-cart": "Shopping cart",
+		"star": "Star",
+		"terminal": "Terminal",
+		"tv": "TV",
+		"users": "People",
+		"wifi": "Wi-Fi",
+		"wrench": "Wrench"
+	},
+	"iconChooser": {
+		"label": "Icon",
+		"button": "Icon: {{name}}",
+		"tabs": {
+			"favicon": "Website icon",
+			"image": "Own image",
+			"symbol": "Symbol",
+			"none": "None"
+		},
+		"favicon": {
+			"noUrl": "Choose a favourite or enter a URL first.",
+			"loading": "Looking for the website icon…",
+			"none": "No website icon found for {{host}}. A globe is shown instead.",
+			"found": "The website icon of {{host}}. It follows the link to other sites.",
+			"use": "Use the website icon"
+		},
+		"image": {
+			"hint": "PNG, JPEG, WebP, GIF or ICO, at most 1 MB.",
+			"upload": "Upload image",
+			"replace": "Upload another image",
+			"use": "Use this image"
+		},
+		"symbol": {
+			"filter": "Filter symbols",
+			"group": "Symbols",
+			"noMatches": "No symbol matches."
+		},
+		"inUse": "In use",
+		"remove": "Remove icon",
+		"removed": "No icon",
+		"done": "Done",
+		"errors": {
+			"unsupported_image": "This file type isn't supported. Use PNG, JPEG, WebP, GIF or ICO.",
+			"image_too_large": "The image is larger than 1 MB.",
+			"uploadFailed": "The image couldn't be uploaded. Please try again."
+		}
+	},
+	"notes": {
+		"title": "Notes",
+		"intro": "Lists, todos and ideas, last edited first.",
+		"newNote": "New note",
+		"untitled": "Untitled note",
+		"open": "Open {{title}}",
+		"empty": "No notes yet",
+		"emptyHint": "Write down todos, lists and ideas. They are saved as you type.",
+		"emptyCategory": "No notes in this category",
+		"changeFailed": "The note couldn't be changed. Please try again.",
+		"changedElsewhere": "The note was changed elsewhere. Its card shows the current state.",
+		"colours": {
+			"label": "Colour",
+			"button": "Colour: {{name}}",
+			"none": "No colour",
+			"red": "Red",
+			"orange": "Orange",
+			"yellow": "Yellow",
+			"green": "Green",
+			"teal": "Teal",
+			"blue": "Blue",
+			"purple": "Purple",
+			"pink": "Pink",
+			"grey": "Grey"
+		},
+		"categories": {
+			"heading": "Categories",
+			"all": "All notes",
+			"none": "Uncategorized",
+			"new": "New category",
+			"newSub": "New subcategory",
+			"edit": "Edit",
+			"delete": "Delete",
+			"actions": "Actions for {{title}}",
+			"expand": "Expand {{title}}",
+			"collapse": "Collapse {{title}}",
+			"count_one": "{{count}} note",
+			"count_other": "{{count}} notes",
+			"open": "Categories",
+			"close": "Close",
+			"dialog": {
+				"newTitle": "New category",
+				"editTitle": "Edit category",
+				"title": "Title",
+				"titleRequired": "Enter a title.",
+				"titleTooLong": "The title can have at most 200 characters.",
+				"parent": "Parent category",
+				"noParent": "None",
+				"save": "Save",
+				"cancel": "Cancel"
+			},
+			"deleteDialog": {
+				"title": "Delete category?",
+				"text": "“{{title}}” will be deleted.",
+				"notes_one": "Its note becomes uncategorized.",
+				"notes_other": "Its {{count}} notes become uncategorized.",
+				"subcategories_one": "Its subcategory moves up one level.",
+				"subcategories_other": "Its {{count}} subcategories move up one level.",
+				"confirm": "Delete",
+				"cancel": "Cancel"
+			},
+			"badge": {
+				"change": "Category: {{path}}. Change category",
+				"add": "Add category",
+				"none": "No category",
+				"picker": "Category"
+			}
+		},
+		"editor": {
+			"back": "Notes",
+			"title": "Title",
+			"content": "Content",
+			"placeholder": "Write something…",
+			"menu": "More actions",
+			"delete": "Delete note",
+			"deleteDialog": {
+				"title": "Delete note?",
+				"text": "“{{title}}” will be deleted. This can't be undone.",
+				"confirm": "Delete",
+				"cancel": "Cancel"
+			},
+			"status": {
+				"saving": "Saving…",
+				"saved": "Saved",
+				"failed": "Not saved",
+				"retry": "Retry"
+			},
+			"conflict": "This note was changed elsewhere. Reload it to keep editing; your last changes here weren't saved.",
+			"reload": "Reload",
+			"toolbar": {
+				"label": "Formatting",
+				"heading": "Heading",
+				"bullet": "Bullet list",
+				"ordered": "Numbered list",
+				"task": "Task list",
+				"bold": "Bold",
+				"italic": "Italic",
+				"strike": "Strikethrough",
+				"code": "Code",
+				"link": "Link"
+			},
+			"link": {
+				"label": "Link address",
+				"apply": "Apply",
+				"remove": "Remove link",
+				"invalid": "Enter an http, https or mailto address."
+			}
+		}
 	}
 }

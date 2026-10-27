@@ -28,7 +28,7 @@ export function DashboardSwitcher() {
 					<ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
 				</Menu.Trigger>
 				<Menu.Portal>
-					<Menu.Positioner align="start" sideOffset={6}>
+					<Menu.Positioner align="start" sideOffset={6} className="z-50">
 						<Menu.Popup className={menuPopup}>
 							{view.dashboards.map((d) => {
 								const current = d.slug === view.dashboard.slug;

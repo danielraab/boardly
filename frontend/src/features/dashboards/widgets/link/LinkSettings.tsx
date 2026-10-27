@@ -5,6 +5,11 @@ import { useTranslation } from "react-i18next";
 import { secondaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
 import {
+	type IconChoice,
+	IconChooser,
+	type IconSource,
+} from "#/components/IconChooser";
+import {
 	type FavouriteNode,
 	favouritesQueryOptions,
 } from "#/features/favourites/api";
@@ -17,7 +22,6 @@ import type { SectionHeight } from "../../api";
 import type { WidgetSettingsProps } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
-import { type IconChoice, IconChooser, type IconSource } from "./IconChooser";
 import { useFavicon } from "./useFavicon";
 
 export type LinkConfig = {

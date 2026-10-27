@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { noteColours } from "#/features/notes/colours";
 import { themes } from ".";
 
 // Read from disk: Vitest replaces CSS imports, even ?raw ones, with empty strings.
@@ -41,6 +42,29 @@ function declarations(selector: string): Record<string, string> {
 	);
 }
 
+// [foreground, minimum ratio] against every note colour.
+const onNoteColours: [string, number][] = [
+	["ink", 4.5],
+	["muted", 4.5],
+	["accent", 3],
+];
+
+/**
+ * The smallest RGB distance of a note colour from paper. Light tints on a
+ * light paper differ in hue more than in luminance, so contrast ratios don't
+ * tell whether a note stands out from the page.
+ */
+const minDistanceFromPaper = 24;
+
+function rgb(hex: string): number[] {
+	return [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+}
+
+function distance(a: string, b: string): number {
+	const [x, y] = [rgb(a), rgb(b)];
+	return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+}
+
 function luminance(hex: string): number {
 	const [r, g, b] = [1, 3, 5].map((i) => {
 		const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -69,10 +93,27 @@ describe.each(themes)("theme $id", ({ id, mode, paper }) => {
 	it.each(pairs)("%s on %s meets %d:1", (fg, bg, min) => {
 		expect(contrast(values[fg], values[bg])).toBeGreaterThanOrEqual(min);
 	});
+
+	describe.each(noteColours)("note colour %s", (colour) => {
+		const note = values[`note-${colour}`];
+
+		it("is defined and stands out from paper", () => {
+			expect(note).toMatch(/^#[0-9a-f]{6}$/);
+			expect(distance(note, values.paper)).toBeGreaterThanOrEqual(
+				minDistanceFromPaper,
+			);
+		});
+
+		it.each(onNoteColours)("%s on it meets %d:1", (fg, min) => {
+			expect(contrast(values[fg], note)).toBeGreaterThanOrEqual(min);
+		});
+	});
 });
 
 it("uses the White theme as the @theme defaults", () => {
 	const defaults = declarations("@theme static");
 	const white = declarations('[data-theme="white"]');
 	for (const token of tokens) expect(defaults[token], token).toBe(white[token]);
+	for (const colour of noteColours)
+		expect(defaults[`note-${colour}`], colour).toBe(white[`note-${colour}`]);
 });

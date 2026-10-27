@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "lucide-react";
 import { useState } from "react";
+import { shownIcon } from "#/components/IconChooser";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
 import { favouritesQueryOptions } from "#/features/favourites/api";
 import { FavouriteDetailsDialog } from "#/features/favourites/FavouriteDetails";
 import { findNode } from "#/features/favourites/tree";
 import type { WidgetKind, WidgetViewProps } from "../registry";
-import { shownIcon } from "./IconChooser";
 import { iconSourceOf, type LinkConfig, LinkSettings } from "./LinkSettings";
 import { LinkView } from "./LinkView";
 import { useFavicon } from "./useFavicon";

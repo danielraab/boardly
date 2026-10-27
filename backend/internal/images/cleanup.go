@@ -20,8 +20,8 @@ const UnusedUploadAge = 24 * time.Hour
 // and a raw file whose job is about to be queued.
 const UnusedPreviewAge = time.Hour
 
-// Sweep deletes uploads older than UnusedUploadAge that no dashboard widget
-// refers to, previews older than UnusedPreviewAge that no link refers to,
+// Sweep deletes uploads older than UnusedUploadAge that no dashboard widget,
+// note or note category refers to, previews older than UnusedPreviewAge that no link refers to,
 // files that have no record, and raw images that no job names. A widget
 // refers to an image by its ID under a config key named "imageId", at any
 // depth. Favicons are kept. It returns the number of deleted images.
@@ -33,6 +33,8 @@ func (s *Store) Sweep(ctx context.Context) (int, error) {
 		   AND NOT EXISTS (
 		     SELECT 1 FROM dashboard_widgets AS w, json_tree(w.config) AS j
 		     WHERE j.key = 'imageId' AND j.value = images.id)
+		   AND NOT EXISTS (SELECT 1 FROM notes WHERE icon_image_id = images.id)
+		   AND NOT EXISTS (SELECT 1 FROM note_categories WHERE icon_image_id = images.id)
 		 RETURNING id`, db.FormatTime(now.Add(-UnusedUploadAge)))
 	if err != nil {
 		return uploads, err

@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines the color themes of the web app: the available themes and their tokens, contrast minimums, the System default that follows the OS color scheme, the theme menu, remembering the choice in the browser, and applying the theme before first paint.
+
 ## Requirements
+
 ### Requirement: Available themes
 The web app SHALL offer exactly these 7 themes, identified by a stable id: `white` (White / Weiß, light), `black` (Black / Schwarz, dark), `sand` (Sand / Sand, light), `sage` (Sage / Salbei, light), `fjord` (Fjord / Fjord, dark), `dusk` (Dusk / Dämmerung, dark) and `ember` (Ember / Glut, dark). Each theme SHALL define every color token used by the UI: `paper`, `surface`, `ink`, `muted`, `line`, `accent`, `danger`, `on-danger` and `shadow`.
 
@@ -102,3 +104,13 @@ All buttons SHALL use a compact, consistent size and SHALL have rounded corners 
 - **WHEN** any page or dialog is rendered
 - **THEN** no button is fully rounded; its corners are rounded but its sides are straight
 
+### Requirement: Note colour palette
+Every theme SHALL define a background colour for each of the note colours `red` (Red / Rot), `orange` (Orange / Orange), `yellow` (Yellow / Gelb), `green` (Green / Grün), `teal` (Teal / Petrol), `blue` (Blue / Blau), `purple` (Purple / Lila), `pink` (Pink / Rosa) and `grey` (Grey / Grau). In light themes they are light tints, in dark themes dark shades, so that the same note colour fits every theme. In every theme, `ink` and `muted` SHALL have a contrast ratio of at least 4.5:1 and `accent` at least 3:1 against each note colour, and each note colour SHALL be distinguishable from `paper`. Notes and note categories store only the colour's name, never a colour value, so a note's colour follows the active theme.
+
+#### Scenario: Contrast check for note colours
+- **WHEN** the contrast ratios of `ink`, `muted` and `accent` against every note colour are computed for each of the 7 themes
+- **THEN** every pair meets its minimum
+
+#### Scenario: Colour follows the theme
+- **WHEN** a note has the colour `blue` and Ann switches from the theme `white` to `black`
+- **THEN** the note's card changes from a light blue to a dark blue background without reload, and its text stays readable

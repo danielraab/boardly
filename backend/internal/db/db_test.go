@@ -840,3 +840,73 @@ func TestJobsConstraints(t *testing.T) {
 		t.Error("unknown kind: insert succeeded, want a constraint error")
 	}
 }
+
+func TestNotesConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	exec := func(query string, args ...any) error {
+		_, err := db.Exec(query, args...)
+		return err
+	}
+	mustExec := func(query string, args ...any) {
+		t.Helper()
+		if err := exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	category := `INSERT INTO note_categories (id, user_id, parent_id, title, icon_symbol, icon_image_id, created_at, updated_at)
+		VALUES (?, ?, ?, 'C', ?, ?, '` + ts + `', '` + ts + `')`
+	note := `INSERT INTO notes (id, user_id, category_id, icon_symbol, icon_image_id, content, created_at, updated_at)
+		VALUES (?, 'u1', ?, ?, ?, '{"v":1,"blocks":[]}', '` + ts + `', '` + ts + `')`
+
+	mustExec(`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', ?, ?), ('u2', 'b@example.org', ?, ?)`, ts, ts, ts, ts)
+	mustExec(`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES ('i1', 'upload', 'u1', 'image/png', 1, ?)`, ts)
+	mustExec(category, "c1", "u1", nil, nil, nil)
+	mustExec(category, "c2", "u1", "c1", nil, "i1")
+	mustExec(note, "n1", "c2", nil, "i1")
+	mustExec(note, "n2", "c1", "home", nil)
+
+	for name, args := range map[string][]any{
+		"parent of another user": {"x1", "u2", "c1", nil, nil},
+		"symbol and image":       {"x2", "u1", nil, "home", "i1"},
+	} {
+		if err := exec(category, args...); err == nil {
+			t.Errorf("category %s: insert succeeded, want a constraint error", name)
+		}
+	}
+	if err := exec(note, "x3", nil, "home", "i1"); err == nil {
+		t.Error("note with symbol and image: insert succeeded, want a constraint error")
+	}
+	if err := exec(`DELETE FROM note_categories WHERE id = 'c1'`); err == nil {
+		t.Error("deleting a category with subcategories succeeded, want a constraint error")
+	}
+
+	// Deleting an image clears the icons that use it.
+	mustExec(`DELETE FROM images WHERE id = 'i1'`)
+	var n int
+	if err := db.QueryRow(`SELECT (SELECT COUNT(*) FROM notes WHERE icon_image_id IS NOT NULL) + (SELECT COUNT(*) FROM note_categories WHERE icon_image_id IS NOT NULL)`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("icons with an image = %d, err %v; want 0 after deleting the image", n, err)
+	}
+
+	// Deleting a category makes its notes uncategorized.
+	mustExec(`DELETE FROM note_categories WHERE id = 'c2'`)
+	var categoryID *string
+	if err := db.QueryRow(`SELECT category_id FROM notes WHERE id = 'n1'`).Scan(&categoryID); err != nil || categoryID != nil {
+		t.Fatalf("category of n1 = %v, err %v; want NULL", categoryID, err)
+	}
+
+	mustExec(`DELETE FROM users WHERE id = 'u1'`)
+	for _, table := range []string{"notes", "note_categories"} {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("%s = %d, err %v; want 0 after deleting the user", table, n, err)
+		}
+	}
+}
