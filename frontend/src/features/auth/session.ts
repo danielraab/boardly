@@ -13,6 +13,8 @@ export type User = {
 	name: string | null;
 	/** First part of the user's dashboard addresses: /<slug>/<dashboard-slug>. */
 	slug: string;
+	/** Default folder of the "Save link" page, or null for the root. */
+	shareFolderId: string | null;
 	/** End of the passkey enrollment window (RFC 3339), or null when none is open. */
 	passkeyEnrollmentUntil: string | null;
 };

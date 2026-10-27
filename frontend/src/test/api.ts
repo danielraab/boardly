@@ -38,6 +38,7 @@ export function signedIn(user: Partial<User> = {}): MockResponse {
 			email: "ann@example.org",
 			name: null,
 			slug: "ann",
+			shareFolderId: null,
 			passkeyEnrollmentUntil: null,
 			...user,
 		},

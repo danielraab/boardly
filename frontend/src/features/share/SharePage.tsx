@@ -4,6 +4,7 @@ import { BookmarkCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
+import { useMe } from "#/features/auth/session";
 import {
 	createFavourite,
 	type FavouriteNode,
@@ -23,29 +24,9 @@ import { ApiError } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { type ShareParams, sharedLink } from "./sharedLink";
 
-/** The folder last saved into on this page, remembered in this browser. */
-export const SHARE_FOLDER_STORAGE_KEY = "boardly.share.folder";
-
-function storedFolder(): string | null {
-	try {
-		return localStorage.getItem(SHARE_FOLDER_STORAGE_KEY);
-	} catch {
-		return null;
-	}
-}
-
-function rememberFolder(id: string) {
-	try {
-		localStorage.setItem(SHARE_FOLDER_STORAGE_KEY, id);
-	} catch {
-		// Storage can be unavailable (private mode); the next share starts at the root.
-	}
-}
-
-/** The remembered folder while it still exists, otherwise the root. */
-function defaultFolder(root: FavouriteNode): string {
-	const stored = storedFolder();
-	const node = stored ? findNode(root, stored) : undefined;
+/** The user's default folder while it still exists, otherwise the root. */
+function defaultFolder(root: FavouriteNode, shareFolderId: string | null) {
+	const node = shareFolderId ? findNode(root, shareFolderId) : undefined;
 	return node?.kind === "folder" ? node.id : root.id;
 }
 
@@ -60,6 +41,7 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 	const queryClient = useQueryClient();
 	const favourites = useQuery(favouritesQueryOptions);
 	const root = favourites.data;
+	const { data: me } = useMe();
 
 	const [initial] = useState(() => sharedLink(shared));
 	const [url, setUrl] = useState(initial.url);
@@ -69,13 +51,14 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 	const [problem, setProblem] = useState<FieldError | "generic" | null>(null);
 	const [savedIn, setSavedIn] = useState<string | null>(null);
 
-	const folderId = chosenFolder ?? (root ? defaultFolder(root) : "");
+	const folderId =
+		chosenFolder ??
+		(root ? defaultFolder(root, me?.shareFolderId ?? null) : "");
 
 	const save = useMutation({
 		mutationFn: () =>
 			createFavourite({ parentId: folderId, kind: "link", url, title, tags }),
 		onSuccess: () => {
-			rememberFolder(folderId);
 			const folder = root && findNode(root, folderId);
 			setSavedIn(
 				!folder || folder.id === root?.id

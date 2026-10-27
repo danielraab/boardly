@@ -589,7 +589,7 @@ func TestMe(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if slug, _ := body["slug"].(string); len(body) != 5 || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
+	if slug, _ := body["slug"].(string); len(body) != 6 || body["shareFolderId"] != nil || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
 		t.Fatalf("body = %v", body)
 	}
 }
@@ -665,6 +665,45 @@ func TestPatchMeSlug(t *testing.T) {
 	rec = patch(cookie, `{"name":"Ann","slug":"ann"}`)
 	if u := decodeUser(t, rec); rec.Code != http.StatusOK || u.Slug != "ann" || u.Name == nil || *u.Name != "Ann" {
 		t.Fatalf("both: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestPatchMeShareFolder(t *testing.T) {
+	s := newServer(t)
+	cookie := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	patch := func(body string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/me", body, withCookie(cookie))
+	}
+	inbox := s.create(t, cookie, map[string]any{"kind": "folder", "title": "Inbox"})
+	link := s.create(t, cookie, map[string]any{"kind": "link", "parentId": inbox.ID, "url": "https://example.org"})
+	bobs := s.create(t, bob, map[string]any{"kind": "folder", "title": "Bob"})
+
+	rec := patch(`{"shareFolderId":"` + inbox.ID + `"}`)
+	if u := decodeUser(t, rec); rec.Code != http.StatusOK || u.ShareFolderID == nil || *u.ShareFolderID != inbox.ID {
+		t.Fatalf("set: %d %s", rec.Code, rec.Body)
+	}
+	for _, body := range []string{
+		`{"shareFolderId":"` + link.ID + `"}`,
+		`{"shareFolderId":"` + bobs.ID + `"}`,
+		`{"shareFolderId":"unknown"}`,
+		`{"shareFolderId":42}`,
+	} {
+		if rec := patch(body); rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_folder" {
+			t.Errorf("%s: %d %s, want invalid_folder", body, rec.Code, rec.Body)
+		}
+	}
+	if u := decodeUser(t, s.req("GET", "/api/me", "", withCookie(cookie))); u.ShareFolderID == nil || *u.ShareFolderID != inbox.ID {
+		t.Fatalf("rejected request changed the folder: %+v", u)
+	}
+
+	root := s.tree(t, cookie)
+	if rec := patch(`{"shareFolderId":"` + root.ID + `"}`); rec.Code != http.StatusOK || decodeUser(t, rec).ShareFolderID != nil {
+		t.Fatalf("root: %d %s", rec.Code, rec.Body)
+	}
+	patch(`{"shareFolderId":"` + inbox.ID + `"}`)
+	if rec := patch(`{"shareFolderId":null}`); rec.Code != http.StatusOK || decodeUser(t, rec).ShareFolderID != nil {
+		t.Fatalf("clear: %d %s", rec.Code, rec.Body)
 	}
 }
 

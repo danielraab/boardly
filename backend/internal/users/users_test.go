@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"boardly/internal/dbtest"
+	"boardly/internal/favourites"
 )
 
 func ptr(s string) *string { return &s }
@@ -177,5 +178,87 @@ func TestUpdateIsAllOrNothing(t *testing.T) {
 	}
 	if u, _ := s.Get(ctx, bob.ID); u.Name != nil {
 		t.Fatalf("name = %v, want it unchanged", *u.Name)
+	}
+}
+
+func TestShareFolder(t *testing.T) {
+	s := NewStore(dbtest.Open(t))
+	ctx := context.Background()
+	favs := favourites.NewStore(s.DB)
+	ann, _ := s.EnsureByEmail(ctx, s.DB, "ann@example.org")
+	bob, _ := s.EnsureByEmail(ctx, s.DB, "bob@example.org")
+	folder := func(userID, parentID, title string) string {
+		t.Helper()
+		n, err := favs.Create(ctx, userID, favourites.NewNode{ParentID: parentID, Kind: favourites.KindFolder, Title: &title})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n.ID
+	}
+	set := func(id *string) (User, error) { return s.Update(ctx, ann.ID, Patch{ShareFolderID: &id}) }
+
+	if ann.ShareFolderID != nil {
+		t.Fatalf("new user: shareFolderId = %v, want nil", *ann.ShareFolderID)
+	}
+	inbox := folder(ann.ID, "", "Inbox")
+	got, err := set(&inbox)
+	if err != nil || got.ShareFolderID == nil || *got.ShareFolderID != inbox {
+		t.Fatalf("own folder: got %+v, %v", got, err)
+	}
+
+	url := "https://example.org"
+	link, _ := favs.Create(ctx, ann.ID, favourites.NewNode{ParentID: inbox, Kind: favourites.KindLink, URL: &url})
+	bobs := folder(bob.ID, "", "Bob")
+	for name, id := range map[string]string{"link": link.ID, "other user": bobs, "unknown": "nope"} {
+		if _, err := set(&id); !errors.Is(err, ErrInvalidFolder) {
+			t.Fatalf("%s: err = %v, want ErrInvalidFolder", name, err)
+		}
+	}
+	if u, _ := s.Get(ctx, ann.ID); u.ShareFolderID == nil || *u.ShareFolderID != inbox {
+		t.Fatalf("rejected value changed the setting: %+v", u)
+	}
+
+	root, _ := favs.EnsureRoot(ctx, s.DB, ann.ID)
+	if got, err := set(&root); err != nil || got.ShareFolderID != nil {
+		t.Fatalf("root: got %+v, %v, want nil", got, err)
+	}
+	if _, err := set(&inbox); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := set(nil); err != nil || got.ShareFolderID != nil {
+		t.Fatalf("clear: got %+v, %v", got, err)
+	}
+}
+
+func TestShareFolderClearedOnDelete(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		delete func(favs *favourites.Store, userID, work, inbox string) error
+	}{
+		{"folder itself", func(favs *favourites.Store, userID, _, inbox string) error {
+			return favs.Delete(context.Background(), userID, inbox, favourites.DeleteKeepNone)
+		}},
+		{"with parent", func(favs *favourites.Store, userID, work, _ string) error {
+			return favs.Delete(context.Background(), userID, work, favourites.DeleteWithChildren)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewStore(dbtest.Open(t))
+			ctx := context.Background()
+			favs := favourites.NewStore(s.DB)
+			ann, _ := s.EnsureByEmail(ctx, s.DB, "ann@example.org")
+			work, _ := favs.Create(ctx, ann.ID, favourites.NewNode{Kind: favourites.KindFolder, Title: ptr("Work")})
+			inbox, _ := favs.Create(ctx, ann.ID, favourites.NewNode{ParentID: work.ID, Kind: favourites.KindFolder, Title: ptr("Inbox")})
+			id := &inbox.ID
+			if _, err := s.Update(ctx, ann.ID, Patch{ShareFolderID: &id}); err != nil {
+				t.Fatal(err)
+			}
+			if err := tc.delete(favs, ann.ID, work.ID, inbox.ID); err != nil {
+				t.Fatal(err)
+			}
+			if u, _ := s.Get(ctx, ann.ID); u.ShareFolderID != nil {
+				t.Fatalf("shareFolderId = %v, want nil", *u.ShareFolderID)
+			}
+		})
 	}
 }

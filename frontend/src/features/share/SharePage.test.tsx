@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
-import { SHARE_FOLDER_STORAGE_KEY } from "./SharePage";
 
 const tree: FavouriteNode = {
 	id: "root",
@@ -15,9 +14,9 @@ const tree: FavouriteNode = {
 	],
 };
 
-function mockShareApi() {
+function mockShareApi(shareFolderId: string | null = null) {
 	return mockApi({
-		"GET /api/me": signedIn(),
+		"GET /api/me": signedIn({ shareFolderId }),
 		"GET /api/favourites": { body: tree },
 		"GET /api/tags": { body: [] },
 		"POST /api/favourites": ({ body }) => ({
@@ -74,7 +73,7 @@ describe("save link page", () => {
 		).toBeVisible();
 	});
 
-	it("saves into the chosen folder with tags and remembers the folder", async () => {
+	it("saves into the chosen folder with tags", async () => {
 		const api = mockShareApi();
 		const { user } = renderApp(share({ url: "https://example.org/docs" }));
 
@@ -93,19 +92,28 @@ describe("save link page", () => {
 			title: "",
 			tags: ["docs"],
 		});
-		expect(localStorage.getItem(SHARE_FOLDER_STORAGE_KEY)).toBe("work");
 	});
 
-	it("preselects the remembered folder", async () => {
-		localStorage.setItem(SHARE_FOLDER_STORAGE_KEY, "home");
-		mockShareApi();
+	it("preselects the default folder", async () => {
+		mockShareApi("home");
 		renderApp("/share");
 		expect(await folderRadio("Home")).toBeChecked();
 	});
 
-	it("falls back to the root when the remembered folder is gone", async () => {
-		localStorage.setItem(SHARE_FOLDER_STORAGE_KEY, "deleted");
-		mockShareApi();
+	it("doesn't remember another folder over the default", async () => {
+		mockShareApi("home");
+		const { user, router } = renderApp(share({ url: "https://example.org" }));
+		await user.click(await folderRadio("Work"));
+		await user.click(screen.getByRole("button", { name: "Save" }));
+		await screen.findByRole("heading", { name: "Link saved" });
+
+		await router.navigate({ to: "/" });
+		await router.navigate({ to: "/share" });
+		expect(await folderRadio("Home")).toBeChecked();
+	});
+
+	it("falls back to the root when the default folder is gone", async () => {
+		mockShareApi("deleted");
 		renderApp("/share");
 		expect(await folderRadio("Favourites")).toBeChecked();
 	});

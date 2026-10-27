@@ -6,6 +6,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A default folder for new links, chosen in Settings → Profile and stored on the account. The
+  "Save link" page (share target and "Add link" shortcut) starts in it on every device.
+
+### Changed
+
+- The "Save link" page no longer remembers the last used folder in the browser; it starts in the
+  default folder, or the root folder when none is set.
+
 ## [0.1.0] - 2026-10-25
 
 ### Added
