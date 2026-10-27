@@ -706,6 +706,26 @@
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen diese Links. Sonst siehst nur du das Widget.",
 				"empty": "Keine Links in diesem Ordner",
 				"missing": "Dieser Ordner existiert nicht mehr"
+			},
+			"recentFavourites": {
+				"name": "Neueste Favoriten",
+				"description": "Zeigt die neuesten Links eines Ordners deiner Favoriten.",
+				"addTitle": "Neueste Favoriten hinzufügen",
+				"editTitle": "Neueste Favoriten bearbeiten",
+				"folderLabel": "Ordner",
+				"folderHint": "Links in Unterordnern werden mitgezählt.",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Links angezeigt.",
+				"limitLabel": "Anzahl Links",
+				"limitHint": "1 bis {{max}}.",
+				"daysLabel": "Nur die letzten … Tage",
+				"daysHint": "Optional, 1 bis {{max}}. Leer zeigt Links jeden Alters.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die neuesten Links dieses Ordners. Sonst siehst nur du das Widget.",
+				"empty": "Keine Favoriten",
+				"emptyDays_one": "Keine Favoriten am letzten Tag",
+				"emptyDays_other": "Keine Favoriten in den letzten {{count}} Tagen",
+				"missing": "Dieser Ordner existiert nicht mehr"
 			}
 		}
 	},

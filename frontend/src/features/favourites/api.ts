@@ -15,6 +15,8 @@ export type FavouriteNode = {
 	description?: string;
 	/** A link's preview image, fetched from its page or sent by an app. */
 	previewImageId?: string;
+	/** When the node was created, as RFC 3339; set in the owner's tree. */
+	createdAt?: string;
 };
 
 export type Tag = { id: string; name: string };

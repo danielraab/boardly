@@ -39,6 +39,8 @@ type Node struct {
 	// Create and Update), never by the loaders that widgets use.
 	Description    *string `json:"description,omitempty"`
 	PreviewImageID *string `json:"previewImageId,omitempty"`
+	// CreatedAt is only set by Tree.
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
 }
 
 // Tag is a tag of a user.
@@ -159,7 +161,7 @@ func (s *Store) Tree(ctx context.Context, userID string) (*Node, error) {
 	}
 
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id, parent_id, kind, position, title, url, description, preview_image_id FROM favourite_nodes
+		`SELECT id, parent_id, kind, position, title, url, description, preview_image_id, created_at FROM favourite_nodes
 		 WHERE user_id = ? ORDER BY parent_id, position`, userID)
 	if err != nil {
 		return nil, err
@@ -169,11 +171,17 @@ func (s *Store) Tree(ctx context.Context, userID string) (*Node, error) {
 	var order []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description, &r.previewImageID); err != nil {
+		var created string
+		if err := rows.Scan(&r.id, &r.parentID, &r.kind, &r.position, &r.title, &r.url, &r.description, &r.previewImageID, &created); err != nil {
 			return nil, err
 		}
 		n := r.node()
 		n.Description, n.PreviewImageID = nullable(r.description), nullable(r.previewImageID)
+		createdAt, err := db.ParseTime(created)
+		if err != nil {
+			return nil, err
+		}
+		n.CreatedAt = &createdAt
 		nodes[r.id] = n
 		order = append(order, r)
 	}
