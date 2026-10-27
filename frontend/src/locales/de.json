@@ -700,6 +700,14 @@
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Wird über den Links angezeigt.",
 				"subfoldersLabel": "Einträge aus Unterordnern zeigen",
+				"tagLabel": "Tag",
+				"noTag": "Kein Tag-Filter",
+				"sortLabel": "Sortierung",
+				"sort": {
+					"favourites": "Reihenfolge der Favoriten",
+					"newest": "Neueste zuerst",
+					"alphabetical": "Alphabetisch"
+				},
 				"layoutLabel": "Layout",
 				"layout": {
 					"list": "Liste",
@@ -709,7 +717,9 @@
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen diese Links. Sonst siehst nur du das Widget.",
 				"empty": "Keine Links in diesem Ordner",
-				"missing": "Dieser Ordner existiert nicht mehr"
+				"missing": "Dieser Ordner existiert nicht mehr",
+				"emptyTag": "Keine Links mit diesem „Tag“ in diesem Ordner",
+				"missingTag": "Dieser „Tag“ existiert nicht mehr"
 			},
 			"recentFavourites": {
 				"name": "Neueste Favoriten",

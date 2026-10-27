@@ -5,7 +5,11 @@ import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
-import { favouritesQueryOptions } from "#/features/favourites/api";
+import {
+	favouritesQueryOptions,
+	listTags,
+	tagUsageQueryKey,
+} from "#/features/favourites/api";
 import { FavouriteDetailsDialog } from "#/features/favourites/FavouriteDetails";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { findNode } from "#/features/favourites/tree";
@@ -16,7 +20,12 @@ import type {
 } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
-import { flattenLinks, type LinkListData } from "./flatten";
+import {
+	flattenLinks,
+	type LinkListData,
+	type LinkListSort,
+	linkListSorts,
+} from "./flatten";
 import {
 	type LinkListLayout,
 	LinkListView,
@@ -27,10 +36,16 @@ export type LinkListConfig = {
 	folderId: string;
 	title: string | null;
 	includeSubfolders: boolean;
+	/** Absent in configs saved before tags and sorting: no tag, favourites order. */
+	tagId?: string | null;
+	sort?: LinkListSort;
 	layout: LinkListLayout;
 	size: WidgetSize;
 	showIfPublic: boolean;
 };
+
+/** The owner's tags with their IDs, to choose a link list's tag. */
+const tagsQueryOptions = { queryKey: tagUsageQueryKey, queryFn: listTags };
 
 /**
  * In view mode the server's data; in edit mode the links of the owner's
@@ -41,25 +56,34 @@ export type LinkListConfig = {
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const queryClient = useQueryClient();
 	const config = widget.config as LinkListConfig;
+	const tagId = config.tagId ?? null;
 	const isOwner = useCurrentDashboard()?.isOwner ?? false;
 	const [detailsId, setDetailsId] = useState<string | null>(null);
 	const favourites = useQuery({
 		...favouritesQueryOptions,
 		enabled: editing || isOwner,
 	});
+	// The tree has tag names only, so the preview looks up the tag's name.
+	const tags = useQuery({
+		...tagsQueryOptions,
+		enabled: editing && tagId !== null,
+	});
 	let data = widget.data as LinkListData | undefined;
 	if (editing) {
-		if (!favourites.data) return null;
+		if (!favourites.data || (tagId !== null && !tags.data)) return null;
 		const folder = findNode(favourites.data, config.folderId);
-		data =
-			folder?.kind === "folder"
-				? {
-						links: flattenLinks(
-							folder.children ?? [],
-							config.includeSubfolders,
-						),
-					}
-				: { missing: true };
+		const tag = tags.data?.find((t) => t.id === tagId);
+		if (folder?.kind !== "folder") data = { missing: true };
+		else if (tagId !== null && !tag) data = { missing: "tag" };
+		else
+			data = {
+				links: flattenLinks(
+					folder.children ?? [],
+					config.includeSubfolders,
+					tag?.name ?? null,
+					config.sort,
+				),
+			};
 	}
 	if (!data) return null;
 	const canShowDetails = isOwner && !editing && !!favourites.data;
@@ -71,6 +95,7 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				size={config.size}
 				editing={editing}
 				title={config.title}
+				tagFilter={tagId !== null}
 				headingLevel={headingLevel}
 				onDetails={canShowDetails ? setDetailsId : undefined}
 			/>
@@ -93,7 +118,10 @@ function Settings(props: WidgetSettingsProps) {
 	const { t } = useTranslation();
 	const config = props.widget.config as LinkListConfig;
 	const favourites = useQuery(favouritesQueryOptions);
+	const tags = useQuery(tagsQueryOptions);
 	const [folderId, setFolderId] = useState(config.folderId);
+	const [tagId, setTagId] = useState(config.tagId ?? "");
+	const [sort, setSort] = useState<LinkListSort>(config.sort ?? "favourites");
 	const [title, setTitle] = useState(config.title ?? "");
 	const [includeSubfolders, setIncludeSubfolders] = useState(
 		config.includeSubfolders,
@@ -106,6 +134,8 @@ function Settings(props: WidgetSettingsProps) {
 		favourites.data && findNode(favourites.data, folderId)?.kind === "folder"
 			? folderId
 			: "";
+	// Likewise, a deleted tag falls back to no tag filter.
+	const chosenTag = tags.data?.some((t) => t.id === tagId) ? tagId : "";
 
 	return (
 		<WidgetSettingsForm
@@ -126,6 +156,8 @@ function Settings(props: WidgetSettingsProps) {
 						folderId: chosen,
 						title: title.trim() || null,
 						includeSubfolders,
+						tagId: chosenTag || null,
+						sort,
 						layout,
 						size,
 						showIfPublic,
@@ -175,6 +207,48 @@ function Settings(props: WidgetSettingsProps) {
 				<label htmlFor="link-list-subfolders" className="text-sm font-medium">
 					{t("dashboards.widgets.linkList.subfoldersLabel")}
 				</label>
+			</div>
+			<div className="grid grid-cols-2 gap-3">
+				<div>
+					<label htmlFor="link-list-tag" className="block text-sm font-medium">
+						{t("dashboards.widgets.linkList.tagLabel")}
+					</label>
+					<select
+						id="link-list-tag"
+						value={chosenTag}
+						onChange={(e) => setTagId(e.target.value)}
+						className={textInput}
+					>
+						<option value="">{t("dashboards.widgets.linkList.noTag")}</option>
+						{tags.data?.map((tag) => (
+							<option key={tag.id} value={tag.id}>
+								{tag.name}
+							</option>
+						))}
+					</select>
+					{config.tagId && tags.data && chosenTag === "" && (
+						<p className="mt-1 text-sm text-muted">
+							{t("dashboards.widgets.linkList.missingTag")}
+						</p>
+					)}
+				</div>
+				<div>
+					<label htmlFor="link-list-sort" className="block text-sm font-medium">
+						{t("dashboards.widgets.linkList.sortLabel")}
+					</label>
+					<select
+						id="link-list-sort"
+						value={sort}
+						onChange={(e) => setSort(e.target.value as LinkListSort)}
+						className={textInput}
+					>
+						{linkListSorts.map((s) => (
+							<option key={s} value={s}>
+								{t(`dashboards.widgets.linkList.sort.${s}`)}
+							</option>
+						))}
+					</select>
+				</div>
 			</div>
 			<div className="grid grid-cols-2 gap-3">
 				<div>
@@ -246,6 +320,8 @@ export const linkListKind: WidgetKind = {
 		folderId: "",
 		title: null,
 		includeSubfolders: false,
+		tagId: null,
+		sort: "favourites",
 		layout: "list",
 		size: "M",
 		showIfPublic: false,

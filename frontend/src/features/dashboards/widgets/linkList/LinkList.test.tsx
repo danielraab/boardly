@@ -116,6 +116,24 @@ describe("LinkListView", () => {
 		view({ missing: true });
 		expect(screen.getByText("This folder no longer exists")).toBeVisible();
 	});
+
+	it("shows an empty tag filter and a missing tag", () => {
+		const { unmount } = render(
+			<LinkListView
+				data={{ links: [] }}
+				layout="list"
+				size="M"
+				editing={false}
+				tagFilter
+			/>,
+		);
+		expect(
+			screen.getByText("No links with this tag in this folder"),
+		).toBeVisible();
+		unmount();
+		view({ missing: "tag" });
+		expect(screen.getByText("This tag no longer exists")).toBeVisible();
+	});
 });
 
 const favourites: FavouriteNode = {
@@ -139,6 +157,7 @@ const favourites: FavouriteNode = {
 							kind: "link",
 							title: "GitLab",
 							url: "https://gitlab.example.org/",
+							tags: ["monitoring"],
 						},
 					],
 				},
@@ -171,6 +190,9 @@ async function openEditor(sections: Widget[], more = {}) {
 		"GET /api/me": signedIn(),
 		"GET /api/u/ann/home": { body: viewData(sections) },
 		"GET /api/favourites": { body: favourites },
+		"GET /api/tags": {
+			body: [{ id: "t1", name: "monitoring", linkCount: 1 }],
+		},
 		...more,
 	});
 	const app = renderApp("/ann/home?edit=true");
@@ -216,6 +238,8 @@ describe("the link list on a dashboard", () => {
 		expect(
 			within(dialog).getByLabelText("Show items from subfolders"),
 		).not.toBeChecked();
+		expect(within(dialog).getByLabelText("Tag")).toHaveValue("");
+		expect(within(dialog).getByLabelText("Sort")).toHaveValue("favourites");
 		expect(within(dialog).getByLabelText("Layout")).toHaveValue("list");
 		expect(within(dialog).getByLabelText("Size")).toHaveValue("M");
 		expect(
@@ -252,6 +276,8 @@ describe("the link list on a dashboard", () => {
 						folderId: "work",
 						title: "Work links",
 						includeSubfolders: true,
+						tagId: null,
+						sort: "favourites",
 						layout: "tiles",
 						size: "M",
 						showIfPublic: false,
@@ -283,6 +309,59 @@ describe("the link list on a dashboard", () => {
 		await user.click(within(folder).getByRole("radio", { name: "Tools" }));
 		await user.click(apply);
 		expect(await screen.findByRole("link", { name: /GitLab/ })).toBeVisible();
+	});
+});
+
+describe("the link list's tag and sort", () => {
+	it("previews and saves a tag filter and a sort", async () => {
+		const { user } = await openEditor([
+			section("Work", {}, linkList("l1", { includeSubfolders: true })),
+		]);
+		expect(await screen.findByRole("link", { name: /Mail/ })).toBeVisible();
+		await user.click(screen.getByRole("button", { name: "Edit Link list" }));
+		const dialog = await screen.findByRole("dialog", {
+			name: "Edit link list",
+		});
+		const tag = within(dialog).getByLabelText("Tag");
+		await within(tag).findByRole("option", { name: "monitoring" });
+		expect(
+			within(tag)
+				.getAllByRole("option")
+				.map((o) => o.textContent),
+		).toEqual(["No tag filter", "monitoring"]);
+		await user.selectOptions(tag, "monitoring");
+		await user.selectOptions(
+			within(dialog).getByLabelText("Sort"),
+			"Alphabetical",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+
+		expect(await screen.findByRole("link", { name: /GitLab/ })).toBeVisible();
+		expect(screen.queryByRole("link", { name: /Mail/ })).toBeNull();
+	});
+
+	it("shows a deleted tag and falls back to no tag filter", async () => {
+		const { user } = await openEditor([
+			section("Work", {}, linkList("l1", { tagId: "gone" })),
+		]);
+		expect(await screen.findByText("This tag no longer exists")).toBeVisible();
+		await user.click(screen.getByRole("button", { name: "Edit Link list" }));
+		const dialog = await screen.findByRole("dialog", {
+			name: "Edit link list",
+		});
+		expect(
+			await within(dialog).findByText("This tag no longer exists"),
+		).toBeVisible();
+		expect(within(dialog).getByLabelText("Tag")).toHaveValue("");
+		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+		expect(await screen.findByRole("link", { name: /Mail/ })).toBeVisible();
+	});
+
+	it("shows an empty tag filter", async () => {
+		await openEditor([section("Work", {}, linkList("l1", { tagId: "t1" }))]);
+		expect(
+			await screen.findByText("No links with this tag in this folder"),
+		).toBeVisible();
 	});
 });
 

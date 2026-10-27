@@ -58,6 +58,7 @@ export function LinkListView({
 	size,
 	editing,
 	title = null,
+	tagFilter = false,
 	headingLevel = 2,
 	onDetails,
 }: {
@@ -66,6 +67,8 @@ export function LinkListView({
 	size: WidgetSize;
 	editing: boolean;
 	title?: string | null;
+	/** Whether the links are filtered by a tag, for the empty message. */
+	tagFilter?: boolean;
 	headingLevel?: number;
 	onDetails?: (id: string) => void;
 }) {
@@ -76,11 +79,23 @@ export function LinkListView({
 	let body: ReactNode;
 	if ("missing" in data) {
 		body = (
-			<p className="text-muted">{t("dashboards.widgets.linkList.missing")}</p>
+			<p className="text-muted">
+				{t(
+					data.missing === "tag"
+						? "dashboards.widgets.linkList.missingTag"
+						: "dashboards.widgets.linkList.missing",
+				)}
+			</p>
 		);
 	} else if (data.links.length === 0) {
 		body = (
-			<p className="text-muted">{t("dashboards.widgets.linkList.empty")}</p>
+			<p className="text-muted">
+				{t(
+					tagFilter
+						? "dashboards.widgets.linkList.emptyTag"
+						: "dashboards.widgets.linkList.empty",
+				)}
+			</p>
 		);
 	} else if (layout === "tiles") {
 		body = (

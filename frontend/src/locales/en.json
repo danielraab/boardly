@@ -700,6 +700,14 @@
 				"titleLabel": "Title",
 				"titleHint": "Optional. Shown above the links.",
 				"subfoldersLabel": "Show items from subfolders",
+				"tagLabel": "Tag",
+				"noTag": "No tag filter",
+				"sortLabel": "Sort",
+				"sort": {
+					"favourites": "Favourites order",
+					"newest": "Newest first",
+					"alphabetical": "Alphabetical"
+				},
 				"layoutLabel": "Layout",
 				"layout": {
 					"list": "List",
@@ -709,7 +717,9 @@
 				"publicLabel": "Show on public dashboard",
 				"publicHint": "Visitors of a public dashboard see these links. Otherwise only you see the widget.",
 				"empty": "No links in this folder",
-				"missing": "This folder no longer exists"
+				"missing": "This folder no longer exists",
+				"emptyTag": "No links with this tag in this folder",
+				"missingTag": "This tag no longer exists"
 			},
 			"recentFavourites": {
 				"name": "Recent favourites",
