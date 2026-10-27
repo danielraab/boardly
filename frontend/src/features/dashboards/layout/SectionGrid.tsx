@@ -4,9 +4,23 @@ import {
 	SortableContext,
 	useSortable,
 } from "@dnd-kit/sortable";
-import { GripVertical, LayoutGrid, Plus, Settings2 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import {
+	ChevronDown,
+	ChevronRight,
+	GripVertical,
+	LayoutGrid,
+	Plus,
+	Settings2,
+} from "lucide-react";
+import {
+	type CSSProperties,
+	createContext,
+	type ReactNode,
+	useContext,
+	useMemo,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { useStoredIdSet } from "#/lib/useStoredIdSet";
 import {
 	type ContentWidget,
 	isSection,
@@ -23,6 +37,14 @@ const gridVars = {
 	"--dashboard-gap": "1rem",
 } as CSSProperties;
 
+/** The sections the viewer collapsed, remembered in this browser. */
+const collapsedKey = "boardly.collapsedSections";
+
+const CollapsedContext = createContext<{
+	ids: ReadonlySet<string>;
+	toggle: (id: string) => void;
+}>({ ids: new Set(), toggle: () => {} });
+
 /**
  * The top level of a dashboard: a grid with `columns` columns. Each widget is
  * at most as wide as its parent, and a section lays out its children on a
@@ -35,15 +57,29 @@ export function DashboardGrid({
 	sections: Widget[];
 	columns: number;
 }) {
+	const [ids, setIds] = useStoredIdSet(collapsedKey);
+	const collapsed = useMemo(
+		() => ({
+			ids,
+			toggle: (id: string) => {
+				const next = new Set(ids);
+				if (!next.delete(id)) next.add(id);
+				setIds(next);
+			},
+		}),
+		[ids, setIds],
+	);
 	return (
-		<div style={gridVars}>
-			<SectionList
-				sections={sections}
-				columns={columns}
-				parentId={null}
-				level={1}
-			/>
-		</div>
+		<CollapsedContext.Provider value={collapsed}>
+			<div style={gridVars}>
+				<SectionList
+					sections={sections}
+					columns={columns}
+					parentId={null}
+					level={1}
+				/>
+			</div>
+		</CollapsedContext.Provider>
 	);
 }
 
@@ -241,7 +277,10 @@ function SortableSection(props: {
 	);
 }
 
-/** A section's box: title, border, height and its children's grid. */
+/**
+ * A section's box: title, border, height and its children's grid. Outside
+ * edit mode a titled section can be collapsed to its heading.
+ */
 function SectionFrame({
 	section,
 	parentColumns,
@@ -259,8 +298,11 @@ function SectionFrame({
 }) {
 	const { t } = useTranslation();
 	const editor = useEditor();
+	const { ids, toggle } = useContext(CollapsedContext);
+	const collapsible = !editor && !!section.title;
+	const collapsed = collapsible && ids.has(section.id);
 	const span = Math.min(section.width, parentColumns);
-	const rows = section.height === "auto" ? null : section.height;
+	const rows = section.height === "auto" || collapsed ? null : section.height;
 	const Heading = `h${Math.min(level + 1, 6)}` as "h2";
 	const title = section.title ?? t("dashboards.editor.untitled");
 
@@ -301,6 +343,26 @@ function SectionFrame({
 			{(section.title || editor) && (
 				<div className="flex min-w-0 items-center gap-2">
 					{handle}
+					{collapsible && (
+						<button
+							type="button"
+							onClick={() => toggle(section.id)}
+							aria-expanded={!collapsed}
+							aria-label={t(
+								collapsed
+									? "dashboards.section.expand"
+									: "dashboards.section.collapse",
+								{ title },
+							)}
+							className="rounded-md p-1 text-muted hover:bg-paper hover:text-ink"
+						>
+							{collapsed ? (
+								<ChevronRight className="size-4" aria-hidden />
+							) : (
+								<ChevronDown className="size-4" aria-hidden />
+							)}
+						</button>
+					)}
 					{section.title ? (
 						<Heading className="min-w-0 flex-1 truncate font-semibold">
 							{section.title}
@@ -322,15 +384,16 @@ function SectionFrame({
 					)}
 				</div>
 			)}
-			{(section.children.length > 0 ||
-				(editor && (level < maxDepth || canAddWidgets(section.id)))) && (
-				<SectionList
-					sections={section.children}
-					columns={span}
-					parentId={section.id}
-					level={level + 1}
-				/>
-			)}
+			{!collapsed &&
+				(section.children.length > 0 ||
+					(editor && (level < maxDepth || canAddWidgets(section.id)))) && (
+					<SectionList
+						sections={section.children}
+						columns={span}
+						parentId={section.id}
+						level={level + 1}
+					/>
+				)}
 		</section>
 	);
 }

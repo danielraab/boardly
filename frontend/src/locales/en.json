@@ -484,6 +484,10 @@
 			"actions": "Dashboard actions",
 			"settings": "Settings"
 		},
+		"section": {
+			"expand": "Expand {{title}}",
+			"collapse": "Collapse {{title}}"
+		},
 		"editor": {
 			"editLayout": "Edit layout",
 			"saveAndExit": "Save and exit",
