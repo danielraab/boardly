@@ -51,6 +51,16 @@ body {
 }
 
 /*
+ * The open list of a native select takes the select's background, which is
+ * see-through on text inputs (bg-paper/40); give its options a solid one.
+ */
+option,
+optgroup {
+	background: var(--color-surface);
+	color: var(--color-ink);
+}
+
+/*
  * Themes. The resolved theme id is set as data-theme on <html> (see src/theme).
  * Selectors are not limited to :root so theme swatches can set data-theme on
  * themselves and render with that theme's tokens.
