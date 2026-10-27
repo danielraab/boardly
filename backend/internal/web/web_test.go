@@ -27,7 +27,7 @@ func get(h http.Handler, method, path string) *httptest.ResponseRecorder {
 }
 
 func TestServesIndexAtRoot(t *testing.T) {
-	rec := get(NewHandler(built, "Boardly"), http.MethodGet, "/")
+	rec := get(NewHandler(built, "Boardly", ""), http.MethodGet, "/")
 	if rec.Code != http.StatusOK || rec.Body.String() != index {
 		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
 	}
@@ -37,7 +37,7 @@ func TestServesIndexAtRoot(t *testing.T) {
 }
 
 func TestServesAssetWithLongCache(t *testing.T) {
-	rec := get(NewHandler(built, "Boardly"), http.MethodGet, "/assets/app-abc.js")
+	rec := get(NewHandler(built, "Boardly", ""), http.MethodGet, "/assets/app-abc.js")
 	if rec.Code != http.StatusOK || rec.Body.String() != "console.log(1)" {
 		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
 	}
@@ -50,7 +50,7 @@ func TestServesAssetWithLongCache(t *testing.T) {
 }
 
 func TestServesManifestAsManifestJSON(t *testing.T) {
-	rec := get(NewHandler(built, "Boardly"), http.MethodGet, "/manifest.en.webmanifest")
+	rec := get(NewHandler(built, "Boardly", ""), http.MethodGet, "/manifest.en.webmanifest")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
 	}
@@ -63,7 +63,7 @@ func TestServesManifestAsManifestJSON(t *testing.T) {
 }
 
 func TestIndexCarriesAppTitle(t *testing.T) {
-	h := NewHandler(built, "Boardly Staging")
+	h := NewHandler(built, "Boardly Staging", "")
 	want := `<html><head><title>Boardly Staging</title><meta name="application-name" content="Boardly Staging" /></head>app</html>`
 	for _, p := range []string{"/", "/settings", "/index.html"} {
 		rec := get(h, http.MethodGet, p)
@@ -74,7 +74,7 @@ func TestIndexCarriesAppTitle(t *testing.T) {
 }
 
 func TestIndexEscapesAppTitle(t *testing.T) {
-	rec := get(NewHandler(built, `A & B <test> "x"`), http.MethodGet, "/")
+	rec := get(NewHandler(built, `A & B <test> "x"`, ""), http.MethodGet, "/")
 	want := `<html><head><title>A &amp; B &lt;test&gt; &#34;x&#34;</title><meta name="application-name" content="A &amp; B &lt;test&gt; &#34;x&#34;" /></head>app</html>`
 	if rec.Body.String() != want {
 		t.Fatalf("got %q", rec.Body.String())
@@ -82,7 +82,7 @@ func TestIndexEscapesAppTitle(t *testing.T) {
 }
 
 func TestManifestsCarryAppTitle(t *testing.T) {
-	h := NewHandler(built, "Boardly Staging")
+	h := NewHandler(built, "Boardly Staging", "")
 	for _, lang := range []string{"en", "de"} {
 		rec := get(h, http.MethodGet, "/manifest."+lang+".webmanifest")
 		var manifest map[string]string
@@ -96,9 +96,34 @@ func TestManifestsCarryAppTitle(t *testing.T) {
 	}
 }
 
+func TestIndexCarriesAnalyticsSnippet(t *testing.T) {
+	snippet := `<script defer src="https://stats.example.org/script.js" data-website-id="abc"></script>`
+	h := NewHandler(built, "Boardly", snippet)
+	want := `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" />` + snippet + `</head>app</html>`
+	for _, p := range []string{"/", "/settings", "/index.html"} {
+		rec := get(h, http.MethodGet, p)
+		if rec.Code != http.StatusOK || rec.Body.String() != want {
+			t.Fatalf("%s: got %d %q", p, rec.Code, rec.Body.String())
+		}
+	}
+	for _, p := range []string{"/assets/app-abc.js", "/manifest.en.webmanifest"} {
+		if body := get(h, http.MethodGet, p).Body.String(); strings.Contains(body, "stats.example.org") {
+			t.Fatalf("%s: got snippet in %q", p, body)
+		}
+	}
+}
+
+func TestIndexKeepsAnalyticsSnippetUnescaped(t *testing.T) {
+	snippet := `<script>window.a = 1 && 2 < 3;</script>`
+	rec := get(NewHandler(built, "Boardly", snippet), http.MethodGet, "/")
+	if body := rec.Body.String(); !strings.Contains(body, snippet+"</head>") {
+		t.Fatalf("got %q", body)
+	}
+}
+
 func TestDeepLinkFallsBackToIndex(t *testing.T) {
 	for _, p := range []string{"/profile", "/assets", "/a/b/c", "/index.html"} {
-		rec := get(NewHandler(built, "Boardly"), http.MethodGet, p)
+		rec := get(NewHandler(built, "Boardly", ""), http.MethodGet, p)
 		if rec.Code != http.StatusOK || rec.Body.String() != index {
 			t.Fatalf("%s: got %d %q", p, rec.Code, rec.Body.String())
 		}
@@ -106,14 +131,14 @@ func TestDeepLinkFallsBackToIndex(t *testing.T) {
 }
 
 func TestMissingBuild(t *testing.T) {
-	rec := get(NewHandler(fstest.MapFS{".gitkeep": {}}, "Boardly"), http.MethodGet, "/")
+	rec := get(NewHandler(fstest.MapFS{".gitkeep": {}}, "Boardly", ""), http.MethodGet, "/")
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}
 }
 
 func TestRejectsNonGet(t *testing.T) {
-	rec := get(NewHandler(built, "Boardly"), http.MethodPost, "/")
+	rec := get(NewHandler(built, "Boardly", ""), http.MethodPost, "/")
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", rec.Code)
 	}
@@ -121,7 +146,7 @@ func TestRejectsNonGet(t *testing.T) {
 
 func TestEmbeddedHandlerBuilds(t *testing.T) {
 	// Works with only dist/.gitkeep present (no frontend build).
-	if Handler("Boardly") == nil {
+	if Handler("Boardly", "") == nil {
 		t.Fatal("nil handler")
 	}
 }
@@ -131,7 +156,7 @@ func TestEmbeddedIndexHasTitleMarkers(t *testing.T) {
 	if err != nil {
 		t.Skip("frontend not built")
 	}
-	for _, marker := range []string{titleMarker, metaMarker} {
+	for _, marker := range []string{titleMarker, metaMarker, headEnd} {
 		if !strings.Contains(string(data), marker) {
 			t.Fatalf("dist/index.html lacks %q", marker)
 		}
