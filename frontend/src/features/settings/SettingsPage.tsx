@@ -1,5 +1,5 @@
 import { Tabs } from "@base-ui/react/tabs";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,8 @@ import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChangeDialog";
 import { SlugField, type SlugProblem } from "#/features/dashboards/SlugField";
 import { slugError } from "#/features/dashboards/slug";
+import { favouritesQueryOptions } from "#/features/favourites/api";
+import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { ApiError, api } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { ConnectedAppsTab } from "./ConnectedAppsTab";
@@ -158,8 +160,75 @@ function ProfileTab({ user }: { user: User }) {
 					)}
 				</form>
 				<SlugForm user={user} />
+				<ShareFolderForm user={user} />
 			</div>
 		</section>
+	);
+}
+
+/** The folder the "Save link" page starts in; the root is saved as null. */
+function ShareFolderForm({ user }: { user: User }) {
+	const { t } = useTranslation();
+	const queryClient = useQueryClient();
+	const root = useQuery(favouritesQueryOptions).data;
+	const [chosen, setChosen] = useState<string | null>(null);
+
+	const save = useMutation({
+		mutationFn: (id: string) =>
+			api<User>("/api/me", {
+				method: "PATCH",
+				json: { shareFolderId: id === root?.id ? null : id },
+			}),
+		onSuccess: (updated) => {
+			queryClient.setQueryData(meQueryKey, updated);
+			setChosen(null);
+		},
+	});
+
+	const saved = user.shareFolderId ?? root?.id ?? "";
+	const folder = chosen ?? saved;
+	const unchanged = folder === saved;
+
+	function onSubmit(event: FormEvent) {
+		event.preventDefault();
+		save.mutate(folder);
+	}
+
+	return (
+		<form className="mt-6 max-w-xl" onSubmit={onSubmit}>
+			<FavouritePicker
+				id="profile-share-folder"
+				label={t("profile.shareFolderLabel")}
+				mode="folder"
+				value={folder}
+				onChange={(id) => {
+					setChosen(id);
+					save.reset();
+				}}
+			/>
+			<p className="mt-2 text-sm text-muted">{t("profile.shareFolderHint")}</p>
+			<button
+				type="submit"
+				className={`${primaryButton} mt-3`}
+				aria-label={t("profile.saveShareFolder")}
+				disabled={!root || unchanged || save.isPending}
+			>
+				{save.isPending ? t("profile.saving") : t("profile.save")}
+			</button>
+			{save.error && (
+				<p role="alert" className="mt-2 text-sm text-danger">
+					{save.error instanceof ApiError &&
+					save.error.code === "invalid_folder"
+						? t("profile.shareFolderInvalid")
+						: t("common.genericError")}
+				</p>
+			)}
+			{save.isSuccess && unchanged && (
+				<output className="mt-2 block text-sm text-muted">
+					{t("profile.saved")}
+				</output>
+			)}
+		</form>
 	);
 }
 

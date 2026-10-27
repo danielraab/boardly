@@ -22,6 +22,8 @@ type User struct {
 	Email string  `json:"email"`
 	Name  *string `json:"name"`
 	Slug  string  `json:"slug"`
+	// ShareFolderID is the default folder of the "Save link" page; nil means the root.
+	ShareFolderID *string `json:"shareFolderId"`
 	// CreatedAt and UpdatedAt are for connected apps; the web API leaves them out.
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
@@ -32,6 +34,9 @@ var ErrNotFound = errors.New("user not found")
 
 // ErrInvalidName is returned for a display name that is too long.
 var ErrInvalidName = errors.New("invalid name")
+
+// ErrInvalidFolder is returned for a default folder that isn't a folder of the user.
+var ErrInvalidFolder = errors.New("invalid folder")
 
 // ErrInvalidSlug, ErrSlugReserved and ErrSlugTaken are returned by SetSlug.
 var (
@@ -56,7 +61,7 @@ func NewStore(database *sql.DB) *Store {
 	return &Store{DB: database, Now: time.Now, GenerateSlug: slugs.Generate}
 }
 
-const columns = `id, email, name, slug, created_at, updated_at`
+const columns = `id, email, name, slug, share_folder_id, created_at, updated_at`
 
 // EnsureByEmail returns the user with the (already normalized) email,
 // creating the account first if none exists. q may be a transaction.
@@ -132,11 +137,13 @@ func (s *Store) SetSlug(ctx context.Context, id string, slug string) (User, erro
 type Patch struct {
 	Name **string // a nil *string clears the name
 	Slug *string
+	// ShareFolderID is a folder of the user; a nil *string or the root clears it.
+	ShareFolderID **string
 }
 
 // Update validates every field of p before writing any of them, then writes
 // them in one statement. Errors are ErrInvalidName, ErrInvalidSlug,
-// ErrSlugReserved, ErrSlugTaken and ErrNotFound.
+// ErrSlugReserved, ErrSlugTaken, ErrInvalidFolder and ErrNotFound.
 func (s *Store) Update(ctx context.Context, id string, p Patch) (User, error) {
 	sets := []string{"updated_at = ?"}
 	args := []any{db.FormatTime(s.Now())}
@@ -159,6 +166,14 @@ func (s *Store) Update(ctx context.Context, id string, p Patch) (User, error) {
 		sets = append(sets, "slug = ?")
 		args = append(args, slug)
 	}
+	if p.ShareFolderID != nil {
+		folder, err := s.shareFolder(ctx, id, *p.ShareFolderID)
+		if err != nil {
+			return User{}, err
+		}
+		sets = append(sets, "share_folder_id = ?")
+		args = append(args, folder)
+	}
 	args = append(args, id)
 	u, err := scan(s.DB.QueryRowContext(ctx,
 		`UPDATE users SET `+strings.Join(sets, ", ")+` WHERE id = ? RETURNING `+columns, args...))
@@ -166,6 +181,30 @@ func (s *Store) Update(ctx context.Context, id string, p Patch) (User, error) {
 		return User{}, ErrSlugTaken
 	}
 	return u, err
+}
+
+// shareFolder checks that id is a folder of the user and returns the value to
+// store: nil for nil and for the user's root folder.
+func (s *Store) shareFolder(ctx context.Context, userID string, id *string) (*string, error) {
+	if id == nil {
+		return nil, nil
+	}
+	var kind string
+	var parent sql.NullString
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT kind, parent_id FROM favourite_nodes WHERE id = ? AND user_id = ?`, *id, userID,
+	).Scan(&kind, &parent)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, ErrInvalidFolder
+	case err != nil:
+		return nil, err
+	case kind != "folder":
+		return nil, ErrInvalidFolder
+	case !parent.Valid:
+		return nil, nil
+	}
+	return id, nil
 }
 
 // NormalizeName trims the name. Nil, empty and whitespace-only names become nil;
@@ -186,9 +225,9 @@ func NormalizeName(name *string) (*string, error) {
 
 func scan(row *sql.Row) (User, error) {
 	var u User
-	var name, slug sql.NullString
+	var name, slug, shareFolder sql.NullString
 	var created, updated string
-	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &created, &updated); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &shareFolder, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, ErrNotFound
 		}
@@ -205,5 +244,8 @@ func scan(row *sql.Row) (User, error) {
 		u.Name = &name.String
 	}
 	u.Slug = slug.String
+	if shareFolder.Valid {
+		u.ShareFolderID = &shareFolder.String
+	}
 	return u, nil
 }

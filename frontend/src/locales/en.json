@@ -220,7 +220,11 @@
 		"nameTooLong": "The name can be at most 100 characters long.",
 		"slugLabel": "Address",
 		"slugHint": "Your dashboards are at /{{slug}}/…",
-		"saveSlug": "Save address"
+		"saveSlug": "Save address",
+		"shareFolderLabel": "Default folder for new links",
+		"shareFolderHint": "The “Save link” page starts in this folder, on every device.",
+		"saveShareFolder": "Save default folder",
+		"shareFolderInvalid": "This folder no longer exists. Choose another one."
 	},
 	"passkeys": {
 		"intro": "Passkeys let you sign in with your fingerprint, face or device PIN instead of an email link.",

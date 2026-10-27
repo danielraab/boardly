@@ -261,8 +261,10 @@ Screen". The installed app opens your default dashboard in its own window, and i
 follows the theme. It doesn't work offline.
 
 - **Share links into Boardly** (Android, ChromeOS): Boardly appears in the system share sheet.
-  Sharing a page opens **Save link** (`/share`) with its URL and title filled in. Pick a folder
-  (the last one used is preselected), add tags and save.
+  Sharing a page opens **Save link** (`/share`) with its URL and title filled in. Pick a folder,
+  add tags and save. The page starts in your **default folder for new links**, which you choose
+  in Settings → Profile and which applies on every device. Without one, or once it's deleted, it
+  starts in the root folder.
 - **Shortcuts** on the app icon (long-press on Android, right-click on desktop): **Add link**,
   **Favourites** and **Dashboards**.
 

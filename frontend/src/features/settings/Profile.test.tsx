@@ -162,3 +162,76 @@ describe("settings profile slug", () => {
 		expect(input).toHaveValue("bob");
 	});
 });
+
+describe("settings default folder", () => {
+	const tree = {
+		id: "root",
+		kind: "folder",
+		title: null,
+		children: [
+			{ id: "inbox", kind: "folder", title: "Inbox", children: [] },
+			{ id: "work", kind: "folder", title: "Work", children: [] },
+		],
+	};
+
+	it("saves the chosen folder", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/favourites": { body: tree },
+			"PATCH /api/me": signedIn({ shareFolderId: "inbox" }),
+		});
+		const { user } = renderApp("/settings");
+
+		expect(
+			await screen.findByRole("radio", { name: "Favourites" }),
+		).toBeChecked();
+		const save = screen.getByRole("button", { name: "Save default folder" });
+		expect(save).toBeDisabled();
+		await user.click(screen.getByRole("radio", { name: "Inbox" }));
+		await user.click(save);
+
+		expect(await screen.findByText("Saved.")).toBeVisible();
+		expect(api.callsTo("PATCH", "/api/me")[0].body).toEqual({
+			shareFolderId: "inbox",
+		});
+		expect(screen.getByRole("radio", { name: "Inbox" })).toBeChecked();
+	});
+
+	it("saves the root as null", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn({ shareFolderId: "inbox" }),
+			"GET /api/favourites": { body: tree },
+			"PATCH /api/me": signedIn({ shareFolderId: null }),
+		});
+		const { user } = renderApp("/settings");
+
+		expect(await screen.findByRole("radio", { name: "Inbox" })).toBeChecked();
+		await user.click(screen.getByRole("radio", { name: "Favourites" }));
+		await user.click(
+			screen.getByRole("button", { name: "Save default folder" }),
+		);
+
+		expect(await screen.findByText("Saved.")).toBeVisible();
+		expect(api.callsTo("PATCH", "/api/me")[0].body).toEqual({
+			shareFolderId: null,
+		});
+	});
+
+	it("shows when the folder is gone", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/favourites": { body: tree },
+			"PATCH /api/me": apiError(400, "invalid_folder"),
+		});
+		const { user } = renderApp("/settings");
+
+		await user.click(await screen.findByRole("radio", { name: "Work" }));
+		await user.click(
+			screen.getByRole("button", { name: "Save default folder" }),
+		);
+
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"This folder no longer exists. Choose another one.",
+		);
+	});
+});

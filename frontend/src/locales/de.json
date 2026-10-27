@@ -220,7 +220,11 @@
 		"nameTooLong": "Der Name darf höchstens 100 Zeichen lang sein.",
 		"slugLabel": "Adresse",
 		"slugHint": "Deine Dashboards liegen unter /{{slug}}/…",
-		"saveSlug": "Adresse speichern"
+		"saveSlug": "Adresse speichern",
+		"shareFolderLabel": "Standardordner für neue Links",
+		"shareFolderHint": "Die Seite „Link speichern“ beginnt auf allen Geräten in diesem Ordner.",
+		"saveShareFolder": "Standardordner speichern",
+		"shareFolderInvalid": "Diesen Ordner gibt es nicht mehr. Wähle einen anderen."
 	},
 	"passkeys": {
 		"intro": "Mit Passkeys meldest du dich per Fingerabdruck, Gesicht oder Geräte-PIN an statt mit einem E-Mail-Link.",

@@ -177,7 +177,14 @@ func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
 		}
 		patch.Slug = &slug
 	}
-	if patch.Name == nil && patch.Slug == nil {
+	if raw, ok := body["shareFolderId"]; ok {
+		var folder *string
+		if err := json.Unmarshal(raw, &folder); err != nil {
+			return errInvalidFolder
+		}
+		patch.ShareFolderID = &folder
+	}
+	if patch.Name == nil && patch.Slug == nil && patch.ShareFolderID == nil {
 		return NewError(http.StatusBadRequest, "invalid_request", "Nothing to update")
 	}
 
@@ -192,6 +199,8 @@ func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
 		return NewError(http.StatusBadRequest, "slug_reserved", "This address is reserved")
 	case errors.Is(err, users.ErrSlugTaken):
 		return errSlugTaken
+	case errors.Is(err, users.ErrInvalidFolder):
+		return errInvalidFolder
 	case errors.Is(err, users.ErrNotFound):
 		return errUnauthenticated
 	case err != nil:
@@ -202,8 +211,9 @@ func (a *api) patchMe(w http.ResponseWriter, r *http.Request) error {
 }
 
 var (
-	errInvalidSlug = NewError(http.StatusBadRequest, "invalid_slug", "A slug has 1 to 32 characters from a-z, 0-9 and \"-\"")
-	errSlugTaken   = NewError(http.StatusConflict, "slug_taken", "This slug is already in use")
+	errInvalidSlug   = NewError(http.StatusBadRequest, "invalid_slug", "A slug has 1 to 32 characters from a-z, 0-9 and \"-\"")
+	errSlugTaken     = NewError(http.StatusConflict, "slug_taken", "This slug is already in use")
+	errInvalidFolder = NewError(http.StatusBadRequest, "invalid_folder", "The default folder must be one of your folders or null")
 )
 
 var errUnauthenticated = NewError(http.StatusUnauthorized, "unauthenticated", "Sign in to continue")
