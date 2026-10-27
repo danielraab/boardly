@@ -5,6 +5,7 @@ import { type ContentWidget, isSection, type Widget } from "../api";
 import { favouriteExplorerKind } from "./favouriteExplorer";
 import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
+import { recentFavouritesKind } from "./recentFavourites";
 
 export type WidgetViewProps = {
 	widget: ContentWidget;
@@ -41,6 +42,7 @@ export const widgetKinds: WidgetKind[] = [
 	favouriteExplorerKind,
 	linkKind,
 	linkListKind,
+	recentFavouritesKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

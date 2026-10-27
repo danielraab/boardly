@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import type { ReactNode } from "react";
 import { ImageIcon } from "#/components/ImageIcon";
 import { DetailsButton } from "#/features/favourites/FavouriteDetails";
 import { sizeStyles, type WidgetSize } from "../sizes";
@@ -35,7 +36,7 @@ export function LinkIcon({
 /**
  * One link: its icon, then its title and URL on two lines, or only the URL.
  * In edit mode it doesn't navigate. With onDetails, an info button right of
- * the link calls it.
+ * the link calls it. aside is shown at the right end of the link.
  */
 export function LinkView({
 	url,
@@ -46,6 +47,7 @@ export function LinkView({
 	size,
 	editing,
 	onDetails,
+	aside,
 }: {
 	url: string;
 	title: string | null;
@@ -55,6 +57,7 @@ export function LinkView({
 	size: WidgetSize;
 	editing: boolean;
 	onDetails?: () => void;
+	aside?: ReactNode;
 }) {
 	const style = sizeStyles[size];
 	const link = (
@@ -76,6 +79,7 @@ export function LinkView({
 					{url}
 				</span>
 			</span>
+			{aside}
 		</a>
 	);
 	if (!onDetails) return link;

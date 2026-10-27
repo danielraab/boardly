@@ -706,6 +706,26 @@
 				"publicHint": "Visitors of a public dashboard see these links. Otherwise only you see the widget.",
 				"empty": "No links in this folder",
 				"missing": "This folder no longer exists"
+			},
+			"recentFavourites": {
+				"name": "Recent favourites",
+				"description": "Shows the newest links of a folder of your favourites.",
+				"addTitle": "Add recent favourites",
+				"editTitle": "Edit recent favourites",
+				"folderLabel": "Folder",
+				"folderHint": "Links in subfolders are included.",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the links.",
+				"limitLabel": "Number of links",
+				"limitHint": "1 to {{max}}.",
+				"daysLabel": "Only the last … days",
+				"daysHint": "Optional, 1 to {{max}}. Empty shows links of any age.",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the newest links of this folder. Otherwise only you see the widget.",
+				"empty": "No favourites",
+				"emptyDays_one": "No favourites in the last day",
+				"emptyDays_other": "No favourites in the last {{count}} days",
+				"missing": "This folder no longer exists"
 			}
 		}
 	},

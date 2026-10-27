@@ -210,3 +210,24 @@ func TestSaveLayout(t *testing.T) {
 		t.Fatalf("visitor view: %s", rec.Body)
 	}
 }
+
+func TestRecentFavouritesWidget(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	s.setSlug(t, ann, "ann")
+	home := s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
+	work := s.create(t, ann, map[string]any{"kind": "folder", "title": "Work"})
+	s.create(t, ann, map[string]any{"parentId": work.ID, "kind": "link", "title": "Docs", "url": "https://example.org/docs"})
+
+	rec := s.req("PUT", "/api/dashboards/"+home.ID+"/layout", `{"version":0,"sections":[{"kind":"section","width":6,"children":[
+		{"kind":"recent_favourites","width":2,"config":{"folderId":"`+work.ID+`","limit":5,"days":7,"size":"M","showIfPublic":true}}]}]}`, withCookie(ann))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", rec.Code, rec.Body)
+	}
+	for name, opts := range map[string][]func(*http.Request){"owner": {withCookie(ann)}, "visitor": nil} {
+		body := s.req("GET", "/api/u/ann/home", "", opts...).Body.String()
+		if !strings.Contains(body, `"title":"Docs"`) || !strings.Contains(body, `"createdAt":"`) || strings.Contains(body, `"Work"`) {
+			t.Errorf("%s: %s", name, body)
+		}
+	}
+}
