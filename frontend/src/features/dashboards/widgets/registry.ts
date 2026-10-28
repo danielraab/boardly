@@ -5,6 +5,7 @@ import { type ContentWidget, isSection, type Widget } from "../api";
 import { favouriteExplorerKind } from "./favouriteExplorer";
 import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
+import { noteKind } from "./note";
 import { recentFavouritesKind } from "./recentFavourites";
 
 export type WidgetViewProps = {
@@ -24,9 +25,15 @@ export type WidgetSettingsProps = {
 	onDelete: () => void;
 };
 
+/** The groups of the widget picker, in the order it shows them. */
+export const widgetGroups = ["favourites", "notes"] as const;
+
+export type WidgetGroup = (typeof widgetGroups)[number];
+
 /** A content widget kind, as the web app knows it. */
 export type WidgetKind = {
 	kind: string;
+	group: WidgetGroup;
 	icon: LucideIcon;
 	/** Translation keys of the kind's name and a short description. */
 	labelKey: ParseKeys;
@@ -37,12 +44,13 @@ export type WidgetKind = {
 	Settings: ComponentType<WidgetSettingsProps>;
 };
 
-/** Every kind that can be added, in the order the picker lists them. */
+/** Every kind that can be added, in the order the picker lists them within their group. */
 export const widgetKinds: WidgetKind[] = [
 	favouriteExplorerKind,
 	linkKind,
 	linkListKind,
 	recentFavouritesKind,
+	noteKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

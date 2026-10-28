@@ -269,6 +269,7 @@ function Settings(props: WidgetSettingsProps) {
 export const recentFavouritesKind: WidgetKind = {
 	kind: "recent_favourites",
 	icon: History,
+	group: "favourites",
 	labelKey: "dashboards.widgets.recentFavourites.name",
 	descriptionKey: "dashboards.widgets.recentFavourites.description",
 	defaultConfig: (): RecentFavouritesConfig => ({

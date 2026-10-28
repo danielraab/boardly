@@ -62,6 +62,16 @@ describe("NoteRenderer", () => {
 		expect(onToggleTask).toHaveBeenLastCalledWith(expect.any(String), false);
 	});
 
+	it("sets the text size from a widget size, and text-sm without one", () => {
+		const root = (size?: "S" | "M" | "L") =>
+			render(<NoteRenderer doc={allTypes} size={size} />).container
+				.firstElementChild;
+		expect(root()).toHaveClass("text-sm");
+		expect(root("S")).toHaveClass("text-xs");
+		expect(root("M")).toHaveClass("text-sm");
+		expect(root("L")).toHaveClass("text-base");
+	});
+
 	it("doesn't render links as links", () => {
 		render(<NoteRenderer doc={allTypes} />);
 		expect(screen.queryByRole("link")).toBeNull();

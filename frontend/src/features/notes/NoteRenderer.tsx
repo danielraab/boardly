@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import {
+	sizeStyles,
+	type WidgetSize,
+} from "#/features/dashboards/widgets/sizes";
 import { inlineText } from "./document/text";
 import type {
 	Block,
@@ -83,7 +87,7 @@ function List({
 						}}
 						onClick={(e) => e.stopPropagation()}
 						aria-label={inlineText(item.content)}
-						className="pointer-events-auto mt-[0.2em] size-4 shrink-0 accent-accent disabled:opacity-100"
+						className="pointer-events-auto mt-[0.2em] size-[1.143em] shrink-0 accent-accent disabled:opacity-100"
 					/>
 					<span
 						className={item.checked ? "text-muted line-through" : undefined}
@@ -126,7 +130,12 @@ function BlockView({
 			);
 		case "heading": {
 			const Tag = `h${block.level + 1}` as "h2" | "h3" | "h4";
-			const size = { 1: "text-lg", 2: "text-base", 3: "text-sm" }[block.level];
+			// Relative to the content's text size: lg, base and sm at text-sm.
+			const size = {
+				1: "text-[1.286em]/[1.556]",
+				2: "text-[1.143em]/[1.5]",
+				3: "text-[1em]",
+			}[block.level];
 			return (
 				<Tag className={`${size} font-semibold`}>
 					<Inlines content={block.content} />
@@ -141,7 +150,7 @@ function BlockView({
 			);
 		case "code":
 			return (
-				<pre className="overflow-hidden rounded-md bg-ink/5 p-2 font-mono text-xs whitespace-pre-wrap">
+				<pre className="overflow-hidden rounded-md bg-ink/5 p-2 font-mono text-[0.857em]/[1.333] whitespace-pre-wrap">
 					{block.text}
 				</pre>
 			);
@@ -153,19 +162,23 @@ function BlockView({
 }
 
 /**
- * A note's content as read-only React elements, for the cards of /notes.
- * Headings start one level below the card's title. Links don't react to
- * activation; checkboxes only do with onToggleTask.
+ * A note's content as read-only React elements, for the cards of /notes and
+ * the note widget. Headings start one level below the card's title. Links
+ * don't react to activation; checkboxes only do with onToggleTask. A size
+ * sets the text size as for widgets; without one it is the cards' text-sm.
  */
 export function NoteRenderer({
 	doc,
 	onToggleTask,
+	size,
 }: {
 	doc: NoteDoc;
 	onToggleTask?: OnToggleTask;
+	size?: WidgetSize;
 }) {
+	const text = size ? sizeStyles[size].text : "text-sm";
 	return (
-		<div className="space-y-1.5 text-sm break-words">
+		<div className={`space-y-1.5 ${text} break-words`}>
 			{doc.blocks.map((block, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
 				<BlockView key={i} block={block} onToggleTask={onToggleTask} />

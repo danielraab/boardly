@@ -218,6 +218,7 @@ function Settings(props: WidgetSettingsProps) {
 export const favouriteExplorerKind: WidgetKind = {
 	kind: "favourite_explorer",
 	icon: FolderTree,
+	group: "favourites",
 	labelKey: "dashboards.widgets.favouriteExplorer.name",
 	descriptionKey: "dashboards.widgets.favouriteExplorer.description",
 	defaultConfig: (): ExplorerConfig => ({

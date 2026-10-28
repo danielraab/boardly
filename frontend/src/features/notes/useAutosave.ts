@@ -28,12 +28,15 @@ export function useAutosave({
 	note,
 	draft,
 	onCreated,
+	onSaved,
 	onError,
 }: {
 	note: Note | null;
 	/** All fields of the note as edited, for creating it. */
 	draft: NoteFields;
 	onCreated?: (note: Note) => void;
+	/** Called after every successful save with the saved note. */
+	onSaved?: (note: Note) => void;
 	/** Called when a save fails, after the status has changed. */
 	onError?: (err: unknown) => void;
 }) {
@@ -48,6 +51,8 @@ export function useAutosave({
 	draftRef.current = draft;
 	const onCreatedRef = useRef(onCreated);
 	onCreatedRef.current = onCreated;
+	const onSavedRef = useRef(onSaved);
+	onSavedRef.current = onSaved;
 	const onErrorRef = useRef(onError);
 	onErrorRef.current = onError;
 
@@ -84,6 +89,7 @@ export function useAutosave({
 					exact: true,
 				});
 				if (!current) onCreatedRef.current?.(result);
+				onSavedRef.current?.(result);
 				setStatus("saved");
 			} catch (err) {
 				if (isVersionConflict(err)) {
