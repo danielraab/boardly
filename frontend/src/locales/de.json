@@ -762,6 +762,26 @@
 				"empty": "Keine Notizen",
 				"emptyCategory": "Keine Notizen in dieser Kategorie",
 				"missing": "Diese Kategorie existiert nicht mehr"
+			},
+			"selectedNotes": {
+				"name": "Ausgewählte Notizen",
+				"description": "Zeigt Notizen deiner Wahl in deiner Reihenfolge.",
+				"addTitle": "Ausgewählte Notizen hinzufügen",
+				"editTitle": "Ausgewählte Notizen bearbeiten",
+				"notesLabel": "Notizen",
+				"addPlaceholder": "Notiz hinzufügen …",
+				"noMatches": "Keine passenden Notizen",
+				"full": "Es können höchstens {{max}} Notizen ausgewählt werden.",
+				"drag": "{{name}} ziehen",
+				"moveUp": "{{name}} nach oben",
+				"moveDown": "{{name}} nach unten",
+				"remove": "{{name}} entfernen",
+				"gone": "Diese Notiz existiert nicht mehr",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"missing": "Keine der ausgewählten Notizen existiert mehr"
 			}
 		}
 	},

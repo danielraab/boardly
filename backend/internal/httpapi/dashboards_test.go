@@ -317,3 +317,42 @@ func TestNoteListWidget(t *testing.T) {
 		t.Errorf("visitor: %s", visitor)
 	}
 }
+
+func TestSelectedNotesWidget(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	s.setSlug(t, ann, "ann")
+	home := s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
+	create := func(text string) string {
+		t.Helper()
+		rec := s.req("POST", "/api/notes", `{"text":"`+text+`"}`, withCookie(ann))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create note: %d %s", rec.Code, rec.Body)
+		}
+		return decodeJSONBody[struct{ ID string }](t, rec).ID
+	}
+	note := create(`call the plumber\nsecret details`)
+	gone := create("Gone")
+	if rec := s.req("DELETE", "/api/notes/"+gone, "", withCookie(ann)); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete note: %d %s", rec.Code, rec.Body)
+	}
+
+	rec := s.req("PUT", "/api/dashboards/"+home.ID+"/layout", `{"version":0,"sections":[{"kind":"section","width":6,"children":[
+		{"kind":"selected_notes","width":2,"config":{"noteIds":["`+gone+`","`+note+`"],"size":"M","showIfPublic":true}},
+		{"kind":"selected_notes","width":2,"config":{"noteIds":["`+note+`"],"size":"M","title":"Private"}},
+		{"kind":"selected_notes","width":2,"config":{"noteIds":["`+gone+`"],"size":"M","title":"All gone","showIfPublic":true}}]}]}`, withCookie(ann))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", rec.Code, rec.Body)
+	}
+	owner := s.req("GET", "/api/u/ann/home", "", withCookie(ann)).Body.String()
+	if !strings.Contains(owner, `"title":"call the plumber"`) || !strings.Contains(owner, `"id":"`+note+`"`) ||
+		!strings.Contains(owner, "Private") || !strings.Contains(owner, `"missing":true`) {
+		t.Errorf("owner: %s", owner)
+	}
+	// The note's ID is only in the public widget's config, not in its rows.
+	visitor := s.req("GET", "/api/u/ann/home", "").Body.String()
+	if !strings.Contains(visitor, `"title":"call the plumber"`) || strings.Count(visitor, note) != 1 ||
+		strings.Contains(visitor, "secret details") || strings.Contains(visitor, "Private") || strings.Contains(visitor, "All gone") {
+		t.Errorf("visitor: %s", visitor)
+	}
+}

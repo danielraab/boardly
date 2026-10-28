@@ -7,7 +7,8 @@ import type { ListedNote, NoteListCategory, NoteListData } from "./list";
 /**
  * The notes of a note list below its title as a heading of headingLevel when
  * it has one, or that its category is gone. With onOpen, each row is a button
- * that calls it with the note.
+ * that calls it with the note. missingText replaces the text for a gone
+ * category, for widgets whose data is missing for another reason.
  */
 export function NoteListView({
 	data,
@@ -16,6 +17,7 @@ export function NoteListView({
 	title = null,
 	headingLevel = 2,
 	onOpen,
+	missingText,
 }: {
 	data: NoteListData;
 	category: NoteListCategory;
@@ -23,6 +25,7 @@ export function NoteListView({
 	title?: string | null;
 	headingLevel?: number;
 	onOpen?: (note: ListedNote) => void;
+	missingText?: string;
 }) {
 	const { t } = useTranslation();
 	const style = sizeStyles[size];
@@ -30,7 +33,9 @@ export function NoteListView({
 	let body: ReactNode;
 	if ("missing" in data) {
 		body = (
-			<p className="text-muted">{t("dashboards.widgets.noteList.missing")}</p>
+			<p className="text-muted">
+				{missingText ?? t("dashboards.widgets.noteList.missing")}
+			</p>
 		);
 	} else if (data.notes.length === 0) {
 		body = (

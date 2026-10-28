@@ -3,6 +3,7 @@ package notes
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
@@ -92,5 +93,39 @@ func TestListedNotesByTitle(t *testing.T) {
 	}
 	if list[3].ID > list[4].ID {
 		t.Errorf("untitled notes not ordered by ID: %s, %s", list[3].ID, list[4].ID)
+	}
+}
+
+func TestNotesByID(t *testing.T) {
+	f := newFixture(t)
+	a := f.note("A", nil)
+	b := f.note("B", nil)
+	bobs, err := f.s.CreateNote(f.ctx, f.other, NewNote{Title: ptr("Bob's")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := func(ids ...string) []string {
+		t.Helper()
+		list, err := f.s.NotesByID(f.ctx, f.user, ids)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := titles(list)
+		slices.Sort(got)
+		return got
+	}
+	for _, tc := range []struct {
+		name string
+		ids  []string
+		want []string
+	}{
+		{"both", []string{b.ID, a.ID}, []string{"A", "B"}},
+		{"unknown left out", []string{a.ID, "nope"}, []string{"A"}},
+		{"other user's left out", []string{bobs.ID, b.ID}, []string{"B"}},
+		{"none", nil, []string{}},
+	} {
+		if got := byID(tc.ids...); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s = %q, want %q", tc.name, got, tc.want)
+		}
 	}
 }
