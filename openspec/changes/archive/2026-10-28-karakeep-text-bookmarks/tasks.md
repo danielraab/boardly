@@ -36,4 +36,4 @@ Requires `notes-in-import-and-share` to be implemented first (`FromMarkdown`, `C
 
 - [x] 5.1 Update README (Karakeep-compatible server: text bookmarks, root category, editing connected apps; Notes) and CHANGELOG
 - [x] 5.2 Run `make check` and `make test` and verify both pass
-- [ ] 5.3 With the Karakeep mobile app connected: save a text note, see it on `/notes` in the root category, tick a task on `/notes`, edit the text in the app and check that the task keeps its ID and the app's checked state, change the token's root category in settings and check that the app sees the new category's notes
+- [x] 5.3 With the Karakeep mobile app connected: save a text note, see it on `/notes` in the root category, tick a task on `/notes`, edit the text in the app and check that the task keeps its ID and the app's checked state, change the token's root category in settings and check that the app sees the new category's notes

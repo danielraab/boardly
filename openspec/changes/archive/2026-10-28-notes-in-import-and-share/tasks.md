@@ -31,4 +31,4 @@
 
 - [x] 5.1 Update README (Importing bookmarks, Notes, Install as an app → share, Settings → Profile) and CHANGELOG
 - [x] 5.2 Run `make check` and `make test` and verify both pass
-- [ ] 5.3 Run the app, import a Karakeep export with text bookmarks in nested lists into a category twice (with and without skipping duplicates), and share text with and without a URL from a phone or with `/share?…` by hand
+- [x] 5.3 Run the app, import a Karakeep export with text bookmarks in nested lists into a category twice (with and without skipping duplicates), and share text with and without a URL from a phone or with `/share?…` by hand
