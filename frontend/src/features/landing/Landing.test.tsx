@@ -34,4 +34,28 @@ describe("landing page", () => {
 			within(items[0]).getByRole("heading", { name: "Dashboards" }),
 		).toBeVisible();
 	});
+
+	it("links GitHub next to the call to action, in a new tab", async () => {
+		renderApp("/");
+		await screen.findByRole("heading", { level: 1 });
+		const hero = screen.getByRole("link", { name: "Sign in" }).parentElement;
+		const github = within(hero as HTMLElement).getByRole("link", {
+			name: "GitHub (opens in new tab)",
+		});
+		expect(github).toHaveAttribute(
+			"href",
+			"https://github.com/danielraab/boardly",
+		);
+		expect(github).toHaveAttribute("target", "_blank");
+		expect(github).toHaveAttribute("rel", "noopener noreferrer");
+	});
+
+	it("ends with an 'Open source · GitHub' footer", async () => {
+		renderApp("/");
+		const footer = await screen.findByRole("contentinfo");
+		expect(within(footer).getByText("Open source")).toBeVisible();
+		expect(
+			within(footer).getByRole("link", { name: "GitHub (opens in new tab)" }),
+		).toHaveAttribute("href", "https://github.com/danielraab/boardly");
+	});
 });

@@ -1,6 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { Link } from "@tanstack/react-router";
 import {
+	ArrowUpRight,
 	CircleUserRound,
 	LayoutGrid,
 	LogIn,
@@ -11,7 +12,9 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMe, useSignOut } from "#/features/auth/session";
+import { githubRepoUrl } from "#/lib/sourceCode";
 import { headerButton } from "./buttonStyles";
+import { GithubIcon } from "./GithubIcon";
 import { menuItem, menuPopup } from "./menuStyles";
 
 export function UserMenu() {
@@ -81,6 +84,27 @@ export function UserMenu() {
 									<Settings className="size-4 text-muted" aria-hidden />
 									{t("shell.settings")}
 								</Menu.LinkItem>
+								<div className="m-1 border-t border-line" />
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={
+										<a
+											href={githubRepoUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={`${t("shell.github")} ${t("common.opensInNewTab")}`}
+										/>
+									}
+								>
+									<GithubIcon className="size-4 text-muted" />
+									{t("shell.github")}
+									<ArrowUpRight
+										className="ml-auto size-4 text-muted"
+										aria-hidden
+									/>
+								</Menu.LinkItem>
+								<div className="m-1 border-t border-line" />
 								<Menu.Item className={menuItem} onClick={() => void signOut()}>
 									<LogOut className="size-4 text-muted" aria-hidden />
 									{t("shell.signOut")}
