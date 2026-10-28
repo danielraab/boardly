@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryIconButton } from "#/components/buttonStyles";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { fullPage } from "#/components/pageWidths";
 import { usePageTitle } from "#/lib/usePageTitle";
 import type { Dashboard, DashboardViewData } from "./api";
 import { useShowDashboard } from "./currentDashboard";
@@ -167,7 +168,7 @@ export function DashboardPage({
 }) {
 	usePageTitle(title);
 	return (
-		<section className="pt-12">
+		<section className={`${fullPage} pt-12`}>
 			<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
 				<h1 className="min-w-0 text-3xl font-semibold tracking-tight break-words sm:text-4xl">
 					{title}

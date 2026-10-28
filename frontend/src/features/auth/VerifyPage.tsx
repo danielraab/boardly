@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
+import { focusPage } from "#/components/pageWidths";
 import { ApiError, api } from "#/lib/api";
 import { appTitle } from "#/lib/appTitle";
 import { usePageTitle } from "#/lib/usePageTitle";
@@ -67,7 +68,7 @@ export function VerifyPage() {
 	const busy = redeem.isPending || redeem.isSuccess;
 
 	return (
-		<section className="mx-auto max-w-md py-16 text-center">
+		<section className={`${focusPage} py-16 text-center`}>
 			<h1 className="text-3xl font-semibold tracking-tight">
 				{t("verify.title")}
 			</h1>

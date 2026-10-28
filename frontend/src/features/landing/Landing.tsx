@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { GithubIcon } from "#/components/GithubIcon";
+import { widePage } from "#/components/pageWidths";
 import { appTitle } from "#/lib/appTitle";
 import { githubRepoUrl } from "#/lib/sourceCode";
 import { features } from "./features";
@@ -25,7 +26,7 @@ export function Landing() {
 	const { t } = useTranslation();
 
 	return (
-		<>
+		<div className={widePage}>
 			<section className="pt-12 pb-10 sm:pt-20">
 				<h1 className="text-[clamp(3rem,11vw,7.5rem)] leading-[0.9] font-bold tracking-[-0.04em]">
 					{appTitle()}
@@ -108,6 +109,6 @@ export function Landing() {
 					<ArrowUpRight className="size-3.5" aria-hidden />
 				</a>
 			</footer>
-		</>
+		</div>
 	);
 }

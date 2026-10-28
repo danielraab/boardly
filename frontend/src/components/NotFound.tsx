@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { narrowPage } from "#/components/pageWidths";
 import { usePageTitle } from "#/lib/usePageTitle";
 
 export function NotFound() {
@@ -7,7 +8,7 @@ export function NotFound() {
 	usePageTitle(t("notFound.title"));
 
 	return (
-		<section className="max-w-prose py-16">
+		<section className={`${narrowPage} py-16`}>
 			<h1 className="text-3xl font-semibold tracking-tight">
 				{t("notFound.title")}
 			</h1>

@@ -268,6 +268,15 @@ describe("dashboard address", () => {
 		).toBeNull();
 	});
 
+	it("uses the full width of the shell", async () => {
+		mockApi({ "GET /api/u/ann/home": view(entries[0], [entries[0]], false) });
+		renderApp("/ann/home");
+		await screen.findByRole("heading", { level: 1, name: "Home" });
+		const page = screen.getByRole("main").firstElementChild;
+		expect(page).toHaveClass("w-full");
+		expect(page?.className).not.toMatch(/max-w-/);
+	});
+
 	it("shows not found when the dashboard can't be shown", async () => {
 		renderApp("/ann/work");
 		expect(

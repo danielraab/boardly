@@ -160,6 +160,16 @@ describe("favourites page", () => {
 		).toBeVisible();
 	});
 
+	it("limits the page to the wide width", async () => {
+		fakeServer([]);
+		renderApp("/favourites");
+		await screen.findByRole("heading", { name: "No favourites yet" });
+		expect(screen.getByRole("main").firstElementChild).toHaveClass(
+			"mx-auto",
+			"max-w-6xl",
+		);
+	});
+
 	it("shows folders and links, labelled by title or URL", async () => {
 		fakeServer([
 			folder("Work", link("Docs", { tags: ["reading"] })),

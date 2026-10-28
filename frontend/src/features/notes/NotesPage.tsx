@@ -4,6 +4,7 @@ import { NotebookPen, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
+import { fullPage } from "#/components/pageWidths";
 import { Toast, type ToastMessage } from "#/components/Toast";
 import { usePageTitle } from "#/lib/usePageTitle";
 import {
@@ -94,7 +95,7 @@ export function NotesPage({
 		typeof filter === "object" ? { category: filter.id } : {};
 
 	return (
-		<section className="pt-12 pb-16">
+		<section className={`${fullPage} pt-12 pb-16`}>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<h1 className="text-3xl font-semibold tracking-tight">

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
+import { narrowPage } from "#/components/pageWidths";
 import type { User } from "#/features/auth/session";
 import {
 	type Dashboard,
@@ -117,7 +118,7 @@ function SelectDefault({ dashboards }: { dashboards: Dashboard[] }) {
 function Greeting({ user, children }: { user: User; children: ReactNode }) {
 	const { t } = useTranslation();
 	return (
-		<section className="pt-12">
+		<section className={`${narrowPage} pt-12`}>
 			<h1 className="text-3xl font-semibold tracking-tight break-words sm:text-4xl">
 				{t("home.greeting", { name: user.name ?? user.email })}
 			</h1>
