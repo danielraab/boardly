@@ -213,7 +213,8 @@ func parentError(err error) error {
 
 // DeleteCategory deletes a category. Its subcategories move to its parent,
 // and its notes become uncategorized without changing their time of last
-// change.
+// change. Active app tokens rooted at it are revoked; their root category
+// is cleared by the foreign key.
 func (s *Store) DeleteCategory(ctx context.Context, userID, id string) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -226,6 +227,14 @@ func (s *Store) DeleteCategory(ctx context.Context, userID, id string) error {
 	}
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE note_categories SET parent_id = ? WHERE parent_id = ? AND user_id = ?`, c.ParentID, id, userID,
+	); err != nil {
+		return err
+	}
+	now := db.FormatTime(s.Now())
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE app_tokens SET revoked_at = ?
+		 WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) AND root_category_id = ?`,
+		now, now, id,
 	); err != nil {
 		return err
 	}

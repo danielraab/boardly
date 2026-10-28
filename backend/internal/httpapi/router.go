@@ -94,6 +94,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/favicons/refresh", a.requireUser(a.refreshFavicon))
 	mux.Handle("GET /api/app-tokens", a.requireUser(a.listAppTokens))
 	mux.Handle("POST /api/app-tokens", a.requireUser(a.createAppToken))
+	mux.Handle("PATCH /api/app-tokens/{id}", a.requireUser(a.updateAppToken))
 	mux.Handle("POST /api/app-tokens/{id}/revoke", a.requireUser(a.revokeAppToken))
 	mux.Handle("DELETE /api/app-tokens/{id}", a.requireUser(a.deleteAppToken))
 

@@ -55,8 +55,9 @@ this tree. None of them keeps its own separate copy of the bookmarks.
 
 #### Importing bookmarks
 
-Bookmarks can be imported once from an export file on **Settings → Import / Export**
-(`/settings?tab=data`). Nothing is synced afterwards. The supported files are:
+Bookmarks, and the text bookmarks of Karakeep as notes, can be imported once from an export file on
+**Settings → Import / Export** (`/settings?tab=data`). Nothing is synced afterwards. The supported
+files are:
 
 - **Karakeep (JSON)**: Karakeep's JSON export. It contains your lists, so use it rather than
   Karakeep's HTML export, which has no lists.
@@ -73,13 +74,21 @@ You choose the folder to import into. The top-level folder is allowed. The impor
   added after the folder's existing content.
 - A link whose URL is already in your favourites, or appears earlier in the file, is skipped, and the
   existing link is left as it is. Importing the same file twice therefore adds nothing the second
-  time.
+  time. Uncheck "Skip links and notes that are already saved" to import them anyway.
 - A Karakeep bookmark that is in several lists goes into the first one. Karakeep notes and summaries
   are added to the description (`Note: …`, `Summary: …`), which is cut to 2048 characters.
-- Not imported: Karakeep text and asset bookmarks, Karakeep smart lists, Linkwarden uploads without a
-  URL (PDFs, images), and archived, favourited and pinned flags.
+- Karakeep **text bookmarks become notes**, in a category you choose on the import form (or the top
+  level). A note keeps the bookmark's title, creation date and text, read as Markdown, with
+  Karakeep's note and summary as `Note: …` and `Summary: …` paragraphs and the tags as a last line
+  `#tag #other-tag` (spaces in a tag become `-`). Lists that hold text bookmarks, also in their
+  sublists, are created as categories below the chosen one, reusing categories of the same name,
+  ignoring case. Lists with only links create no category. A note with the same title and content as
+  one of your notes, or one earlier in the file, is skipped, and a note larger than 512 KB is left
+  out.
+- Not imported: Karakeep asset bookmarks, Karakeep smart lists, Linkwarden uploads without a URL
+  (PDFs, images), and archived, favourited and pinned flags.
 - The import is all or nothing, and the file can have at most 10 MB. Afterwards, the page shows how
-  many links and folders were added and what was skipped.
+  many links, folders, notes and categories were added and what was skipped.
 - Favicons, descriptions and preview images of the imported links are fetched in the background, as
   for any new link. A description from the file is kept.
 
@@ -178,6 +187,11 @@ click it to open the note.
   notes; create, edit, move and delete categories from there. A category stays when it has no
   notes. Deleting one makes its notes uncategorized and moves its subcategories up a level. The
   category of a note is shown as a badge; click the badge to change it.
+- **Getting notes in**: share text into the installed app (see [Install as an app](#install-as-an-app))
+  to save it as a note, save a text bookmark in a connected Karakeep app (see
+  [Karakeep-compatible server](#karakeep-compatible-server)), or import the text bookmarks of a
+  Karakeep export (see [Importing bookmarks](#importing-bookmarks)). Notes saved from a share start in your **default
+  category for new notes**, which you choose in Settings → Profile.
 - **Storage**: note content is stored as a JSON document of Boardly's own, not as Markdown. Each
   todo has a stable ID, so later features (todo widgets, link tagging, Markdown import and export,
   a Memos-compatible API) can refer to it.
@@ -192,14 +206,17 @@ such as the CLI aren't supported.
 Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
 - **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep or
-  [Linkwarden](#linkwarden-compatible-server)), a **folder** of the favourites tree (the top-level folder gives access to everything)
-  and an expiry: 30 days, 90 days (default), 1 year, never or a date.
+  [Linkwarden](#linkwarden-compatible-server)), a **folder** of the favourites tree (the top-level folder gives access to everything),
+  for Karakeep a **category for notes** ("All notes", the default, or a category with its
+  subcategories) and an expiry: 30 days, 90 days (default), 1 year, never or a date.
 - The key (`bdly_…`) is shown **once**, together with the server address to enter in the app:
   `<BOARDLY_BASE_URL>/api/karakeep`. Boardly stores only a hash of it. In the app, enter the
   server address and log in with **API key**; email and password login isn't available, because
   Boardly has no passwords.
-- Keys can't be edited. An active key can be **revoked**, which is final. Only revoked or expired
-  keys can be deleted from the list.
+- **Edit** changes the folder and the category of an active key. The app keeps its key and sees
+  the new folder and category with its next request. Name, app and expiry can't be changed. An
+  active key can be **revoked**, which is final. Only revoked or expired keys can be deleted from
+  the list.
 - Everything the client sees and saves goes through its folder, and it can't see or change anything
   outside it:
   - **Bookmarks** are all links in the folder, at any depth. A page saved from the extension or
@@ -212,8 +229,15 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
   - **Tags** are the tags on the folder's links. Deleting a tag in the app removes it only from
     links in the folder. A tag that links outside the folder also have can't be renamed from the
     app, and tags are created by adding them to a bookmark, not on their own.
+  - **Text bookmarks** are the notes of the key's category and its subcategories, or all notes,
+    with their content as Markdown. A text bookmark saved in the app becomes a note in that
+    category (uncategorized with "All notes"). They show up with the links, newest first, and in
+    searches by their title and text. Editing a note's text in the app keeps the IDs of its todos
+    whose text stays the same; formatting Markdown can't express exactly, such as empty lines
+    between paragraphs, may be simplified. Notes have no tags and aren't in lists.
 - Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
-  contents", only keys for the deleted folder itself are revoked.
+  contents", only keys for the deleted folder itself are revoked. Deleting a note category that a
+  key uses as its category does the same; keys for its subcategories keep working.
 - A user can have several keys with different folders, for example one per device or per purpose.
 
 In the extension you can save the current page, see whether a page is already saved, and edit its
@@ -221,7 +245,7 @@ title, tags and list. In the app you can browse, search, save, edit and delete b
 manage lists and tags. Bookmark cards show the link's **description** and **preview image**, or
 the site's favicon when there is no preview; the description can be edited in the app. Tapping a
 bookmark opens the page. Karakeep features Boardly doesn't have
-answer with an error in the apps: notes and text bookmarks, file bookmarks and assets, archiving,
+answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving,
 favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
 icons and descriptions, and list sharing.
 
@@ -286,11 +310,15 @@ their own install button once the app is served over HTTPS. On iOS, use Share �
 Screen". The installed app opens your default dashboard in its own window, and its title bar
 follows the theme. It doesn't work offline.
 
-- **Share links into Boardly** (Android, ChromeOS): Boardly appears in the system share sheet.
-  Sharing a page opens **Save link** (`/share`) with its URL and title filled in. Pick a folder,
-  add tags and save. The page starts in your **default folder for new links**, which you choose
-  in Settings → Profile and which applies on every device. Without one, or once it's deleted, it
-  starts in the root folder.
+- **Share links and notes into Boardly** (Android, ChromeOS): Boardly appears in the system share
+  sheet. Sharing a page opens **Save link** (`/share`) with its URL and title filled in. Pick a
+  folder, add tags and save. The page starts in your **default folder for new links**, which you
+  choose in Settings → Profile and which applies on every device. Without one, or once it's
+  deleted, it starts in the root folder.
+- Sharing text without a web address, such as a message or a selection, opens the page as **Save
+  note**, with the title and text filled in; the switch at the top changes between link and note,
+  keeping what you entered in both. The text is saved as it is, with web addresses as links, in
+  your **default category for new notes** (Settings → Profile), or without a category.
 - **Shortcuts** on the app icon (long-press on Android, right-click on desktop): **Add link**,
   **Favourites** and **Dashboards**.
 

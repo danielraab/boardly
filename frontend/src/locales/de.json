@@ -117,7 +117,7 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst.",
+			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst, und bei Karakeep die Notizen der gewählten Kategorie.",
 			"connect": "App verbinden",
 			"emptyTitle": "Noch keine verbundenen Apps",
 			"emptyText": "Verbinde eine Karakeep- oder Linkwarden-App, um Links direkt in einem Ordner deiner Favoriten zu speichern. Die App sieht nur diesen Ordner und seinen Inhalt.",
@@ -145,7 +145,7 @@
 			"cancel": "Abbrechen",
 			"form": {
 				"title": "App verbinden",
-				"text": "Die App bekommt einen API-Schlüssel, der nur für den gewählten Ordner gilt. Diese Einstellungen kannst du später nicht mehr ändern.",
+				"text": "Die App bekommt einen API-Schlüssel, der nur für den gewählten Ordner gilt. Ordner und Kategorie kannst du später ändern, Name, App und Ablauf nicht.",
 				"name": "Name",
 				"namePlaceholder": "z. B. Handy",
 				"app": "App",
@@ -163,7 +163,10 @@
 				"expiryDate": "Ablaufdatum",
 				"expiryInvalid": "Wähle ein Datum in der Zukunft.",
 				"create": "Schlüssel erstellen",
-				"creating": "Wird erstellt…"
+				"creating": "Wird erstellt…",
+				"rootCategory": "Kategorie für Notizen",
+				"rootCategoryHint": "Text-Lesezeichen aus der App werden als Notizen in dieser Kategorie gespeichert. Die App sieht die Notizen dieser Kategorie und ihrer Unterkategorien.",
+				"rootCategoryInvalid": "Wähle eine deiner Kategorien."
 			},
 			"secret": {
 				"title": "App verbunden",
@@ -174,11 +177,21 @@
 				"copied": "Kopiert",
 				"once": "Kopiere den API-Schlüssel jetzt. Er wird nicht noch einmal angezeigt.",
 				"done": "Fertig"
+			},
+			"allNotes": "Alle Notizen",
+			"deletedCategory": "Gelöschte Kategorie",
+			"edit": "{{name}} bearbeiten",
+			"editForm": {
+				"title": "Verbundene App bearbeiten",
+				"text": "Die App behält ihren API-Schlüssel und sieht den neuen Ordner und die neue Kategorie ab ihrer nächsten Anfrage.",
+				"save": "Speichern",
+				"saving": "Wird gespeichert…",
+				"inactive": "Diese App ist nicht mehr aktiv."
 			}
 		},
 		"import": {
 			"title": "Lesezeichen importieren",
-			"intro": "Übernimm deine Lesezeichen einmalig aus Karakeep, Linkwarden oder einem Browser. Ordner, Tags und Daten bleiben erhalten. Links, die schon in deinen Favoriten sind, werden übersprungen.",
+			"intro": "Übernimm deine Lesezeichen einmalig aus Karakeep, Linkwarden oder einem Browser. Ordner, Tags und Daten bleiben erhalten, und Text-Lesezeichen aus Karakeep werden zu Notizen. Links und Notizen, die schon gespeichert sind, werden übersprungen.",
 			"format": "Exportdatei",
 			"formats": {
 				"karakeep": "Karakeep (JSON)",
@@ -189,13 +202,14 @@
 			"file": "Datei",
 			"folder": "Importieren in",
 			"folderHint": "Die Ordner der Datei werden in diesem Ordner angelegt. Gleichnamige Ordner, die es dort schon gibt, werden verwendet.",
-			"skipDuplicates": "Bereits gespeicherte Links überspringen",
+			"skipDuplicates": "Bereits gespeicherte Links und Notizen überspringen",
 			"submit": "Importieren",
 			"importing": "Wird importiert …",
 			"errors": {
 				"invalidFile": "Diese Datei ist kein gültiger Export von {{format}}.",
 				"tooLarge": "Die Datei ist zu groß. Sie darf höchstens 10 MB haben.",
-				"invalidFolder": "Wähle einen deiner Ordner als Ziel."
+				"invalidFolder": "Wähle einen deiner Ordner als Ziel.",
+				"invalidCategory": "Wähle eine deiner Kategorien als Ziel für Notizen."
 			},
 			"report": {
 				"imported": "{{links}} importiert und {{folders}} angelegt.",
@@ -207,13 +221,25 @@
 				"duplicates_other": "{{count}} Links waren schon in deinen Favoriten",
 				"invalidUrls_one": "{{count}} Eintrag hatte eine ungültige Adresse",
 				"invalidUrls_other": "{{count}} Einträge hatten eine ungültige Adresse",
-				"notLinks_one": "{{count}} Eintrag ist kein Link, etwa eine Notiz oder Datei",
-				"notLinks_other": "{{count}} Einträge sind keine Links, etwa Notizen oder Dateien",
+				"notLinks_one": "{{count}} Eintrag ist weder Link noch Notiz, etwa eine Datei",
+				"notLinks_other": "{{count}} Einträge sind weder Links noch Notizen, etwa Dateien",
 				"smartLists_one": "{{count}} intelligente Liste wurde ausgelassen",
 				"smartLists_other": "{{count}} intelligente Listen wurden ausgelassen",
 				"shortenedDescriptions_one": "{{count}} Beschreibung wurde auf 2048 Zeichen gekürzt",
-				"shortenedDescriptions_other": "{{count}} Beschreibungen wurden auf 2048 Zeichen gekürzt"
-			}
+				"shortenedDescriptions_other": "{{count}} Beschreibungen wurden auf 2048 Zeichen gekürzt",
+				"importedNotes": "{{notes}} importiert und {{categories}} angelegt.",
+				"notes_one": "{{count}} Notiz",
+				"notes_other": "{{count}} Notizen",
+				"categories_one": "{{count}} Kategorie",
+				"categories_other": "{{count}} Kategorien",
+				"duplicateNotes_one": "{{count}} Notiz war schon gespeichert",
+				"duplicateNotes_other": "{{count}} Notizen waren schon gespeichert",
+				"tooLargeNotes_one": "{{count}} Notiz war zu groß für den Import",
+				"tooLargeNotes_other": "{{count}} Notizen waren zu groß für den Import"
+			},
+			"category": "Notizen importieren in",
+			"categoryTopLevel": "Oberste Ebene",
+			"categoryHint": "Text-Lesezeichen aus Karakeep werden zu Notizen. Listen mit Notizen werden als Kategorien in dieser Kategorie angelegt. Gleichnamige Kategorien, die es dort schon gibt, werden verwendet."
 		}
 	},
 	"profile": {
@@ -231,7 +257,12 @@
 		"shareFolderLabel": "Standardordner für neue Links",
 		"shareFolderHint": "Die Seite „Link speichern“ beginnt auf allen Geräten in diesem Ordner.",
 		"saveShareFolder": "Standardordner speichern",
-		"shareFolderInvalid": "Diesen Ordner gibt es nicht mehr. Wähle einen anderen."
+		"shareFolderInvalid": "Diesen Ordner gibt es nicht mehr. Wähle einen anderen.",
+		"noteCategoryLabel": "Standardkategorie für neue Notizen",
+		"noteCategoryNone": "Keine Kategorie",
+		"noteCategoryHint": "Notizen, die du mit Boardly teilst, landen auf allen Geräten zuerst in dieser Kategorie.",
+		"saveNoteCategory": "Standardkategorie speichern",
+		"noteCategoryInvalid": "Diese Kategorie gibt es nicht mehr. Wähle eine andere."
 	},
 	"passkeys": {
 		"intro": "Mit Passkeys meldest du dich per Fingerabdruck, Gesicht oder Geräte-PIN an statt mit einem E-Mail-Link.",
@@ -694,7 +725,27 @@
 		"savedTitle": "Link gespeichert",
 		"savedText": "Er ist jetzt in „{{folder}}“.",
 		"openFavourites": "Favoriten öffnen",
-		"saveAnother": "Weiteren Link speichern"
+		"saveAnother": "Weiteren Link speichern",
+		"mode": "Was speichern",
+		"modes": {
+			"link": "Link",
+			"note": "Notiz"
+		},
+		"note": {
+			"title": "Notiz speichern",
+			"intro": "Speichere eine Notiz in deinen Notizen.",
+			"titleLabel": "Titel (optional)",
+			"textLabel": "Text",
+			"category": "Kategorie",
+			"noCategory": "Keine Kategorie",
+			"savedTitle": "Notiz gespeichert",
+			"savedText": "Sie ist jetzt in „{{category}}“.",
+			"savedTextNone": "Sie ist jetzt in deinen Notizen, ohne Kategorie.",
+			"open": "Notiz öffnen",
+			"saveAnother": "Etwas anderes speichern",
+			"categoryGone": "Diese Kategorie gibt es nicht mehr. Wähle eine andere.",
+			"tooLarge": "Der Text ist zu lang für eine Notiz."
+		}
 	},
 	"symbols": {
 		"book-open": "Buch",
@@ -840,13 +891,18 @@
 				"subcategories_one": "Ihre Unterkategorie rückt eine Ebene nach oben.",
 				"subcategories_other": "Ihre {{count}} Unterkategorien rücken eine Ebene nach oben.",
 				"confirm": "Löschen",
-				"cancel": "Abbrechen"
+				"cancel": "Abbrechen",
+				"appsWarning_one": "1 verbundene App verwendet diese Kategorie. Sie wird widerrufen und funktioniert nicht mehr.",
+				"appsWarning_other": "{{count}} verbundene Apps verwenden diese Kategorie. Sie werden widerrufen und funktionieren nicht mehr."
 			},
 			"badge": {
 				"change": "Kategorie: {{path}}. Kategorie ändern",
 				"add": "Kategorie hinzufügen",
 				"none": "Keine Kategorie",
 				"picker": "Kategorie"
+			},
+			"picker": {
+				"loading": "Kategorien werden geladen…"
 			}
 		},
 		"editor": {

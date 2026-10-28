@@ -6,9 +6,12 @@ import { primaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
 import { favouritesQueryKey } from "#/features/favourites/api";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { noteCategoriesQueryKey, notesQueryKey } from "#/features/notes/api";
+import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError } from "#/lib/api";
 import { AppLogo } from "./appTokens/AppLogo";
 import {
+	formatsWithNotes,
 	type ImportErrorCode,
 	type ImportFormat,
 	type ImportReport,
@@ -20,6 +23,7 @@ const errorKeys = {
 	invalid_import_file: "settings.import.errors.invalidFile",
 	file_too_large: "settings.import.errors.tooLarge",
 	invalid_folder: "settings.import.errors.invalidFolder",
+	invalid_category: "settings.import.errors.invalidCategory",
 } as const satisfies Record<ImportErrorCode, string>;
 
 /** "Import / Export": the import form. Export comes later. */
@@ -29,14 +33,26 @@ export function ImportExportTab() {
 	const [format, setFormat] = useState<ImportFormat>("karakeep");
 	const [file, setFile] = useState<File | null>(null);
 	const [folderId, setFolderId] = useState("");
+	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [skipDuplicates, setSkipDuplicates] = useState(true);
+	const withNotes = formatsWithNotes.includes(format);
 
 	const run = useMutation({
 		mutationFn: () =>
-			importBookmarks(format, folderId, file as File, skipDuplicates),
+			importBookmarks(
+				format,
+				folderId,
+				withNotes ? categoryId : null,
+				file as File,
+				skipDuplicates,
+			),
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: ["tags"] });
+			void queryClient.invalidateQueries({ queryKey: notesQueryKey });
+			void queryClient.invalidateQueries({
+				queryKey: noteCategoriesQueryKey,
+			});
 		},
 	});
 
@@ -128,6 +144,23 @@ export function ImportExportTab() {
 						{t("settings.import.folderHint")}
 					</p>
 				</div>
+				{withNotes && (
+					<div>
+						<CategoryPicker
+							id="import-category"
+							label={t("settings.import.category")}
+							emptyLabel={t("settings.import.categoryTopLevel")}
+							value={categoryId}
+							onChange={(id) => {
+								setCategoryId(id);
+								run.reset();
+							}}
+						/>
+						<p className="mt-1 text-sm text-muted">
+							{t("settings.import.categoryHint")}
+						</p>
+					</div>
+				)}
 				<div className="flex items-center gap-3">
 					<input
 						id="import-skip-duplicates"
@@ -170,9 +203,11 @@ function Report({ report }: { report: ImportReport }) {
 	const { t } = useTranslation();
 	const skipped = [
 		["duplicates", report.skipped.duplicates],
+		["duplicateNotes", report.skipped.duplicateNotes],
 		["invalidUrls", report.skipped.invalidUrls],
 		["notLinks", report.skipped.notLinks],
 		["smartLists", report.skipped.smartLists],
+		["tooLargeNotes", report.skipped.tooLargeNotes],
 		["shortenedDescriptions", report.shortenedDescriptions],
 	] as const;
 	return (
@@ -185,6 +220,16 @@ function Report({ report }: { report: ImportReport }) {
 					}),
 				})}
 			</p>
+			{(report.notes > 0 || report.categories > 0) && (
+				<p className="mt-1 font-medium">
+					{t("settings.import.report.importedNotes", {
+						notes: t("settings.import.report.notes", { count: report.notes }),
+						categories: t("settings.import.report.categories", {
+							count: report.categories,
+						}),
+					})}
+				</p>
+			)}
 			{skipped.some(([, n]) => n > 0) && (
 				<ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
 					{skipped

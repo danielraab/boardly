@@ -14,6 +14,7 @@ import {
 	textInput,
 } from "#/components/dialogStyles";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError } from "#/lib/api";
 import {
 	type AppTokenApp,
@@ -70,8 +71,9 @@ function expiresAt(expiry: Expiry, customDate: string, now = new Date()) {
 }
 
 /**
- * "Connect app": asks for the token's name, app, root folder and expiry, then
- * shows the new secret once. Closing the dialog forgets the secret.
+ * "Connect app": asks for the token's name, app, root folder, root category
+ * (Karakeep only) and expiry, then shows the new secret once. Closing the
+ * dialog forgets the secret.
  */
 export function CreateAppTokenDialog() {
 	const { t } = useTranslation();
@@ -115,6 +117,7 @@ function FormStep({
 	const [name, setName] = useState("");
 	const [app, setApp] = useState<AppTokenApp>("karakeep");
 	const [rootId, setRootId] = useState("");
+	const [rootCategoryId, setRootCategoryId] = useState<string | null>(null);
 	const [expiry, setExpiry] = useState<Expiry>("90d");
 	const [customDate, setCustomDate] = useState("");
 
@@ -125,6 +128,7 @@ function FormStep({
 				name,
 				app,
 				rootId,
+				...(app === "karakeep" ? { rootCategoryId } : {}),
 				expiresAt: expires ? expires.toISOString() : null,
 			}),
 		onSuccess: (token) => {
@@ -145,7 +149,9 @@ function FormStep({
 			? t("settings.apps.form.expiryInvalid")
 			: code === "invalid_root"
 				? t("settings.apps.form.rootInvalid")
-				: t("common.genericError");
+				: code === "invalid_root_category"
+					? t("settings.apps.form.rootCategoryInvalid")
+					: t("common.genericError");
 	const customInvalid = expiry === "custom" && customDate !== "" && !expires;
 
 	return (
@@ -202,6 +208,13 @@ function FormStep({
 						{t("settings.apps.form.rootHint")}
 					</p>
 				</div>
+				{app === "karakeep" && (
+					<RootCategoryField
+						id="app-token-root-category"
+						value={rootCategoryId}
+						onChange={setRootCategoryId}
+					/>
+				)}
 				<fieldset>
 					<legend className="text-sm font-medium">
 						{t("settings.apps.form.expiry")}
@@ -276,6 +289,33 @@ function FormStep({
 				</div>
 			</form>
 		</>
+	);
+}
+
+/** The root category of a Karakeep token, with "All notes" for none. */
+export function RootCategoryField({
+	id,
+	value,
+	onChange,
+}: {
+	id: string;
+	value: string | null;
+	onChange: (id: string | null) => void;
+}) {
+	const { t } = useTranslation();
+	return (
+		<div>
+			<CategoryPicker
+				id={id}
+				label={t("settings.apps.form.rootCategory")}
+				emptyLabel={t("settings.apps.allNotes")}
+				value={value}
+				onChange={onChange}
+			/>
+			<p className="mt-1 text-sm text-muted">
+				{t("settings.apps.form.rootCategoryHint")}
+			</p>
+		</div>
 	);
 }
 

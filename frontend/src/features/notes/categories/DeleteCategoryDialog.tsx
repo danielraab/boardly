@@ -1,8 +1,12 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { dangerButton, secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
+import {
+	appTokensQueryKey,
+	appTokensQueryOptions,
+} from "#/features/settings/appTokens/api";
 import {
 	deleteCategory,
 	type Note,
@@ -13,8 +17,8 @@ import {
 
 /**
  * Confirms deleting a category, saying how many of its notes become
- * uncategorized and that its subcategories move up. onDeleted runs after the
- * category is gone.
+ * uncategorized, that its subcategories move up and how many connected apps
+ * rooted at it are revoked. onDeleted runs after the category is gone.
  */
 export function DeleteCategoryDialog({
 	category,
@@ -31,11 +35,17 @@ export function DeleteCategoryDialog({
 }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
+	// Active app tokens rooted at the category are revoked by the delete.
+	const tokens = useQuery({
+		...appTokensQueryOptions,
+		enabled: category !== null,
+	});
 	const remove = useMutation({
 		mutationFn: (c: NoteCategory) => deleteCategory(c.id),
 		onSuccess: (_, c) => {
 			void queryClient.invalidateQueries({ queryKey: noteCategoriesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: notesQueryKey });
+			void queryClient.invalidateQueries({ queryKey: appTokensQueryKey });
 			onDeleted(c);
 			onClose();
 		},
@@ -46,6 +56,12 @@ export function DeleteCategoryDialog({
 	const subcategories = category
 		? categories.filter((c) => c.parentId === category.id).length
 		: 0;
+	const affectedApps = (tokens.data ?? []).filter(
+		(token) =>
+			token.status === "active" &&
+			token.noteScope === "category" &&
+			token.rootCategoryId === category?.id,
+	).length;
 
 	return (
 		<AlertDialog.Root
@@ -86,6 +102,13 @@ export function DeleteCategoryDialog({
 									</span>
 								)}
 							</AlertDialog.Description>
+							{affectedApps > 0 && (
+								<p className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm">
+									{t("notes.categories.deleteDialog.appsWarning", {
+										count: affectedApps,
+									})}
+								</p>
+							)}
 							{remove.isError && (
 								<p role="alert" className="mt-3 text-sm text-danger">
 									{t("common.genericError")}

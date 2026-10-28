@@ -1,7 +1,6 @@
 package karakeep
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"slices"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 	"boardly/internal/trpc"
 )
 
@@ -76,23 +76,9 @@ func limit(n int) (int, error) {
 	return n, nil
 }
 
-// byCreated orders links oldest first, and by ID for equal times.
-func byCreated(a, b *favourites.ScopedNode) int {
-	return cmp.Or(a.CreatedAt.Compare(b.CreatedAt), cmp.Compare(a.ID, b.ID))
-}
-
-// sortLinks sorts links newest first, or oldest first when asc is set.
-func sortLinks(links []*favourites.ScopedNode, asc bool) {
-	slices.SortFunc(links, func(a, b *favourites.ScopedNode) int {
-		if asc {
-			return byCreated(a, b)
-		}
-		return byCreated(b, a)
-	})
-}
-
-// Bookmarks is bookmarks.getBookmarks.
-func (s *Service) Bookmarks(ctx context.Context, sc favourites.Scope, in BookmarksInput) (BookmarkPage, error) {
+// Bookmarks is bookmarks.getBookmarks: the links of the subtree and the
+// notes of the scope, or only links when filtered by list or tag.
+func (s *Service) Bookmarks(ctx context.Context, sc Scope, in BookmarksInput) (BookmarkPage, error) {
 	n, err := limit(in.Limit)
 	if err != nil {
 		return BookmarkPage{}, err
@@ -116,36 +102,45 @@ func (s *Service) Bookmarks(ctx context.Context, sc favourites.Scope, in Bookmar
 			return !slices.ContainsFunc(l.Tags, func(tag favourites.Tag) bool { return tag.ID == in.TagID })
 		})
 	}
+	items := linkItems(links)
+	// Notes are in no list and have no tags.
+	if in.ListID == "" && in.TagID == "" {
+		ns, err := s.Notes.ScopedNotes(ctx, sc.Notes)
+		if err != nil {
+			return BookmarkPage{}, err
+		}
+		items = append(items, noteItems(ns)...)
+	}
 	// Nothing in Boardly is archived or favourited.
 	if (in.Archived != nil && *in.Archived) || (in.Favourited != nil && *in.Favourited) {
-		links = nil
+		items = nil
 	}
 	asc := in.SortOrder == "asc"
-	sortLinks(links, asc)
+	sortItems(items, asc)
 	if c := in.Cursor; c != nil {
-		after := &favourites.ScopedNode{ID: c.ID, CreatedAt: c.CreatedAt}
-		links = slices.DeleteFunc(links, func(l *favourites.ScopedNode) bool {
+		after := item{id: c.ID, created: c.CreatedAt}
+		items = slices.DeleteFunc(items, func(it item) bool {
 			if asc {
-				return byCreated(l, after) <= 0
+				return byCreated(it, after) <= 0
 			}
-			return byCreated(l, after) >= 0
+			return byCreated(it, after) >= 0
 		})
 	}
 
 	page := BookmarkPage{}
-	if len(links) > n {
-		links = links[:n]
-		last := links[n-1]
-		page.NextCursor = &Cursor{CreatedAt: trpc.Date(last.CreatedAt), ID: last.ID}
+	if len(items) > n {
+		items = items[:n]
+		last := items[n-1]
+		page.NextCursor = &Cursor{CreatedAt: trpc.Date(last.created), ID: last.id}
 	}
-	page.Bookmarks, err = s.bookmarks(ctx, sc.UserID, links)
+	page.Bookmarks, err = s.render(ctx, sc, items)
 	return page, err
 }
 
 // Search is bookmarks.searchBookmarks: every whitespace-separated term must
 // match, "#name" a tag of that name and any other term a part of the title,
-// URL or a tag name, ignoring case.
-func (s *Service) Search(ctx context.Context, sc favourites.Scope, in SearchInput) (SearchPage, error) {
+// URL or a tag name, ignoring case, or of a note's title or Markdown.
+func (s *Service) Search(ctx context.Context, sc Scope, in SearchInput) (SearchPage, error) {
 	n, err := limit(in.Limit)
 	if err != nil {
 		return SearchPage{}, err
@@ -163,19 +158,33 @@ func (s *Service) Search(ctx context.Context, sc favourites.Scope, in SearchInpu
 		}
 		return false
 	})
-	sortLinks(links, in.SortOrder == "asc")
+	ns, err := s.Notes.ScopedNotes(ctx, sc.Notes)
+	if err != nil {
+		return SearchPage{}, err
+	}
+	ns = slices.DeleteFunc(ns, func(n notes.Note) bool {
+		md := notes.ToMarkdown(n.Content)
+		for _, term := range terms {
+			if !noteMatches(n, md, term) {
+				return true
+			}
+		}
+		return false
+	})
+	items := append(linkItems(links), noteItems(ns)...)
+	sortItems(items, in.SortOrder == "asc")
 
 	offset := 0
 	if in.Cursor != nil {
-		offset = min(max(in.Cursor.Offset, 0), len(links))
+		offset = min(max(in.Cursor.Offset, 0), len(items))
 	}
-	links = links[offset:]
+	items = items[offset:]
 	page := SearchPage{}
-	if len(links) > n {
-		links = links[:n]
+	if len(items) > n {
+		items = items[:n]
 		page.NextCursor = &SearchCursor{Ver: 1, Offset: offset + n}
 	}
-	page.Bookmarks, err = s.bookmarks(ctx, sc.UserID, links)
+	page.Bookmarks, err = s.render(ctx, sc, items)
 	return page, err
 }
 
@@ -195,18 +204,18 @@ func matches(l *favourites.ScopedNode, term string) bool {
 // findURL returns a link of the subtree with the same URL (see
 // favourites.SameURL), or nil.
 func (t *tree) findURL(raw string) *favourites.ScopedNode {
-	links := t.links()
-	sortLinks(links, false)
-	for _, l := range links {
-		if favourites.SameURL(*l.URL, raw) {
-			return l
+	items := linkItems(t.links())
+	sortItems(items, false)
+	for _, it := range items {
+		if favourites.SameURL(*it.link.URL, raw) {
+			return it.link
 		}
 	}
 	return nil
 }
 
 // CheckURL is bookmarks.checkUrl: the ID of a bookmark with this URL, or nil.
-func (s *Service) CheckURL(ctx context.Context, sc favourites.Scope, rawURL string) (*string, error) {
+func (s *Service) CheckURL(ctx context.Context, sc Scope, rawURL string) (*string, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return nil, err
@@ -218,7 +227,7 @@ func (s *Service) CheckURL(ctx context.Context, sc favourites.Scope, rawURL stri
 }
 
 // GetBookmark is bookmarks.getBookmark.
-func (s *Service) GetBookmark(ctx context.Context, sc favourites.Scope, id string) (Bookmark, error) {
+func (s *Service) GetBookmark(ctx context.Context, sc Scope, id string) (Bookmark, error) {
 	return s.bookmark(ctx, sc, id)
 }
 
@@ -227,6 +236,7 @@ func (s *Service) GetBookmark(ctx context.Context, sc favourites.Scope, id strin
 type CreateBookmarkInput struct {
 	Type       string  `json:"type"`
 	URL        string  `json:"url"`
+	Text       *string `json:"text"`
 	Title      *string `json:"title"`
 	Archived   *bool   `json:"archived"`
 	Favourited *bool   `json:"favourited"`
@@ -241,10 +251,11 @@ type CreatedBookmark struct {
 }
 
 // CreateBookmark is bookmarks.createBookmark: a new link first in the
-// token's root folder, or the existing bookmark with the same URL.
-func (s *Service) CreateBookmark(ctx context.Context, sc favourites.Scope, in CreateBookmarkInput) (CreatedBookmark, error) {
-	if in.Type != "link" {
-		return CreatedBookmark{}, &InputError{"Boardly only stores links, not " + in.Type + " bookmarks"}
+// token's root folder, or the existing bookmark with the same URL, or a new
+// note for a text bookmark.
+func (s *Service) CreateBookmark(ctx context.Context, sc Scope, in CreateBookmarkInput) (CreatedBookmark, error) {
+	if in.Type != "link" && in.Type != "text" {
+		return CreatedBookmark{}, &InputError{"Boardly only stores links and notes, not " + in.Type + " bookmarks"}
 	}
 	if err := checkUnsupported(map[string]bool{
 		"archiving":  isTrue(in.Archived),
@@ -253,6 +264,9 @@ func (s *Service) CreateBookmark(ctx context.Context, sc favourites.Scope, in Cr
 		"summaries":  nonEmpty(in.Summary),
 	}); err != nil {
 		return CreatedBookmark{}, err
+	}
+	if in.Type == "text" {
+		return s.createNote(ctx, sc, in)
 	}
 	t, err := s.load(ctx, sc)
 	if err != nil {
@@ -295,8 +309,9 @@ type UpdateBookmarkInput struct {
 	AssetContent  json.RawMessage `json:"assetContent"`
 }
 
-// UpdateBookmark is bookmarks.updateBookmark: title, URL and description.
-func (s *Service) UpdateBookmark(ctx context.Context, sc favourites.Scope, in UpdateBookmarkInput) (Bookmark, error) {
+// UpdateBookmark is bookmarks.updateBookmark: title, URL and description of
+// a link, or title and text of a note.
+func (s *Service) UpdateBookmark(ctx context.Context, sc Scope, in UpdateBookmarkInput) (Bookmark, error) {
 	if err := checkUnsupported(map[string]bool{
 		"archiving":                  isTrue(in.Archived),
 		"favourites":                 isTrue(in.Favourited),
@@ -304,7 +319,6 @@ func (s *Service) UpdateBookmark(ctx context.Context, sc favourites.Scope, in Up
 		"notes":                      nonEmpty(in.Note),
 		"authors":                    nonEmpty(in.Author),
 		"publishers":                 nonEmpty(in.Publisher),
-		"text bookmarks":             nonEmpty(in.Text),
 		"changing the creation date": isSet(in.CreatedAt),
 		"publication dates":          isSet(in.DatePublished),
 		"modification dates":         isSet(in.DateModified),
@@ -316,8 +330,15 @@ func (s *Service) UpdateBookmark(ctx context.Context, sc favourites.Scope, in Up
 	if err != nil {
 		return Bookmark{}, err
 	}
-	if _, err := t.link(in.BookmarkID); err != nil {
+	_, note, err := s.linkOrNote(ctx, sc, t, in.BookmarkID)
+	if err != nil {
 		return Bookmark{}, err
+	}
+	if note != nil {
+		return s.updateNote(ctx, sc, *note, in)
+	}
+	if nonEmpty(in.Text) {
+		return Bookmark{}, &InputError{"Only text bookmarks have a text"}
 	}
 	patch := favourites.Patch{URL: in.URL}
 	if patch.Title, err = clearable(in.Title, "Invalid title"); err != nil {
@@ -350,14 +371,18 @@ func clearable(raw json.RawMessage, invalid string) (*string, error) {
 	return v, nil
 }
 
-// DeleteBookmark is bookmarks.deleteBookmark.
-func (s *Service) DeleteBookmark(ctx context.Context, sc favourites.Scope, id string) error {
+// DeleteBookmark is bookmarks.deleteBookmark: it deletes a link or a note.
+func (s *Service) DeleteBookmark(ctx context.Context, sc Scope, id string) error {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return err
 	}
-	if _, err := t.link(id); err != nil {
+	_, note, err := s.linkOrNote(ctx, sc, t, id)
+	if err != nil {
 		return err
+	}
+	if note != nil {
+		return s.Notes.DeleteNote(ctx, sc.UserID, id)
 	}
 	return s.Favourites.Delete(ctx, sc.UserID, id, favourites.DeleteKeepNone)
 }
@@ -382,14 +407,20 @@ type UpdateTagsResult struct {
 }
 
 // UpdateTags is bookmarks.updateTags.
-func (s *Service) UpdateTags(ctx context.Context, sc favourites.Scope, in UpdateTagsInput) (UpdateTagsResult, error) {
+func (s *Service) UpdateTags(ctx context.Context, sc Scope, in UpdateTagsInput) (UpdateTagsResult, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return UpdateTagsResult{}, err
 	}
-	link, err := t.link(in.BookmarkID)
+	link, note, err := s.linkOrNote(ctx, sc, t, in.BookmarkID)
 	if err != nil {
 		return UpdateTagsResult{}, err
+	}
+	if note != nil {
+		if len(in.Attach) > 0 || len(in.Detach) > 0 {
+			return UpdateTagsResult{}, &InputError{"Notes have no tags in Boardly"}
+		}
+		return UpdateTagsResult{Attached: []string{}, Detached: []string{}}, nil
 	}
 	visible := t.tags()
 	known := map[string]string{} // lower-case name → ID, of visible tags and the link's tags

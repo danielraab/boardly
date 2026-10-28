@@ -36,6 +36,9 @@ export type NoteCategory = {
 
 export type CategoryFields = Omit<NoteCategory, "id">;
 
+/** The longest note title, in characters. */
+export const MAX_NOTE_TITLE = 200;
+
 export const notesQueryKey = ["notes"] as const;
 export const noteCategoriesQueryKey = ["note-categories"] as const;
 
@@ -60,6 +63,13 @@ export const noteCategoriesQueryOptions = queryOptions({
 });
 
 export function createNote(fields: Partial<NoteFields>) {
+	return api<Note>("/api/notes", { method: "POST", json: fields });
+}
+
+/** Creates a note whose content the server builds from plain text. */
+export function createNoteFromText(
+	fields: Partial<Omit<NoteFields, "content">> & { text: string },
+) {
 	return api<Note>("/api/notes", { method: "POST", json: fields });
 }
 

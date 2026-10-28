@@ -1,6 +1,6 @@
 // Package apptokens stores the API tokens that connected apps (such as
-// Karakeep clients) use, each bound to one app and one folder of the
-// owner's favourites tree.
+// Karakeep clients) use, each bound to one app, one folder of the owner's
+// favourites tree and, for Karakeep, a part of the owner's notes.
 package apptokens
 
 import (
@@ -28,6 +28,17 @@ const (
 	AppLinkwarden App = "linkwarden"
 )
 
+// NoteScope is which notes a token sees.
+type NoteScope string
+
+// Note scopes. Karakeep tokens see all notes or those of a root category with
+// its subcategories; Linkwarden tokens see none.
+const (
+	NoteScopeAll      NoteScope = "all"
+	NoteScopeCategory NoteScope = "category"
+	NoteScopeNone     NoteScope = "none"
+)
+
 // Status is derived from a token's revocation and expiry dates.
 type Status string
 
@@ -53,38 +64,55 @@ const touchInterval = time.Minute
 
 // Errors returned by the store.
 var (
-	ErrNotFound      = errors.New("app token not found")
-	ErrInvalidName   = errors.New("invalid name")
-	ErrInvalidApp    = errors.New("invalid app")
-	ErrInvalidRoot   = errors.New("root is not a folder of the user")
-	ErrInvalidExpiry = errors.New("expiry is not in the future")
-	ErrInactive      = errors.New("app token is not active")
-	ErrActive        = errors.New("app token is active")
+	ErrNotFound    = errors.New("app token not found")
+	ErrInvalidName = errors.New("invalid name")
+	ErrInvalidApp  = errors.New("invalid app")
+	ErrInvalidRoot = errors.New("root is not a folder of the user")
+	// ErrInvalidRootCategory is returned for a root category that isn't a
+	// category of the user, or one given for an app without notes.
+	ErrInvalidRootCategory = errors.New("root category is not a category of the user")
+	ErrInvalidExpiry       = errors.New("expiry is not in the future")
+	ErrInactive            = errors.New("app token is not active")
+	ErrActive              = errors.New("app token is active")
 	// ErrInvalidToken is returned by Authenticate for every rejected secret.
 	ErrInvalidToken = errors.New("invalid app token")
 )
 
 // Token is an app token as the API exposes it, without its secret.
 type Token struct {
-	ID         string     `json:"id"`
-	UserID     string     `json:"-"`
-	Name       string     `json:"name"`
-	App        App        `json:"app"`
-	Prefix     string     `json:"prefix"`
-	RootID     *string    `json:"rootId"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	LastUsedAt *time.Time `json:"lastUsedAt"`
-	ExpiresAt  *time.Time `json:"expiresAt"`
-	RevokedAt  *time.Time `json:"revokedAt"`
-	Status     Status     `json:"status"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"-"`
+	Name      string    `json:"name"`
+	App       App       `json:"app"`
+	Prefix    string    `json:"prefix"`
+	RootID    *string   `json:"rootId"`
+	NoteScope NoteScope `json:"noteScope"`
+	// RootCategoryID is the root category for NoteScopeCategory, nil when
+	// it was deleted, and nil for the other scopes.
+	RootCategoryID *string    `json:"rootCategoryId"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	LastUsedAt     *time.Time `json:"lastUsedAt"`
+	ExpiresAt      *time.Time `json:"expiresAt"`
+	RevokedAt      *time.Time `json:"revokedAt"`
+	Status         Status     `json:"status"`
 }
 
-// NewToken is a token to create. A nil ExpiresAt means it never expires.
+// NewToken is a token to create. A nil ExpiresAt means it never expires. A
+// nil RootCategoryID gives a Karakeep token all notes; Linkwarden tokens
+// can't have one.
 type NewToken struct {
-	Name      string
-	App       App
-	RootID    string
-	ExpiresAt *time.Time
+	Name           string
+	App            App
+	RootID         string
+	RootCategoryID *string
+	ExpiresAt      *time.Time
+}
+
+// Patch lists what to change on a token; nil fields stay as they are. A nil
+// *string RootCategoryID gives the token all notes.
+type Patch struct {
+	RootID         *string
+	RootCategoryID **string
 }
 
 // Store reads and writes app tokens.
@@ -98,7 +126,7 @@ func NewStore(database *sql.DB) *Store {
 	return &Store{DB: database, Now: time.Now}
 }
 
-const columns = `id, user_id, name, app, prefix, root_id, created_at, last_used_at, expires_at, revoked_at`
+const columns = `id, user_id, name, app, prefix, root_id, note_scope, root_category_id, created_at, last_used_at, expires_at, revoked_at`
 
 // Create stores a new token for the user and returns it with its secret.
 // The secret can't be read again later.
@@ -114,15 +142,12 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	if n.ExpiresAt != nil && !n.ExpiresAt.After(now) {
 		return Token{}, "", ErrInvalidExpiry
 	}
-	var isFolder bool
-	if err := s.DB.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM favourite_nodes WHERE id = ? AND user_id = ? AND kind = 'folder')`,
-		n.RootID, userID,
-	).Scan(&isFolder); err != nil {
+	if err := checkRoot(ctx, s.DB, userID, n.RootID); err != nil {
 		return Token{}, "", err
 	}
-	if !isFolder {
-		return Token{}, "", ErrInvalidRoot
+	scope, err := noteScope(ctx, s.DB, userID, n.App, n.RootCategoryID)
+	if err != nil {
+		return Token{}, "", err
 	}
 
 	secret := NewSecret()
@@ -133,14 +158,94 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	}
 	id := uuid.NewString()
 	if _, err := s.DB.ExecContext(ctx,
-		`INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at, expires_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, userID, name, n.App, n.RootID, Hash(secret), secret[:PrefixLength], db.FormatTime(now), expires,
+		`INSERT INTO app_tokens (id, user_id, name, app, root_id, note_scope, root_category_id, token_hash, prefix, created_at, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, userID, name, n.App, n.RootID, scope, n.RootCategoryID, Hash(secret), secret[:PrefixLength], db.FormatTime(now), expires,
 	); err != nil {
 		return Token{}, "", err
 	}
 	t, err := s.get(ctx, s.DB, userID, id)
 	return t, secret, err
+}
+
+// checkRoot returns ErrInvalidRoot unless id is a folder of the user.
+func checkRoot(ctx context.Context, q db.Querier, userID, id string) error {
+	var isFolder bool
+	if err := q.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM favourite_nodes WHERE id = ? AND user_id = ? AND kind = 'folder')`,
+		id, userID,
+	).Scan(&isFolder); err != nil {
+		return err
+	}
+	if !isFolder {
+		return ErrInvalidRoot
+	}
+	return nil
+}
+
+// noteScope returns the note scope of a token for app with the root category
+// categoryID, or ErrInvalidRootCategory.
+func noteScope(ctx context.Context, q db.Querier, userID string, app App, categoryID *string) (NoteScope, error) {
+	if app != AppKarakeep {
+		if categoryID != nil {
+			return "", ErrInvalidRootCategory
+		}
+		return NoteScopeNone, nil
+	}
+	if categoryID == nil {
+		return NoteScopeAll, nil
+	}
+	var ok bool
+	if err := q.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM note_categories WHERE id = ? AND user_id = ?)`, *categoryID, userID,
+	).Scan(&ok); err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", ErrInvalidRootCategory
+	}
+	return NoteScopeCategory, nil
+}
+
+// Update changes the root folder and the root category of the user's active
+// token and returns it. Errors are ErrNotFound, ErrInactive, ErrInvalidRoot
+// and ErrInvalidRootCategory.
+func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (Token, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return Token{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	t, err := s.get(ctx, tx, userID, id)
+	if err != nil {
+		return Token{}, err
+	}
+	if t.Status != StatusActive {
+		return Token{}, ErrInactive
+	}
+	if p.RootID != nil {
+		if err := checkRoot(ctx, tx, userID, *p.RootID); err != nil {
+			return Token{}, err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE app_tokens SET root_id = ? WHERE id = ?`, *p.RootID, id); err != nil {
+			return Token{}, err
+		}
+	}
+	if p.RootCategoryID != nil {
+		scope, err := noteScope(ctx, tx, userID, t.App, *p.RootCategoryID)
+		if err != nil {
+			return Token{}, err
+		}
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE app_tokens SET note_scope = ?, root_category_id = ? WHERE id = ?`, scope, *p.RootCategoryID, id,
+		); err != nil {
+			return Token{}, err
+		}
+	}
+	if t, err = s.get(ctx, tx, userID, id); err != nil {
+		return Token{}, err
+	}
+	return t, tx.Commit()
 }
 
 // List returns the user's tokens, newest first.
@@ -224,8 +329,10 @@ func (s *Store) Authenticate(ctx context.Context, secret string, app App) (Token
 	if err != nil {
 		return Token{}, err
 	}
-	// An active token always has its root: deleting it revokes the token.
-	if t.Status != StatusActive || t.App != app || t.RootID == nil {
+	// An active token always has its root and root category: deleting them
+	// revokes the token.
+	if t.Status != StatusActive || t.App != app || t.RootID == nil ||
+		(t.NoteScope == NoteScopeCategory && t.RootCategoryID == nil) {
 		return Token{}, ErrInvalidToken
 	}
 	if t.LastUsedAt == nil || now.Sub(*t.LastUsedAt) >= touchInterval {
@@ -265,9 +372,9 @@ type scanner interface {
 
 func scan(row scanner, now time.Time) (Token, error) {
 	var t Token
-	var rootID, lastUsed, expires, revoked sql.NullString
+	var rootID, rootCategoryID, lastUsed, expires, revoked sql.NullString
 	var created string
-	if err := row.Scan(&t.ID, &t.UserID, &t.Name, &t.App, &t.Prefix, &rootID, &created, &lastUsed, &expires, &revoked); err != nil {
+	if err := row.Scan(&t.ID, &t.UserID, &t.Name, &t.App, &t.Prefix, &rootID, &t.NoteScope, &rootCategoryID, &created, &lastUsed, &expires, &revoked); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Token{}, ErrNotFound
 		}
@@ -279,6 +386,9 @@ func scan(row scanner, now time.Time) (Token, error) {
 	}
 	if rootID.Valid {
 		t.RootID = &rootID.String
+	}
+	if rootCategoryID.Valid {
+		t.RootCategoryID = &rootCategoryID.String
 	}
 	for _, f := range []struct {
 		src sql.NullString

@@ -688,6 +688,8 @@ describe("delete with connected apps", () => {
 		app: "karakeep",
 		prefix: "bdly_ABCDEFG",
 		rootId,
+		noteScope: "all",
+		rootCategoryId: null,
 		createdAt: "2026-02-01T10:00:00Z",
 		lastUsedAt: null,
 		expiresAt: null,

@@ -10,6 +10,7 @@ import (
 	"boardly/internal/apptokens"
 	"boardly/internal/favourites"
 	"boardly/internal/karakeep"
+	"boardly/internal/notes"
 	"boardly/internal/trpc"
 	"boardly/internal/users"
 )
@@ -49,7 +50,7 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 	if a.favicons != nil {
 		icons = a.favicons
 	}
-	k := &karakeep.Service{Favourites: a.favourites, Favicons: icons, Origin: a.origin,
+	k := &karakeep.Service{Favourites: a.favourites, Notes: a.notes, Favicons: icons, Origin: a.origin,
 		Now: func() time.Time { return a.favourites.Now() }}
 	query := func(h func(context.Context, json.RawMessage) (any, error)) trpc.Procedure {
 		return trpc.Procedure{Kind: trpc.Query, Handle: h}
@@ -78,10 +79,10 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 
 		"bookmarks.getBookmarks":    query(scoped(k.Bookmarks)),
 		"bookmarks.searchBookmarks": query(scoped(k.Search)),
-		"bookmarks.getBookmark": query(scoped(func(ctx context.Context, sc favourites.Scope, in bookmarkID) (karakeep.Bookmark, error) {
+		"bookmarks.getBookmark": query(scoped(func(ctx context.Context, sc karakeep.Scope, in bookmarkID) (karakeep.Bookmark, error) {
 			return k.GetBookmark(ctx, sc, in.BookmarkID)
 		})),
-		"bookmarks.checkUrl": query(scoped(func(ctx context.Context, sc favourites.Scope, in struct {
+		"bookmarks.checkUrl": query(scoped(func(ctx context.Context, sc karakeep.Scope, in struct {
 			URL string `json:"url"`
 		}) (any, error) {
 			id, err := k.CheckURL(ctx, sc, in.URL)
@@ -90,22 +91,22 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 		"bookmarks.createBookmark": mutation(scoped(k.CreateBookmark)),
 		"bookmarks.updateBookmark": mutation(scoped(k.UpdateBookmark)),
 		"bookmarks.updateTags":     mutation(scoped(k.UpdateTags)),
-		"bookmarks.deleteBookmark": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in bookmarkID) (any, error) {
+		"bookmarks.deleteBookmark": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in bookmarkID) (any, error) {
 			return nil, k.DeleteBookmark(ctx, sc, in.BookmarkID)
 		})),
 
-		"lists.list": query(scoped(func(ctx context.Context, sc favourites.Scope, _ struct{}) (any, error) {
+		"lists.list": query(scoped(func(ctx context.Context, sc karakeep.Scope, _ struct{}) (any, error) {
 			lists, err := k.Lists(ctx, sc)
 			return map[string][]karakeep.List{"lists": lists}, err
 		})),
-		"lists.get": query(scoped(func(ctx context.Context, sc favourites.Scope, in listID) (karakeep.List, error) {
+		"lists.get": query(scoped(func(ctx context.Context, sc karakeep.Scope, in listID) (karakeep.List, error) {
 			return k.List(ctx, sc, in.ListID)
 		})),
-		"lists.stats": query(scoped(func(ctx context.Context, sc favourites.Scope, _ struct{}) (any, error) {
+		"lists.stats": query(scoped(func(ctx context.Context, sc karakeep.Scope, _ struct{}) (any, error) {
 			stats, err := k.ListStats(ctx, sc)
 			return map[string]trpc.Map{"stats": stats}, err
 		})),
-		"lists.getListsOfBookmark": query(scoped(func(ctx context.Context, sc favourites.Scope, in bookmarkID) (any, error) {
+		"lists.getListsOfBookmark": query(scoped(func(ctx context.Context, sc karakeep.Scope, in bookmarkID) (any, error) {
 			lists, err := k.ListsOfBookmark(ctx, sc, in.BookmarkID)
 			return map[string][]karakeep.List{"lists": lists}, err
 		})),
@@ -115,37 +116,37 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 		}),
 		"lists.create": mutation(scoped(k.CreateList)),
 		"lists.edit":   mutation(scoped(k.EditList)),
-		"lists.delete": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in listID) (any, error) {
+		"lists.delete": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in listID) (any, error) {
 			return nil, k.DeleteList(ctx, sc, in.ListID)
 		})),
-		"lists.addToList": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in listAndBookmark) (any, error) {
+		"lists.addToList": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in listAndBookmark) (any, error) {
 			return nil, k.AddToList(ctx, sc, in.ListID, in.BookmarkID)
 		})),
-		"lists.removeFromList": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in listAndBookmark) (any, error) {
+		"lists.removeFromList": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in listAndBookmark) (any, error) {
 			return nil, k.RemoveFromList(ctx, sc, in.ListID, in.BookmarkID)
 		})),
 
 		"tags.list": query(scoped(k.Tags)),
-		"tags.get": query(scoped(func(ctx context.Context, sc favourites.Scope, in tagID) (karakeep.TagInfo, error) {
+		"tags.get": query(scoped(func(ctx context.Context, sc karakeep.Scope, in tagID) (karakeep.TagInfo, error) {
 			return k.Tag(ctx, sc, in.TagID)
 		})),
-		"tags.update": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in struct {
+		"tags.update": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in struct {
 			TagID string  `json:"tagId"`
 			Name  *string `json:"name"`
 		}) (favourites.Tag, error) {
 			return k.RenameTag(ctx, sc, in.TagID, in.Name)
 		})),
-		"tags.delete": mutation(scoped(func(ctx context.Context, sc favourites.Scope, in tagID) (any, error) {
+		"tags.delete": mutation(scoped(func(ctx context.Context, sc karakeep.Scope, in tagID) (any, error) {
 			return nil, k.DeleteTag(ctx, sc, in.TagID)
 		})),
-		"tags.create": mutation(scoped(func(context.Context, favourites.Scope, struct{}) (any, error) {
+		"tags.create": mutation(scoped(func(context.Context, karakeep.Scope, struct{}) (any, error) {
 			return nil, k.CreateTag()
 		})),
 
-		"users.settings": query(scoped(func(context.Context, favourites.Scope, struct{}) (karakeep.Settings, error) {
+		"users.settings": query(scoped(func(context.Context, karakeep.Scope, struct{}) (karakeep.Settings, error) {
 			return k.UserSettings(), nil
 		})),
-		"users.stats": query(scoped(func(ctx context.Context, sc favourites.Scope, _ struct{}) (karakeep.Stats, error) {
+		"users.stats": query(scoped(func(ctx context.Context, sc karakeep.Scope, _ struct{}) (karakeep.Stats, error) {
 			return k.UserStats(ctx, sc)
 		})),
 	}
@@ -154,7 +155,7 @@ func (a *api) karakeepProcedures() map[string]trpc.Procedure {
 // scoped adapts a Karakeep service method to a procedure handler: it decodes
 // the input (a missing one is the zero value), passes the token's scope and
 // maps the service's errors to tRPC errors.
-func scoped[In, Out any](h func(context.Context, favourites.Scope, In) (Out, error)) func(context.Context, json.RawMessage) (any, error) {
+func scoped[In, Out any](h func(context.Context, karakeep.Scope, In) (Out, error)) func(context.Context, json.RawMessage) (any, error) {
 	return func(ctx context.Context, raw json.RawMessage) (any, error) {
 		var in In
 		if len(raw) > 0 && string(raw) != "null" {
@@ -169,12 +170,24 @@ func scoped[In, Out any](h func(context.Context, favourites.Scope, In) (Out, err
 		if token.RootID == nil {
 			return nil, trpc.ErrUnauthorized
 		}
-		out, err := h(ctx, favourites.Scope{UserID: token.UserID, RootID: *token.RootID}, in)
+		out, err := h(ctx, karakeepScope(token), in)
 		if err != nil {
 			return nil, karakeepError(err)
 		}
 		return out, nil
 	}
+}
+
+// karakeepScope is what the token sees: its subtree and its notes.
+func karakeepScope(token apptokens.Token) karakeep.Scope {
+	sc := karakeep.Scope{
+		Scope: favourites.Scope{UserID: token.UserID, RootID: *token.RootID},
+		Notes: notes.Scope{UserID: token.UserID, Mode: notes.ScopeMode(token.NoteScope)},
+	}
+	if token.RootCategoryID != nil {
+		sc.Notes.CategoryID = *token.RootCategoryID
+	}
+	return sc
 }
 
 // karakeepError maps the errors of the Karakeep service and the favourites
@@ -192,6 +205,14 @@ func karakeepError(err error) error {
 		return trpc.NewError("FORBIDDEN", "In Boardly, tags are created by adding them to a bookmark.")
 	case errors.Is(err, favourites.ErrTagExists):
 		return trpc.NewError("CONFLICT", "A tag with this name already exists.")
+	case errors.Is(err, notes.ErrVersionConflict):
+		return trpc.NewError("CONFLICT", "The note was changed in the meantime. Load it again.")
+	case errors.Is(err, notes.ErrInvalidTitle):
+		return trpc.NewError("BAD_REQUEST", "A note's title can have at most 200 characters.")
+	case errors.Is(err, notes.ErrInvalidDocument):
+		return trpc.NewError("BAD_REQUEST", "The text is too long for a note.")
+	case errors.Is(err, notes.ErrNotFound):
+		return trpc.NewError("NOT_FOUND", "Not found")
 	}
 	var apiErr *Error
 	if errors.As(favouritesError(err), &apiErr) && apiErr.Status == http.StatusBadRequest {

@@ -11,6 +11,9 @@ export const appNames: Record<AppTokenApp, string> = {
 
 export type AppTokenStatus = "active" | "expired" | "revoked";
 
+/** Which notes a token sees: all, a root category with its subcategories, or none. */
+export type NoteScope = "all" | "category" | "none";
+
 /** An app token as the server lists it; the secret is never part of it. */
 export type AppToken = {
 	id: string;
@@ -20,6 +23,9 @@ export type AppToken = {
 	prefix: string;
 	/** null once the root folder was deleted. */
 	rootId: string | null;
+	noteScope: NoteScope;
+	/** The root category for the scope "category", null once it was deleted. */
+	rootCategoryId: string | null;
 	createdAt: string;
 	lastUsedAt: string | null;
 	expiresAt: string | null;
@@ -34,6 +40,8 @@ export type NewAppToken = {
 	name: string;
 	app: AppTokenApp;
 	rootId: string;
+	/** Karakeep only: a root category, or null for all notes. */
+	rootCategoryId?: string | null;
 	/** RFC 3339, or null for no expiry. */
 	expiresAt: string | null;
 };
@@ -49,6 +57,19 @@ export function createAppToken(token: NewAppToken) {
 	return api<CreatedAppToken>("/api/app-tokens", {
 		method: "POST",
 		json: token,
+	});
+}
+
+/** What can be changed on an active token; rootCategoryId null is all notes. */
+export type AppTokenPatch = {
+	rootId?: string;
+	rootCategoryId?: string | null;
+};
+
+export function updateAppToken(id: string, patch: AppTokenPatch) {
+	return api<AppToken>(`/api/app-tokens/${encodeURIComponent(id)}`, {
+		method: "PATCH",
+		json: patch,
 	});
 }
 

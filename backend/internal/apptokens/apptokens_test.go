@@ -9,6 +9,7 @@ import (
 
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 	"boardly/internal/users"
 )
 
@@ -250,3 +251,115 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func TestNoteScope(t *testing.T) {
+	f := newFixture(t)
+	ns := notes.NewStore(f.s.DB)
+	inbox, err := ns.CreateCategory(f.ctx, f.user, notes.NewCategory{Title: "Inbox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobs, err := ns.CreateCategory(f.ctx, f.other, notes.NewCategory{Title: "Bob"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		app      App
+		category *string
+		want     NoteScope
+		err      error
+	}{
+		"karakeep, all notes":   {AppKarakeep, nil, NoteScopeAll, nil},
+		"karakeep, category":    {AppKarakeep, &inbox.ID, NoteScopeCategory, nil},
+		"linkwarden":            {AppLinkwarden, nil, NoteScopeNone, nil},
+		"linkwarden, category":  {AppLinkwarden, &inbox.ID, "", ErrInvalidRootCategory},
+		"other user's category": {AppKarakeep, &bobs.ID, "", ErrInvalidRootCategory},
+		"unknown category":      {AppKarakeep, ptr("nope"), "", ErrInvalidRootCategory},
+	} {
+		tok, _, err := f.s.Create(f.ctx, f.user, NewToken{Name: "x", App: tc.app, RootID: f.folder, RootCategoryID: tc.category})
+		if !errors.Is(err, tc.err) || err == nil && tok.NoteScope != tc.want {
+			t.Errorf("%s: scope %q, err %v; want %q, %v", name, tok.NoteScope, err, tc.want, tc.err)
+		}
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	f := newFixture(t)
+	tok, secret := f.create(nil)
+	ns := notes.NewStore(f.s.DB)
+	inbox, _ := ns.CreateCategory(f.ctx, f.user, notes.NewCategory{Title: "Inbox"})
+	title := "Work"
+	work, err := favourites.NewStore(f.s.DB).Create(f.ctx, f.user, favourites.NewNode{Kind: favourites.KindFolder, Title: &title})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	category := &inbox.ID
+	got, err := f.s.Update(f.ctx, f.user, tok.ID, Patch{RootID: &work.ID, RootCategoryID: &category})
+	if err != nil || *got.RootID != work.ID || got.NoteScope != NoteScopeCategory || *got.RootCategoryID != inbox.ID {
+		t.Fatalf("update: %+v, %v", got, err)
+	}
+	if auth, err := f.s.Authenticate(f.ctx, secret, AppKarakeep); err != nil || *auth.RootID != work.ID {
+		t.Fatalf("authenticate after the update: %+v, %v", auth, err)
+	}
+	var none *string
+	if got, err := f.s.Update(f.ctx, f.user, tok.ID, Patch{RootCategoryID: &none}); err != nil || got.NoteScope != NoteScopeAll || got.RootCategoryID != nil || *got.RootID != work.ID {
+		t.Fatalf("back to all notes: %+v, %v", got, err)
+	}
+	if _, err := f.s.Update(f.ctx, f.other, tok.ID, Patch{RootID: &work.ID}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("other user: err = %v", err)
+	}
+	if _, err := f.s.Update(f.ctx, f.user, tok.ID, Patch{RootID: ptr("nope")}); !errors.Is(err, ErrInvalidRoot) {
+		t.Errorf("unknown root: err = %v", err)
+	}
+	if _, err := f.s.Revoke(f.ctx, f.user, tok.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Update(f.ctx, f.user, tok.ID, Patch{RootID: &f.folder}); !errors.Is(err, ErrInactive) {
+		t.Errorf("revoked: err = %v", err)
+	}
+}
+
+func TestDeletingRootCategoryRevokes(t *testing.T) {
+	f := newFixture(t)
+	ns := notes.NewStore(f.s.DB)
+	home, _ := ns.CreateCategory(f.ctx, f.user, notes.NewCategory{Title: "Home"})
+	garden, _ := ns.CreateCategory(f.ctx, f.user, notes.NewCategory{Title: "Garden", ParentID: &home.ID})
+	create := func(category string, expires *time.Time) (Token, string) {
+		t.Helper()
+		tok, secret, err := f.s.Create(f.ctx, f.user, NewToken{Name: "x", App: AppKarakeep, RootID: f.folder, RootCategoryID: &category, ExpiresAt: expires})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tok, secret
+	}
+	soon := f.now.Add(time.Hour)
+	rooted, secret := create(home.ID, nil)
+	expired, _ := create(home.ID, &soon)
+	sub, _ := create(garden.ID, nil)
+	f.now = f.now.Add(2 * time.Hour)
+
+	if err := ns.DeleteCategory(f.ctx, f.user, home.ID); err != nil {
+		t.Fatal(err)
+	}
+	list, err := f.s.List(f.ctx, f.user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]Token{}
+	for _, tok := range list {
+		byID[tok.ID] = tok
+	}
+	if got := byID[rooted.ID]; got.Status != StatusRevoked || got.NoteScope != NoteScopeCategory || got.RootCategoryID != nil {
+		t.Errorf("rooted token = %+v, want revoked with a deleted category", got)
+	}
+	if got := byID[expired.ID]; got.Status != StatusExpired || got.RevokedAt != nil {
+		t.Errorf("expired token = %+v, want untouched", got)
+	}
+	if got := byID[sub.ID]; got.Status != StatusActive || *got.RootCategoryID != garden.ID {
+		t.Errorf("subcategory token = %+v, want active", got)
+	}
+	if _, err := f.s.Authenticate(f.ctx, secret, AppKarakeep); !errors.Is(err, ErrInvalidToken) {
+		t.Errorf("authenticate the revoked token: err = %v", err)
+	}
+}

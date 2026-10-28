@@ -24,6 +24,8 @@ type User struct {
 	Slug  string  `json:"slug"`
 	// ShareFolderID is the default folder of the "Save link" page; nil means the root.
 	ShareFolderID *string `json:"shareFolderId"`
+	// NoteCategoryID is the default category for new notes; nil means none.
+	NoteCategoryID *string `json:"noteCategoryId"`
 	// CreatedAt and UpdatedAt are for connected apps; the web API leaves them out.
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
@@ -37,6 +39,9 @@ var ErrInvalidName = errors.New("invalid name")
 
 // ErrInvalidFolder is returned for a default folder that isn't a folder of the user.
 var ErrInvalidFolder = errors.New("invalid folder")
+
+// ErrInvalidCategory is returned for a default category that isn't a category of the user.
+var ErrInvalidCategory = errors.New("invalid category")
 
 // ErrInvalidSlug, ErrSlugReserved and ErrSlugTaken are returned by SetSlug.
 var (
@@ -61,7 +66,7 @@ func NewStore(database *sql.DB) *Store {
 	return &Store{DB: database, Now: time.Now, GenerateSlug: slugs.Generate}
 }
 
-const columns = `id, email, name, slug, share_folder_id, created_at, updated_at`
+const columns = `id, email, name, slug, share_folder_id, note_category_id, created_at, updated_at`
 
 // EnsureByEmail returns the user with the (already normalized) email,
 // creating the account first if none exists. q may be a transaction.
@@ -139,11 +144,14 @@ type Patch struct {
 	Slug *string
 	// ShareFolderID is a folder of the user; a nil *string or the root clears it.
 	ShareFolderID **string
+	// NoteCategoryID is a category of the user; a nil *string clears it.
+	NoteCategoryID **string
 }
 
 // Update validates every field of p before writing any of them, then writes
 // them in one statement. Errors are ErrInvalidName, ErrInvalidSlug,
-// ErrSlugReserved, ErrSlugTaken, ErrInvalidFolder and ErrNotFound.
+// ErrSlugReserved, ErrSlugTaken, ErrInvalidFolder, ErrInvalidCategory and
+// ErrNotFound.
 func (s *Store) Update(ctx context.Context, id string, p Patch) (User, error) {
 	sets := []string{"updated_at = ?"}
 	args := []any{db.FormatTime(s.Now())}
@@ -173,6 +181,22 @@ func (s *Store) Update(ctx context.Context, id string, p Patch) (User, error) {
 		}
 		sets = append(sets, "share_folder_id = ?")
 		args = append(args, folder)
+	}
+	if p.NoteCategoryID != nil {
+		if category := *p.NoteCategoryID; category != nil {
+			var ok bool
+			err := s.DB.QueryRowContext(ctx,
+				`SELECT EXISTS (SELECT 1 FROM note_categories WHERE id = ? AND user_id = ?)`, *category, id,
+			).Scan(&ok)
+			if err != nil {
+				return User{}, err
+			}
+			if !ok {
+				return User{}, ErrInvalidCategory
+			}
+		}
+		sets = append(sets, "note_category_id = ?")
+		args = append(args, *p.NoteCategoryID)
 	}
 	args = append(args, id)
 	u, err := scan(s.DB.QueryRowContext(ctx,
@@ -225,9 +249,9 @@ func NormalizeName(name *string) (*string, error) {
 
 func scan(row *sql.Row) (User, error) {
 	var u User
-	var name, slug, shareFolder sql.NullString
+	var name, slug, shareFolder, noteCategory sql.NullString
 	var created, updated string
-	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &shareFolder, &created, &updated); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &shareFolder, &noteCategory, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, ErrNotFound
 		}
@@ -246,6 +270,9 @@ func scan(row *sql.Row) (User, error) {
 	u.Slug = slug.String
 	if shareFolder.Valid {
 		u.ShareFolderID = &shareFolder.String
+	}
+	if noteCategory.Valid {
+		u.NoteCategoryID = &noteCategory.String
 	}
 	return u, nil
 }

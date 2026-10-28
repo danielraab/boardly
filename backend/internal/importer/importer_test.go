@@ -1,18 +1,26 @@
 package importer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
 
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 )
 
 func parseFile(t *testing.T, format Format, name string) favourites.ImportTree {
+	t.Helper()
+	return parseResult(t, format, name).Links
+}
+
+func parseResult(t *testing.T, format Format, name string) Result {
 	t.Helper()
 	f, err := os.Open("testdata/" + name)
 	if err != nil {
@@ -66,9 +74,44 @@ func check(t *testing.T, tree favourites.ImportTree, want string, report favouri
 	}
 }
 
+// renderNotes prints the categories as an indented outline: categories end
+// with "/", notes show their title, content and date.
+func renderNotes(c notes.ImportCategory) string {
+	var sb strings.Builder
+	var walk func(c notes.ImportCategory, indent string)
+	walk = func(c notes.ImportCategory, indent string) {
+		for _, n := range c.Notes {
+			title, date := "-", ""
+			if n.Title != nil {
+				title = *n.Title
+			}
+			if !n.CreatedAt.IsZero() {
+				date = " @" + n.CreatedAt.Format(time.RFC3339)
+			}
+			raw, _ := json.Marshal(n.Content.Blocks)
+			// Task IDs are random.
+			content := taskIDRe.ReplaceAllString(string(raw), `"id":"…"`)
+			fmt.Fprintf(&sb, "%s%s %s%s\n", indent, title, content, date)
+		}
+		for _, sub := range c.Categories {
+			fmt.Fprintf(&sb, "%s%s/\n", indent, sub.Name)
+			walk(sub, indent+"  ")
+		}
+	}
+	walk(c, "")
+	return sb.String()
+}
+
+var taskIDRe = regexp.MustCompile(`"id":"[^"]*"`)
+
 func TestKarakeep(t *testing.T) {
-	tree := parseFile(t, FormatKarakeep, "karakeep.json")
-	check(t, tree, `Dev/
+	res := parseResult(t, FormatKarakeep, "karakeep.json")
+	if got, want := renderNotes(res.Notes.Root), `Linux/
+  Text note [{"type":"paragraph","content":[{"type":"text","text":"remember this"}]}] @2026-10-13T05:44:38Z
+`; got != want {
+		t.Errorf("notes =\n%s\nwant\n%s", got, want)
+	}
+	check(t, res.Links, `Dev/
   Docker/
     Containers/
       Go by Example <https://gobyexample.com/> [go Learning] @2026-10-22T12:01:22Z
@@ -79,11 +122,56 @@ Floccus/
     - <https://example.org/video?v=1&t=2> [] "Note: login with the family account" @2026-10-20T16:27:53Z
 Empty/
 In a smart list only <https://example.org/top> [] @2026-10-10T11:42:06Z
-`, favourites.ImportReport{Skipped: favourites.ImportSkipped{InvalidURLs: 1, NotLinks: 1, SmartLists: 1}})
+`, favourites.ImportReport{Skipped: favourites.ImportSkipped{InvalidURLs: 1, SmartLists: 1}})
+}
+
+func TestKarakeepNotes(t *testing.T) {
+	res, err := ParseKarakeep(strings.NewReader(`{"lists": [
+		{"id": "dev", "name": "Dev", "type": "manual", "parentId": null},
+		{"id": "snippets", "name": "Snippets", "type": "manual", "parentId": "dev"},
+		{"id": "reading", "name": "Reading", "type": "manual", "parentId": null},
+		{"id": "blank", "name": "  ", "type": "manual", "parentId": null},
+		{"id": "long", "name": "` + strings.Repeat("c", 210) + `", "type": "manual", "parentId": null},
+		{"id": "smart", "name": "Smart", "type": "smart", "query": "x"}
+	], "bookmarks": [
+		{"createdAt": 1790365701, "title": " Pasta ", "tags": ["cooking", "weekend plans", " "], "lists": ["smart", "snippets", "dev"],
+		 "content": {"type": "text", "text": "- [ ] buy basil"}, "note": null},
+		{"createdAt": null, "title": null, "tags": [], "lists": [],
+		 "content": {"type": "text", "text": "Door code 1234"}, "note": " ask Bob first ", "summary": "short"},
+		{"createdAt": 1790365701, "title": "", "tags": [], "lists": ["blank"], "content": {"type": "text", "text": "in a blank list"}},
+		{"createdAt": 1790365701, "title": "` + strings.Repeat("t", 210) + `", "tags": [], "lists": ["long"], "content": {"type": "text", "text": ""}},
+		{"createdAt": 1790365701, "title": "Big", "tags": [], "lists": [], "content": {"type": "text", "text": "` + strings.Repeat("x", 600<<10) + `"}},
+		{"createdAt": 1790365701, "title": "Go", "tags": [], "lists": ["reading"], "content": {"type": "link", "url": "https://go.dev"}},
+		{"createdAt": 1790365701, "title": "Photo", "tags": [], "lists": [], "content": {"type": "asset", "assetType": "image"}}
+	]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `- [{"type":"paragraph","content":[{"type":"text","text":"Door code 1234"}]},{"type":"paragraph","content":[{"type":"text","text":"Note: ask Bob first"}]},{"type":"paragraph","content":[{"type":"text","text":"Summary: short"}]}]
+- [{"type":"paragraph","content":[{"type":"text","text":"in a blank list"}]}] @2026-09-25T19:48:21Z
+Dev/
+  Snippets/
+    Pasta [{"type":"list","style":"task","items":[{"id":"…","checked":false,"content":[{"type":"text","text":"buy basil"}]}]},{"type":"paragraph","content":[{"type":"text","text":"#cooking #weekend-plans"}]}] @2026-09-25T19:48:21Z
+` + strings.Repeat("c", 200) + `/
+  ` + strings.Repeat("t", 200) + ` [] @2026-09-25T19:48:21Z
+`
+	if got := renderNotes(res.Notes.Root); got != want {
+		t.Errorf("notes =\n%s\nwant\n%s", got, want)
+	}
+	if res.Notes.TooLarge != 1 {
+		t.Errorf("too large = %d, want 1", res.Notes.TooLarge)
+	}
+	if res.Links.Report.Skipped.NotLinks != 1 {
+		t.Errorf("not links = %d, want 1 (the asset)", res.Links.Report.Skipped.NotLinks)
+	}
+	// Lists with only links are folders, but no categories.
+	if got := render(res.Links.Root.Items); !strings.Contains(got, "Reading/") {
+		t.Errorf("links =\n%s", got)
+	}
 }
 
 func TestKarakeepParentCycle(t *testing.T) {
-	tree, err := ParseKarakeep(strings.NewReader(`{"bookmarks": [], "lists": [
+	res, err := ParseKarakeep(strings.NewReader(`{"bookmarks": [], "lists": [
 		{"id": "a", "name": "A", "type": "manual", "parentId": "b"},
 		{"id": "b", "name": "B", "type": "manual", "parentId": "a"},
 		{"id": "c", "name": "  ", "type": "manual", "parentId": null},
@@ -92,7 +180,7 @@ func TestKarakeepParentCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check(t, tree, "A/\nB/\nD/\n", favourites.ImportReport{})
+	check(t, res.Links, "A/\nB/\nD/\n", favourites.ImportReport{})
 }
 
 func TestKarakeepHTML(t *testing.T) {

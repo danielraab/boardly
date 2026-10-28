@@ -117,7 +117,7 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it.",
+			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it, and for Karakeep the notes of the category you choose.",
 			"connect": "Connect app",
 			"emptyTitle": "No connected apps yet",
 			"emptyText": "Connect a Karakeep or Linkwarden app to save links straight into a folder of your favourites. The app only sees that folder and what's inside it.",
@@ -145,7 +145,7 @@
 			"cancel": "Cancel",
 			"form": {
 				"title": "Connect app",
-				"text": "The app gets an API key that only works for the folder you choose. You can't change these settings later.",
+				"text": "The app gets an API key that only works for the folder you choose. You can change the folder and the category later, but not the name, the app or the expiry.",
 				"name": "Name",
 				"namePlaceholder": "e.g. Phone",
 				"app": "App",
@@ -163,7 +163,10 @@
 				"expiryDate": "Expiry date",
 				"expiryInvalid": "Choose a date in the future.",
 				"create": "Create key",
-				"creating": "Creating…"
+				"creating": "Creating…",
+				"rootCategory": "Category for notes",
+				"rootCategoryHint": "Text bookmarks from the app are saved as notes in this category. The app sees the notes of this category and its subcategories.",
+				"rootCategoryInvalid": "Choose one of your categories."
 			},
 			"secret": {
 				"title": "App connected",
@@ -174,11 +177,21 @@
 				"copied": "Copied",
 				"once": "Copy the API key now. It won't be shown again.",
 				"done": "Done"
+			},
+			"allNotes": "All notes",
+			"deletedCategory": "Deleted category",
+			"edit": "Edit {{name}}",
+			"editForm": {
+				"title": "Edit connected app",
+				"text": "The app keeps its API key and sees the new folder and category with its next request.",
+				"save": "Save",
+				"saving": "Saving…",
+				"inactive": "This app is no longer active."
 			}
 		},
 		"import": {
 			"title": "Import bookmarks",
-			"intro": "Bring your bookmarks over from Karakeep, Linkwarden or a browser, once. Folders, tags and dates are kept. Links that are already in your favourites are skipped.",
+			"intro": "Bring your bookmarks over from Karakeep, Linkwarden or a browser, once. Folders, tags and dates are kept, and Karakeep text bookmarks become notes. Links and notes that are already saved are skipped.",
 			"format": "Export file",
 			"formats": {
 				"karakeep": "Karakeep (JSON)",
@@ -189,13 +202,14 @@
 			"file": "File",
 			"folder": "Import into",
 			"folderHint": "Folders of the file are created in this folder. Folders that already exist there with the same name are used.",
-			"skipDuplicates": "Skip links that are already saved",
+			"skipDuplicates": "Skip links and notes that are already saved",
 			"submit": "Import",
 			"importing": "Importing…",
 			"errors": {
 				"invalidFile": "This file isn't a valid {{format}} export.",
 				"tooLarge": "The file is too large. It can have at most 10 MB.",
-				"invalidFolder": "Choose one of your folders to import into."
+				"invalidFolder": "Choose one of your folders to import into.",
+				"invalidCategory": "Choose one of your categories to import notes into."
 			},
 			"report": {
 				"imported": "Imported {{links}} and created {{folders}}.",
@@ -207,13 +221,25 @@
 				"duplicates_other": "{{count}} links were already in your favourites",
 				"invalidUrls_one": "{{count}} entry had an invalid address",
 				"invalidUrls_other": "{{count}} entries had an invalid address",
-				"notLinks_one": "{{count}} entry isn't a link, such as a note or a file",
-				"notLinks_other": "{{count}} entries aren't links, such as notes or files",
+				"notLinks_one": "{{count}} entry is neither a link nor a note, such as a file",
+				"notLinks_other": "{{count}} entries are neither links nor notes, such as files",
 				"smartLists_one": "{{count}} smart list was left out",
 				"smartLists_other": "{{count}} smart lists were left out",
 				"shortenedDescriptions_one": "{{count}} description was shortened to 2048 characters",
-				"shortenedDescriptions_other": "{{count}} descriptions were shortened to 2048 characters"
-			}
+				"shortenedDescriptions_other": "{{count}} descriptions were shortened to 2048 characters",
+				"importedNotes": "Imported {{notes}} and created {{categories}}.",
+				"notes_one": "{{count}} note",
+				"notes_other": "{{count}} notes",
+				"categories_one": "{{count}} category",
+				"categories_other": "{{count}} categories",
+				"duplicateNotes_one": "{{count}} note was already saved",
+				"duplicateNotes_other": "{{count}} notes were already saved",
+				"tooLargeNotes_one": "{{count}} note was too large to import",
+				"tooLargeNotes_other": "{{count}} notes were too large to import"
+			},
+			"category": "Import notes into",
+			"categoryTopLevel": "Top level",
+			"categoryHint": "Karakeep text bookmarks become notes. Lists with notes are created as categories in this category. Categories that already exist there with the same name are used."
 		}
 	},
 	"profile": {
@@ -231,7 +257,12 @@
 		"shareFolderLabel": "Default folder for new links",
 		"shareFolderHint": "The “Save link” page starts in this folder, on every device.",
 		"saveShareFolder": "Save default folder",
-		"shareFolderInvalid": "This folder no longer exists. Choose another one."
+		"shareFolderInvalid": "This folder no longer exists. Choose another one.",
+		"noteCategoryLabel": "Default category for new notes",
+		"noteCategoryNone": "No category",
+		"noteCategoryHint": "Notes you share into Boardly start in this category, on every device.",
+		"saveNoteCategory": "Save default category",
+		"noteCategoryInvalid": "This category no longer exists. Choose another one."
 	},
 	"passkeys": {
 		"intro": "Passkeys let you sign in with your fingerprint, face or device PIN instead of an email link.",
@@ -694,7 +725,27 @@
 		"savedTitle": "Link saved",
 		"savedText": "It's now in “{{folder}}”.",
 		"openFavourites": "Open favourites",
-		"saveAnother": "Save another link"
+		"saveAnother": "Save another link",
+		"mode": "What to save",
+		"modes": {
+			"link": "Link",
+			"note": "Note"
+		},
+		"note": {
+			"title": "Save note",
+			"intro": "Save a note to your notes.",
+			"titleLabel": "Title (optional)",
+			"textLabel": "Text",
+			"category": "Category",
+			"noCategory": "No category",
+			"savedTitle": "Note saved",
+			"savedText": "It's now in “{{category}}”.",
+			"savedTextNone": "It's now in your notes, without a category.",
+			"open": "Open note",
+			"saveAnother": "Save something else",
+			"categoryGone": "This category no longer exists. Choose another one.",
+			"tooLarge": "The text is too long for a note."
+		}
 	},
 	"symbols": {
 		"book-open": "Book",
@@ -840,13 +891,18 @@
 				"subcategories_one": "Its subcategory moves up one level.",
 				"subcategories_other": "Its {{count}} subcategories move up one level.",
 				"confirm": "Delete",
-				"cancel": "Cancel"
+				"cancel": "Cancel",
+				"appsWarning_one": "1 connected app uses this category. It will be revoked and stop working.",
+				"appsWarning_other": "{{count}} connected apps use this category. They will be revoked and stop working."
 			},
 			"badge": {
 				"change": "Category: {{path}}. Change category",
 				"add": "Add category",
 				"none": "No category",
 				"picker": "Category"
+			},
+			"picker": {
+				"loading": "Loading categories…"
 			}
 		},
 		"editor": {

@@ -8,6 +8,7 @@ import (
 
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 )
 
 func ptr(s string) *string { return &s }
@@ -260,5 +261,56 @@ func TestShareFolderClearedOnDelete(t *testing.T) {
 				t.Fatalf("shareFolderId = %v, want nil", *u.ShareFolderID)
 			}
 		})
+	}
+}
+
+func TestNoteCategory(t *testing.T) {
+	s := NewStore(dbtest.Open(t))
+	ctx := context.Background()
+	ns := notes.NewStore(s.DB)
+	ann, _ := s.EnsureByEmail(ctx, s.DB, "ann@example.org")
+	bob, _ := s.EnsureByEmail(ctx, s.DB, "bob@example.org")
+	set := func(id *string) (User, error) { return s.Update(ctx, ann.ID, Patch{NoteCategoryID: &id}) }
+
+	if ann.NoteCategoryID != nil {
+		t.Fatalf("new user: noteCategoryId = %v, want nil", *ann.NoteCategoryID)
+	}
+	home, _ := ns.CreateCategory(ctx, ann.ID, notes.NewCategory{Title: "Home"})
+	inbox, _ := ns.CreateCategory(ctx, ann.ID, notes.NewCategory{Title: "Inbox", ParentID: &home.ID})
+	got, err := set(&inbox.ID)
+	if err != nil || got.NoteCategoryID == nil || *got.NoteCategoryID != inbox.ID {
+		t.Fatalf("own category: got %+v, %v", got, err)
+	}
+
+	bobs, _ := ns.CreateCategory(ctx, bob.ID, notes.NewCategory{Title: "Bob"})
+	for name, id := range map[string]string{"other user": bobs.ID, "unknown": "nope"} {
+		if _, err := set(&id); !errors.Is(err, ErrInvalidCategory) {
+			t.Fatalf("%s: err = %v, want ErrInvalidCategory", name, err)
+		}
+	}
+	if u, _ := s.Get(ctx, ann.ID); u.NoteCategoryID == nil || *u.NoteCategoryID != inbox.ID {
+		t.Fatalf("rejected value changed the setting: %+v", u)
+	}
+
+	// Deleting the parent moves Inbox up and keeps the setting.
+	if err := ns.DeleteCategory(ctx, ann.ID, home.ID); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := s.Get(ctx, ann.ID); u.NoteCategoryID == nil || *u.NoteCategoryID != inbox.ID {
+		t.Fatalf("after deleting the parent: %+v", u)
+	}
+	if err := ns.DeleteCategory(ctx, ann.ID, inbox.ID); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := s.Get(ctx, ann.ID); u.NoteCategoryID != nil {
+		t.Fatalf("after deleting the category: noteCategoryId = %v, want nil", *u.NoteCategoryID)
+	}
+
+	other, _ := ns.CreateCategory(ctx, ann.ID, notes.NewCategory{Title: "Other"})
+	if _, err := set(&other.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := set(nil); err != nil || got.NoteCategoryID != nil {
+		t.Fatalf("clear: got %+v, %v", got, err)
 	}
 }

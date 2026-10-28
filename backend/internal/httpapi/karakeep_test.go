@@ -12,6 +12,7 @@ import (
 
 	"boardly/internal/apptokens"
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 )
 
 const trpcPath = karakeepPrefix + "/api/trpc/"
@@ -289,10 +290,10 @@ func TestKarakeepSavePageFromExtension(t *testing.T) {
 		t.Errorf("Reading = %+v", reading.Children)
 	}
 
-	// Notes can't be stored; the save fails and adds nothing.
-	rec = s.trpcMutation("bookmarks.createBookmark", input(map[string]any{"type": "text", "text": "hello"}), bearer)
+	// Files can't be stored; the save fails and adds nothing.
+	rec = s.trpcMutation("bookmarks.createBookmark", input(map[string]any{"type": "asset", "assetType": "image"}), bearer)
 	if rec.Code != http.StatusBadRequest || trpcErrorCode(t, rec) != "BAD_REQUEST" {
-		t.Errorf("text bookmark: %d %s", rec.Code, rec.Body)
+		t.Errorf("asset bookmark: %d %s", rec.Code, rec.Body)
 	}
 	rec = s.trpcMutation("bookmarks.deleteBookmark", input(map[string]string{"bookmarkId": created.ID}), bearer)
 	if rec.Code != http.StatusOK || rec.Body.String() != `[{"result":{"data":{"json":null}}}]`+"\n" {
@@ -389,5 +390,88 @@ func TestKarakeepBrowseInApp(t *testing.T) {
 	}
 	if rec := s.trpcMutation("bookmarks.updateBookmark", input(map[string]any{"bookmarkId": second.Bookmarks[0].ID, "favourited": true}), bearer); rec.Code != http.StatusBadRequest {
 		t.Errorf("favourite: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestKarakeepTextBookmarks(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	inbox := s.noteCategory(t, ann, "Inbox", "")
+	ideas := s.noteCategory(t, ann, "Ideas", inbox)
+	other := s.noteCategory(t, ann, "Other", "")
+	folder := s.create(t, ann, map[string]any{"kind": "folder", "title": "Reading"})
+	later := s.create(t, ann, map[string]any{"kind": "folder", "title": "Later", "parentId": folder.ID})
+	rec := s.req("POST", "/api/app-tokens", mustJSON(map[string]any{
+		"name": "Phone", "app": "karakeep", "rootId": folder.ID, "rootCategoryId": inbox,
+	}), withCookie(ann))
+	bearer := withBearer(decodeJSONBody[createdToken](t, rec).Secret)
+	input := func(v any) string { return `{"0":{"json":` + mustJSON(v) + `}}` }
+	result := func(rec *httptest.ResponseRecorder) map[string]any {
+		t.Helper()
+		entries := trpcEntries(t, rec)
+		if len(entries) != 1 || entries[0].Result == nil {
+			t.Fatalf("want one result, got %d %s", rec.Code, rec.Body)
+		}
+		var v map[string]any
+		_ = json.Unmarshal(entries[0].Result.Data.JSON, &v)
+		return v
+	}
+
+	// A text bookmark from the app is a note in the root category.
+	created := result(s.trpcMutation("bookmarks.createBookmark", input(map[string]any{
+		"type": "text", "title": "Shopping", "text": "- [x] milk\n- [ ] eggs",
+	}), bearer))
+	id, _ := created["id"].(string)
+	content, _ := created["content"].(map[string]any)
+	if content["type"] != "text" || content["text"] != "- [x] milk\n- [ ] eggs" || created["alreadyExists"] != false {
+		t.Fatalf("created = %v", created)
+	}
+	note := decodeJSONBody[notes.Note](t, s.req("GET", "/api/notes/"+id, "", withCookie(ann)))
+	if note.CategoryID == nil || *note.CategoryID != inbox || *note.Title != "Shopping" {
+		t.Fatalf("note = %+v", note)
+	}
+	milk := (*note.Content.Blocks[0].Items)[0].ID
+
+	// Notes of subcategories are visible, other notes aren't.
+	s.req("POST", "/api/notes", `{"title":"Idea","categoryId":"`+ideas+`","text":"call the plumber"}`, withCookie(ann))
+	hidden := decodeJSONBody[notes.Note](t, s.req("POST", "/api/notes", `{"title":"Hidden","categoryId":"`+other+`"}`, withCookie(ann)))
+	page := result(s.trpcQuery("bookmarks.getBookmarks", input(map[string]any{}), bearer))
+	if got := len(page["bookmarks"].([]any)); got != 2 {
+		t.Fatalf("getBookmarks has %d bookmarks, want 2: %v", got, page)
+	}
+	if rec := s.trpcQuery("bookmarks.getBookmark", input(map[string]string{"bookmarkId": hidden.ID}), bearer); trpcErrorCode(t, rec) != "NOT_FOUND" {
+		t.Errorf("note outside the scope: %s", rec.Body)
+	}
+	found := result(s.trpcQuery("bookmarks.searchBookmarks", input(map[string]any{"text": "plumber"}), bearer))
+	if bs := found["bookmarks"].([]any); len(bs) != 1 || bs[0].(map[string]any)["title"] != "Idea" {
+		t.Errorf("search = %v", found)
+	}
+
+	// Editing the text keeps the task IDs.
+	result(s.trpcMutation("bookmarks.updateBookmark", input(map[string]any{
+		"bookmarkId": id, "text": "- [x] milk\n- [ ] eggs\n- [ ] bread",
+	}), bearer))
+	note = decodeJSONBody[notes.Note](t, s.req("GET", "/api/notes/"+id, "", withCookie(ann)))
+	if items := *note.Content.Blocks[0].Items; len(items) != 3 || items[0].ID != milk || note.Version != 2 {
+		t.Errorf("after the edit: version %d, items %+v, want milk's ID %s", note.Version, items, milk)
+	}
+
+	for name, call := range map[string]*httptest.ResponseRecorder{
+		"url on a note":  s.trpcMutation("bookmarks.updateBookmark", input(map[string]any{"bookmarkId": id, "url": "https://example.org"}), bearer),
+		"tag a note":     s.trpcMutation("bookmarks.updateTags", input(map[string]any{"bookmarkId": id, "attach": []map[string]string{{"tagName": "x"}}, "detach": []any{}}), bearer),
+		"note in a list": s.trpcMutation("lists.addToList", input(map[string]string{"listId": later.ID, "bookmarkId": id}), bearer),
+	} {
+		if code := trpcErrorCode(t, call); code != "BAD_REQUEST" {
+			t.Errorf("%s: %s, want BAD_REQUEST", name, call.Body)
+		}
+	}
+	lists := result(s.trpcQuery("lists.getListsOfBookmark", input(map[string]string{"bookmarkId": id}), bearer))
+	if ls := lists["lists"].([]any); len(ls) != 0 {
+		t.Errorf("lists of a note = %v", lists)
+	}
+
+	result(s.trpcMutation("bookmarks.deleteBookmark", input(map[string]string{"bookmarkId": id}), bearer))
+	if rec := s.req("GET", "/api/notes/"+id, "", withCookie(ann)); rec.Code != http.StatusNotFound {
+		t.Errorf("deleted note: %d", rec.Code)
 	}
 }

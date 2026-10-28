@@ -54,7 +54,7 @@ func (t *tree) folders() []*favourites.ScopedNode {
 }
 
 // Lists is lists.list.
-func (s *Service) Lists(ctx context.Context, sc favourites.Scope) ([]List, error) {
+func (s *Service) Lists(ctx context.Context, sc Scope) ([]List, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (s *Service) Lists(ctx context.Context, sc favourites.Scope) ([]List, error
 }
 
 // List is lists.get.
-func (s *Service) List(ctx context.Context, sc favourites.Scope, id string) (List, error) {
+func (s *Service) List(ctx context.Context, sc Scope, id string) (List, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return List{}, err
@@ -80,7 +80,7 @@ func (s *Service) List(ctx context.Context, sc favourites.Scope, id string) (Lis
 }
 
 // ListStats is lists.stats: the number of links directly in each list.
-func (s *Service) ListStats(ctx context.Context, sc favourites.Scope) (trpc.Map, error) {
+func (s *Service) ListStats(ctx context.Context, sc Scope) (trpc.Map, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return nil, err
@@ -100,14 +100,17 @@ func (s *Service) ListStats(ctx context.Context, sc favourites.Scope) (trpc.Map,
 
 // ListsOfBookmark is lists.getListsOfBookmark: the link's folder, unless it
 // is the token's root folder.
-func (s *Service) ListsOfBookmark(ctx context.Context, sc favourites.Scope, bookmarkID string) ([]List, error) {
+func (s *Service) ListsOfBookmark(ctx context.Context, sc Scope, bookmarkID string) ([]List, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return nil, err
 	}
-	link, err := t.link(bookmarkID)
+	link, note, err := s.linkOrNote(ctx, sc, t, bookmarkID)
 	if err != nil {
 		return nil, err
+	}
+	if note != nil {
+		return []List{}, nil
 	}
 	if f, err := t.list(link.ParentID); err == nil {
 		return []List{t.asList(f)}, nil
@@ -127,7 +130,7 @@ type CreateListInput struct {
 
 // CreateList is lists.create: a folder at the end of the parent list, or of
 // the token's root folder.
-func (s *Service) CreateList(ctx context.Context, sc favourites.Scope, in CreateListInput) (List, error) {
+func (s *Service) CreateList(ctx context.Context, sc Scope, in CreateListInput) (List, error) {
 	if err := checkUnsupported(map[string]bool{
 		"smart lists":       (in.Type != "" && in.Type != "manual") || in.Query != nil,
 		"list descriptions": nonEmpty(in.Description),
@@ -173,7 +176,7 @@ type EditListInput struct {
 }
 
 // EditList is lists.edit: rename, and move to the end of another parent.
-func (s *Service) EditList(ctx context.Context, sc favourites.Scope, in EditListInput) (List, error) {
+func (s *Service) EditList(ctx context.Context, sc Scope, in EditListInput) (List, error) {
 	if err := checkUnsupported(map[string]bool{
 		"smart lists":       in.Query != nil,
 		"public lists":      isTrue(in.Public),
@@ -213,7 +216,7 @@ func (s *Service) EditList(ctx context.Context, sc favourites.Scope, in EditList
 }
 
 // DeleteList is lists.delete: the folder's contents move to its parent.
-func (s *Service) DeleteList(ctx context.Context, sc favourites.Scope, id string) error {
+func (s *Service) DeleteList(ctx context.Context, sc Scope, id string) error {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return err
@@ -225,7 +228,7 @@ func (s *Service) DeleteList(ctx context.Context, sc favourites.Scope, id string
 }
 
 // AddToList is lists.addToList: the link moves first into the list's folder.
-func (s *Service) AddToList(ctx context.Context, sc favourites.Scope, listID, bookmarkID string) error {
+func (s *Service) AddToList(ctx context.Context, sc Scope, listID, bookmarkID string) error {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return err
@@ -233,15 +236,17 @@ func (s *Service) AddToList(ctx context.Context, sc favourites.Scope, listID, bo
 	if _, err := t.list(listID); err != nil {
 		return err
 	}
-	if _, err := t.link(bookmarkID); err != nil {
+	if _, note, err := s.linkOrNote(ctx, sc, t, bookmarkID); err != nil {
 		return err
+	} else if note != nil {
+		return errNoteInList
 	}
 	return s.Favourites.Move(ctx, sc.UserID, bookmarkID, listID, 0)
 }
 
 // RemoveFromList is lists.removeFromList: the link moves first into the
 // token's root folder.
-func (s *Service) RemoveFromList(ctx context.Context, sc favourites.Scope, listID, bookmarkID string) error {
+func (s *Service) RemoveFromList(ctx context.Context, sc Scope, listID, bookmarkID string) error {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return err
@@ -249,9 +254,12 @@ func (s *Service) RemoveFromList(ctx context.Context, sc favourites.Scope, listI
 	if _, err := t.list(listID); err != nil {
 		return err
 	}
-	link, err := t.link(bookmarkID)
+	link, note, err := s.linkOrNote(ctx, sc, t, bookmarkID)
 	if err != nil {
 		return err
+	}
+	if note != nil {
+		return errNoteInList
 	}
 	if link.ParentID != listID {
 		return &InputError{"The bookmark isn't in this list"}

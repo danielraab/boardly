@@ -14,6 +14,7 @@ import (
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
 	"boardly/internal/jobs"
+	"boardly/internal/notes"
 	"boardly/internal/users"
 )
 
@@ -34,15 +35,17 @@ type fixture struct {
 	ctx      context.Context
 	s        *Service
 	fav      *favourites.Store
+	notes    *notes.Store
 	icons    *fakeFavicons
 	user     string
 	now      time.Time
-	sc       favourites.Scope
+	sc       Scope
 	topLevel string // the user's root folder
 }
 
 // newFixture returns a service whose scope is the folder "Reading" in Ann's
-// tree. Every node is created one minute after the previous one.
+// tree, without notes. Every node and note is created one minute after the
+// previous one.
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	database := dbtest.Open(t)
@@ -55,11 +58,16 @@ func newFixture(t *testing.T) *fixture {
 	f.fav = favourites.NewStore(database)
 	f.fav.Jobs = jobs.New(database)
 	f.fav.Now = func() time.Time { f.now = f.now.Add(time.Minute); return f.now }
-	f.s = &Service{Favourites: f.fav, Favicons: f.icons, Origin: "https://boardly.example", Now: func() time.Time { return f.now }}
+	f.notes = notes.NewStore(database)
+	f.notes.Now = f.fav.Now
+	f.s = &Service{Favourites: f.fav, Notes: f.notes, Favicons: f.icons, Origin: "https://boardly.example", Now: func() time.Time { return f.now }}
 	if f.topLevel, err = f.fav.EnsureRoot(ctx, database, ann.ID); err != nil {
 		t.Fatal(err)
 	}
-	f.sc = favourites.Scope{UserID: ann.ID, RootID: f.folder(f.topLevel, "Reading")}
+	f.sc = Scope{
+		Scope: favourites.Scope{UserID: ann.ID, RootID: f.folder(f.topLevel, "Reading")},
+		Notes: notes.Scope{UserID: ann.ID, Mode: notes.ScopeNone},
+	}
 	return f
 }
 
@@ -327,7 +335,7 @@ func TestUpdateAndDeleteBookmark(t *testing.T) {
 	in := UpdateBookmarkInput{}
 	_ = json.Unmarshal([]byte(`{"bookmarkId":"`+id+`","title":"New","url":"https://example.org/new","archived":false,"note":""}`), &in)
 	b, err := f.s.UpdateBookmark(f.ctx, f.sc, in)
-	if err != nil || *b.Title != "New" || b.Content.URL != "https://example.org/new" {
+	if err != nil || *b.Title != "New" || b.Content.(LinkContent).URL != "https://example.org/new" {
 		t.Fatalf("update = %+v, %v", b, err)
 	}
 
@@ -355,7 +363,7 @@ func TestUpdateAndDeleteBookmark(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tt.raw, err)
 		}
-		if got := b.Content.Description; (got == nil) != (tt.want == nil) || (got != nil && *got != *tt.want) {
+		if got := b.Content.(LinkContent).Description; (got == nil) != (tt.want == nil) || (got != nil && *got != *tt.want) {
 			t.Errorf("%s: description = %v, want %v", tt.raw, got, tt.want)
 		}
 	}
