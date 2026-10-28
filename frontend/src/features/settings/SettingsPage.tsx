@@ -4,6 +4,7 @@ import { Navigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
+import { narrowPage } from "#/components/pageWidths";
 import { meQueryKey, type User, useMe } from "#/features/auth/session";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { ConfirmSlugChangeDialog } from "#/features/dashboards/ConfirmSlugChangeDialog";
@@ -37,7 +38,7 @@ export function SettingsPage({
 	if (me === null) return <Navigate to="/login" />;
 	if (!me) return null;
 	return (
-		<div className="pt-12">
+		<div className={`${narrowPage} pt-12`}>
 			<h1 className="text-3xl font-semibold tracking-tight">
 				{t("settings.title")}
 			</h1>

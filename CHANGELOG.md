@@ -25,6 +25,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Karakeep text bookmarks are no longer counted as "not a link" in the import report.
+- Each page now has a width that suits its content: dashboards and the notes overview use the full
+  1536 px, favourites, the dashboards list and the landing page up to 1152 px, settings, a note and
+  the not-found page up to 768 px. All narrower pages are centred.
 
 ## [0.2.0] - 2026-10-27
 

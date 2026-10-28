@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
+import { focusPage } from "#/components/pageWidths";
 import { ApiError, api } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { CODE_LENGTH, CodeField } from "./CodeField";
@@ -197,7 +198,7 @@ export function LoginPage({ next }: { next: string }) {
 
 	if (sentTo !== null) {
 		return (
-			<section className="mx-auto max-w-md py-16 text-center">
+			<section className={`${focusPage} py-16 text-center`}>
 				<MailCheck
 					className="mx-auto size-8 text-ink"
 					strokeWidth={1.75}
@@ -266,7 +267,7 @@ export function LoginPage({ next }: { next: string }) {
 	}
 
 	return (
-		<section className="mx-auto max-w-md py-16 text-center">
+		<section className={`${focusPage} py-16 text-center`}>
 			<h1 className="text-3xl font-semibold tracking-tight">
 				{t("login.title")}
 			</h1>

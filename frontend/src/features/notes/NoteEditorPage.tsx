@@ -13,6 +13,7 @@ import {
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { type IconChoice, IconChooser } from "#/components/IconChooser";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { narrowPage } from "#/components/pageWidths";
 import { usePageTitle } from "#/lib/usePageTitle";
 import {
 	deleteNote,
@@ -89,7 +90,7 @@ export function NoteEditorPage({
 
 	return (
 		<section
-			className={`${onClose ? "" : "mt-6 mb-16"} rounded-2xl border border-line p-4 sm:p-6 ${draft.color ? "" : "bg-surface"}`}
+			className={`${onClose ? "" : `${narrowPage} mt-6 mb-16`} rounded-2xl border border-line p-4 sm:p-6 ${draft.color ? "" : "bg-surface"}`}
 			style={{ background: noteBackground(draft.color) }}
 		>
 			{!onClose && <PageTitle title={name} />}

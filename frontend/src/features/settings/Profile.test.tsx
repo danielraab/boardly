@@ -13,6 +13,16 @@ async function openMenuText(user: ReturnType<typeof renderApp>["user"]) {
 }
 
 describe("settings profile tab", () => {
+	it("limits the page to the narrow width", async () => {
+		mockApi({ "GET /api/me": signedIn() });
+		renderApp("/settings");
+		await screen.findByRole("heading", { name: "Settings" });
+		expect(screen.getByRole("main").firstElementChild).toHaveClass(
+			"mx-auto",
+			"max-w-3xl",
+		);
+	});
+
 	it("shows the email and an empty name field", async () => {
 		mockApi({ "GET /api/me": signedIn() });
 		renderApp("/settings");

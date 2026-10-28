@@ -4,6 +4,7 @@ import { LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
+import { widePage } from "#/components/pageWidths";
 import { useMe } from "#/features/auth/session";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { type Dashboard, dashboardsQueryOptions } from "./api";
@@ -51,7 +52,7 @@ export function DashboardsPage({
 	);
 
 	return (
-		<section className="pt-12">
+		<section className={`${widePage} pt-12`}>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<h1 className="text-3xl font-semibold tracking-tight">

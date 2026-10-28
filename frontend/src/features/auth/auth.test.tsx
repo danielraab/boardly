@@ -56,6 +56,15 @@ describe("route protection", () => {
 });
 
 describe("login page", () => {
+	it("limits the page to the focus width", async () => {
+		renderApp("/login");
+		await screen.findByLabelText("Email address");
+		expect(screen.getByRole("main").firstElementChild).toHaveClass(
+			"mx-auto",
+			"max-w-md",
+		);
+	});
+
 	it("sends a link and shows the inbox state with a disabled resend", async () => {
 		const api = mockApi({
 			"POST /api/auth/magic-link": {

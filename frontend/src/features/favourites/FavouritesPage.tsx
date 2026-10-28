@@ -50,6 +50,7 @@ import {
 } from "#/components/buttonStyles";
 import { ImageIcon } from "#/components/ImageIcon";
 import { menuItem, menuPopup } from "#/components/menuStyles";
+import { widePage } from "#/components/pageWidths";
 import { Toast, type ToastMessage } from "#/components/Toast";
 import { useMe } from "#/features/auth/session";
 import { usePageTitle } from "#/lib/usePageTitle";
@@ -422,7 +423,7 @@ export function FavouritesPage({
 	};
 
 	return (
-		<section className="pt-12">
+		<section className={`${widePage} pt-12`}>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<h1 className="text-3xl font-semibold tracking-tight">

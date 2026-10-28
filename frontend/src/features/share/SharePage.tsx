@@ -5,6 +5,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
+import { focusPage } from "#/components/pageWidths";
 import { useMe } from "#/features/auth/session";
 import {
 	createFavourite,
@@ -250,7 +251,7 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 	}
 
 	return (
-		<section className="mx-auto max-w-md py-12">
+		<section className={`${focusPage} py-12`}>
 			<h1 className="text-3xl font-semibold tracking-tight">
 				{t(mode === "note" ? "share.note.title" : "share.title")}
 			</h1>
@@ -371,7 +372,7 @@ function Confirmation({
 	onAnother: () => void;
 }) {
 	return (
-		<section className="mx-auto max-w-md py-16 text-center">
+		<section className={`${focusPage} py-16 text-center`}>
 			{icon}
 			<h1 className="mt-4 text-3xl font-semibold tracking-tight">{title}</h1>
 			<p className="mt-3 text-muted">{text}</p>
