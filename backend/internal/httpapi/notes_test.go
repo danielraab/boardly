@@ -50,8 +50,14 @@ func TestNotesAPI(t *testing.T) {
 		t.Fatalf("empty create: %d %s", rec.Code, rec.Body)
 	}
 
+	rec = s.req("POST", "/api/notes", `{"title":"Plan","text":"milk\neggs"}`, withCookie(ann))
+	if rec.Code != http.StatusCreated || !strings.Contains(rec.Body.String(),
+		`"content":{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"text","text":"milk"},{"type":"break"},{"type":"text","text":"eggs"}]}]}`) {
+		t.Fatalf("create from text: %d %s", rec.Code, rec.Body)
+	}
+
 	rec = s.req("GET", "/api/notes", "", withCookie(ann))
-	if list := decodeJSONBody[[]notes.Note](t, rec); rec.Code != http.StatusOK || len(list) != 2 {
+	if list := decodeJSONBody[[]notes.Note](t, rec); rec.Code != http.StatusOK || len(list) != 3 {
 		t.Fatalf("list: %d %s", rec.Code, rec.Body)
 	}
 	if rec := s.req("GET", "/api/notes", "", withCookie(bob)); rec.Body.String() != "[]\n" && rec.Body.String() != "[]" {
@@ -86,6 +92,10 @@ func TestNotesAPI(t *testing.T) {
 		"script link":          {"POST", "/api/notes", `{"content":{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"link","url":"javascript:alert(1)","content":[]}]}]}}`, ann, 400, "invalid_document"},
 		"too large":            {"POST", "/api/notes", `{"content":{"v":1,"blocks":[{"type":"code","text":"` + strings.Repeat("x", 600<<10) + `"}]}}`, ann, 400, "invalid_document"},
 		"not an object":        {"POST", "/api/notes", `[]`, ann, 400, "invalid_request"},
+		"content and text":     {"POST", "/api/notes", `{"text":"a","content":{"v":1,"blocks":[]}}`, ann, 400, "invalid_request"},
+		"text not a string":    {"POST", "/api/notes", `{"text":3}`, ann, 400, "invalid_request"},
+		"text null":            {"POST", "/api/notes", `{"text":null}`, ann, 400, "invalid_request"},
+		"text too large":       {"POST", "/api/notes", `{"text":"` + strings.Repeat("x", 512<<10-20) + `"}`, ann, 400, "invalid_document"},
 		"unknown note":         {"GET", "/api/notes/nope", "", ann, 404, "not_found"},
 		"category title blank": {"POST", "/api/note-categories", `{"title":"  "}`, ann, 400, "invalid_category"},
 		"category no title":    {"POST", "/api/note-categories", `{}`, ann, 400, "invalid_category"},

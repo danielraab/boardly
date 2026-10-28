@@ -11,6 +11,7 @@ import { SlugField, type SlugProblem } from "#/features/dashboards/SlugField";
 import { slugError } from "#/features/dashboards/slug";
 import { favouritesQueryOptions } from "#/features/favourites/api";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError, api } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { ConnectedAppsTab } from "./ConnectedAppsTab";
@@ -161,6 +162,7 @@ function ProfileTab({ user }: { user: User }) {
 				</form>
 				<SlugForm user={user} />
 				<ShareFolderForm user={user} />
+				<NoteCategoryForm user={user} />
 			</div>
 		</section>
 	);
@@ -220,6 +222,71 @@ function ShareFolderForm({ user }: { user: User }) {
 					{save.error instanceof ApiError &&
 					save.error.code === "invalid_folder"
 						? t("profile.shareFolderInvalid")
+						: t("common.genericError")}
+				</p>
+			)}
+			{save.isSuccess && unchanged && (
+				<output className="mt-2 block text-sm text-muted">
+					{t("profile.saved")}
+				</output>
+			)}
+		</form>
+	);
+}
+
+/** The category notes from the share page start in; null for none. */
+function NoteCategoryForm({ user }: { user: User }) {
+	const { t } = useTranslation();
+	const queryClient = useQueryClient();
+	const [chosen, setChosen] = useState<{ id: string | null } | null>(null);
+
+	const save = useMutation({
+		mutationFn: (id: string | null) =>
+			api<User>("/api/me", {
+				method: "PATCH",
+				json: { noteCategoryId: id },
+			}),
+		onSuccess: (updated) => {
+			queryClient.setQueryData(meQueryKey, updated);
+			setChosen(null);
+		},
+	});
+
+	const saved = user.noteCategoryId;
+	const category = chosen ? chosen.id : saved;
+	const unchanged = category === saved;
+
+	function onSubmit(event: FormEvent) {
+		event.preventDefault();
+		save.mutate(category);
+	}
+
+	return (
+		<form className="mt-6 max-w-xl" onSubmit={onSubmit}>
+			<CategoryPicker
+				id="profile-note-category"
+				label={t("profile.noteCategoryLabel")}
+				emptyLabel={t("profile.noteCategoryNone")}
+				value={category}
+				onChange={(id) => {
+					setChosen({ id });
+					save.reset();
+				}}
+			/>
+			<p className="mt-2 text-sm text-muted">{t("profile.noteCategoryHint")}</p>
+			<button
+				type="submit"
+				className={`${primaryButton} mt-3`}
+				aria-label={t("profile.saveNoteCategory")}
+				disabled={unchanged || save.isPending}
+			>
+				{save.isPending ? t("profile.saving") : t("profile.save")}
+			</button>
+			{save.error && (
+				<p role="alert" className="mt-2 text-sm text-danger">
+					{save.error instanceof ApiError &&
+					save.error.code === "invalid_category"
+						? t("profile.noteCategoryInvalid")
 						: t("common.genericError")}
 				</p>
 			)}

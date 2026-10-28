@@ -15,6 +15,7 @@ export type User = {
 	slug: string;
 	/** Default folder of the "Save link" page, or null for the root. */
 	shareFolderId: string | null;
+	noteCategoryId: string | null;
 	/** End of the passkey enrollment window (RFC 3339), or null when none is open. */
 	passkeyEnrollmentUntil: string | null;
 };

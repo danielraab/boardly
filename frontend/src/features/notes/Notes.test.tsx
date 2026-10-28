@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { $getSelection, $isRangeSelection } from "lexical";
 import { describe, expect, it } from "vitest";
 import type { NoteDoc } from "#/features/notes/document/types";
+import type { AppToken } from "#/features/settings/appTokens/api";
 import { apiError, mockApi } from "#/test/api";
 import { editorOf, selectAll, typeInEditor } from "#/test/lexical";
 import { category, fakeNotesServer, note, paragraphs } from "#/test/notes";
@@ -337,6 +338,52 @@ describe("managing categories", () => {
 		expect(
 			within(panel()).getByRole("button", { name: /^All notes/ }),
 		).toHaveAttribute("aria-current", "true");
+	});
+});
+
+describe("deleting a category used by connected apps", () => {
+	const token = (id: string, fields: Partial<AppToken>): AppToken => ({
+		id,
+		name: id,
+		app: "karakeep",
+		prefix: "bdly_ABCDEFG",
+		rootId: "root",
+		noteScope: "category",
+		rootCategoryId: "home",
+		createdAt: "2026-02-01T10:00:00Z",
+		lastUsedAt: null,
+		expiresAt: null,
+		revokedAt: null,
+		status: "active",
+		...fields,
+	});
+
+	it("says how many active apps will be revoked", async () => {
+		fakeNotesServer([], [category("home", "Home"), category("work", "Work")], {
+			"GET /api/app-tokens": {
+				body: [
+					token("Phone", {}),
+					token("Tablet", {}),
+					token("Old", { status: "revoked" }),
+					token("All", { noteScope: "all", rootCategoryId: null }),
+					token("Work", { rootCategoryId: "work" }),
+				],
+			},
+		});
+		const { user } = renderApp("/notes");
+		await screen.findByText("No notes yet");
+		await user.click(
+			within(panel()).getByRole("button", { name: "Actions for Home" }),
+		);
+		await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+		const dialog = await screen.findByRole("alertdialog", {
+			name: "Delete category?",
+		});
+		expect(
+			await within(dialog).findByText(
+				"2 connected apps use this category. They will be revoked and stop working.",
+			),
+		).toBeVisible();
 	});
 });
 

@@ -592,7 +592,7 @@ func TestMe(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if slug, _ := body["slug"].(string); len(body) != 6 || body["shareFolderId"] != nil || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
+	if slug, _ := body["slug"].(string); len(body) != 7 || body["shareFolderId"] != nil || body["noteCategoryId"] != nil || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
 		t.Fatalf("body = %v", body)
 	}
 }
@@ -706,6 +706,45 @@ func TestPatchMeShareFolder(t *testing.T) {
 	}
 	patch(`{"shareFolderId":"` + inbox.ID + `"}`)
 	if rec := patch(`{"shareFolderId":null}`); rec.Code != http.StatusOK || decodeUser(t, rec).ShareFolderID != nil {
+		t.Fatalf("clear: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestPatchMeNoteCategory(t *testing.T) {
+	s := newServer(t)
+	cookie := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	patch := func(body string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/me", body, withCookie(cookie))
+	}
+	category := func(cookie, title string) string {
+		t.Helper()
+		rec := s.req("POST", "/api/note-categories", `{"title":"`+title+`"}`, withCookie(cookie))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create category: %d %s", rec.Code, rec.Body)
+		}
+		return decodeJSONBody[notes.Category](t, rec).ID
+	}
+	inbox := category(cookie, "Inbox")
+	bobs := category(bob, "Bob")
+
+	rec := patch(`{"noteCategoryId":"` + inbox + `"}`)
+	if u := decodeUser(t, rec); rec.Code != http.StatusOK || u.NoteCategoryID == nil || *u.NoteCategoryID != inbox {
+		t.Fatalf("set: %d %s", rec.Code, rec.Body)
+	}
+	for _, body := range []string{
+		`{"noteCategoryId":"` + bobs + `"}`,
+		`{"noteCategoryId":"unknown"}`,
+		`{"noteCategoryId":42}`,
+	} {
+		if rec := patch(body); rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_category" {
+			t.Errorf("%s: %d %s, want invalid_category", body, rec.Code, rec.Body)
+		}
+	}
+	if u := decodeUser(t, s.req("GET", "/api/me", "", withCookie(cookie))); u.NoteCategoryID == nil || *u.NoteCategoryID != inbox {
+		t.Fatalf("rejected request changed the category: %+v", u)
+	}
+	if rec := patch(`{"noteCategoryId":null}`); rec.Code != http.StatusOK || decodeUser(t, rec).NoteCategoryID != nil {
 		t.Fatalf("clear: %d %s", rec.Code, rec.Body)
 	}
 }

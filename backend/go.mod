@@ -6,6 +6,7 @@ require (
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/google/uuid v1.6.0
 	github.com/wneessen/go-mail v0.8.1
+	github.com/yuin/goldmark v1.8.6
 	golang.org/x/image v0.47.0
 	golang.org/x/net v0.61.0
 	golang.org/x/sync v0.24.0

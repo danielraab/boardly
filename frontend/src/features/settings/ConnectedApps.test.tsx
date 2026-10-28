@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { FavouriteNode } from "#/features/favourites/api";
-import { mockApi, signedIn } from "#/test/api";
+import { apiError, mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
 import { setTheme, type ThemeId } from "#/theme";
 import { appLogos } from "./appTokens/AppLogo";
@@ -27,6 +27,8 @@ const active: AppToken = {
 	app: "karakeep",
 	prefix: "bdly_ABCDEFG",
 	rootId: "later",
+	noteScope: "all",
+	rootCategoryId: null,
 	createdAt: "2026-02-01T10:00:00Z",
 	lastUsedAt: null,
 	expiresAt: null,
@@ -43,11 +45,17 @@ const revoked: AppToken = {
 	status: "revoked",
 };
 
+const categories = [
+	{ id: "inbox", title: "Inbox", icon: null, color: null, parentId: null },
+	{ id: "ideas", title: "Ideas", icon: null, color: null, parentId: "inbox" },
+];
+
 function routes(tokens: AppToken[]) {
 	return {
 		"GET /api/me": signedIn(),
 		"GET /api/favourites": { body: tree },
 		"GET /api/app-tokens": { body: tokens },
+		"GET /api/note-categories": { body: categories },
 	};
 }
 
@@ -109,6 +117,9 @@ describe("connected apps tab", () => {
 		expect(
 			within(phone).getByRole("button", { name: "Revoke Phone" }),
 		).toBeVisible();
+		expect(
+			within(phone).getByRole("button", { name: "Edit Phone" }),
+		).toBeVisible();
 		expect(within(phone).queryByRole("button", { name: /Delete/ })).toBeNull();
 
 		expect(laptop).toHaveTextContent("Revoked");
@@ -117,6 +128,34 @@ describe("connected apps tab", () => {
 			within(laptop).getByRole("button", { name: "Delete Laptop" }),
 		).toBeVisible();
 		expect(within(laptop).queryByRole("button", { name: /Revoke/ })).toBeNull();
+		expect(within(laptop).queryByRole("button", { name: /Edit/ })).toBeNull();
+	});
+
+	it("shows the notes each token sees", async () => {
+		const { panel } = await openTab([
+			active,
+			{
+				...active,
+				id: "t4",
+				name: "Inbox",
+				noteScope: "category",
+				rootCategoryId: "ideas",
+			},
+			{ ...revoked, noteScope: "category", rootCategoryId: null },
+			{
+				...active,
+				id: "t3",
+				name: "Tablet",
+				app: "linkwarden",
+				noteScope: "none",
+			},
+		]);
+		const [phone, inbox, laptop, tablet] =
+			await within(panel).findAllByRole("listitem");
+		expect(phone).toHaveTextContent("Later · All notes");
+		expect(await within(inbox).findByText(/Inbox › Ideas/)).toBeVisible();
+		expect(laptop).toHaveTextContent("Deleted folder · Deleted category");
+		expect(tablet).not.toHaveTextContent("notes");
 	});
 
 	it.each<[ThemeId, string, string]>([
@@ -240,6 +279,7 @@ describe("create dialog", () => {
 			name: "Tablet",
 			app: "karakeep",
 			rootId: "reading",
+			rootCategoryId: null,
 			expiresAt: null,
 		});
 		expect(within(dialog).getByLabelText("API key")).toHaveValue(secret);
@@ -379,5 +419,144 @@ describe("create dialog", () => {
 		await user.type(field, `${new Date().getFullYear() + 1}-06-30`);
 		expect(within(dialog).queryByRole("alert")).toBeNull();
 		expect(create).toBeEnabled();
+	});
+});
+
+describe("root category in the create dialog", () => {
+	async function openDialog() {
+		const tab = await openTab([]);
+		tab.api.set({
+			"POST /api/app-tokens": ({ body }) => ({
+				status: 201,
+				body: { ...active, ...(body as object), secret: "bdly_X" },
+			}),
+		});
+		await tab.user.click(
+			await within(tab.panel).findByRole("button", { name: "Connect app" }),
+		);
+		return { ...tab, dialog: await screen.findByRole("dialog") };
+	}
+
+	it("sends the chosen category for Karakeep", async () => {
+		const { dialog, user, api } = await openDialog();
+		const picker = within(dialog).getByRole("radiogroup", {
+			name: "Category for notes",
+		});
+		expect(
+			await within(picker).findByRole("radio", { name: "All notes" }),
+		).toBeChecked();
+		await user.click(within(picker).getByRole("radio", { name: "Ideas" }));
+		await user.type(within(dialog).getByLabelText("Name"), "Phone");
+		await user.click(
+			await within(dialog).findByRole("radio", { name: "Reading" }),
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Create key" }),
+		);
+
+		await within(dialog).findByRole("heading", { name: "App connected" });
+		expect(api.callsTo("POST", "/api/app-tokens")[0].body).toMatchObject({
+			rootCategoryId: "ideas",
+		});
+	});
+
+	it("has no category for Linkwarden", async () => {
+		const { dialog, user, api } = await openDialog();
+		await user.selectOptions(
+			within(dialog).getByLabelText("App"),
+			"linkwarden",
+		);
+		expect(
+			within(dialog).queryByRole("radiogroup", { name: "Category for notes" }),
+		).toBeNull();
+		await user.type(within(dialog).getByLabelText("Name"), "Tablet");
+		await user.click(
+			await within(dialog).findByRole("radio", { name: "Reading" }),
+		);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Create key" }),
+		);
+
+		await within(dialog).findByRole("heading", { name: "App connected" });
+		expect(api.callsTo("POST", "/api/app-tokens")[0].body).not.toHaveProperty(
+			"rootCategoryId",
+		);
+	});
+});
+
+describe("edit dialog", () => {
+	async function openEdit(token: AppToken) {
+		const tab = await openTab([token]);
+		await tab.user.click(
+			await within(tab.panel).findByRole("button", {
+				name: `Edit ${token.name}`,
+			}),
+		);
+		return { ...tab, dialog: await screen.findByRole("dialog") };
+	}
+
+	it("changes the folder and sends only that", async () => {
+		const { dialog, user, api } = await openEdit(active);
+		api.set({
+			"PATCH /api/app-tokens/t1": ({ body }) => ({
+				body: { ...active, ...(body as object) },
+			}),
+		});
+		const save = within(dialog).getByRole("button", { name: "Save" });
+		expect(
+			await within(dialog).findByRole("radio", { name: "Later" }),
+		).toBeChecked();
+		expect(save).toBeDisabled();
+		await user.click(within(dialog).getByRole("radio", { name: "Reading" }));
+		await user.click(save);
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(api.callsTo("PATCH", "/api/app-tokens/t1")[0].body).toEqual({
+			rootId: "reading",
+		});
+	});
+
+	it("changes the category of a Karakeep token", async () => {
+		const { dialog, user, api } = await openEdit(active);
+		api.set({ "PATCH /api/app-tokens/t1": { body: active } });
+		const picker = within(dialog).getByRole("radiogroup", {
+			name: "Category for notes",
+		});
+		await user.click(
+			await within(picker).findByRole("radio", { name: "Inbox" }),
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(api.callsTo("PATCH", "/api/app-tokens/t1")[0].body).toEqual({
+			rootCategoryId: "inbox",
+		});
+	});
+
+	it("shows only the folder for Linkwarden", async () => {
+		const { dialog } = await openEdit({
+			...active,
+			app: "linkwarden",
+			noteScope: "none",
+		});
+		expect(
+			await within(dialog).findByRole("radio", { name: "Later" }),
+		).toBeChecked();
+		expect(
+			within(dialog).queryByRole("radiogroup", { name: "Category for notes" }),
+		).toBeNull();
+	});
+
+	it("keeps the dialog open with an error", async () => {
+		const { dialog, user, api } = await openEdit(active);
+		api.set({ "PATCH /api/app-tokens/t1": apiError(409, "token_inactive") });
+		await user.click(
+			await within(dialog).findByRole("radio", { name: "Reading" }),
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+			"This app is no longer active.",
+		);
 	});
 });

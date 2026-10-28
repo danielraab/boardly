@@ -11,6 +11,8 @@ import {
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { favouritesQueryOptions } from "#/features/favourites/api";
 import { pathsOf } from "#/features/favourites/tree";
+import { noteCategoriesQueryOptions } from "#/features/notes/api";
+import { categoryPath } from "#/features/notes/categories/tree";
 import { AppLogo } from "./appTokens/AppLogo";
 import {
 	type AppToken,
@@ -22,6 +24,7 @@ import {
 	revokeAppToken,
 } from "./appTokens/api";
 import { CreateAppTokenDialog } from "./CreateAppTokenDialog";
+import { EditAppTokenDialog } from "./EditAppTokenDialog";
 
 const badgeClass: Record<AppTokenStatus, string> = {
 	active: "bg-accent/15 text-ink",
@@ -33,9 +36,21 @@ export function ConnectedAppsTab() {
 	const { t } = useTranslation();
 	const tokens = useQuery(appTokensQueryOptions);
 	const favourites = useQuery(favouritesQueryOptions);
+	const categories = useQuery(noteCategoriesQueryOptions);
 	const paths = favourites.data
 		? pathsOf(favourites.data, t("favourites.title"))
 		: null;
+
+	// The notes a Karakeep token sees; Linkwarden tokens have none.
+	const notesPath = (token: AppToken) => {
+		if (token.noteScope === "none") return null;
+		if (token.noteScope === "all") return t("settings.apps.allNotes");
+		if (token.rootCategoryId === null)
+			return t("settings.apps.deletedCategory");
+		return categories.data
+			? categoryPath(categories.data, token.rootCategoryId).join(" › ")
+			: "…";
+	};
 
 	return (
 		<div>
@@ -75,6 +90,7 @@ export function ConnectedAppsTab() {
 										? t("settings.apps.deletedFolder")
 										: (paths?.get(token.rootId) ?? "…")
 								}
+								notesPath={notesPath(token)}
 							/>
 						))}
 					</ul>
@@ -87,9 +103,11 @@ export function ConnectedAppsTab() {
 function AppTokenItem({
 	token,
 	rootPath,
+	notesPath,
 }: {
 	token: AppToken;
 	rootPath: string;
+	notesPath: string | null;
 }) {
 	const { t, i18n } = useTranslation();
 	const date = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
@@ -118,6 +136,7 @@ function AppTokenItem({
 				</p>
 				<p className="mt-0.5 truncate text-sm">
 					{appNames[token.app]} · {rootPath}
+					{notesPath !== null && ` · ${notesPath}`}
 				</p>
 				<p className="mt-0.5 text-sm text-muted">
 					<code className="font-mono">{token.prefix}…</code>
@@ -131,7 +150,14 @@ function AppTokenItem({
 					{expiry}
 				</p>
 			</div>
-			{active ? <RevokeButton token={token} /> : <DeleteButton token={token} />}
+			{active ? (
+				<div className="flex shrink-0 gap-1">
+					<EditAppTokenDialog token={token} />
+					<RevokeButton token={token} />
+				</div>
+			) : (
+				<DeleteButton token={token} />
+			)}
 		</li>
 	);
 }

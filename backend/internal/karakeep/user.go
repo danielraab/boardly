@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"boardly/internal/favourites"
 )
 
 // Settings is Karakeep's user settings shape.
@@ -102,17 +100,23 @@ type Stats struct {
 // topN is how many domains and tags Stats lists.
 const topN = 10
 
-// UserStats is users.stats, computed from the subtree. Times are in UTC; a
-// week starts on Monday, and day 0 is Sunday, as in Karakeep.
-func (s *Service) UserStats(ctx context.Context, sc favourites.Scope) (Stats, error) {
+// UserStats is users.stats, computed from the subtree and the notes of the
+// scope. Times are in UTC; a week starts on Monday, and day 0 is Sunday, as
+// in Karakeep.
+func (s *Service) UserStats(ctx context.Context, sc Scope) (Stats, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return Stats{}, err
 	}
 	links := t.links()
+	ns, err := s.Notes.ScopedNotes(ctx, sc.Notes)
+	if err != nil {
+		return Stats{}, err
+	}
 	st := Stats{TopDomains: []DomainCount{}, AssetsByType: []struct{}{}, TagUsage: []Count{}}
-	st.NumBookmarks = len(links)
+	st.NumBookmarks = len(links) + len(ns)
 	st.BookmarksByType.Link = len(links)
+	st.BookmarksByType.Text = len(ns)
 	st.NumLists = len(t.folders())
 	infos := t.tagInfos()
 	st.NumTags = len(infos)
@@ -133,8 +137,8 @@ func (s *Service) UserStats(ctx context.Context, sc favourites.Scope) (Stats, er
 	}
 
 	domains := map[string]int{}
-	for _, l := range links {
-		created := l.CreatedAt.UTC()
+	for _, it := range append(linkItems(links), noteItems(ns)...) {
+		created := it.created.UTC()
 		if !created.Before(weekStart) {
 			activity.ThisWeek++
 		}
@@ -146,7 +150,10 @@ func (s *Service) UserStats(ctx context.Context, sc favourites.Scope) (Stats, er
 		}
 		activity.ByHour[created.Hour()].Count++
 		activity.ByDayOfWeek[created.Weekday()].Count++
-		if u, err := url.Parse(*l.URL); err == nil && u.Hostname() != "" {
+		if it.link == nil {
+			continue
+		}
+		if u, err := url.Parse(*it.link.URL); err == nil && u.Hostname() != "" {
 			domains[strings.ToLower(u.Hostname())]++
 		}
 	}
@@ -165,8 +172,8 @@ func (s *Service) UserStats(ctx context.Context, sc favourites.Scope) (Stats, er
 	})
 	st.TagUsage = st.TagUsage[:min(topN, len(st.TagUsage))]
 	st.BookmarksBySource = []SourceCount{}
-	if len(links) > 0 {
-		st.BookmarksBySource = append(st.BookmarksBySource, SourceCount{nil, len(links)})
+	if st.NumBookmarks > 0 {
+		st.BookmarksBySource = append(st.BookmarksBySource, SourceCount{nil, st.NumBookmarks})
 	}
 	return st, nil
 }

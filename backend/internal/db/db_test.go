@@ -910,3 +910,56 @@ func TestNotesConstraints(t *testing.T) {
 		}
 	}
 }
+
+func TestAppTokenNoteScopeMigration(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0018")); err != nil {
+		t.Fatalf("Migrate to 0018: %v", err)
+	}
+	const ts = "2026-01-01T00:00:00.000Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, created_at, updated_at) VALUES ('root', 'u1', NULL, 'folder', 0, '` + ts + `', '` + ts + `')`,
+		`INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at) VALUES ('k', 'u1', 'Phone', 'karakeep', 'root', x'01', 'bdly_abcdefg', '` + ts + `')`,
+		`INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at) VALUES ('l', 'u1', 'Tablet', 'linkwarden', 'root', x'02', 'bdly_abcdefh', '` + ts + `')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	for id, want := range map[string]string{"k": "all", "l": "none"} {
+		var scope string
+		var category *string
+		if err := db.QueryRow(`SELECT note_scope, root_category_id FROM app_tokens WHERE id = ?`, id).Scan(&scope, &category); err != nil || scope != want || category != nil {
+			t.Errorf("token %s: scope %q, category %v, err %v; want %q", id, scope, category, err, want)
+		}
+	}
+
+	// Deleting the root category leaves the scope, so it can't widen to all notes.
+	if _, err := db.Exec(`INSERT INTO note_categories (id, user_id, title, created_at, updated_at) VALUES ('c1', 'u1', 'Inbox', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE app_tokens SET note_scope = 'category', root_category_id = 'c1' WHERE id = 'k'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM note_categories WHERE id = 'c1'`); err != nil {
+		t.Fatal(err)
+	}
+	var scope string
+	var category *string
+	if err := db.QueryRow(`SELECT note_scope, root_category_id FROM app_tokens WHERE id = 'k'`).Scan(&scope, &category); err != nil || scope != "category" || category != nil {
+		t.Errorf("after deleting the category: scope %q, category %v, err %v", scope, category, err)
+	}
+	if _, err := db.Exec(`UPDATE app_tokens SET note_scope = 'some' WHERE id = 'k'`); err == nil {
+		t.Error("an unknown note scope was accepted")
+	}
+}

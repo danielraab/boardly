@@ -60,7 +60,7 @@ func (t *tree) tagInfos() map[string]*TagInfo {
 }
 
 // Tags is tags.list.
-func (s *Service) Tags(ctx context.Context, sc favourites.Scope, in TagsInput) (TagPage, error) {
+func (s *Service) Tags(ctx context.Context, sc Scope, in TagsInput) (TagPage, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return TagPage{}, err
@@ -107,7 +107,7 @@ func (s *Service) Tags(ctx context.Context, sc favourites.Scope, in TagsInput) (
 }
 
 // Tag is tags.get.
-func (s *Service) Tag(ctx context.Context, sc favourites.Scope, id string) (TagInfo, error) {
+func (s *Service) Tag(ctx context.Context, sc Scope, id string) (TagInfo, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return TagInfo{}, err
@@ -121,7 +121,7 @@ func (s *Service) Tag(ctx context.Context, sc favourites.Scope, id string) (TagI
 
 // RenameTag is tags.update. A tag that links outside the subtree have too
 // can't be renamed, since the rename would change them as well.
-func (s *Service) RenameTag(ctx context.Context, sc favourites.Scope, id string, name *string) (favourites.Tag, error) {
+func (s *Service) RenameTag(ctx context.Context, sc Scope, id string, name *string) (favourites.Tag, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return favourites.Tag{}, err
@@ -144,7 +144,7 @@ func (s *Service) RenameTag(ctx context.Context, sc favourites.Scope, id string,
 }
 
 // DeleteTag is tags.delete: the tag is removed from the subtree's links only.
-func (s *Service) DeleteTag(ctx context.Context, sc favourites.Scope, id string) error {
+func (s *Service) DeleteTag(ctx context.Context, sc Scope, id string) error {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return err

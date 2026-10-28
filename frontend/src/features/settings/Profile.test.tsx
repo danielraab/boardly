@@ -235,3 +235,89 @@ describe("settings default folder", () => {
 		);
 	});
 });
+
+describe("default category for new notes", () => {
+	const categories = [
+		{ id: "home", title: "Home", icon: null, color: null, parentId: null },
+		{
+			id: "garden",
+			title: "Garden",
+			icon: null,
+			color: null,
+			parentId: "home",
+		},
+		{ id: "inbox", title: "Inbox", icon: null, color: null, parentId: null },
+	];
+	const picker = () =>
+		screen.findByRole("radiogroup", {
+			name: "Default category for new notes",
+		});
+
+	it("saves the chosen category", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/note-categories": { body: categories },
+			"PATCH /api/me": signedIn({ noteCategoryId: "garden" }),
+		});
+		const { user } = renderApp("/settings");
+
+		const group = await picker();
+		expect(
+			await within(group).findByRole("radio", { name: "No category" }),
+		).toBeChecked();
+		const save = screen.getByRole("button", { name: "Save default category" });
+		expect(save).toBeDisabled();
+		await user.click(within(group).getByRole("radio", { name: "Garden" }));
+		await user.click(save);
+
+		expect(await screen.findByText("Saved.")).toBeVisible();
+		expect(api.callsTo("PATCH", "/api/me")[0].body).toEqual({
+			noteCategoryId: "garden",
+		});
+		expect(within(group).getByRole("radio", { name: "Garden" })).toBeChecked();
+	});
+
+	it("saves no category as null", async () => {
+		const api = mockApi({
+			"GET /api/me": signedIn({ noteCategoryId: "inbox" }),
+			"GET /api/note-categories": { body: categories },
+			"PATCH /api/me": signedIn({ noteCategoryId: null }),
+		});
+		const { user } = renderApp("/settings");
+
+		const group = await picker();
+		expect(
+			await within(group).findByRole("radio", { name: "Inbox" }),
+		).toBeChecked();
+		await user.click(within(group).getByRole("radio", { name: "No category" }));
+		await user.click(
+			screen.getByRole("button", { name: "Save default category" }),
+		);
+
+		expect(await screen.findByText("Saved.")).toBeVisible();
+		expect(api.callsTo("PATCH", "/api/me")[0].body).toEqual({
+			noteCategoryId: null,
+		});
+	});
+
+	it("shows when the category is gone", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/note-categories": { body: categories },
+			"PATCH /api/me": apiError(400, "invalid_category"),
+		});
+		const { user } = renderApp("/settings");
+
+		const group = await picker();
+		await user.click(
+			await within(group).findByRole("radio", { name: "Inbox" }),
+		);
+		await user.click(
+			screen.getByRole("button", { name: "Save default category" }),
+		);
+
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"This category no longer exists. Choose another one.",
+		);
+	});
+});

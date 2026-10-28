@@ -1,6 +1,7 @@
 // Package importer reads bookmark export files of Karakeep, Linkwarden and
-// web browsers into a favourites.ImportTree. It needs no database: duplicate
-// URLs and existing folders are handled by favourites.Store.Import.
+// web browsers into a favourites.ImportTree, and the notes of Karakeep files
+// into a notes.ImportTree. It needs no database: duplicates and existing
+// folders and categories are handled by the stores.
 package importer
 
 import (
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"boardly/internal/favourites"
+	"boardly/internal/notes"
 )
 
 // ErrInvalidFile is returned for a file that isn't an export of the format.
@@ -28,19 +30,25 @@ const (
 	FormatNetscape   Format = "netscape"
 )
 
+// Result is the content of an import file: its links and its notes.
+type Result struct {
+	Links favourites.ImportTree
+	Notes notes.ImportTree
+}
+
 // Parse reads the file in the format. ok is false for an unknown format.
-func Parse(format Format, r io.Reader) (tree favourites.ImportTree, ok bool, err error) {
+func Parse(format Format, r io.Reader) (res Result, ok bool, err error) {
 	switch format {
 	case FormatKarakeep:
-		tree, err = ParseKarakeep(r)
+		res, err = ParseKarakeep(r)
 	case FormatLinkwarden:
-		tree, err = ParseLinkwarden(r)
+		res.Links, err = ParseLinkwarden(r)
 	case FormatNetscape:
-		tree, err = ParseNetscape(r)
+		res.Links, err = ParseNetscape(r)
 	default:
-		return favourites.ImportTree{}, false, nil
+		return Result{}, false, nil
 	}
-	return tree, true, err
+	return res, true, err
 }
 
 // node is a folder while a file is read: its items keep their order, and a

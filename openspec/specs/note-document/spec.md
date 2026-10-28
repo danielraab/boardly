@@ -91,3 +91,71 @@ In the editor, a plain click on a link SHALL place the cursor, and a click with 
 #### Scenario: Invalid link
 - **WHEN** Ann tries to create a link to `javascript:alert(1)` from the toolbar
 - **THEN** the editor shows a translated validation message and creates no link
+
+### Requirement: Content from Markdown
+The server SHALL be able to build a content document from Markdown text, for imports and connected apps. CommonMark with GitHub's task lists and strikethrough SHALL map to the blocks of the document format: ATX and Setext headings of level 1–3 to headings (levels 4–6 become level 3), paragraphs, block quotes (their inline text; nested blocks are joined as paragraphs of text), fenced and indented code, thematic breaks to dividers, and bullet, ordered and task lists with their nesting (lists nested deeper than allowed are joined into the deepest allowed item). Emphasis, strong emphasis, strikethrough, code spans and links with an allowed URL scheme map to marks and links; autolinks and bare `http(s)` URLs become links. Every line break inside a paragraph, list item, quote or heading SHALL be kept as a line break. Anything else (images, tables, HTML, links with other URL schemes) SHALL be kept as its text: an image as its alt text, a table row by row with cells separated by ` | `, HTML as its literal source. Every task item gets a new ID, and its checked state is `[x]` or `[X]`. Empty Markdown gives an empty document.
+
+#### Scenario: Headings and tasks
+- **WHEN** the Markdown is `## Week` followed by `- [ ] review PR` and `- [x] deploy`
+- **THEN** the document has a heading of level 2 "Week" and a task list with an unchecked "review PR" and a checked "deploy", each with an ID
+
+#### Scenario: Line breaks kept
+- **WHEN** the Markdown is "milk\neggs\nbread" without blank lines
+- **THEN** the document has one paragraph with "milk", a line break, "eggs", a line break and "bread"
+
+#### Scenario: Unsupported Markdown kept as text
+- **WHEN** the Markdown contains `![logo](https://example.org/l.png)` and `<b>hi</b>`
+- **THEN** the document contains the text "logo" and the text `<b>hi</b>`, and is a valid document
+
+#### Scenario: Script link
+- **WHEN** the Markdown contains `[click](javascript:alert(1))`
+- **THEN** the document contains the text "click" without a link
+
+### Requirement: Content from plain text
+The server SHALL be able to build a content document from plain text, for text shared into the app. Text separated by one or more blank lines SHALL become separate paragraphs; single line breaks SHALL become line breaks inside a paragraph. `http` and `https` URLs in the text SHALL become links around the URL text. No other character has a special meaning, so `*`, `#` or `-` stay as they are. Leading and trailing blank lines are left out; empty text gives an empty document.
+
+#### Scenario: Shared message
+- **WHEN** the text is "Meet at 8\nBring snacks\n\nSee https://example.org/map"
+- **THEN** the document has two paragraphs: "Meet at 8", a line break, "Bring snacks"; and "See " followed by a link to `https://example.org/map`
+
+#### Scenario: Markdown characters stay
+- **WHEN** the text is "# not a heading *really*"
+- **THEN** the document has one paragraph with exactly that text
+
+### Requirement: Content as Markdown
+The server SHALL be able to write a content document as Markdown, for connected apps: headings as ATX headings (`#`, `##`, `###`), paragraphs separated by blank lines, quotes as `> ` lines, code as fenced code blocks (with a fence longer than any backtick run in the code), dividers as `---`, bullet lists as `- `, ordered lists as `1. `, `2. `, …, task items as `- [ ] ` and `- [x] `, nested lists indented below their item, marks as `**bold**`, `*italic*`, `~~strike~~` and `` `code` ``, links as `[text](url)`, or `<url>` when the text is the address, and line breaks as a single line break, an empty line as a line with only `\`. Lists directly after each other of the same kind SHALL use another bullet (`*`) or delimiter (`1)`), so they stay separate. Characters in text that would otherwise be read as Markdown, including addresses that would become links, SHALL be escaped with a backslash. Reading the Markdown back (see "Content from Markdown") SHALL give the same document apart from task IDs and what Markdown can't express: empty paragraphs are left out, line breaks in headings become spaces, spaces at the start and end of a line and line breaks at the end of a block are dropped, and a mark may be lost where Markdown can't express it for sure: when it starts or ends inside a word, between punctuation and a letter or digit, or right where another mark ends. Such a mark is left out rather than written as delimiters that would show as text.
+
+#### Scenario: Task list
+- **WHEN** a note has a heading "Week" of level 2 and a task list with a checked "deploy"
+- **THEN** its Markdown is `## Week`, a blank line and `- [x] deploy`
+
+#### Scenario: Round trip
+- **WHEN** a valid document is written as Markdown and read back
+- **THEN** the result equals the document, apart from task IDs and the listed exceptions
+
+#### Scenario: Literal asterisks
+- **WHEN** a paragraph has the plain text "2 * 3 * 4"
+- **THEN** the Markdown escapes the asterisks, and reading it back gives the text "2 * 3 * 4" without italics
+
+#### Scenario: Empty paragraph
+- **WHEN** a document has an empty paragraph between two paragraphs
+- **THEN** its Markdown has the two paragraphs separated by one blank line
+
+#### Scenario: Adjacent lists
+- **WHEN** a bullet list is directly followed by a task list
+- **THEN** the Markdown starts the task list with `*`, and reading it back gives two lists
+
+### Requirement: Content replaced from Markdown
+When a note's content is replaced by Markdown from a connected app, the server SHALL read the Markdown as in "Content from Markdown" and then give each task item of the new document the ID of a task item of the old document with the same text (its inline content as plain text, trimmed), matching in document order, each old task at most once. A task item without a match gets a new ID. The checked state always comes from the Markdown.
+
+#### Scenario: Reordered tasks
+- **WHEN** a note has the tasks "a" and "b" and the new Markdown lists "b" before "a"
+- **THEN** both tasks keep their IDs
+
+#### Scenario: Renamed task
+- **WHEN** a note has the task "milk" and the new Markdown has the task "oat milk" instead
+- **THEN** "oat milk" gets a new ID
+
+#### Scenario: Same text twice
+- **WHEN** a note has two tasks "call" and the new Markdown has three tasks "call"
+- **THEN** the first two keep the old IDs in order, and the third gets a new ID

@@ -137,9 +137,27 @@ func (a *api) createNote(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// text is plain text that becomes the content, for notes saved from the
+	// share page.
+	var text *string
+	hasText, err := field(body, "text", &text, invalid("invalid_request", "text must be a string"))
+	if err != nil {
+		return err
+	}
+	if hasText && text == nil {
+		return invalid("invalid_request", "text must be a string")
+	}
+	if _, ok := body["content"]; ok && hasText {
+		return invalid("invalid_request", "Send either content or text, not both")
+	}
 	var p notes.NotePatch
 	if err := noteFields(body, &p); err != nil {
 		return err
+	}
+	if hasText {
+		if p.Content, err = json.Marshal(notes.FromText(*text)); err != nil {
+			return err
+		}
 	}
 	n := notes.NewNote{Content: p.Content}
 	if p.Title != nil {

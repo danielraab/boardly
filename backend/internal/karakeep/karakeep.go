@@ -1,6 +1,7 @@
-// Package karakeep maps a token's subtree of the favourites tree to what the
-// Karakeep browser extension and mobile app expect: links are bookmarks,
-// folders below the token's root are lists and the tags on links are tags.
+// Package karakeep maps a token's subtree of the favourites tree and its
+// notes to what the Karakeep browser extension and mobile app expect: links
+// are link bookmarks, notes are text bookmarks, folders below the token's
+// root are lists and the tags on links are tags.
 // The shapes follow Karakeep's packages/shared/types (commit 85054d9).
 package karakeep
 
@@ -12,6 +13,7 @@ import (
 
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/notes"
 	"boardly/internal/trpc"
 )
 
@@ -40,9 +42,18 @@ type Favicons interface {
 	Lookup(ctx context.Context, origins []string) (map[string]string, error)
 }
 
-// Service implements the Karakeep procedures on the favourites tree.
+// Scope is what a token sees: a subtree of the favourites tree, and a part of
+// the notes.
+type Scope struct {
+	favourites.Scope
+	Notes notes.Scope
+}
+
+// Service implements the Karakeep procedures on the favourites tree and the
+// notes.
 type Service struct {
 	Favourites *favourites.Store
+	Notes      *notes.Store
 	Favicons   Favicons
 	// Origin is Boardly's origin, for favicon URLs.
 	Origin string
@@ -69,24 +80,25 @@ type LinkContent struct {
 	CrawledAt   trpc.Date `json:"crawledAt"`
 }
 
-// Bookmark is Karakeep's bookmark shape for a link.
+// Bookmark is Karakeep's bookmark shape. Content is a LinkContent for a link
+// and a TextContent for a note.
 type Bookmark struct {
-	ID                  string      `json:"id"`
-	CreatedAt           trpc.Date   `json:"createdAt"`
-	ModifiedAt          trpc.Date   `json:"modifiedAt"`
-	Title               *string     `json:"title"`
-	Archived            bool        `json:"archived"`
-	Favourited          bool        `json:"favourited"`
-	TaggingStatus       *string     `json:"taggingStatus"`
-	SummarizationStatus *string     `json:"summarizationStatus"`
-	EmbeddingStatus     *string     `json:"embeddingStatus"`
-	Note                *string     `json:"note"`
-	Summary             *string     `json:"summary"`
-	Source              *string     `json:"source"`
-	UserID              string      `json:"userId"`
-	Tags                []Tag       `json:"tags"`
-	Content             LinkContent `json:"content"`
-	Assets              []struct{}  `json:"assets"`
+	ID                  string     `json:"id"`
+	CreatedAt           trpc.Date  `json:"createdAt"`
+	ModifiedAt          trpc.Date  `json:"modifiedAt"`
+	Title               *string    `json:"title"`
+	Archived            bool       `json:"archived"`
+	Favourited          bool       `json:"favourited"`
+	TaggingStatus       *string    `json:"taggingStatus"`
+	SummarizationStatus *string    `json:"summarizationStatus"`
+	EmbeddingStatus     *string    `json:"embeddingStatus"`
+	Note                *string    `json:"note"`
+	Summary             *string    `json:"summary"`
+	Source              *string    `json:"source"`
+	UserID              string     `json:"userId"`
+	Tags                []Tag      `json:"tags"`
+	Content             any        `json:"content"`
+	Assets              []struct{} `json:"assets"`
 }
 
 // tree is a loaded subtree.
@@ -97,12 +109,12 @@ type tree struct {
 	children map[string][]*favourites.ScopedNode // in position order
 }
 
-func (s *Service) load(ctx context.Context, sc favourites.Scope) (*tree, error) {
-	nodes, err := s.Favourites.SubtreeNodes(ctx, sc)
+func (s *Service) load(ctx context.Context, sc Scope) (*tree, error) {
+	nodes, err := s.Favourites.SubtreeNodes(ctx, sc.Scope)
 	if err != nil {
 		return nil, err
 	}
-	t := &tree{scope: sc, byID: map[string]*favourites.ScopedNode{}, children: map[string][]*favourites.ScopedNode{}}
+	t := &tree{scope: sc.Scope, byID: map[string]*favourites.ScopedNode{}, children: map[string][]*favourites.ScopedNode{}}
 	for i := range nodes {
 		n := &nodes[i]
 		t.nodes = append(t.nodes, n)
@@ -198,13 +210,21 @@ func (s *Service) imageURL(id string) *string {
 	return &u
 }
 
-// bookmark loads the subtree and returns the bookmark with the given ID.
-func (s *Service) bookmark(ctx context.Context, sc favourites.Scope, id string) (Bookmark, error) {
+// bookmark loads the subtree and returns the bookmark with the given ID: a
+// link of the subtree, or a note of the scope.
+func (s *Service) bookmark(ctx context.Context, sc Scope, id string) (Bookmark, error) {
 	t, err := s.load(ctx, sc)
 	if err != nil {
 		return Bookmark{}, err
 	}
 	n, err := t.link(id)
+	if errors.Is(err, favourites.ErrNotFound) {
+		note, err := s.note(ctx, sc, id)
+		if err != nil {
+			return Bookmark{}, err
+		}
+		return noteBookmark(sc.UserID, note), nil
+	}
 	if err != nil {
 		return Bookmark{}, err
 	}

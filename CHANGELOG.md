@@ -6,6 +6,26 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The Karakeep import creates notes from text bookmarks, in a category chosen on the import form.
+  Lists with text bookmarks become categories, the bookmark's tags become a `#tag` line, and notes
+  that are already saved are skipped. The report counts notes and categories.
+- The "Save link" page can save a note instead: shared text without a web address opens it as
+  "Save note", and a switch changes between link and note.
+- A default category for new notes, chosen in Settings → Profile, where notes from the share page
+  start.
+- `POST /api/notes` accepts `text`, plain text that the server turns into the note's content.
+- Karakeep text bookmarks: the Karakeep apps save, list, search, edit and delete notes as text
+  bookmarks with Markdown content. Each Karakeep key has a category for notes ("All notes" by
+  default, also for existing keys); deleting that category revokes the key.
+- Connected apps can be edited: the folder and the category of an active key can be changed
+  without a new key (`PATCH /api/app-tokens/{id}`).
+
+### Changed
+
+- Karakeep text bookmarks are no longer counted as "not a link" in the import report.
+
 ## [0.2.0] - 2026-10-27
 
 ### Added
