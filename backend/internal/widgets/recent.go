@@ -22,9 +22,6 @@ const (
 	maxRecentDays  = 365
 )
 
-// now is the current time; tests replace it.
-var now = time.Now
-
 type recentConfig struct {
 	FolderID     string  `json:"folderId"`
 	Limit        int     `json:"limit"`
@@ -86,7 +83,7 @@ func RecentFavourites(fav *favourites.Store, icons *images.Favicons) dashboards.
 			}
 			var since time.Time
 			if c.Days != nil {
-				since = now().Add(-time.Duration(*c.Days) * 24 * time.Hour)
+				since = fav.Now().Add(-time.Duration(*c.Days) * 24 * time.Hour)
 			}
 			found, err := fav.RecentLinks(ctx, viewer.OwnerID, c.FolderID, since, c.Limit)
 			switch {

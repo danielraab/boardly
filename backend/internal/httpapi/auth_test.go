@@ -117,6 +117,7 @@ func newServer(t *testing.T) *server {
 		t.Fatal(err)
 	}
 	favouriteStore, dashboardStore := favourites.NewStore(database), dashboards.NewStore(database)
+	favouriteStore.Now = c.Now
 	favouriteStore.Jobs = queue
 	noteStore := notes.NewStore(database)
 	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)

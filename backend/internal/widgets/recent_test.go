@@ -61,8 +61,7 @@ func TestRecentFavouritesConfig(t *testing.T) {
 func TestRecentFavouritesResolve(t *testing.T) {
 	f := newFixture(t)
 	fixed := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
-	now = func() time.Time { return fixed }
-	t.Cleanup(func() { now = time.Now })
+	f.fav.Now = func() time.Time { return fixed }
 	added := func(id string, ago time.Duration) {
 		if _, err := f.fav.DB.Exec(`UPDATE favourite_nodes SET created_at = ? WHERE id = ?`, db.FormatTime(fixed.Add(-ago)), id); err != nil {
 			t.Fatal(err)
