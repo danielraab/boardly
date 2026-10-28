@@ -25,4 +25,4 @@
 ## 4. Check
 
 - [x] 4.1 Run `make check` and `make test` and verify both pass
-- [ ] 4.2 Run the app, add a note widget with a fixed height and size L, tick a todo, open the note in the modal, edit and delete it, and check the public dashboard with the flag off and on by hand
+- [x] 4.2 Run the app, add a note widget with a fixed height and size L, tick a todo, open the note in the modal, edit and delete it, and check the public dashboard with the flag off and on by hand
