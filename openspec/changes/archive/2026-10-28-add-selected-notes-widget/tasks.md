@@ -18,4 +18,4 @@
 ## 3. Verification
 
 - [x] 3.1 Run `make check` and `make test` and verify both pass
-- [ ] 3.2 Run the app, add selected notes from several categories, search by title and category, reorder by dragging, by keyboard and with the buttons, open a note from the widget, delete one and then all notes, and verify the rows, order, warning rows, missing state and the public dashboard view by hand
+- [x] 3.2 Run the app, add selected notes from several categories, search by title and category, reorder by dragging, by keyboard and with the buttons, open a note from the widget, delete one and then all notes, and verify the rows, order, warning rows, missing state and the public dashboard view by hand

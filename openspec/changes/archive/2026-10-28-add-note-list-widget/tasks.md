@@ -18,4 +18,4 @@
 ## 3. Verification
 
 - [x] 3.1 Run `make check` and `make test` and verify both pass
-- [ ] 3.2 Run the app, add a note list for "All notes", "Uncategorized" and a category with and without subcategories in each sort, open a note from it, delete its category, and verify the rows, second lines, empty and missing states and the public dashboard view by hand
+- [x] 3.2 Run the app, add a note list for "All notes", "Uncategorized" and a category with and without subcategories in each sort, open a note from it, delete its category, and verify the rows, second lines, empty and missing states and the public dashboard view by hand
