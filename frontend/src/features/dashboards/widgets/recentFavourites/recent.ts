@@ -13,6 +13,14 @@ export type RecentData = { missing: true } | { links: RecentLink[] };
 export const maxRecentLimit = 100;
 export const maxRecentDays = 365;
 
+/** The whole number in value if it is from 1 to max, otherwise null. */
+export function parseCount(value: string, max: number): number | null {
+	const n = Number(value);
+	return value.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= max
+		? n
+		: null;
+}
+
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
@@ -50,33 +58,4 @@ export function recentLinks(
 			(a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
 	);
 	return links.slice(0, limit);
-}
-
-const units: [Intl.RelativeTimeFormatUnit, number][] = [
-	["year", 365 * dayMs],
-	["month", 30 * dayMs],
-	["day", dayMs],
-	["hour", 60 * 60 * 1000],
-	["minute", 60 * 1000],
-];
-
-/**
- * How long ago date was, in the largest unit that fits, like "3 days ago" or
- * "yesterday"; "now" under a minute.
- */
-export function relativeTime(date: Date, now: Date, language: string): string {
-	const format = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
-	const ago = Math.max(0, now.getTime() - date.getTime());
-	for (const [unit, ms] of units) {
-		if (ago >= ms) return format.format(-Math.floor(ago / ms), unit);
-	}
-	return format.format(0, "second");
-}
-
-/** The full date and time of date, for a tooltip. */
-export function fullDate(date: Date, language: string): string {
-	return new Intl.DateTimeFormat(language, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(date);
 }

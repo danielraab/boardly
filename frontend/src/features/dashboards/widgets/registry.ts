@@ -7,6 +7,7 @@ import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
 import { noteKind } from "./note";
 import { recentFavouritesKind } from "./recentFavourites";
+import { recentNotesKind } from "./recentNotes";
 
 export type WidgetViewProps = {
 	widget: ContentWidget;
@@ -51,6 +52,7 @@ export const widgetKinds: WidgetKind[] = [
 	linkListKind,
 	recentFavouritesKind,
 	noteKind,
+	recentNotesKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

@@ -16,7 +16,7 @@ import (
 // favourites, including its subfolders.
 const KindRecentFavourites = "recent_favourites"
 
-// Limits of a recent favourites widget's config.
+// Limits of the configs of the recent favourites and recent notes kinds.
 const (
 	maxRecentLimit = 100
 	maxRecentDays  = 365

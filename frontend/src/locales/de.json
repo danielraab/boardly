@@ -716,6 +716,29 @@
 				"missing": "Diese Notiz existiert nicht mehr",
 				"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
 				"changedElsewhere": "Die Notiz wurde woanders geändert. Das Widget zeigt den aktuellen Stand."
+			},
+			"recentNotes": {
+				"name": "Neueste Notizen",
+				"description": "Zeigt deine neuesten Notizen.",
+				"addTitle": "Neueste Notizen hinzufügen",
+				"editTitle": "Neueste Notizen bearbeiten",
+				"sortLabel": "Sortieren nach",
+				"sort": {
+					"created": "Hinzugefügt",
+					"updated": "Zuletzt geändert"
+				},
+				"sortHint": "Nach dieser Zeit werden die Notizen sortiert und begrenzt, und sie wird bei ihnen angezeigt.",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"limitLabel": "Anzahl Notizen",
+				"limitHint": "1 bis {{max}}.",
+				"daysLabel": "Nur die letzten … Tage",
+				"daysHint": "Optional, 1 bis {{max}}. Leer zeigt Notizen jeden Alters.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel deiner neuesten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"empty": "Keine Notizen",
+				"emptyDays_one": "Keine Notizen am letzten Tag",
+				"emptyDays_other": "Keine Notizen in den letzten {{count}} Tagen"
 			}
 		}
 	},

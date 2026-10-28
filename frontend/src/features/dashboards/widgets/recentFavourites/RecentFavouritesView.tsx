@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LinkView } from "../link/LinkView";
+import { fullDate, relativeTime } from "../relativeTime";
 import { sizeStyles, type WidgetSize } from "../sizes";
-import { fullDate, type RecentData, relativeTime } from "./recent";
+import type { RecentData } from "./recent";
 
 /** The date is one step smaller than the title, like a link's URL. */
 const dateText: Record<WidgetSize, string> = {
