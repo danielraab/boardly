@@ -48,7 +48,7 @@ The size SHALL set the text size of the widget's title and content, including th
 - **THEN** its text and checkboxes are larger than with M, and its padding is the same
 
 ### Requirement: Note widget for the owner
-For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Notiz öffnen" button that opens `/notes/<id>`, and a checkbox SHALL toggle its task item with a click, a tap or the keyboard. The change is saved right away and shown at once, without leaving the dashboard. When saving fails, the widget SHALL show the note as it is on the server again and a message SHALL say that the change couldn't be saved, or that the note was changed elsewhere when the save got `version_conflict`. The widget offers no other editing. In edit mode, the checkboxes SHALL NOT toggle and the "Open note" button SHALL NOT navigate.
+For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Notiz öffnen" button that opens the note's editor in a modal over the dashboard, without leaving it. The modal edits the note as on `/notes/<id>` (title, icon, colour, category, content, delete) and saves it the same way; it has a close button instead of the way back to the notes, and closing it, also with Escape or a click outside, saves what is left. While and after editing, the widget shows the saved note; when the note is deleted in the modal, the modal closes and the widget shows that the note no longer exists. A checkbox SHALL toggle its task item with a click, a tap or the keyboard. The change is saved right away and shown at once, without leaving the dashboard. When saving fails, the widget SHALL show the note as it is on the server again and a message SHALL say that the change couldn't be saved, or that the note was changed elsewhere when the save got `version_conflict`. The widget offers no other editing. In edit mode, the checkboxes SHALL NOT toggle and there is no "Open note" button.
 
 #### Scenario: Tick off a todo
 - **WHEN** Ann clicks the unchecked task "milk" in the "Groceries" widget on her dashboard
@@ -56,7 +56,15 @@ For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Not
 
 #### Scenario: Open the note
 - **WHEN** Ann activates "Open note" on the widget
-- **THEN** the browser shows `/notes/<id of Groceries>`
+- **THEN** a modal with the editor of "Groceries" opens and the browser stays on the dashboard
+
+#### Scenario: Edit in the modal
+- **WHEN** Ann changes the title of "Groceries" to "Shopping" in the modal and closes it
+- **THEN** the change is saved and the widget shows "Shopping"
+
+#### Scenario: Delete in the modal
+- **WHEN** Ann deletes "Groceries" in the modal
+- **THEN** the modal closes and the widget shows "This note no longer exists"
 
 #### Scenario: Changed elsewhere
 - **WHEN** Ann changes "Groceries" in another tab and then ticks a task in the widget

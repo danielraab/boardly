@@ -2,7 +2,7 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Menu } from "@base-ui/react/menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Ellipsis, RotateCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Ellipsis, RotateCw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -34,18 +34,26 @@ import { useAutosave } from "./useAutosave";
 /**
  * The editor page of a note, or of a new one (note null) that is created on
  * the first change, starting in initialCategory. onCreated gets the new note;
- * onReload loads the note again after a conflict.
+ * onReload loads the note again after a conflict. With onClose, it is the
+ * content of a dialog: it has a close button instead of the way back to the
+ * notes, sets no page title, and calls onDeleted instead of going to the notes.
  */
 export function NoteEditorPage({
 	note,
 	initialCategory = null,
 	onCreated,
 	onReload,
+	onSaved,
+	onClose,
+	onDeleted,
 }: {
 	note: Note | null;
 	initialCategory?: string | null;
 	onCreated: (note: Note) => void;
 	onReload: () => void;
+	onSaved?: (note: Note) => void;
+	onClose?: () => void;
+	onDeleted?: () => void;
 }) {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
@@ -68,6 +76,7 @@ export function NoteEditorPage({
 			setNoteId(created.id);
 			onCreated(created);
 		},
+		onSaved,
 	});
 	const readOnly = status === "conflict";
 
@@ -77,18 +86,20 @@ export function NoteEditorPage({
 	};
 
 	const name = displayTitle(draft) ?? t("notes.untitled");
-	usePageTitle(name);
 
 	return (
 		<section
-			className={`mt-6 mb-16 rounded-2xl border border-line p-4 sm:p-6 ${draft.color ? "" : "bg-surface"}`}
+			className={`${onClose ? "" : "mt-6 mb-16"} rounded-2xl border border-line p-4 sm:p-6 ${draft.color ? "" : "bg-surface"}`}
 			style={{ background: noteBackground(draft.color) }}
 		>
+			{!onClose && <PageTitle title={name} />}
 			<div className="flex flex-wrap items-center gap-2">
-				<Link to="/notes" className={`${secondaryButton} px-3`}>
-					<ArrowLeft className="size-4" aria-hidden />
-					{t("notes.editor.back")}
-				</Link>
+				{!onClose && (
+					<Link to="/notes" className={`${secondaryButton} px-3`}>
+						<ArrowLeft className="size-4" aria-hidden />
+						{t("notes.editor.back")}
+					</Link>
+				)}
 				<div className="ml-auto flex items-center gap-2">
 					<SaveIndicator status={status} onRetry={retry} />
 					<ColourButton
@@ -118,6 +129,16 @@ export function NoteEditorPage({
 							</Menu.Positioner>
 						</Menu.Portal>
 					</Menu.Root>
+					{onClose && (
+						<button
+							type="button"
+							className={secondaryIconButton}
+							aria-label={t("common.close")}
+							onClick={onClose}
+						>
+							<X className="size-4" aria-hidden />
+						</button>
+					)}
 				</div>
 			</div>
 
@@ -180,11 +201,18 @@ export function NoteEditorPage({
 				onClose={() => setDeleting(false)}
 				onDeleted={() => {
 					discard();
-					void navigate({ to: "/notes" });
+					if (onDeleted) onDeleted();
+					else void navigate({ to: "/notes" });
 				}}
 			/>
 		</section>
 	);
+}
+
+/** Shows title in the browser tab; a component so the dialog can leave it out. */
+function PageTitle({ title }: { title: string }) {
+	usePageTitle(title);
+	return null;
 }
 
 function DeleteNoteDialog({

@@ -97,8 +97,7 @@ describe("the note widget", () => {
 			section("Work", {}, noteWidget("w1", {}, resolved(true))),
 		]);
 		renderApp("/ann/home");
-		const open = await screen.findByRole("link", { name: "Open Groceries" });
-		expect(open).toHaveAttribute("href", "/notes/groceries");
+		const open = await screen.findByRole("button", { name: "Open Groceries" });
 		const card = screen.getByRole("heading", { name: "Groceries" })
 			.parentElement as HTMLElement;
 		expect(card.tagName).toBe("ARTICLE");
@@ -158,7 +157,7 @@ describe("the note widget", () => {
 		renderApp("/ann/home");
 		const milk = await screen.findByRole("checkbox", { name: "milk" });
 		expect(milk).toBeDisabled();
-		expect(screen.queryByRole("link", { name: /^Open/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: /^Open/ })).toBeNull();
 		expect(screen.getByText("Garden").parentElement).toHaveAttribute(
 			"title",
 			"Garden",
@@ -170,7 +169,7 @@ describe("the note widget", () => {
 			section("Work", {}, noteWidget("w1", {}, resolved(true))),
 		]);
 		const { user, router } = renderApp("/ann/home");
-		await screen.findByRole("link", { name: "Open Groceries" });
+		await screen.findByRole("button", { name: "Open Groceries" });
 		await user.click(screen.getByRole("checkbox", { name: "milk" }));
 
 		expect(screen.getByRole("checkbox", { name: "milk" })).toBeChecked();
@@ -206,7 +205,7 @@ describe("the note widget", () => {
 			},
 		);
 		const { user } = renderApp("/ann/home");
-		await screen.findByRole("link", { name: "Open Groceries" });
+		await screen.findByRole("button", { name: "Open Groceries" });
 		await user.click(screen.getByRole("checkbox", { name: "milk" }));
 		expect(await screen.findByRole("alert")).toHaveTextContent(
 			"The note couldn't be changed. Please try again.",
@@ -238,12 +237,74 @@ describe("the note widget", () => {
 			},
 		);
 		const { user } = renderApp("/ann/home");
-		await screen.findByRole("link", { name: "Open Groceries" });
+		await screen.findByRole("button", { name: "Open Groceries" });
 		await user.click(screen.getByRole("checkbox", { name: "milk" }));
 		expect(await screen.findByText("changed in another tab")).toBeVisible();
 		expect(screen.getByRole("alert")).toHaveTextContent(
 			"The note was changed elsewhere. The widget shows the current state.",
 		);
+	});
+
+	it("opens the note in a modal and shows its changes on the widget", async () => {
+		const server = dashboard(() => {
+			const n = server.notes.find((x) => x.id === "groceries");
+			const data = n
+				? resolved(true, { title: n.title, version: n.version })
+				: { missing: true as const };
+			return [section("Work", {}, noteWidget("w1", {}, data))];
+		});
+		const { user, router } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Open Groceries" }),
+		);
+
+		const dialog = await screen.findByRole("dialog", { name: "Groceries" });
+		const title = await within(dialog).findByRole("textbox", { name: "Title" });
+		expect(title).toHaveValue("Groceries");
+		expect(router.state.location.pathname).toBe("/ann/home");
+		await user.clear(title);
+		await user.type(title, "Shopping");
+		await user.click(within(dialog).getByRole("button", { name: "Close" }));
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(
+			await screen.findByRole("heading", { name: "Shopping" }),
+		).toBeVisible();
+		expect(server.notes.find((n) => n.id === "groceries")?.title).toBe(
+			"Shopping",
+		);
+		expect(router.state.location.pathname).toBe("/ann/home");
+	});
+
+	it("shows a note deleted in the modal as missing", async () => {
+		const server = dashboard(() => {
+			const n = server.notes.find((x) => x.id === "groceries");
+			return [
+				section(
+					"Work",
+					{},
+					noteWidget("w1", {}, n ? resolved(true) : { missing: true }),
+				),
+			];
+		});
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Open Groceries" }),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "Groceries" });
+		await user.click(
+			await within(dialog).findByRole("button", { name: "More actions" }),
+		);
+		await user.click(
+			await screen.findByRole("menuitem", { name: "Delete note" }),
+		);
+		const confirm = await screen.findByRole("alertdialog", {
+			name: "Delete note?",
+		});
+		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+		expect(await screen.findByText("This note no longer exists")).toBeVisible();
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 	});
 
 	it("shows the owner's current note in edit mode, without toggling", async () => {
@@ -257,7 +318,7 @@ describe("the note widget", () => {
 			"title",
 			"Home › Garden",
 		);
-		expect(screen.queryByRole("link", { name: /^Open/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: /^Open/ })).toBeNull();
 		expect(api.callsTo("GET", "/api/notes")).toHaveLength(1);
 	});
 

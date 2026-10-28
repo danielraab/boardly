@@ -22,6 +22,7 @@ import type {
 } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { WidgetSettingsForm } from "../WidgetSettingsForm";
+import { NoteDialog } from "./NoteDialog";
 import {
 	type NoteData,
 	NoteWidgetView,
@@ -38,15 +39,18 @@ export type NoteConfig = {
 type SaveError = "conflict" | "failed";
 
 /**
- * In view mode the server's data, with toggling checkboxes for the owner; in
- * edit mode the note from the owner's notes, since a draft widget has no data
+ * In view mode the server's data, with toggling checkboxes and the note's
+ * editor in a modal for the owner; in edit mode the note from the owner's notes, since a draft widget has no data
  * yet and its note may have changed.
  */
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const { t } = useTranslation();
 	const config = widget.config as NoteConfig;
 	const isOwner = useCurrentDashboard()?.isOwner ?? false;
+	const queryClient = useQueryClient();
 	const [error, setError] = useState<SaveError | null>(null);
+	// Kept above the version-keyed note, so a refresh doesn't close the modal.
+	const [opened, setOpened] = useState(false);
 	const notes = useQuery({ ...notesQueryOptions, enabled: editing });
 	const categories = useQuery({
 		...noteCategoriesQueryOptions,
@@ -96,17 +100,33 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				? "dashboards.widgets.note.changedElsewhere"
 				: "dashboards.widgets.note.changeFailed",
 		);
+	const refresh = () =>
+		void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
 	return (
-		// A newer version from the server starts over with a new saver.
-		<OwnerNote
-			key={data.version}
-			data={{ ...data, id: data.id }}
-			size={config.size}
-			headingLevel={headingLevel}
-			message={message}
-			onToggled={() => setError(null)}
-			onError={setError}
-		/>
+		<>
+			{/* A newer version from the server starts over with a new saver. */}
+			<OwnerNote
+				key={data.version}
+				data={{ ...data, id: data.id }}
+				size={config.size}
+				headingLevel={headingLevel}
+				message={message}
+				onOpen={() => setOpened(true)}
+				onToggled={() => setError(null)}
+				onError={setError}
+			/>
+			<NoteDialog
+				noteId={data.id}
+				name={displayTitle(data) ?? t("notes.untitled")}
+				open={opened}
+				onClose={() => setOpened(false)}
+				onChanged={refresh}
+				onDeleted={() => {
+					setOpened(false);
+					refresh();
+				}}
+			/>
+		</>
 	);
 }
 
@@ -116,6 +136,7 @@ function OwnerNote({
 	size,
 	headingLevel,
 	message,
+	onOpen,
 	onToggled,
 	onError,
 }: {
@@ -123,6 +144,7 @@ function OwnerNote({
 	size: WidgetSize;
 	headingLevel: number;
 	message: string | null;
+	onOpen: () => void;
 	onToggled: () => void;
 	onError: (error: SaveError) => void;
 }) {
@@ -158,8 +180,8 @@ function OwnerNote({
 			data={{ ...data, content }}
 			size={size}
 			headingLevel={headingLevel}
-			noteId={data.id}
 			message={message}
+			onOpen={onOpen}
 			onToggleTask={(id, checked) => {
 				const next = setTaskChecked(content, id, checked);
 				setContent(next);

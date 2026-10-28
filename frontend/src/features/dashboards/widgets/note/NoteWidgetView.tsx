@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { Maximize2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
@@ -37,20 +36,20 @@ const titleText: Record<WidgetSize, string> = {
 /**
  * A note as a card that fills its widget: colour, icon, title, content and
  * category badge. Checkboxes only toggle with onToggleTask, and "Open note"
- * is only shown with noteId.
+ * is only shown with onOpen.
  */
 export function NoteWidgetView({
 	data,
 	size,
 	headingLevel,
-	noteId,
+	onOpen,
 	onToggleTask,
 	message,
 }: {
 	data: NoteData;
 	size: WidgetSize;
 	headingLevel: number;
-	noteId?: string;
+	onOpen?: () => void;
 	onToggleTask?: (id: string, checked: boolean) => void;
 	/** Why the last change wasn't saved. */
 	message?: string | null;
@@ -72,7 +71,7 @@ export function NoteWidgetView({
 		>
 			{(data.icon || data.title) && (
 				<Heading
-					className={`mb-2 flex items-center gap-2 font-semibold ${titleText[size]} ${noteId ? "pr-8" : ""}`}
+					className={`mb-2 flex items-center gap-2 font-semibold ${titleText[size]} ${onOpen ? "pr-8" : ""}`}
 				>
 					{data.icon && (
 						<ChosenIcon
@@ -83,7 +82,7 @@ export function NoteWidgetView({
 					{data.title && <span className="min-w-0 truncate">{data.title}</span>}
 				</Heading>
 			)}
-			<div className={noteId && !(data.icon || data.title) ? "pr-6" : ""}>
+			<div className={onOpen && !(data.icon || data.title) ? "pr-6" : ""}>
 				<NoteRenderer
 					doc={data.content}
 					size={size}
@@ -103,16 +102,16 @@ export function NoteWidgetView({
 					/>
 				</div>
 			)}
-			{noteId && (
-				<Link
-					to="/notes/$noteId"
-					params={{ noteId }}
+			{onOpen && (
+				<button
+					type="button"
+					onClick={onOpen}
 					aria-label={t("notes.open", { title: name })}
 					title={t("notes.openNote")}
 					className="absolute top-2 right-2 rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
 				>
 					<Maximize2 className="size-4" aria-hidden />
-				</Link>
+				</button>
 			)}
 		</article>
 	);

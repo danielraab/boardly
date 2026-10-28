@@ -19,7 +19,9 @@
 - [x] 3.5 Add owner interactions: "Open note" link (inert in edit mode) and checkbox toggles saved via `useAutosave` with failure and conflict messages and query invalidation; no toggling in edit mode or for visitors; verify with Testing Library tests for toggle success, failure, conflict, edit mode and visitor
 - [x] 3.6 Add all en + de strings (kind name and description, group headings, setting labels, public hint, missing note) and verify the i18n test passes
 
+- [x] 3.7 Open the note in a modal instead of on `/notes/<id>`: make the note editor usable in a dialog (close button instead of the way back, no page title, deletion and saves reported to the caller), open it from the widget's "Open note" button, refresh the dashboard after each save and on deletion; verify with Testing Library tests that the modal opens on the dashboard, an edit is saved and shown on the widget, and a deletion closes the modal and shows the missing note
+
 ## 4. Check
 
 - [x] 4.1 Run `make check` and `make test` and verify both pass
-- [ ] 4.2 Run the app, add a note widget with a fixed height and size L, tick a todo, open the note, delete it, and check the public dashboard with the flag off and on by hand
+- [ ] 4.2 Run the app, add a note widget with a fixed height and size L, tick a todo, open the note in the modal, edit and delete it, and check the public dashboard with the flag off and on by hand

@@ -8,7 +8,7 @@ Notes with todos live only on `/notes`, so a shopping list or a sprint checklist
 
 - New content widget kind `note` ("Note" / "Notiz"): shows one of the owner's notes like a note card, with its colour, icon, title, content and category badge.
 - Settings: a required note (plain select of the owner's notes by display title), a size S/M/L (default M) that scales the text, a "Show on public dashboard" flag (default off), and the common width and height (auto or fixed rows; a fixed height scrolls).
-- For the owner outside edit mode: task checkboxes toggle and save right away, and an "Open note" button opens `/notes/<id>`. No inline text editing.
+- For the owner outside edit mode: task checkboxes toggle and save right away, and an "Open note" button opens the note's editor in a modal over the dashboard. No inline text editing on the widget itself.
 - Visitors of public dashboards see the widget only with the flag on, and only read-only; the response contains only what the widget shows.
 - A deleted note shows "This note no longer exists" to the owner and is left out for visitors.
 - The widget picker groups the kinds under headings: "Favourites" (favourite explorer, link, link list, recent favourites) and "Notes" (note).
