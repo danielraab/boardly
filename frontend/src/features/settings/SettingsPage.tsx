@@ -1,7 +1,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton } from "#/components/buttonStyles";
 import { narrowPage } from "#/components/pageWidths";
@@ -22,7 +22,7 @@ import { PasskeysTab } from "./PasskeysTab";
 export type SettingsTab = "profile" | "passkeys" | "apps" | "data";
 
 const tabClass =
-	"-mb-px border-b-2 border-transparent px-3 py-2 font-medium text-muted hover:text-ink data-[active]:border-ink data-[active]:text-ink";
+	"shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 font-medium text-muted hover:text-ink data-[active]:border-ink data-[active]:text-ink";
 
 export function SettingsPage({
 	tab,
@@ -34,6 +34,14 @@ export function SettingsPage({
 	const { t } = useTranslation();
 	usePageTitle(t("settings.title"));
 	const { data: me } = useMe();
+	const tabList = useRef<HTMLDivElement>(null);
+	// On narrow screens the tab bar scrolls; keep the selected tab visible.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: rerun when the tab or the rendered list changes
+	useEffect(() => {
+		tabList.current
+			?.querySelector<HTMLElement>('[aria-selected="true"]')
+			?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	}, [tab, me]);
 	// The session can end while the page is open (401 from any request).
 	if (me === null) return <Navigate to="/login" />;
 	if (!me) return null;
@@ -48,7 +56,8 @@ export function SettingsPage({
 				onValueChange={(value) => onTabChange(value as SettingsTab)}
 			>
 				<Tabs.List
-					className="flex gap-1 border-b border-line"
+					ref={tabList}
+					className="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 					aria-label={t("settings.tabs.label")}
 				>
 					<Tabs.Tab value="profile" className={tabClass}>
