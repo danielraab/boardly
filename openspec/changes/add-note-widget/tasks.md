@@ -20,6 +20,7 @@
 - [x] 3.6 Add all en + de strings (kind name and description, group headings, setting labels, public hint, missing note) and verify the i18n test passes
 
 - [x] 3.7 Open the note in a modal instead of on `/notes/<id>`: make the note editor usable in a dialog (close button instead of the way back, no page title, deletion and saves reported to the caller), open it from the widget's "Open note" button, refresh the dashboard after each save and on deletion; verify with Testing Library tests that the modal opens on the dashboard, an edit is saved and shown on the widget, and a deletion closes the modal and shows the missing note
+- [x] 3.8 Move the category badge from the bottom of the widget to its header, next to the title (also without a title), with the title shortened before the badge wraps; verify with a Testing Library test that the badge is in the header line before the content
 
 ## 4. Check
 

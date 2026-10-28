@@ -34,9 +34,9 @@ const titleText: Record<WidgetSize, string> = {
 };
 
 /**
- * A note as a card that fills its widget: colour, icon, title, content and
- * category badge. Checkboxes only toggle with onToggleTask, and "Open note"
- * is only shown with onOpen.
+ * A note as a card that fills its widget: colour, a header with icon, title
+ * and category badge, and the content. Checkboxes only toggle with
+ * onToggleTask, and "Open note" is only shown with onOpen.
  */
 export function NoteWidgetView({
 	data,
@@ -69,20 +69,38 @@ export function NoteWidgetView({
 			className={`relative flex min-h-full flex-col rounded-xl border border-line p-4 shadow-[0_1px_2px_var(--color-shadow)] ${data.color ? "" : "bg-surface"}`}
 			style={{ background: noteBackground(data.color) }}
 		>
-			{(data.icon || data.title) && (
-				<Heading
-					className={`mb-2 flex items-center gap-2 font-semibold ${titleText[size]} ${onOpen ? "pr-8" : ""}`}
-				>
-					{data.icon && (
-						<ChosenIcon
-							{...iconProps(data.icon)}
-							className={`${sizeStyles[size].icon} shrink-0`}
-						/>
+			{(data.icon || data.title || data.category) && (
+				<div className={`mb-2 flex items-center gap-2 ${onOpen ? "pr-8" : ""}`}>
+					{(data.icon || data.title) && (
+						<Heading
+							className={`flex min-w-0 items-center gap-2 font-semibold ${titleText[size]}`}
+						>
+							{data.icon && (
+								<ChosenIcon
+									{...iconProps(data.icon)}
+									className={`${sizeStyles[size].icon} shrink-0`}
+								/>
+							)}
+							{data.title && (
+								<span className="min-w-0 truncate">{data.title}</span>
+							)}
+						</Heading>
 					)}
-					{data.title && <span className="min-w-0 truncate">{data.title}</span>}
-				</Heading>
+					{data.category && (
+						<div className="flex shrink-0">
+							<ReadOnlyCategoryBadge
+								category={data.category}
+								tooltip={data.category.path?.join(" › ") ?? data.category.title}
+							/>
+						</div>
+					)}
+				</div>
 			)}
-			<div className={onOpen && !(data.icon || data.title) ? "pr-6" : ""}>
+			<div
+				className={
+					onOpen && !(data.icon || data.title || data.category) ? "pr-6" : ""
+				}
+			>
 				<NoteRenderer
 					doc={data.content}
 					size={size}
@@ -93,14 +111,6 @@ export function NoteWidgetView({
 				<p role="alert" className="mt-2 text-sm text-red-700">
 					{message}
 				</p>
-			)}
-			{data.category && (
-				<div className="mt-3 flex">
-					<ReadOnlyCategoryBadge
-						category={data.category}
-						tooltip={data.category.path?.join(" › ") ?? data.category.title}
-					/>
-				</div>
 			)}
 			{onOpen && (
 				<button

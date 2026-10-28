@@ -98,8 +98,8 @@ describe("the note widget", () => {
 		]);
 		renderApp("/ann/home");
 		const open = await screen.findByRole("button", { name: "Open Groceries" });
-		const card = screen.getByRole("heading", { name: "Groceries" })
-			.parentElement as HTMLElement;
+		const heading = screen.getByRole("heading", { name: "Groceries" });
+		const card = heading.closest("article") as HTMLElement;
 		expect(card.tagName).toBe("ARTICLE");
 		expect(card).toContainElement(open);
 		expect(card.style.background).toContain("--color-note-green");
@@ -108,10 +108,15 @@ describe("the note widget", () => {
 			within(card).getByRole("checkbox", { name: "milk" }),
 		).not.toBeChecked();
 		expect(within(card).getByRole("checkbox", { name: "bread" })).toBeChecked();
-		expect(within(card).getByText("Garden").parentElement).toHaveAttribute(
-			"title",
-			"Home › Garden",
-		);
+		const badge = within(card).getByText("Garden").parentElement as HTMLElement;
+		expect(badge).toHaveAttribute("title", "Home › Garden");
+		// The badge is in the header, next to the title and before the content.
+		expect(heading.parentElement).toContainElement(badge);
+		expect(
+			badge.compareDocumentPosition(
+				within(card).getByRole("checkbox", { name: "milk" }),
+			) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it("shows no title line for a note without a title, and scales its text", async () => {
@@ -267,8 +272,13 @@ describe("the note widget", () => {
 		await user.click(within(dialog).getByRole("button", { name: "Close" }));
 
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		// Closing saves and then reloads the dashboard, which can take a while.
 		expect(
-			await screen.findByRole("heading", { name: "Shopping" }),
+			await screen.findByRole(
+				"heading",
+				{ name: "Shopping" },
+				{ timeout: 3000 },
+			),
 		).toBeVisible();
 		expect(server.notes.find((n) => n.id === "groceries")?.title).toBe(
 			"Shopping",

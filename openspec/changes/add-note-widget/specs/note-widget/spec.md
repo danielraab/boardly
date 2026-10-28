@@ -26,11 +26,11 @@ The widget kind `note` ("Note" / "Notiz") SHALL have, besides the common width a
 - **THEN** the server responds 400 with `invalid_layout`
 
 ### Requirement: Note widget rendering
-A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; its icon and its title, if any (a note without a title shows no title line, as on its card); its rendered content with task items as checkboxes in their state; and its category badge, if it has a category, at the bottom. The badge SHALL NOT open a category picker. Content is not cut off or faded: with height `auto` the widget is as tall as the note, and with a fixed height content that doesn't fit scrolls inside the widget. Links in the content SHALL NOT open.
+A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; at the top, its icon and its title, if any, followed on the same line by its category badge, if it has a category (a note with neither title, icon nor category shows no title line); and its rendered content with task items as checkboxes in their state. A long title is shortened so the badge stays on the line. The badge SHALL NOT open a category picker. Content is not cut off or faded: with height `auto` the widget is as tall as the note, and with a fixed height content that doesn't fit scrolls inside the widget. Links in the content SHALL NOT open.
 
 #### Scenario: Card look
 - **WHEN** "Groceries" has the colour `green`, the symbol icon "cart" and the category "Home"
-- **THEN** the widget has the green note background, shows the cart symbol, "Groceries", its content and the badge "Home"
+- **THEN** the widget has the green note background, shows the cart symbol and "Groceries" with the badge "Home" next to it at the top, and its content below
 
 #### Scenario: Fixed height
 - **WHEN** a note widget has a height of 3 rows and the note is longer than that
