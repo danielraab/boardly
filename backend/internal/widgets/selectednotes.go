@@ -88,7 +88,7 @@ func SelectedNotes(store *notes.Store) dashboards.Kind {
 			}
 			rows := make([]listedNote, len(ordered))
 			for i, n := range ordered {
-				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon}
+				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color}
 				if n.CategoryID != nil {
 					if cat := categoryOf(categories, *n.CategoryID, viewer.IsOwner); cat != nil {
 						rows[i].Category = &recentNoteCategory{Title: cat.Title, Path: cat.Path}

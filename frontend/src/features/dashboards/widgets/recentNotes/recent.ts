@@ -1,5 +1,6 @@
 import type { Note, NoteCategory, NoteIcon } from "#/features/notes/api";
 import { categoryPath } from "#/features/notes/categories/tree";
+import type { NoteColour } from "#/features/notes/colours";
 import { displayTitle } from "#/features/notes/document/text";
 
 /** Which time of a note a recent notes widget sorts and limits by. */
@@ -11,6 +12,7 @@ export type RecentNote = {
 	/** The display title, or null for "Untitled note". */
 	title: string | null;
 	icon: NoteIcon | null;
+	color: NoteColour | null;
 	/** The time sorted by, as RFC 3339. */
 	time: string;
 	category: { title: string; path?: string[] } | null;
@@ -51,6 +53,7 @@ export function recentNotes(
 				id: n.id,
 				title: displayTitle(n),
 				icon: n.icon,
+				color: n.color,
 				time: timeOf(n),
 				category: category
 					? {

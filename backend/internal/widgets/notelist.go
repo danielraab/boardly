@@ -31,6 +31,7 @@ type noteListConfig struct {
 type listedNote struct {
 	Title    *string             `json:"title"`
 	Icon     *notes.Icon         `json:"icon"`
+	Color    *string             `json:"color"`
 	Category *recentNoteCategory `json:"category"`
 }
 
@@ -110,7 +111,7 @@ func NoteList(store *notes.Store) dashboards.Kind {
 			}
 			rows := make([]listedNote, len(found))
 			for i, n := range found {
-				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon}
+				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color}
 				// Only notes of another category than the chosen one say
 				// which they are in.
 				if n.CategoryID != nil && *n.CategoryID != sel.CategoryID {

@@ -29,6 +29,7 @@ export function selectedNotes(
 				id: note.id,
 				title: displayTitle(note),
 				icon: note.icon,
+				color: note.color,
 				category: category
 					? {
 							title: category.title,

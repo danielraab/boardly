@@ -6,7 +6,7 @@ import type { ContentWidget, Widget } from "#/features/dashboards/api";
 import { section, viewData } from "#/test/dashboards";
 import { category, fakeNotesServer, note, paragraphs } from "#/test/notes";
 import { renderApp } from "#/test/renderApp";
-import type { NoteListData } from "../noteList/list";
+import type { ListedNote, NoteListData } from "../noteList/list";
 import type { SelectedNotesConfig } from ".";
 import { ChosenNotes } from "./ChosenNotes";
 import { NoteSearch } from "./NoteSearch";
@@ -133,10 +133,11 @@ describe("the chosen notes", () => {
 	});
 });
 
-const rosesRow = {
+const rosesRow: ListedNote = {
 	id: "roses",
 	title: "Roses",
 	icon: null,
+	color: "green",
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
 
@@ -214,7 +215,11 @@ describe("the selected notes widget", () => {
 					{},
 					selectedWidget(
 						{ showIfPublic: true },
-						{ notes: [{ title: "Roses", icon: null, category: null }] },
+						{
+							notes: [
+								{ title: "Roses", icon: null, color: null, category: null },
+							],
+						},
 					),
 				),
 			],

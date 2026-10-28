@@ -17,6 +17,7 @@ const groceriesRow: RecentNote = {
 	id: "groceries",
 	title: "Groceries",
 	icon: { type: "symbol", name: "shopping-cart" },
+	color: "green",
 	time: daysAgo(2),
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
@@ -24,6 +25,7 @@ const untitledRow: RecentNote = {
 	id: "untitled",
 	title: null,
 	icon: null,
+	color: null,
 	time: daysAgo(1),
 	category: null,
 };
@@ -55,6 +57,12 @@ describe("RecentNotesView", () => {
 		view({ notes: [groceriesRow, untitledRow] });
 		const rows = screen.getAllByRole("listitem");
 		expect(rows[0]).toHaveTextContent("GroceriesGarden2 days ago");
+		// Each row is a small card in the note's colour, or surface.
+		const card = (row: HTMLElement) => row.firstElementChild as HTMLElement;
+		expect(card(rows[0])).toHaveClass("border", "border-line");
+		expect(card(rows[0]).style.background).toBe("var(--color-note-green)");
+		expect(card(rows[1])).toHaveClass("border", "bg-surface");
+		expect(card(rows[1]).style.background).toBe("");
 		expect(rows[0].querySelector("[data-icon='shopping-cart']")).not.toBeNull();
 		expect(within(rows[0]).getByText("Garden")).toHaveAttribute(
 			"title",
@@ -196,6 +204,7 @@ describe("the recent notes widget", () => {
 								{
 									title: "Groceries",
 									icon: null,
+									color: null,
 									time: groceries.createdAt,
 									category: { title: "Garden" },
 								},

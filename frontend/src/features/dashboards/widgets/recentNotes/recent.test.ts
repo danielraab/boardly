@@ -83,6 +83,7 @@ describe("recentNotes", () => {
 			id: "x",
 			title: "call the plumber",
 			icon: null,
+			color: null,
 			time: daysAgo(1),
 			category: null,
 		});

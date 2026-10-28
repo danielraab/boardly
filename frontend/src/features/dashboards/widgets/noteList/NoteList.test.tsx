@@ -13,12 +13,14 @@ const rosesRow: ListedNote = {
 	id: "roses",
 	title: "Roses",
 	icon: { type: "symbol", name: "shopping-cart" },
+	color: "green",
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
 const plumberRow: ListedNote = {
 	id: "plumber",
 	title: null,
 	icon: null,
+	color: null,
 	category: null,
 };
 
@@ -48,6 +50,12 @@ describe("NoteListView", () => {
 		view({ notes: [rosesRow, plumberRow] });
 		const rows = screen.getAllByRole("listitem");
 		expect(rows[0]).toHaveTextContent(/^RosesGarden$/);
+		// Each row is a small card in the note's colour, or surface.
+		const card = (row: HTMLElement) => row.firstElementChild as HTMLElement;
+		expect(card(rows[0])).toHaveClass("border", "border-line");
+		expect(card(rows[0]).style.background).toBe("var(--color-note-green)");
+		expect(card(rows[1])).toHaveClass("border", "bg-surface");
+		expect(card(rows[1]).style.background).toBe("");
 		expect(rows[0].querySelector("[data-icon='shopping-cart']")).not.toBeNull();
 		expect(within(rows[0]).getByText("Garden")).toHaveAttribute(
 			"title",
@@ -168,7 +176,11 @@ describe("the note list widget", () => {
 					{},
 					listWidget(
 						{ showIfPublic: true },
-						{ notes: [{ title: "Roses", icon: null, category: null }] },
+						{
+							notes: [
+								{ title: "Roses", icon: null, color: null, category: null },
+							],
+						},
 					),
 				),
 			],

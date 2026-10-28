@@ -86,8 +86,9 @@ func TestRecentNotesResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	title := "Groceries"
+	green := "green"
 	groceries := f.note(f.ann, notes.NewNote{Title: &title, CategoryID: &garden.ID,
-		Icon: &notes.Icon{Type: notes.IconSymbol, Name: "shopping-cart"}})
+		Icon: &notes.Icon{Type: notes.IconSymbol, Name: "shopping-cart"}, Color: &green})
 	times(groceries.ID, 30*day, time.Hour)
 	plumber := f.note(f.ann, notes.NewNote{Content: json.RawMessage(
 		`{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"text","text":"call the plumber"}]},` +
@@ -134,9 +135,9 @@ func TestRecentNotesResolve(t *testing.T) {
 	}
 	data, _ := json.Marshal(owner[1]["data"])
 	want := canonical(t, `{"notes":[`+
-		`{"id":"`+groceries.ID+`","title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"time":"2026-10-27T11:00:00Z","category":{"title":"Garden","path":["Home","Garden"]}},`+
-		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"time":"2026-10-26T12:00:00Z","category":null},`+
-		`{"id":"`+sprint.ID+`","title":"Sprint","icon":null,"time":"2026-10-24T12:00:00Z","category":null}]}`)
+		`{"id":"`+groceries.ID+`","title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","time":"2026-10-27T11:00:00Z","category":{"title":"Garden","path":["Home","Garden"]}},`+
+		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"time":"2026-10-26T12:00:00Z","category":null},`+
+		`{"id":"`+sprint.ID+`","title":"Sprint","icon":null,"color":null,"time":"2026-10-24T12:00:00Z","category":null}]}`)
 	if string(data) != want {
 		t.Errorf("by updated =\n%s\nwant\n%s", data, want)
 	}
@@ -152,9 +153,9 @@ func TestRecentNotesResolve(t *testing.T) {
 		}
 		data, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"notes":[`+
-			`{"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"time":"2026-10-27T11:00:00Z","category":{"title":"Garden"}},`+
-			`{"title":"call the plumber","icon":null,"time":"2026-10-26T12:00:00Z","category":null},`+
-			`{"title":"Sprint","icon":null,"time":"2026-10-24T12:00:00Z","category":null}]}`)
+			`{"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","time":"2026-10-27T11:00:00Z","category":{"title":"Garden"}},`+
+			`{"title":"call the plumber","icon":null,"color":null,"time":"2026-10-26T12:00:00Z","category":null},`+
+			`{"title":"Sprint","icon":null,"color":null,"time":"2026-10-24T12:00:00Z","category":null}]}`)
 		if string(data) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, data, want)
 		}

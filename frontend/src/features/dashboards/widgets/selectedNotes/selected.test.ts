@@ -37,6 +37,7 @@ const notes = [
 	note("Roses", {
 		categoryId: "garden",
 		icon: { type: "symbol", name: "shopping-cart" },
+		color: "green",
 	}),
 	note("Draft", { categoryId: "home" }),
 ];
@@ -52,12 +53,14 @@ describe("selectedNotes", () => {
 					id: "Roses",
 					title: "Roses",
 					icon: { type: "symbol", name: "shopping-cart" },
+					color: "green",
 					category: { title: "Garden", path: ["Home", "Garden"] },
 				},
 				{
 					id: "plumber",
 					title: "call the plumber",
 					icon: null,
+					color: null,
 					category: null,
 				},
 			],
@@ -72,6 +75,7 @@ describe("selectedNotes", () => {
 					id: "Draft",
 					title: "Draft",
 					icon: null,
+					color: null,
 					category: { title: "Home", path: ["Home"] },
 				},
 			],

@@ -1,5 +1,6 @@
 import type { Note, NoteCategory, NoteIcon } from "#/features/notes/api";
 import { categoryPath, subtreeIds } from "#/features/notes/categories/tree";
+import type { NoteColour } from "#/features/notes/colours";
 import { displayTitle } from "#/features/notes/document/text";
 
 /** Which notes a note list shows: all, the uncategorized ones, or a category's. */
@@ -14,6 +15,7 @@ export type ListedNote = {
 	/** The display title, or null for "Untitled note". */
 	title: string | null;
 	icon: NoteIcon | null;
+	color: NoteColour | null;
 	/** The category of a note that isn't directly in the chosen one. */
 	category: { title: string; path?: string[] } | null;
 };
@@ -85,6 +87,7 @@ export function noteList(
 				id: note.id,
 				title,
 				icon: note.icon,
+				color: note.color,
 				category: category
 					? {
 							title: category.title,

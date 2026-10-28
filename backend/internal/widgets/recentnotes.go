@@ -41,6 +41,7 @@ type recentNoteCategory struct {
 type recentNote struct {
 	Title    *string             `json:"title"`
 	Icon     *notes.Icon         `json:"icon"`
+	Color    *string             `json:"color"`
 	Time     time.Time           `json:"time"`
 	Category *recentNoteCategory `json:"category"`
 }
@@ -113,7 +114,7 @@ func RecentNotes(store *notes.Store) dashboards.Kind {
 			}
 			rows := make([]recentNote, len(found))
 			for i, n := range found {
-				rows[i] = recentNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Time: n.CreatedAt}
+				rows[i] = recentNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color, Time: n.CreatedAt}
 				if byUpdated {
 					rows[i].Time = n.UpdatedAt
 				}

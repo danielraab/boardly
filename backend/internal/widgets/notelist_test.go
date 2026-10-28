@@ -65,8 +65,9 @@ func TestNoteListResolve(t *testing.T) {
 	plumber := f.note(f.ann, notes.NewNote{CategoryID: &home.ID, Content: json.RawMessage(
 		`{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"text","text":"call the plumber"}]},` +
 			`{"type":"list","style":"task","items":[{"id":"t1","checked":false,"content":[{"type":"text","text":"secret task"}]}]}]}`)})
+	green := "green"
 	roses := f.note(f.ann, notes.NewNote{Title: str("Roses"), CategoryID: &garden.ID,
-		Icon: &notes.Icon{Type: notes.IconSymbol, Name: "shopping-cart"}})
+		Icon: &notes.Icon{Type: notes.IconSymbol, Name: "shopping-cart"}, Color: &green})
 	f.note(f.ann, notes.NewNote{Title: str("Draft")})
 	f.note(f.bob, notes.NewNote{Title: str("Bob's")})
 
@@ -104,8 +105,8 @@ func TestNoteListResolve(t *testing.T) {
 	}
 	data, _ := json.Marshal(owner[1]["data"])
 	want := canonical(t, `{"notes":[`+
-		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"category":null},`+
-		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"category":{"title":"Garden","path":["Home","Garden"]}}]}`)
+		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"category":null},`+
+		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden","path":["Home","Garden"]}}]}`)
 	if string(data) != want {
 		t.Errorf("home =\n%s\nwant\n%s", data, want)
 	}
@@ -125,8 +126,8 @@ func TestNoteListResolve(t *testing.T) {
 		}
 		data, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"notes":[`+
-			`{"title":"call the plumber","icon":null,"category":null},`+
-			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"category":{"title":"Garden"}}]}`)
+			`{"title":"call the plumber","icon":null,"color":null,"category":null},`+
+			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden"}}]}`)
 		if string(data) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, data, want)
 		}

@@ -48,7 +48,7 @@ A recent notes widget SHALL show the owner's notes of every category and uncateg
 - **THEN** a widget sorted by "Last changed" shows it, and one sorted by "Added" doesn't
 
 ### Requirement: Recent notes rows
-Each note SHALL be shown in its own row with its icon, if it has one, its display title (see "Display title" in the `notes` capability), and the chosen time as a relative time in the viewer's language (e.g. "3 days ago" / "vor 3 Tagen", "yesterday" / "gestern"), with the full date and time as its tooltip. A note with a category SHALL show the category's title in smaller text as a second line below the display title, with the category's path (e.g. "Home › Garden") as its tooltip; a note without a category has no second line. The note's colour is not shown. Text that doesn't fit is cut off with "…" and the row has the full display title as a tooltip.
+Each note SHALL be shown in its own row with its icon, if it has one, its display title (see "Display title" in the `notes` capability), and the chosen time as a relative time in the viewer's language (e.g. "3 days ago" / "vor 3 Tagen", "yesterday" / "gestern"), with the full date and time as its tooltip. A note with a category SHALL show the category's title in smaller text as a second line below the display title, with the category's path (e.g. "Home › Garden") as its tooltip; a note without a category has no second line. Each row SHALL look like a small note card (see "Note cards" in the `notes` capability): it has a border and rounded corners, and the note's colour as its background, or `surface` when the note has none. Rows are separated by a small gap. Text that doesn't fit is cut off with "…" and the row has the full display title as a tooltip.
 
 #### Scenario: Row
 - **WHEN** the widget shows "Groceries" with the symbol icon "cart" in the category "Garden" below "Home", added two days ago, and the sort is "Added"
@@ -65,6 +65,10 @@ Each note SHALL be shown in its own row with its icon, if it has one, its displa
 #### Scenario: Time follows the sort
 - **WHEN** a note was created a month ago and changed yesterday, and the sort is "Last changed"
 - **THEN** its row shows "yesterday"
+
+#### Scenario: Coloured row
+- **WHEN** the widget shows "Groceries" with the colour `green` and "Draft" without a colour
+- **THEN** both rows have a border, the row of "Groceries" has the green note background and the row of "Draft" the `surface` background
 
 ### Requirement: Recent notes open the editor
 For the owner, outside edit mode, activating a row with a click, a tap or the keyboard SHALL open the note's editor in a modal over the dashboard, the same as the note widget's "Open note" (see the `note-widget` capability), without leaving the dashboard. After the modal saves, or deletes the note, the widget shows the current notes. In edit mode, activating a row does nothing.
@@ -115,7 +119,7 @@ A recent notes widget with a title SHALL show it as a heading at its top, cut of
 - **THEN** the rows start at the top of the widget
 
 ### Requirement: Recent notes on public dashboards
-For anyone other than the owner, a recent notes widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its notes. With the flag on, visitors get the widget with the notes it shows, each with its display title, icon, chosen time and its category's title, and nothing else from the owner's notes: no content, IDs, versions, colours, category paths or other notes. The display title of an untitled note is worked out on the server, so only its first line of text up to the display title's length is sent. For visitors, the second line's tooltip is the category's title, and rows can't be activated.
+For anyone other than the owner, a recent notes widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its notes. With the flag on, visitors get the widget with the notes it shows, each with its display title, icon, colour, chosen time and its category's title, and nothing else from the owner's notes: no content, IDs, versions, category paths or other notes. The display title of an untitled note is worked out on the server, so only its first line of text up to the display title's length is sent. For visitors, the second line's tooltip is the category's title, and rows can't be activated.
 
 #### Scenario: Flag off
 - **WHEN** a visitor opens Ann's public dashboard with a recent notes widget whose "Show on public dashboard" is off
