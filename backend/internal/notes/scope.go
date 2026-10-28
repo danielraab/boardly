@@ -31,13 +31,20 @@ func scopeQuery(sc Scope) (cond string, args []any, ok bool) {
 	case ScopeAll:
 		return `user_id = ?`, []any{sc.UserID}, true
 	case ScopeCategory:
-		return `user_id = ? AND category_id IN (
+		sub, subArgs := subtreeQuery(sc.UserID, sc.CategoryID)
+		return `user_id = ? AND ` + sub, append([]any{sc.UserID}, subArgs...), true
+	}
+	return "", nil, false
+}
+
+// subtreeQuery returns the condition and arguments that limit notes to the
+// category id of the user and its subcategories at every depth.
+func subtreeQuery(userID, id string) (cond string, args []any) {
+	return `category_id IN (
 			WITH RECURSIVE sub (id) AS (
 				SELECT id FROM note_categories WHERE id = ? AND user_id = ?
 				UNION ALL SELECT c.id FROM note_categories c JOIN sub ON c.parent_id = sub.id
-			) SELECT id FROM sub)`, []any{sc.UserID, sc.CategoryID, sc.UserID}, true
-	}
-	return "", nil, false
+			) SELECT id FROM sub)`, []any{id, userID}
 }
 
 // ScopedNotes returns the notes in the scope, last changed first.

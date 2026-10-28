@@ -6,6 +6,7 @@ import { favouriteExplorerKind } from "./favouriteExplorer";
 import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
 import { noteKind } from "./note";
+import { noteListKind } from "./noteList";
 import { recentFavouritesKind } from "./recentFavourites";
 import { recentNotesKind } from "./recentNotes";
 
@@ -53,6 +54,7 @@ export const widgetKinds: WidgetKind[] = [
 	recentFavouritesKind,
 	noteKind,
 	recentNotesKind,
+	noteListKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

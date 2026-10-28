@@ -739,6 +739,29 @@
 				"empty": "Keine Notizen",
 				"emptyDays_one": "Keine Notizen am letzten Tag",
 				"emptyDays_other": "Keine Notizen in den letzten {{count}} Tagen"
+			},
+			"noteList": {
+				"name": "Notizliste",
+				"description": "Zeigt die Notizen einer Kategorie.",
+				"addTitle": "Notizliste hinzufügen",
+				"editTitle": "Notizliste bearbeiten",
+				"categoryLabel": "Kategorie",
+				"subcategoriesLabel": "Unterkategorien einbeziehen",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"sortLabel": "Sortierung",
+				"sort": {
+					"updated": "Zuletzt geändert",
+					"created": "Hinzugefügt",
+					"title": "Alphabetisch"
+				},
+				"limitLabel": "Anzahl Notizen",
+				"limitHint": "1 bis {{max}}.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"empty": "Keine Notizen",
+				"emptyCategory": "Keine Notizen in dieser Kategorie",
+				"missing": "Diese Kategorie existiert nicht mehr"
 			}
 		}
 	},

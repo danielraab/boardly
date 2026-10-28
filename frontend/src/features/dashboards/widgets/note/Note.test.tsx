@@ -344,7 +344,9 @@ describe("the note widget", () => {
 		const { user, router } = renderApp("/ann/home?edit=true");
 		await user.click(await screen.findByRole("button", { name: "Add widget" }));
 		const picker = await screen.findByRole("dialog", { name: "Add widget" });
-		await user.click(within(picker).getByRole("button", { name: /^Note/ }));
+		await user.click(
+			within(picker).getByRole("button", { name: /^Note(?! list)/ }),
+		);
 
 		const dialog = await screen.findByRole("dialog", { name: "Add note" });
 		const add = within(dialog).getByRole("button", { name: "Add" });

@@ -284,3 +284,36 @@ func TestRecentNotesWidget(t *testing.T) {
 		t.Errorf("visitor: %s", visitor)
 	}
 }
+
+func TestNoteListWidget(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	s.setSlug(t, ann, "ann")
+	home := s.createDashboard(t, ann, map[string]any{"title": "Home", "slug": "home", "isPublic": true})
+	rec := s.req("POST", "/api/note-categories", `{"title":"Work"}`, withCookie(ann))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create category: %d %s", rec.Code, rec.Body)
+	}
+	work := decodeJSONBody[struct{ ID string }](t, rec)
+	rec = s.req("POST", "/api/notes", `{"text":"call the plumber\nsecret details","categoryId":"`+work.ID+`"}`, withCookie(ann))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create note: %d %s", rec.Code, rec.Body)
+	}
+	note := decodeJSONBody[struct{ ID string }](t, rec)
+
+	rec = s.req("PUT", "/api/dashboards/"+home.ID+"/layout", `{"version":0,"sections":[{"kind":"section","width":6,"children":[
+		{"kind":"note_list","width":2,"config":{"category":"category","categoryId":"`+work.ID+`","subcategories":true,"sort":"updated","limit":5,"size":"M","showIfPublic":true}},
+		{"kind":"note_list","width":2,"config":{"category":"all","sort":"title","limit":5,"size":"M","title":"Private"}}]}]}`, withCookie(ann))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", rec.Code, rec.Body)
+	}
+	owner := s.req("GET", "/api/u/ann/home", "", withCookie(ann)).Body.String()
+	if !strings.Contains(owner, `"title":"call the plumber"`) || !strings.Contains(owner, `"id":"`+note.ID+`"`) || !strings.Contains(owner, "Private") {
+		t.Errorf("owner: %s", owner)
+	}
+	visitor := s.req("GET", "/api/u/ann/home", "").Body.String()
+	if !strings.Contains(visitor, `"title":"call the plumber"`) || strings.Contains(visitor, note.ID) ||
+		strings.Contains(visitor, "secret details") || strings.Contains(visitor, "Private") {
+		t.Errorf("visitor: %s", visitor)
+	}
+}

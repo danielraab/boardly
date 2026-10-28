@@ -1,0 +1,96 @@
+package notes
+
+import (
+	"encoding/json"
+	"reflect"
+	"testing"
+	"time"
+)
+
+func TestListedNotes(t *testing.T) {
+	f := newFixture(t)
+	home := f.category("Home", nil)
+	garden := f.category("Garden", &home)
+	f.category("Work", nil)
+	plumber := f.note("Plumber", &home)
+	f.now = f.now.Add(time.Hour)
+	f.note("Roses", &garden)
+	f.now = f.now.Add(time.Hour)
+	f.note("Draft", nil)
+	f.tick()
+	if _, err := f.s.UpdateNote(f.ctx, f.user, plumber.ID, 1, NotePatch{Color: ptr(ptr("green"))}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.CreateNote(f.ctx, f.other, NewNote{Title: ptr("Bob's")}); err != nil {
+		t.Fatal(err)
+	}
+
+	listed := func(sel Selection, order string, limit int) []string {
+		t.Helper()
+		list, err := f.s.ListedNotes(f.ctx, f.user, sel, order, limit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return titles(list)
+	}
+	all := Selection{Mode: SelectAll}
+	for _, tc := range []struct {
+		name  string
+		sel   Selection
+		order string
+		limit int
+		want  []string
+	}{
+		{"all by updated", all, SortUpdated, 10, []string{"Plumber", "Draft", "Roses"}},
+		{"all by created", all, SortCreated, 10, []string{"Draft", "Roses", "Plumber"}},
+		{"all by title", all, SortTitle, 10, []string{"Draft", "Plumber", "Roses"}},
+		{"limit", all, SortCreated, 2, []string{"Draft", "Roses"}},
+		{"title limit", all, SortTitle, 2, []string{"Draft", "Plumber"}},
+		{"uncategorized", Selection{Mode: SelectUncategorized}, SortUpdated, 10, []string{"Draft"}},
+		{"with subcategories", Selection{Mode: SelectCategory, CategoryID: home, Subcategories: true}, SortCreated, 10, []string{"Roses", "Plumber"}},
+		{"without subcategories", Selection{Mode: SelectCategory, CategoryID: home}, SortCreated, 10, []string{"Plumber"}},
+		{"subcategory", Selection{Mode: SelectCategory, CategoryID: garden, Subcategories: true}, SortCreated, 10, []string{"Roses"}},
+		{"unknown category", Selection{Mode: SelectCategory, CategoryID: "nope", Subcategories: true}, SortCreated, 10, []string{}},
+	} {
+		if got := listed(tc.sel, tc.order, tc.limit); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestListedNotesByTitle(t *testing.T) {
+	f := newFixture(t)
+	text := func(s string) json.RawMessage {
+		return json.RawMessage(`{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"text","text":"` + s + `"}]}]}`)
+	}
+	for _, n := range []NewNote{
+		{Title: ptr("zoo")},
+		{},
+		{Title: ptr("Ärzte")},
+		{Content: text("beta")},
+		{},
+	} {
+		f.tick()
+		if _, err := f.s.CreateNote(f.ctx, f.user, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := f.s.ListedNotes(f.ctx, f.user, Selection{Mode: SelectAll}, SortTitle, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, n := range list {
+		if title := DisplayTitle(n); title != nil {
+			got = append(got, *title)
+		} else {
+			got = append(got, "-")
+		}
+	}
+	if want := []string{"Ärzte", "beta", "zoo", "-", "-"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("by title = %q, want %q", got, want)
+	}
+	if list[3].ID > list[4].ID {
+		t.Errorf("untitled notes not ordered by ID: %s, %s", list[3].ID, list[4].ID)
+	}
+}

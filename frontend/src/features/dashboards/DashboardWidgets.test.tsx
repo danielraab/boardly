@@ -149,7 +149,7 @@ describe("adding, editing and deleting widgets", () => {
 		]);
 		expect(
 			names(within(picker).getByRole("region", { name: "Notes" })),
-		).toEqual(["Note", "Recent notes"]);
+		).toEqual(["Note", "Recent notes", "Note list"]);
 	});
 
 	it("shows the picker's group headings in German", async () => {

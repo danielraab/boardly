@@ -739,6 +739,29 @@
 				"empty": "No notes",
 				"emptyDays_one": "No notes in the last day",
 				"emptyDays_other": "No notes in the last {{count}} days"
+			},
+			"noteList": {
+				"name": "Note list",
+				"description": "Shows the notes of a category.",
+				"addTitle": "Add note list",
+				"editTitle": "Edit note list",
+				"categoryLabel": "Category",
+				"subcategoriesLabel": "Include subcategories",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the notes.",
+				"sortLabel": "Sort",
+				"sort": {
+					"updated": "Last changed",
+					"created": "Added",
+					"title": "Alphabetical"
+				},
+				"limitLabel": "Number of notes",
+				"limitHint": "1 to {{max}}.",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
+				"empty": "No notes",
+				"emptyCategory": "No notes in this category",
+				"missing": "This category no longer exists"
 			}
 		}
 	},
