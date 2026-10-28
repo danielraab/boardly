@@ -10,7 +10,8 @@
 		"notes": "Notizen",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden",
-		"addLink": "Link hinzufügen"
+		"addLink": "Link hinzufügen",
+		"github": "GitHub"
 	},
 	"theme": {
 		"system": "System",
@@ -58,7 +59,11 @@
 		"screenshot": {
 			"placeholder": "Screenshot folgt"
 		},
-		"featuresTitle": "Was {{appName}} kann"
+		"featuresTitle": "Was {{appName}} kann",
+		"github": "GitHub",
+		"footer": {
+			"openSource": "Open Source"
+		}
 	},
 	"features": {
 		"dashboards": {
@@ -77,7 +82,8 @@
 	"common": {
 		"loading": "Wird geladen…",
 		"genericError": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
-		"close": "Schließen"
+		"close": "Schließen",
+		"opensInNewTab": "(öffnet in neuem Tab)"
 	},
 	"verify": {
 		"title": "Anmeldung abschließen",

@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { primaryButton } from "#/components/buttonStyles";
+import { primaryButton, secondaryButton } from "#/components/buttonStyles";
+import { GithubIcon } from "#/components/GithubIcon";
 import { appTitle } from "#/lib/appTitle";
+import { githubRepoUrl } from "#/lib/sourceCode";
 import { features } from "./features";
 
 const tile = "rounded-md border border-line bg-paper/70";
@@ -30,9 +33,22 @@ export function Landing() {
 				<p className="mt-5 max-w-[34ch] text-xl text-muted sm:text-2xl">
 					{t("landing.hero.tagline")}
 				</p>
-				<Link to="/login" className={`${primaryButton} mt-8`}>
-					{t("landing.hero.cta")}
-				</Link>
+				<div className="mt-8 flex flex-wrap gap-3">
+					<Link to="/login" className={primaryButton}>
+						{t("landing.hero.cta")}
+					</Link>
+					<a
+						href={githubRepoUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label={`${t("landing.github")} ${t("common.opensInNewTab")}`}
+						className={secondaryButton}
+					>
+						<GithubIcon className="size-4" />
+						{t("landing.github")}
+						<ArrowUpRight className="size-4 text-muted" aria-hidden />
+					</a>
+				</div>
 			</section>
 
 			<figure className="relative aspect-video overflow-hidden rounded-xl border border-dashed border-line bg-surface p-3 sm:p-5">
@@ -76,6 +92,22 @@ export function Landing() {
 					))}
 				</ul>
 			</section>
+
+			<footer className="mt-16 flex items-center gap-2 border-t border-line pt-5 text-sm text-muted">
+				{t("landing.footer.openSource")}
+				<span aria-hidden>·</span>
+				<a
+					href={githubRepoUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label={`${t("landing.github")} ${t("common.opensInNewTab")}`}
+					className="inline-flex items-center gap-1 rounded-sm hover:text-ink"
+				>
+					<GithubIcon className="size-4" />
+					{t("landing.github")}
+					<ArrowUpRight className="size-3.5" aria-hidden />
+				</a>
+			</footer>
 		</>
 	);
 }
