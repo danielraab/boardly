@@ -267,3 +267,96 @@ func TestStatsWithNotes(t *testing.T) {
 		t.Errorf("stats = %+v", st)
 	}
 }
+
+// flag sets a note's pinned and archived flags.
+func (f *fixture) flag(n notes.Note, pinned, archived bool) notes.Note {
+	f.t.Helper()
+	n, err := f.notes.UpdateNote(f.ctx, f.user, n.ID, n.Version, notes.NotePatch{Pinned: &pinned, Archived: &archived})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return n
+}
+
+func TestNoteFlagsInBookmarks(t *testing.T) {
+	f := newFixture(t)
+	f.withNotes("")
+	f.link(f.sc.RootID, "Link", "https://example.org/a")
+	f.flag(f.note("Old plan", "old", nil), false, true)
+	f.flag(f.note("Groceries", "milk", nil), true, false)
+	both := f.flag(f.note("Both", "x", nil), true, true)
+
+	b, err := f.s.GetBookmark(f.ctx, f.sc, both.ID)
+	if err != nil || !b.Archived || !b.Favourited {
+		t.Errorf("pinned and archived note = %+v, %v; want archived and favourited", b, err)
+	}
+	yes, no := true, false
+	for name, tc := range map[string]struct {
+		in   BookmarksInput
+		want []string
+	}{
+		"all":            {BookmarksInput{}, []string{"Both", "Groceries", "Old plan", "Link"}},
+		"archived":       {BookmarksInput{Archived: &yes}, []string{"Both", "Old plan"}},
+		"not archived":   {BookmarksInput{Archived: &no}, []string{"Groceries", "Link"}},
+		"favourites":     {BookmarksInput{Favourited: &yes}, []string{"Both", "Groceries"}},
+		"no favourites":  {BookmarksInput{Favourited: &no}, []string{"Old plan", "Link"}},
+		"both filters":   {BookmarksInput{Archived: &no, Favourited: &yes}, []string{"Groceries"}},
+		"archived pages": {BookmarksInput{Archived: &yes, Limit: 1}, []string{"Both"}},
+	} {
+		page, err := f.s.Bookmarks(f.ctx, f.sc, tc.in)
+		if err != nil || !slices.Equal(titlesOf(page.Bookmarks), tc.want) {
+			t.Errorf("%s = %v, %v; want %v", name, titlesOf(page.Bookmarks), err, tc.want)
+		}
+		if name == "archived pages" && page.NextCursor == nil {
+			t.Errorf("archived pages: no cursor to the second archived note")
+		}
+	}
+
+	st, err := f.s.UserStats(f.ctx, f.sc)
+	if err != nil || st.NumFavorites != 2 || st.NumArchived != 2 {
+		t.Errorf("stats favourites %d, archived %d, err %v; want 2 and 2", st.NumFavorites, st.NumArchived, err)
+	}
+}
+
+func TestNoteFlagsOnCreateAndUpdate(t *testing.T) {
+	f := newFixture(t)
+	f.withNotes("")
+	yes, no := true, false
+	created, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "text", Text: ptrTo("milk"), Favourited: &yes})
+	if err != nil || !created.Favourited || created.Archived {
+		t.Fatalf("favourite note = %+v, %v", created.Bookmark, err)
+	}
+	if n, _ := f.notes.Note(f.ctx, f.user, created.ID); !n.Pinned || n.Archived {
+		t.Errorf("created note pinned %v, archived %v; want pinned only", n.Pinned, n.Archived)
+	}
+	if _, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "link", URL: "https://example.org/x", Archived: &yes}); !isInputError(err) {
+		t.Errorf("archived link: %v, want an input error", err)
+	}
+
+	n := f.note("Old plan", "old", nil)
+	updated, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: n.ID, Archived: &yes})
+	if err != nil || !updated.Archived {
+		t.Fatalf("archive note = %+v, %v", updated, err)
+	}
+	if got, _ := f.notes.Note(f.ctx, f.user, n.ID); !got.Archived || got.Version != n.Version+1 {
+		t.Errorf("archived note = %+v, want archived at version %d", got, n.Version+1)
+	}
+	same, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: n.ID, Archived: &yes})
+	if got, _ := f.notes.Note(f.ctx, f.user, n.ID); err != nil || !same.Archived || got.Version != n.Version+1 {
+		t.Errorf("archiving again: version %d, err %v; want no change", got.Version, err)
+	}
+	if _, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: created.ID, Favourited: &no}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.notes.Note(f.ctx, f.user, created.ID); got.Pinned {
+		t.Error("unfavourited note is still pinned")
+	}
+
+	link := f.link(f.sc.RootID, "Link", "https://example.org/a")
+	if _, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: link, Favourited: &yes}); !isInputError(err) {
+		t.Errorf("favourite link: %v, want an input error", err)
+	}
+	if _, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: link, Archived: &no}); err != nil {
+		t.Errorf("archived false on a link: %v, want accepted", err)
+	}
+}

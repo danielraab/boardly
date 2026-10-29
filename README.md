@@ -241,7 +241,9 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
     category (uncategorized with "All notes"). They show up with the links, newest first, and in
     searches by their title and text. Editing a note's text in the app keeps the IDs of its todos
     whose text stays the same; formatting Markdown can't express exactly, such as empty lines
-    between paragraphs, may be simplified. Notes have no tags and aren't in lists.
+    between paragraphs, may be simplified. Notes have no tags and aren't in lists. Archiving a
+    text bookmark in the app archives the note, and making it a favourite pins it; the app's
+    archive and favourites lists show the archived and pinned notes.
 - Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
   contents", only keys for the deleted folder itself are revoked. Deleting a note category that a
   key uses as its category does the same; keys for its subcategories keep working.
@@ -252,8 +254,8 @@ title, tags and list. In the app you can browse, search, save, edit and delete b
 manage lists and tags. Bookmark cards show the link's **description** and **preview image**, or
 the site's favicon when there is no preview; the description can be edited in the app. Tapping a
 bookmark opens the page. Karakeep features Boardly doesn't have
-answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving,
-favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
+answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving
+and favouriting links, highlights, reading progress, AI tagging and summaries, smart and public lists, list
 icons and descriptions, and list sharing.
 
 Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
