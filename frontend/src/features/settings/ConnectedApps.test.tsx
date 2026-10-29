@@ -183,6 +183,27 @@ describe("connected apps tab", () => {
 		},
 	);
 
+	it("shows a Memos token with its logo and category, and no folder", async () => {
+		setTheme("black");
+		const { panel } = await openTab([
+			{
+				...active,
+				app: "memos",
+				rootId: null,
+				noteScope: "category",
+				rootCategoryId: "inbox",
+			},
+		]);
+		const [memos] = await within(panel).findAllByRole("listitem");
+		expect(memos.querySelector("img")).toHaveAttribute(
+			"src",
+			appLogos.memos.dark,
+		);
+		await waitFor(() => expect(memos).toHaveTextContent("Memos · Inbox"));
+		expect(memos).not.toHaveTextContent("Deleted folder");
+		setTheme("white");
+	});
+
 	it("revokes only after confirmation", async () => {
 		const { panel, user, api } = await openTab([active]);
 		await user.click(
@@ -341,7 +362,7 @@ describe("create dialog", () => {
 			within(appSelect)
 				.getAllByRole("option")
 				.map((o) => o.textContent),
-		).toEqual(["Karakeep", "Linkwarden"]);
+		).toEqual(["Karakeep", "Linkwarden", "Memos"]);
 
 		await user.selectOptions(appSelect, "linkwarden");
 		await user.type(within(dialog).getByLabelText("Name"), "Phone");
@@ -484,6 +505,49 @@ describe("root category in the create dialog", () => {
 	});
 });
 
+describe("Memos in the create dialog", () => {
+	it("asks only for a category and shows the Memos address", async () => {
+		const { panel, user, api } = await openTab([]);
+		api.set({
+			"POST /api/app-tokens": ({ body }) => ({
+				status: 201,
+				body: {
+					...active,
+					...(body as object),
+					rootId: null,
+					secret: "bdly_X",
+				},
+			}),
+		});
+		await user.click(
+			await within(panel).findByRole("button", { name: "Connect app" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		await user.selectOptions(within(dialog).getByLabelText("App"), "memos");
+		expect(within(dialog).getByText(/MoeMemos/)).toBeVisible();
+		expect(within(dialog).queryByRole("radio", { name: "Reading" })).toBeNull();
+		const picker = within(dialog).getByRole("radiogroup", {
+			name: "Category for notes",
+		});
+		expect(within(dialog).getByText(/New memos from the app/)).toBeVisible();
+		await user.click(
+			await within(picker).findByRole("radio", { name: "Inbox" }),
+		);
+		await user.type(within(dialog).getByLabelText("Name"), "Phone");
+		await user.click(
+			within(dialog).getByRole("button", { name: "Create key" }),
+		);
+
+		await within(dialog).findByRole("heading", { name: "App connected" });
+		const body = api.callsTo("POST", "/api/app-tokens")[0].body;
+		expect(body).toMatchObject({ app: "memos", rootCategoryId: "inbox" });
+		expect(body).not.toHaveProperty("rootId");
+		expect(within(dialog).getByLabelText("Server address")).toHaveValue(
+			`${window.location.origin}/api/memos`,
+		);
+	});
+});
+
 describe("edit dialog", () => {
 	async function openEdit(token: AppToken) {
 		const tab = await openTab([token]);
@@ -545,6 +609,25 @@ describe("edit dialog", () => {
 		expect(
 			within(dialog).queryByRole("radiogroup", { name: "Category for notes" }),
 		).toBeNull();
+	});
+
+	it("shows only the category for Memos", async () => {
+		const memos: AppToken = { ...active, app: "memos", rootId: null };
+		const { dialog, user, api } = await openEdit(memos);
+		api.set({ "PATCH /api/app-tokens/t1": { body: memos } });
+		const picker = within(dialog).getByRole("radiogroup", {
+			name: "Category for notes",
+		});
+		expect(within(dialog).queryByRole("radio", { name: "Later" })).toBeNull();
+		await user.click(
+			await within(picker).findByRole("radio", { name: "Inbox" }),
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(api.callsTo("PATCH", "/api/app-tokens/t1")[0].body).toEqual({
+			rootCategoryId: "inbox",
+		});
 	});
 
 	it("keeps the dialog open with an error", async () => {

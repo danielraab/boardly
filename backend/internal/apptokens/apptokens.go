@@ -1,6 +1,7 @@
 // Package apptokens stores the API tokens that connected apps (such as
 // Karakeep clients) use, each bound to one app, one folder of the owner's
-// favourites tree and, for Karakeep, a part of the owner's notes.
+// favourites tree (except Memos tokens) and, for Karakeep and Memos, a part
+// of the owner's notes.
 package apptokens
 
 import (
@@ -26,13 +27,21 @@ type App string
 const (
 	AppKarakeep   App = "karakeep"
 	AppLinkwarden App = "linkwarden"
+	AppMemos      App = "memos"
 )
+
+// hasRoot reports whether tokens for app have a root folder. Memos has no
+// bookmarks, so its tokens have none.
+func (a App) hasRoot() bool { return a != AppMemos }
+
+// hasNotes reports whether tokens for app see notes.
+func (a App) hasNotes() bool { return a == AppKarakeep || a == AppMemos }
 
 // NoteScope is which notes a token sees.
 type NoteScope string
 
-// Note scopes. Karakeep tokens see all notes or those of a root category with
-// its subcategories; Linkwarden tokens see none.
+// Note scopes. Karakeep and Memos tokens see all notes or those of a root
+// category with its subcategories; Linkwarden tokens see none.
 const (
 	NoteScopeAll      NoteScope = "all"
 	NoteScopeCategory NoteScope = "category"
@@ -97,9 +106,9 @@ type Token struct {
 	Status         Status     `json:"status"`
 }
 
-// NewToken is a token to create. A nil ExpiresAt means it never expires. A
-// nil RootCategoryID gives a Karakeep token all notes; Linkwarden tokens
-// can't have one.
+// NewToken is a token to create. A nil ExpiresAt means it never expires.
+// RootID must be empty for a Memos token. A nil RootCategoryID gives a
+// Karakeep or Memos token all notes; Linkwarden tokens can't have one.
 type NewToken struct {
 	Name           string
 	App            App
@@ -109,7 +118,8 @@ type NewToken struct {
 }
 
 // Patch lists what to change on a token; nil fields stay as they are. A nil
-// *string RootCategoryID gives the token all notes.
+// *string RootCategoryID gives the token all notes. A Memos token only
+// accepts an empty RootID.
 type Patch struct {
 	RootID         *string
 	RootCategoryID **string
@@ -135,15 +145,19 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	if name == "" || utf8.RuneCountInString(name) > MaxNameLength {
 		return Token{}, "", ErrInvalidName
 	}
-	if n.App != AppKarakeep && n.App != AppLinkwarden {
+	if n.App != AppKarakeep && n.App != AppLinkwarden && n.App != AppMemos {
 		return Token{}, "", ErrInvalidApp
 	}
 	now := s.Now()
 	if n.ExpiresAt != nil && !n.ExpiresAt.After(now) {
 		return Token{}, "", ErrInvalidExpiry
 	}
-	if err := checkRoot(ctx, s.DB, userID, n.RootID); err != nil {
+	if err := checkRoot(ctx, s.DB, userID, n.App, n.RootID); err != nil {
 		return Token{}, "", err
+	}
+	var rootID *string
+	if n.App.hasRoot() {
+		rootID = &n.RootID
 	}
 	scope, err := noteScope(ctx, s.DB, userID, n.App, n.RootCategoryID)
 	if err != nil {
@@ -160,7 +174,7 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	if _, err := s.DB.ExecContext(ctx,
 		`INSERT INTO app_tokens (id, user_id, name, app, root_id, note_scope, root_category_id, token_hash, prefix, created_at, expires_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, userID, name, n.App, n.RootID, scope, n.RootCategoryID, Hash(secret), secret[:PrefixLength], db.FormatTime(now), expires,
+		id, userID, name, n.App, rootID, scope, n.RootCategoryID, Hash(secret), secret[:PrefixLength], db.FormatTime(now), expires,
 	); err != nil {
 		return Token{}, "", err
 	}
@@ -168,8 +182,15 @@ func (s *Store) Create(ctx context.Context, userID string, n NewToken) (Token, s
 	return t, secret, err
 }
 
-// checkRoot returns ErrInvalidRoot unless id is a folder of the user.
-func checkRoot(ctx context.Context, q db.Querier, userID, id string) error {
+// checkRoot returns ErrInvalidRoot unless id is a folder of the user, or
+// empty for an app without a root folder.
+func checkRoot(ctx context.Context, q db.Querier, userID string, app App, id string) error {
+	if !app.hasRoot() {
+		if id != "" {
+			return ErrInvalidRoot
+		}
+		return nil
+	}
 	var isFolder bool
 	if err := q.QueryRowContext(ctx,
 		`SELECT EXISTS (SELECT 1 FROM favourite_nodes WHERE id = ? AND user_id = ? AND kind = 'folder')`,
@@ -186,7 +207,7 @@ func checkRoot(ctx context.Context, q db.Querier, userID, id string) error {
 // noteScope returns the note scope of a token for app with the root category
 // categoryID, or ErrInvalidRootCategory.
 func noteScope(ctx context.Context, q db.Querier, userID string, app App, categoryID *string) (NoteScope, error) {
-	if app != AppKarakeep {
+	if !app.hasNotes() {
 		if categoryID != nil {
 			return "", ErrInvalidRootCategory
 		}
@@ -224,9 +245,11 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (Token, 
 		return Token{}, ErrInactive
 	}
 	if p.RootID != nil {
-		if err := checkRoot(ctx, tx, userID, *p.RootID); err != nil {
+		if err := checkRoot(ctx, tx, userID, t.App, *p.RootID); err != nil {
 			return Token{}, err
 		}
+	}
+	if p.RootID != nil && t.App.hasRoot() {
 		if _, err := tx.ExecContext(ctx, `UPDATE app_tokens SET root_id = ? WHERE id = ?`, *p.RootID, id); err != nil {
 			return Token{}, err
 		}
@@ -331,7 +354,7 @@ func (s *Store) Authenticate(ctx context.Context, secret string, app App) (Token
 	}
 	// An active token always has its root and root category: deleting them
 	// revokes the token.
-	if t.Status != StatusActive || t.App != app || t.RootID == nil ||
+	if t.Status != StatusActive || t.App != app || (app.hasRoot() && t.RootID == nil) ||
 		(t.NoteScope == NoteScopeCategory && t.RootCategoryID == nil) {
 		return Token{}, ErrInvalidToken
 	}

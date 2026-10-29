@@ -995,3 +995,63 @@ func TestNotePinArchiveMigration(t *testing.T) {
 		t.Error("pinned = 2 was accepted")
 	}
 }
+
+func TestMemosAppTokensMigration(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0020")); err != nil {
+		t.Fatalf("Migrate to 0020: %v", err)
+	}
+	const ts = "2026-01-01T00:00:00.000Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, created_at, updated_at) VALUES ('root', 'u1', NULL, 'folder', 0, '` + ts + `', '` + ts + `')`,
+		`INSERT INTO note_categories (id, user_id, title, created_at, updated_at) VALUES ('c1', 'u1', 'Inbox', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at, last_used_at, note_scope, root_category_id) VALUES ('k', 'u1', 'Phone', 'karakeep', 'root', x'01', 'bdly_abcdefg', '` + ts + `', '` + ts + `', 'category', 'c1')`,
+		`INSERT INTO app_tokens (id, user_id, name, app, root_id, token_hash, prefix, created_at, revoked_at) VALUES ('l', 'u1', 'Tablet', 'linkwarden', 'root', x'02', 'bdly_abcdefh', '` + ts + `', '` + ts + `')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	var got []string
+	rows, err := db.Query(`SELECT id || ' ' || app || ' ' || root_id || ' ' || note_scope || ' ' || COALESCE(root_category_id, '-') || ' ' || COALESCE(last_used_at, '-') || ' ' || COALESCE(revoked_at, '-') FROM app_tokens ORDER BY rowid`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, s)
+	}
+	rows.Close()
+	want := []string{"k karakeep root category c1 " + ts + " -", "l linkwarden root none - - " + ts}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("tokens =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+
+	if _, err := db.Exec(`INSERT INTO app_tokens (id, user_id, name, app, token_hash, prefix, created_at, note_scope) VALUES ('m', 'u1', 'MoeMemos', 'memos', x'03', 'bdly_abcdefi', ?, 'all')`, ts); err != nil {
+		t.Fatalf("memos token: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO app_tokens (id, user_id, name, app, token_hash, prefix, created_at) VALUES ('x', 'u1', 'X', 'other', x'04', 'bdly_abcdefj', ?)`, ts); err == nil {
+		t.Error("an unknown app was accepted")
+	}
+	// Deleting the root category still clears it.
+	if _, err := db.Exec(`DELETE FROM note_categories WHERE id = 'c1'`); err != nil {
+		t.Fatal(err)
+	}
+	var category *string
+	if err := db.QueryRow(`SELECT root_category_id FROM app_tokens WHERE id = 'k'`).Scan(&category); err != nil || category != nil {
+		t.Errorf("root category after delete = %v, %v", category, err)
+	}
+}

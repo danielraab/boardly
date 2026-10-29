@@ -117,10 +117,10 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app to your favourites. Each connection gets its own API key and only sees the folder you choose for it, and for Karakeep the notes of the category you choose.",
+			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app, or a Memos app like MoeMemos, to your favourites and notes. Each connection gets its own API key and only sees the folder you choose for it, and for Karakeep and Memos the notes of the category you choose.",
 			"connect": "Connect app",
 			"emptyTitle": "No connected apps yet",
-			"emptyText": "Connect a Karakeep or Linkwarden app to save links straight into a folder of your favourites. The app only sees that folder and what's inside it.",
+			"emptyText": "Connect a Karakeep or Linkwarden app to save links straight into a folder of your favourites, or a Memos app to write your notes on the go. The app only sees the folder or category you choose.",
 			"deletedFolder": "Deleted folder",
 			"status": {
 				"active": "Active",
@@ -149,6 +149,7 @@
 				"name": "Name",
 				"namePlaceholder": "e.g. Phone",
 				"app": "App",
+				"memosHint": "For Memos apps like MoeMemos. They see only notes, no favourites.",
 				"root": "Folder",
 				"rootHint": "The app sees and saves only into this folder and the folders inside it.",
 				"rootInvalid": "Choose one of your folders.",
@@ -166,6 +167,7 @@
 				"creating": "Creating…",
 				"rootCategory": "Category for notes",
 				"rootCategoryHint": "Text bookmarks from the app are saved as notes in this category. The app sees the notes of this category and its subcategories.",
+				"rootCategoryHintMemos": "New memos from the app are saved as notes in this category. The app sees the notes of this category and its subcategories.",
 				"rootCategoryInvalid": "Choose one of your categories."
 			},
 			"secret": {

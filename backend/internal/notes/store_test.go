@@ -334,3 +334,16 @@ func TestNotesOfOtherUsers(t *testing.T) {
 		t.Errorf("deleted note: %v, want ErrNotFound", err)
 	}
 }
+
+func TestCreateNoteWithCreationTime(t *testing.T) {
+	f := newFixture(t)
+	yesterday := f.now.Add(-24 * time.Hour)
+	n, err := f.s.CreateNote(f.ctx, f.user, NewNote{CreatedAt: yesterday})
+	if err != nil || !n.CreatedAt.Equal(yesterday) || !n.UpdatedAt.Equal(f.now) {
+		t.Errorf("created %v, changed %v, err %v; want yesterday and now", n.CreatedAt, n.UpdatedAt, err)
+	}
+	future, err := f.s.CreateNote(f.ctx, f.user, NewNote{CreatedAt: f.now.Add(time.Hour)})
+	if err != nil || !future.CreatedAt.Equal(f.now) {
+		t.Errorf("future creation time = %v, %v; want now", future.CreatedAt, err)
+	}
+}

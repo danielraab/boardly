@@ -56,7 +56,9 @@ type Note struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-// NewNote is the input of CreateNote. A nil Content is an empty document.
+// NewNote is the input of CreateNote. A nil Content is an empty document. A
+// zero CreatedAt, or one in the future, means now; the time of last change is
+// always now.
 type NewNote struct {
 	Title      *string
 	Icon       *Icon
@@ -65,6 +67,7 @@ type NewNote struct {
 	Content    json.RawMessage
 	Pinned     bool
 	Archived   bool
+	CreatedAt  time.Time
 }
 
 // NotePatch lists the fields to change; nil fields stay as they are, and a
@@ -240,11 +243,16 @@ func (s *Store) CreateNote(ctx context.Context, userID string, n NewNote) (Note,
 		return Note{}, err
 	}
 	id := uuid.NewString()
-	now := db.FormatTime(s.Now())
+	nowTime := s.Now()
+	createdAt := n.CreatedAt
+	if createdAt.IsZero() || createdAt.After(nowTime) {
+		createdAt = nowTime
+	}
+	now := db.FormatTime(nowTime)
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO notes (id, user_id, category_id, title, icon_symbol, icon_image_id, color, content, pinned, archived, version, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-		id, userID, n.CategoryID, title, symbol, imageID, n.Color, content, n.Pinned, n.Archived, now, now,
+		id, userID, n.CategoryID, title, symbol, imageID, n.Color, content, n.Pinned, n.Archived, db.FormatTime(createdAt), now,
 	); err != nil {
 		return Note{}, err
 	}

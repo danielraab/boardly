@@ -1,13 +1,21 @@
 import { queryOptions } from "@tanstack/react-query";
 import { api } from "#/lib/api";
 
-export type AppTokenApp = "karakeep" | "linkwarden";
+export type AppTokenApp = "karakeep" | "linkwarden" | "memos";
 
 /** The apps' product names, which aren't translated. */
 export const appNames: Record<AppTokenApp, string> = {
 	karakeep: "Karakeep",
 	linkwarden: "Linkwarden",
+	memos: "Memos",
 };
+
+/** Whether tokens for app have a root folder; Memos has no bookmarks. */
+export const appHasRoot = (app: AppTokenApp) => app !== "memos";
+
+/** Whether tokens for app see notes, and so have a root category. */
+export const appHasNotes = (app: AppTokenApp) =>
+	app === "karakeep" || app === "memos";
 
 export type AppTokenStatus = "active" | "expired" | "revoked";
 
@@ -21,7 +29,7 @@ export type AppToken = {
 	app: AppTokenApp;
 	/** The first 12 characters of the secret. */
 	prefix: string;
-	/** null once the root folder was deleted. */
+	/** null once the root folder was deleted, and always for Memos. */
 	rootId: string | null;
 	noteScope: NoteScope;
 	/** The root category for the scope "category", null once it was deleted. */
@@ -39,8 +47,9 @@ export type CreatedAppToken = AppToken & { secret: string };
 export type NewAppToken = {
 	name: string;
 	app: AppTokenApp;
-	rootId: string;
-	/** Karakeep only: a root category, or null for all notes. */
+	/** Left out for Memos, which has no root folder. */
+	rootId?: string;
+	/** Karakeep and Memos only: a root category, or null for all notes. */
 	rootCategoryId?: string | null;
 	/** RFC 3339, or null for no expiry. */
 	expiresAt: string | null;

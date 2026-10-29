@@ -197,3 +197,40 @@ func TestEditAppToken(t *testing.T) {
 		t.Errorf("revoked: %d %s", rec.Code, rec.Body)
 	}
 }
+
+func TestMemosAppToken(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	folder := s.create(t, ann, map[string]any{"kind": "folder", "title": "Reading"})
+	inbox := s.noteCategory(t, ann, "Inbox", "")
+
+	rec := s.req("POST", "/api/app-tokens", `{"name":"MoeMemos","app":"memos"}`, withCookie(ann))
+	tok := decodeJSONBody[createdToken](t, rec)
+	if rec.Code != http.StatusCreated || tok.App != apptokens.AppMemos || tok.RootID != nil || tok.NoteScope != apptokens.NoteScopeAll {
+		t.Fatalf("memos token: %d %s", rec.Code, rec.Body)
+	}
+	rec = s.req("POST", "/api/app-tokens", mustJSON(map[string]any{"name": "Inbox", "app": "memos", "rootCategoryId": inbox}), withCookie(ann))
+	if got := decodeJSONBody[createdToken](t, rec); rec.Code != http.StatusCreated || got.NoteScope != apptokens.NoteScopeCategory {
+		t.Fatalf("with a category: %d %s", rec.Code, rec.Body)
+	}
+	rec = s.req("POST", "/api/app-tokens", mustJSON(map[string]any{"name": "x", "app": "memos", "rootId": folder.ID}), withCookie(ann))
+	if rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_root" {
+		t.Errorf("with a root folder: %d %s", rec.Code, rec.Body)
+	}
+	if list := decodeJSONBody[[]apptokens.Token](t, s.req("GET", "/api/app-tokens", "", withCookie(ann))); len(list) != 2 || list[1].RootID != nil {
+		t.Errorf("list = %+v", list)
+	}
+
+	patch := func(body string) *httptest.ResponseRecorder {
+		return s.req("PATCH", "/api/app-tokens/"+tok.ID, body, withCookie(ann))
+	}
+	if rec := patch(`{"rootCategoryId":"` + inbox + `","rootId":null}`); rec.Code != http.StatusOK || decodeJSONBody[apptokens.Token](t, rec).NoteScope != apptokens.NoteScopeCategory {
+		t.Errorf("change the category: %d %s", rec.Code, rec.Body)
+	}
+	if rec := patch(`{"rootCategoryId":null}`); decodeJSONBody[apptokens.Token](t, rec).NoteScope != apptokens.NoteScopeAll {
+		t.Errorf("back to all notes: %s", rec.Body)
+	}
+	if rec := patch(`{"rootId":"` + folder.ID + `"}`); rec.Code != http.StatusBadRequest || errorCode(t, rec) != "invalid_root" {
+		t.Errorf("set a root folder: %d %s", rec.Code, rec.Body)
+	}
+}

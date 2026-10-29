@@ -270,3 +270,31 @@ func TestReplaceContentFromMarkdown(t *testing.T) {
 		}
 	})
 }
+
+func TestTitleHeading(t *testing.T) {
+	content := FromMarkdown("- [ ] milk\n\n# Inner")
+	for _, title := range []string{"Groceries", "2 * 3 # not a heading", "[x] _a_"} {
+		md := ToMarkdown(WithTitleHeading(&title, content))
+		got, rest := TitleFromHeading(FromMarkdown(md))
+		if got == nil || *got != title {
+			t.Errorf("title %q: read back %v from %q", title, got, md)
+		}
+		if ToMarkdown(rest) != ToMarkdown(content) {
+			t.Errorf("title %q: content %q, want %q", title, ToMarkdown(rest), ToMarkdown(content))
+		}
+	}
+	if md := ToMarkdown(WithTitleHeading(nil, content)); md != ToMarkdown(content) {
+		t.Errorf("no title = %q", md)
+	}
+	for name, md := range map[string]string{
+		"level 2":     "## Week\n\n- [ ] review",
+		"paragraph":   "milk",
+		"empty":       "",
+		"too long":    "# " + strings.Repeat("x", MaxNoteTitle+1),
+		"blank title": "#\n\ntext",
+	} {
+		if title, rest := TitleFromHeading(FromMarkdown(md)); title != nil || len(rest.Blocks) != len(FromMarkdown(md).Blocks) {
+			t.Errorf("%s: title %v, want none and all blocks kept", name, title)
+		}
+	}
+}
