@@ -265,6 +265,15 @@ func (s *optString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// optBool is a boolean of an export that reads anything but true as false.
+type optBool bool
+
+func (b *optBool) UnmarshalJSON(data []byte) error {
+	var v bool
+	*b = optBool(json.Unmarshal(data, &v) == nil && v)
+	return nil
+}
+
 // decodeJSON decodes r into v and returns ErrInvalidFile for invalid JSON.
 func decodeJSON(r io.Reader, v any) error {
 	if err := json.NewDecoder(r).Decode(v); err != nil {

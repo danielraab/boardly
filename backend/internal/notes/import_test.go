@@ -170,3 +170,37 @@ func TestImportDuplicateNotes(t *testing.T) {
 		t.Errorf("Basil in recipes/Pasta %d times, want %d:\n%s", got, want, f.outline())
 	}
 }
+
+func TestImportArchivedNotes(t *testing.T) {
+	f := newFixture(t)
+	created := time.Date(2026, 9, 25, 19, 48, 21, 0, time.UTC)
+	existing := f.note("Old plan", nil)
+	tree := ImportTree{Root: ImportCategory{Notes: []ImportNote{
+		{Title: ptr("Archived"), Content: FromText("old plan"), CreatedAt: created, Archived: true},
+		{Title: ptr("Old plan"), Content: existing.Content, Archived: true},
+	}}}
+	report, err := f.s.ImportTx(f.ctx, f.db, f.user, nil, tree, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (ImportReport{Notes: 1, DuplicateNotes: 1}); report != want {
+		t.Errorf("report = %+v, want %+v", report, want)
+	}
+	ns, err := f.s.Notes(f.ctx, f.user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range ns {
+		switch *n.Title {
+		case "Archived":
+			if !n.Archived || n.Pinned || n.Version != 1 || !n.CreatedAt.Equal(created) || !n.UpdatedAt.Equal(created) {
+				t.Errorf("imported note = %+v, want archived, not pinned, version 1, created and changed at %v", n, created)
+			}
+		case "Old plan":
+			// The skipped duplicate leaves the existing note as it was.
+			if n.Archived || n.Version != 1 {
+				t.Errorf("existing note = %+v, want unchanged", n)
+			}
+		}
+	}
+}

@@ -28,11 +28,13 @@ type ImportCategory struct {
 }
 
 // ImportNote is a note of an import file. A zero CreatedAt means the import
-// time; it is also the note's time of last change.
+// time; it is also the note's time of last change. Imported notes are never
+// pinned.
 type ImportNote struct {
 	Title     *string
 	Content   Doc
 	CreatedAt time.Time
+	Archived  bool
 }
 
 // ImportReport counts the notes and categories an import added and left out.
@@ -176,9 +178,9 @@ func (im *importer) addNote(ctx context.Context, categoryID *string, n ImportNot
 	}
 	at := db.FormatTime(created)
 	if _, err := im.q.ExecContext(ctx,
-		`INSERT INTO notes (id, user_id, category_id, title, content, version, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
-		uuid.NewString(), im.userID, categoryID, title, content, at, at,
+		`INSERT INTO notes (id, user_id, category_id, title, content, archived, version, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+		uuid.NewString(), im.userID, categoryID, title, content, n.Archived, at, at,
 	); err != nil {
 		return err
 	}

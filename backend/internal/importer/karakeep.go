@@ -31,8 +31,9 @@ type karakeepBookmark struct {
 		URL  optString `json:"url"`
 		Text optString `json:"text"`
 	} `json:"content"`
-	Note    optString `json:"note"`
-	Summary optString `json:"summary"`
+	Note     optString `json:"note"`
+	Summary  optString `json:"summary"`
+	Archived optBool   `json:"archived"`
 }
 
 // ParseKarakeep reads a Karakeep JSON export: manual lists become folders,
@@ -123,6 +124,7 @@ func karakeepNote(bm karakeepBookmark) (n notes.ImportNote, ok bool) {
 		n.Title = &title
 	}
 	n.CreatedAt = bm.CreatedAt.time()
+	n.Archived = bool(bm.Archived)
 	n.Content = notes.FromMarkdown(string(bm.Content.Text))
 	for _, extra := range []struct{ prefix, text string }{{"Note: ", string(bm.Note)}, {"Summary: ", string(bm.Summary)}} {
 		if t := strings.TrimSpace(extra.text); t != "" {

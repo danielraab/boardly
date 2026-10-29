@@ -84,9 +84,10 @@ You choose the folder to import into. The top-level folder is allowed. The impor
   sublists, are created as categories below the chosen one, reusing categories of the same name,
   ignoring case. Lists with only links create no category. A note with the same title and content as
   one of your notes, or one earlier in the file, is skipped, and a note larger than 512 KB is left
-  out.
+  out. An archived text bookmark becomes an archived note, shown under **Archived** on the Notes
+  page.
 - Not imported: Karakeep asset bookmarks, Karakeep smart lists, Linkwarden uploads without a URL
-  (PDFs, images), and archived, favourited and pinned flags.
+  (PDFs, images), and the archived, favourited and pinned flags of links.
 - The import is all or nothing, and the file can have at most 10 MB. Afterwards, the page shows how
   many links, folders, notes and categories were added and what was skipped.
 - Favicons, descriptions and preview images of the imported links are fetched in the background, as

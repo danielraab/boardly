@@ -170,7 +170,9 @@ function CardBody({
 					if (!e.currentTarget.contains(e.relatedTarget)) onEditEnd();
 				}}
 			>
-				<div className={`mb-2 flex items-center gap-2 ${note.pinned ? "pr-14" : "pr-8"}`}>
+				<div
+					className={`mb-2 flex items-center gap-2 ${note.pinned ? "pr-14" : "pr-8"}`}
+				>
 					{note.icon && (
 						<ChosenIcon {...iconProps(note.icon)} className="size-5 shrink-0" />
 					)}
