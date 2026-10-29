@@ -6,8 +6,32 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
 ### Added
 
+- Notes on a new Notes page (`/notes`, linked from the user menu): a card grid with an optional
+  title, icon and colour per note, and rich content written with Markdown shortcuts, including
+  checkable todos. Notes are saved automatically and sorted into nested categories, managed in a
+  side panel.
+- Notes can be edited inline on their cards, and todos ticked off there. "Open note" opens the full
+  editor.
+- Dashboard widgets for notes, grouped under "Notes" in the widget picker: "Note" shows one note
+  with its todos, "Recent notes" the newest notes, "Note list" the notes of a category and
+  "Selected notes" a hand-picked list. Each can be shown on public dashboards. Rows look like note
+  cards in the note's colour.
+- Opening a note from a dashboard widget shows its editor in a modal and adds `?note=<id>` to the
+  address, so Back closes it and the address can be reloaded or shared.
+- Dashboard sections with a title can be collapsed. The state is remembered in the browser.
+- GitHub links on the landing page and in the user menu.
+- Notes can be pinned and archived from the note menu. Pinned notes come first and show a pin;
+  archived notes are left out of the categories and shown under a new "Archived" entry. Note
+  widgets still show archived notes, marked as archived.
+- Memos-compatible API at `/api/memos` for the MoeMemos app, with a new "Memos" connected app whose
+  key can be limited to a note category. Memos are notes in Markdown, with the title as a leading
+  `# ` heading; pinned and archived map to the note's flags. Attachments aren't supported yet.
+- The Karakeep apps see a note's archived flag as `archived` and its pinned flag as `favourited`,
+  can set both and filter by them. The Karakeep import keeps archived text bookmarks archived.
 - `BOARDLY_LOG_REQUESTS` chooses which HTTP requests are logged: `all` (default), `errors`
   (status 500 and higher) or `none`.
 - The Karakeep import creates notes from text bookmarks, in a category chosen on the import form.
@@ -31,6 +55,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
   1536 px, favourites, the dashboards list and the landing page up to 1152 px, settings, a note and
   the not-found page up to 768 px. All narrower pages are centred.
 - Successful health checks (`GET /api/health` answered with 200) are no longer logged.
+- The settings tab bar scrolls sideways on narrow screens instead of wrapping its labels.
 
 ## [0.2.0] - 2026-10-27
 
@@ -122,7 +147,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/danielraab/boardly/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielraab/boardly/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielraab/boardly/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/danielraab/boardly/releases/tag/v0.0.1
