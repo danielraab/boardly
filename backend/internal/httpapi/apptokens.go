@@ -18,9 +18,9 @@ func appTokensError(err error) error {
 	case errors.Is(err, apptokens.ErrInvalidApp):
 		return NewError(http.StatusBadRequest, "invalid_app", "Unknown app")
 	case errors.Is(err, apptokens.ErrInvalidRoot):
-		return NewError(http.StatusBadRequest, "invalid_root", "The root must be one of your folders")
+		return NewError(http.StatusBadRequest, "invalid_root", "The root must be one of your folders, and Memos apps have none")
 	case errors.Is(err, apptokens.ErrInvalidRootCategory):
-		return NewError(http.StatusBadRequest, "invalid_root_category", "The root category must be one of your categories, and only Karakeep apps have one")
+		return NewError(http.StatusBadRequest, "invalid_root_category", "The root category must be one of your categories, and only Karakeep and Memos apps have one")
 	case errors.Is(err, apptokens.ErrInvalidExpiry):
 		return errInvalidExpiry
 	case errors.Is(err, apptokens.ErrInactive):
@@ -86,7 +86,8 @@ func (a *api) updateAppToken(w http.ResponseWriter, r *http.Request) error {
 	if ok, err := field(body, "rootId", &p.RootID, appTokensError(apptokens.ErrInvalidRoot)); err != nil {
 		return err
 	} else if ok && p.RootID == nil {
-		return appTokensError(apptokens.ErrInvalidRoot)
+		// null is only valid for a token without a root folder (Memos).
+		p.RootID = new(string)
 	}
 	var category *string
 	if ok, err := field(body, "rootCategoryId", &category, appTokensError(apptokens.ErrInvalidRootCategory)); err != nil {

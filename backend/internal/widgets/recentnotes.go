@@ -43,6 +43,8 @@ type recentNote struct {
 	Icon     *notes.Icon         `json:"icon"`
 	Color    *string             `json:"color"`
 	Time     time.Time           `json:"time"`
+	Pinned   bool                `json:"pinned"`
+	Archived bool                `json:"archived"`
 	Category *recentNoteCategory `json:"category"`
 }
 
@@ -114,7 +116,7 @@ func RecentNotes(store *notes.Store) dashboards.Kind {
 			}
 			rows := make([]recentNote, len(found))
 			for i, n := range found {
-				rows[i] = recentNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color, Time: n.CreatedAt}
+				rows[i] = recentNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color, Time: n.CreatedAt, Pinned: n.Pinned, Archived: n.Archived}
 				if byUpdated {
 					rows[i].Time = n.UpdatedAt
 				}

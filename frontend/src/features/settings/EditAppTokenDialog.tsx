@@ -14,6 +14,8 @@ import { ApiError } from "#/lib/api";
 import {
 	type AppToken,
 	type AppTokenPatch,
+	appHasNotes,
+	appHasRoot,
 	appNames,
 	appTokensQueryKey,
 	updateAppToken,
@@ -62,7 +64,7 @@ function EditForm({
 	// Only what changed is sent.
 	const patch: AppTokenPatch = {};
 	if (rootId !== "" && rootId !== token.rootId) patch.rootId = rootId;
-	if (token.app === "karakeep" && rootCategoryId !== token.rootCategoryId) {
+	if (appHasNotes(token.app) && rootCategoryId !== token.rootCategoryId) {
 		patch.rootCategoryId = rootCategoryId;
 	}
 	const unchanged = Object.keys(patch).length === 0;
@@ -104,21 +106,24 @@ function EditForm({
 				{appNames[token.app]}
 			</p>
 			<form className="mt-5 space-y-5" onSubmit={onSubmit}>
-				<div>
-					<FavouritePicker
-						id="app-token-edit-root"
-						label={t("settings.apps.form.root")}
-						mode="folder"
-						value={rootId}
-						onChange={setRootId}
-					/>
-					<p className="mt-1 text-sm text-muted">
-						{t("settings.apps.form.rootHint")}
-					</p>
-				</div>
-				{token.app === "karakeep" && (
+				{appHasRoot(token.app) && (
+					<div>
+						<FavouritePicker
+							id="app-token-edit-root"
+							label={t("settings.apps.form.root")}
+							mode="folder"
+							value={rootId}
+							onChange={setRootId}
+						/>
+						<p className="mt-1 text-sm text-muted">
+							{t("settings.apps.form.rootHint")}
+						</p>
+					</div>
+				)}
+				{appHasNotes(token.app) && (
 					<RootCategoryField
 						id="app-token-edit-root-category"
+						app={token.app}
 						value={rootCategoryId}
 						onChange={setRootCategoryId}
 					/>

@@ -14,20 +14,25 @@ import {
 	notesQueryOptions,
 } from "./api";
 import { SidePanel } from "./categories/SidePanel";
-import { type CategoryFilter, filterNotes } from "./categories/tree";
+import {
+	type CategoryFilter,
+	filterNotes,
+	pinnedFirst,
+} from "./categories/tree";
 import { type EditFocus, NoteCard } from "./NoteCard";
 
-/** The category search param of /notes: a category ID, or "none". */
+/** The category search param of /notes: a category ID, "none" or "archived". */
 export type NotesSearch = { category?: string };
 
 export function filterOf(search: NotesSearch): CategoryFilter {
-	if (search.category === "none") return "none";
+	if (search.category === "none" || search.category === "archived")
+		return search.category;
 	return search.category ? { id: search.category } : "all";
 }
 
 export function searchOf(filter: CategoryFilter): NotesSearch {
 	if (filter === "all") return { category: undefined };
-	return { category: filter === "none" ? "none" : filter.id };
+	return { category: typeof filter === "object" ? filter.id : filter };
 }
 
 /**
@@ -65,7 +70,7 @@ export function NotesPage({
 		id: string;
 		focus: EditFocus;
 	} | null>(null);
-	const ordered = useStableOrder(notes.data ?? []);
+	const ordered = useStableOrder(pinnedFirst(notes.data ?? []));
 
 	const allCategories = categories.data ?? [];
 	let filter = filterOf(search);
@@ -144,7 +149,11 @@ export function NotesPage({
 					)}
 					{notes.data && notes.data.length > 0 && shown.length === 0 && (
 						<p className="rounded-xl border border-dashed border-line p-10 text-center text-muted">
-							{t("notes.emptyCategory")}
+							{filter === "archived"
+								? t("notes.emptyArchived")
+								: filter === "all"
+									? t("notes.allArchived")
+									: t("notes.emptyCategory")}
 						</p>
 					)}
 					{shown.length > 0 && (

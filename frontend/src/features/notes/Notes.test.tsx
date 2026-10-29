@@ -212,6 +212,96 @@ describe("category side panel", () => {
 	});
 });
 
+describe("pinned and archived notes", () => {
+	const data = () =>
+		fakeNotesServer(
+			[
+				note("Groceries", { categoryId: "home", pinned: true }),
+				note("Old plan", { categoryId: "home", archived: true }),
+				note("Lamp", { categoryId: "home" }),
+				note("Sprint", { categoryId: "work" }),
+				note("Loose", { archived: true }),
+			],
+			[category("home", "Home"), category("work", "Work")],
+		);
+
+	it("shows pinned notes first with a pin, within the chosen category", async () => {
+		data();
+		const { user } = renderApp("/notes");
+		const open = await screen.findByRole("link", { name: "Open Groceries" });
+		await waitFor(() =>
+			expect(cardNames()).toEqual(["Groceries", "Sprint", "Lamp"]),
+		);
+		const card = open.closest("article") as HTMLElement;
+		expect(within(card).getByRole("img", { name: "Pinned" })).toBeVisible();
+		const lamp = screen
+			.getByRole("link", { name: "Open Lamp" })
+			.closest("article") as HTMLElement;
+		expect(within(lamp).queryByRole("img", { name: "Pinned" })).toBeNull();
+		await user.click(within(panel()).getByRole("button", { name: /^Work/ }));
+		await waitFor(() => expect(cardNames()).toEqual(["Sprint"]));
+	});
+
+	it("leaves archived notes out and shows them under Archived", async () => {
+		data();
+		const { user, router } = renderApp("/notes");
+		await screen.findByRole("link", { name: "Open Lamp" });
+		expect(cardNames()).not.toContain("Old plan");
+		expect(
+			within(panel()).getByRole("button", { name: /^Home/ }),
+		).toHaveAccessibleName("Home, 2 notes");
+		expect(
+			within(panel()).getByRole("button", { name: /^Uncategorized/ }),
+		).toHaveAccessibleName("Uncategorized, 0 notes");
+		const archived = within(panel()).getByRole("button", {
+			name: /^Archived/,
+		});
+		expect(archived).toHaveAccessibleName("Archived, 2 notes");
+		await user.click(archived);
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({ category: "archived" }),
+		);
+		await waitFor(() => expect(cardNames()).toEqual(["Loose", "Old plan"]));
+		const card = screen
+			.getByRole("link", { name: "Open Old plan" })
+			.closest("article") as HTMLElement;
+		expect(card).toHaveClass("opacity-70");
+		expect(within(card).getByText("Archived")).toBeVisible();
+	});
+
+	it("says when every note is archived, and shows it under Archived", async () => {
+		fakeNotesServer([note("Old plan", { archived: true })]);
+		const { user } = renderApp("/notes");
+		expect(
+			await screen.findByText("All notes are archived"),
+		).toBeInTheDocument();
+		await user.click(
+			within(panel()).getByRole("button", { name: /^Archived/ }),
+		);
+		await waitFor(() => expect(cardNames()).toEqual(["Old plan"]));
+	});
+
+	it("says when no note is archived", async () => {
+		fakeNotesServer([note("Lamp")]);
+		renderApp("/notes?category=archived");
+		expect(await screen.findByText("No archived notes")).toBeInTheDocument();
+	});
+
+	it("starts a new note from the archive without a category", async () => {
+		data();
+		const { user, router } = renderApp("/notes?category=archived");
+		await screen.findByRole("link", { name: "Open Old plan" });
+		await user.click(screen.getByRole("link", { name: "New note" }));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/notes/new"),
+		);
+		expect(router.state.location.search).toEqual({});
+		expect(
+			await screen.findByRole("button", { name: "Add category" }),
+		).toBeInTheDocument();
+	});
+});
+
 describe("managing categories", () => {
 	it("creates a category with title, colour and parent", async () => {
 		const { categories } = fakeNotesServer([], [category("home", "Home")]);

@@ -111,10 +111,12 @@ func (s *Service) Bookmarks(ctx context.Context, sc Scope, in BookmarksInput) (B
 		}
 		items = append(items, noteItems(ns)...)
 	}
-	// Nothing in Boardly is archived or favourited.
-	if (in.Archived != nil && *in.Archived) || (in.Favourited != nil && *in.Favourited) {
-		items = nil
-	}
+	// Only notes can be archived or favourited (pinned).
+	items = slices.DeleteFunc(items, func(it item) bool {
+		archived := it.note != nil && it.note.Archived
+		pinned := it.note != nil && it.note.Pinned
+		return (in.Archived != nil && *in.Archived != archived) || (in.Favourited != nil && *in.Favourited != pinned)
+	})
 	asc := in.SortOrder == "asc"
 	sortItems(items, asc)
 	if c := in.Cursor; c != nil {
@@ -257,11 +259,12 @@ func (s *Service) CreateBookmark(ctx context.Context, sc Scope, in CreateBookmar
 	if in.Type != "link" && in.Type != "text" {
 		return CreatedBookmark{}, &InputError{"Boardly only stores links and notes, not " + in.Type + " bookmarks"}
 	}
+	link := in.Type == "link"
 	if err := checkUnsupported(map[string]bool{
-		"archiving":  isTrue(in.Archived),
-		"favourites": isTrue(in.Favourited),
-		"notes":      nonEmpty(in.Note),
-		"summaries":  nonEmpty(in.Summary),
+		"archiving links": link && isTrue(in.Archived),
+		"favourite links": link && isTrue(in.Favourited),
+		"notes":           nonEmpty(in.Note),
+		"summaries":       nonEmpty(in.Summary),
 	}); err != nil {
 		return CreatedBookmark{}, err
 	}
@@ -310,11 +313,9 @@ type UpdateBookmarkInput struct {
 }
 
 // UpdateBookmark is bookmarks.updateBookmark: title, URL and description of
-// a link, or title and text of a note.
+// a link, or title, text, archived and favourited of a note.
 func (s *Service) UpdateBookmark(ctx context.Context, sc Scope, in UpdateBookmarkInput) (Bookmark, error) {
 	if err := checkUnsupported(map[string]bool{
-		"archiving":                  isTrue(in.Archived),
-		"favourites":                 isTrue(in.Favourited),
 		"summaries":                  nonEmpty(in.Summary),
 		"notes":                      nonEmpty(in.Note),
 		"authors":                    nonEmpty(in.Author),
@@ -336,6 +337,12 @@ func (s *Service) UpdateBookmark(ctx context.Context, sc Scope, in UpdateBookmar
 	}
 	if note != nil {
 		return s.updateNote(ctx, sc, *note, in)
+	}
+	if err := checkUnsupported(map[string]bool{
+		"archiving links": isTrue(in.Archived),
+		"favourite links": isTrue(in.Favourited),
+	}); err != nil {
+		return Bookmark{}, err
 	}
 	if nonEmpty(in.Text) {
 		return Bookmark{}, &InputError{"Only text bookmarks have a text"}

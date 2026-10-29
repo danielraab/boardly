@@ -17,6 +17,7 @@ import { AppLogo } from "./appTokens/AppLogo";
 import {
 	type AppToken,
 	type AppTokenStatus,
+	appHasRoot,
 	appNames,
 	appTokensQueryKey,
 	appTokensQueryOptions,
@@ -41,7 +42,7 @@ export function ConnectedAppsTab() {
 		? pathsOf(favourites.data, t("favourites.title"))
 		: null;
 
-	// The notes a Karakeep token sees; Linkwarden tokens have none.
+	// The notes a Karakeep or Memos token sees; Linkwarden tokens have none.
 	const notesPath = (token: AppToken) => {
 		if (token.noteScope === "none") return null;
 		if (token.noteScope === "all") return t("settings.apps.allNotes");
@@ -86,9 +87,11 @@ export function ConnectedAppsTab() {
 								key={token.id}
 								token={token}
 								rootPath={
-									token.rootId === null
-										? t("settings.apps.deletedFolder")
-										: (paths?.get(token.rootId) ?? "…")
+									!appHasRoot(token.app)
+										? null
+										: token.rootId === null
+											? t("settings.apps.deletedFolder")
+											: (paths?.get(token.rootId) ?? "…")
 								}
 								notesPath={notesPath(token)}
 							/>
@@ -106,7 +109,8 @@ function AppTokenItem({
 	notesPath,
 }: {
 	token: AppToken;
-	rootPath: string;
+	/** null for an app without a root folder (Memos). */
+	rootPath: string | null;
 	notesPath: string | null;
 }) {
 	const { t, i18n } = useTranslation();
@@ -135,8 +139,9 @@ function AppTokenItem({
 					</span>
 				</p>
 				<p className="mt-0.5 truncate text-sm">
-					{appNames[token.app]} · {rootPath}
-					{notesPath !== null && ` · ${notesPath}`}
+					{[appNames[token.app], rootPath, notesPath]
+						.filter((part) => part !== null)
+						.join(" · ")}
 				</p>
 				<p className="mt-0.5 text-sm text-muted">
 					<code className="font-mono">{token.prefix}…</code>

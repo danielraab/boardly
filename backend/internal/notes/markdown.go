@@ -1005,3 +1005,30 @@ func taskText(content []Inline) string {
 	}
 	return strings.TrimSpace(b.String())
 }
+
+// TitleFromHeading splits a leading level-1 heading off d, for connected apps
+// that keep a note's title as the first line of its Markdown. When the
+// heading's text, trimmed and with line breaks as spaces, has 1 to
+// MaxNoteTitle characters, it is the title and the rest of d is the content;
+// otherwise the title is nil and the content is all of d.
+func TitleFromHeading(d Doc) (*string, Doc) {
+	if len(d.Blocks) == 0 || d.Blocks[0].Type != BlockHeading || d.Blocks[0].Level != 1 || d.Blocks[0].Content == nil {
+		return nil, d
+	}
+	title := strings.TrimSpace(strings.ReplaceAll(inlineText(*d.Blocks[0].Content), "\n", " "))
+	if title == "" || utf8.RuneCountInString(title) > MaxNoteTitle {
+		return nil, d
+	}
+	return &title, Doc{V: d.V, Blocks: d.Blocks[1:]}
+}
+
+// WithTitleHeading is d with title as a leading level-1 heading, the
+// opposite of TitleFromHeading. A nil title leaves d as it is.
+func WithTitleHeading(title *string, d Doc) Doc {
+	if title == nil {
+		return d
+	}
+	text := *title
+	heading := Block{Type: BlockHeading, Level: 1, Content: &[]Inline{{Type: InlineText, Text: &text}}}
+	return Doc{V: d.V, Blocks: append([]Block{heading}, d.Blocks...)}
+}

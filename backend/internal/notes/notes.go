@@ -49,18 +49,25 @@ type Note struct {
 	Color      *string   `json:"color"`
 	CategoryID *string   `json:"categoryId"`
 	Content    Doc       `json:"content"`
+	Pinned     bool      `json:"pinned"`
+	Archived   bool      `json:"archived"`
 	Version    int       `json:"version"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-// NewNote is the input of CreateNote. A nil Content is an empty document.
+// NewNote is the input of CreateNote. A nil Content is an empty document. A
+// zero CreatedAt, or one in the future, means now; the time of last change is
+// always now.
 type NewNote struct {
 	Title      *string
 	Icon       *Icon
 	Color      *string
 	CategoryID *string
 	Content    json.RawMessage
+	Pinned     bool
+	Archived   bool
+	CreatedAt  time.Time
 }
 
 // NotePatch lists the fields to change; nil fields stay as they are, and a
@@ -71,10 +78,13 @@ type NotePatch struct {
 	Color      **string
 	CategoryID **string
 	Content    json.RawMessage
+	Pinned     *bool
+	Archived   *bool
 }
 
 func (p NotePatch) empty() bool {
-	return p.Title == nil && p.Icon == nil && p.Color == nil && p.CategoryID == nil && p.Content == nil
+	return p.Title == nil && p.Icon == nil && p.Color == nil && p.CategoryID == nil && p.Content == nil &&
+		p.Pinned == nil && p.Archived == nil
 }
 
 // normalizeNoteTitle trims a title; empty ones become nil and too long ones
@@ -93,13 +103,13 @@ func normalizeNoteTitle(title *string) (*string, error) {
 	return &t, nil
 }
 
-const noteColumns = `id, title, icon_symbol, icon_image_id, color, category_id, content, version, created_at, updated_at`
+const noteColumns = `id, title, icon_symbol, icon_image_id, color, category_id, content, pinned, archived, version, created_at, updated_at`
 
 func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
 	var symbol, imageID *string
 	var content, created, updated string
-	if err := row.Scan(&n.ID, &n.Title, &symbol, &imageID, &n.Color, &n.CategoryID, &content, &n.Version, &created, &updated); err != nil {
+	if err := row.Scan(&n.ID, &n.Title, &symbol, &imageID, &n.Color, &n.CategoryID, &content, &n.Pinned, &n.Archived, &n.Version, &created, &updated); err != nil {
 		return Note{}, err
 	}
 	n.Icon = iconOf(symbol, imageID)
@@ -233,11 +243,16 @@ func (s *Store) CreateNote(ctx context.Context, userID string, n NewNote) (Note,
 		return Note{}, err
 	}
 	id := uuid.NewString()
-	now := db.FormatTime(s.Now())
+	nowTime := s.Now()
+	createdAt := n.CreatedAt
+	if createdAt.IsZero() || createdAt.After(nowTime) {
+		createdAt = nowTime
+	}
+	now := db.FormatTime(nowTime)
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO notes (id, user_id, category_id, title, icon_symbol, icon_image_id, color, content, version, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-		id, userID, n.CategoryID, title, symbol, imageID, n.Color, content, now, now,
+		`INSERT INTO notes (id, user_id, category_id, title, icon_symbol, icon_image_id, color, content, pinned, archived, version, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+		id, userID, n.CategoryID, title, symbol, imageID, n.Color, content, n.Pinned, n.Archived, db.FormatTime(createdAt), now,
 	); err != nil {
 		return Note{}, err
 	}
@@ -302,6 +317,12 @@ func (s *Store) UpdateNote(ctx context.Context, userID, id string, version int, 
 			return Note{}, err
 		}
 		sets, args = append(sets, "content = ?"), append(args, content)
+	}
+	if p.Pinned != nil {
+		sets, args = append(sets, "pinned = ?"), append(args, *p.Pinned)
+	}
+	if p.Archived != nil {
+		sets, args = append(sets, "archived = ?"), append(args, *p.Archived)
 	}
 	args = append(args, id, userID, version)
 	res, err := tx.ExecContext(ctx,

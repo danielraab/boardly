@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
 import {
+	Archive,
 	ChevronRight,
 	Ellipsis,
 	FolderPlus,
@@ -36,8 +37,8 @@ const entry =
 	"flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface aria-[current=true]:bg-surface aria-[current=true]:font-medium";
 
 /**
- * The categories of /notes: "All notes", "Uncategorized" and the category
- * tree with note counts, to filter the grid and to manage categories. At
+ * The categories of /notes: "All notes", "Uncategorized", the category tree
+ * and "Archived" with note counts, to filter the grid and to manage categories. At
  * phone width it is a drawer that opens from a button.
  */
 export function SidePanel(props: {
@@ -243,6 +244,15 @@ function Panel({
 				<span className="w-7 shrink-0" />
 			</div>
 			{tree.length > 0 && <ul className="space-y-0.5">{tree.map(node)}</ul>}
+			<div className="flex">
+				<span className="w-6 shrink-0" />
+				{item(
+					"archived",
+					<Archive className="size-4 text-muted" aria-hidden />,
+					t("notes.categories.archived"),
+				)}
+				<span className="w-7 shrink-0" />
+			</div>
 			<button
 				type="button"
 				className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted hover:bg-surface hover:text-ink"

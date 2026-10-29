@@ -115,6 +115,15 @@ func (s *Service) UserStats(ctx context.Context, sc Scope) (Stats, error) {
 	}
 	st := Stats{TopDomains: []DomainCount{}, AssetsByType: []struct{}{}, TagUsage: []Count{}}
 	st.NumBookmarks = len(links) + len(ns)
+	// Only notes can be favourited (pinned) or archived.
+	for _, n := range ns {
+		if n.Pinned {
+			st.NumFavorites++
+		}
+		if n.Archived {
+			st.NumArchived++
+		}
+	}
 	st.BookmarksByType.Link = len(links)
 	st.BookmarksByType.Text = len(ns)
 	st.NumLists = len(t.folders())

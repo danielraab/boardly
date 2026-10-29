@@ -1,5 +1,5 @@
 import type { Note, NoteCategory } from "#/features/notes/api";
-import { categoryPath } from "#/features/notes/categories/tree";
+import { categoryPath, pinnedFirst } from "#/features/notes/categories/tree";
 import { displayTitle } from "#/features/notes/document/text";
 import type { NoteListData } from "../noteList/list";
 
@@ -8,7 +8,8 @@ export const maxSelectedNotes = 100;
 
 /**
  * The notes selected notes show, as the server resolves them: those of
- * noteIds that exist, in that order, each with its category if it has one.
+ * noteIds that exist, pinned ones first, each group in the order of noteIds,
+ * each with its category if it has one.
  * When none exists, they are missing.
  */
 export function selectedNotes(
@@ -17,7 +18,7 @@ export function selectedNotes(
 	config: { noteIds: string[] },
 ): NoteListData {
 	const byID = new Map(notes.map((n) => [n.id, n]));
-	const shown = config.noteIds.flatMap((id) => byID.get(id) ?? []);
+	const shown = pinnedFirst(config.noteIds.flatMap((id) => byID.get(id) ?? []));
 	if (shown.length === 0) return { missing: true };
 	return {
 		notes: shown.map((note) => {
@@ -30,6 +31,8 @@ export function selectedNotes(
 				title: displayTitle(note),
 				icon: note.icon,
 				color: note.color,
+				pinned: note.pinned,
+				archived: note.archived,
 				category: category
 					? {
 							title: category.title,

@@ -8,6 +8,7 @@ real user accounts.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
 - **Notes** with todos, written with Markdown shortcuts and sorted into nested categories.
 - **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly.
+- **Memos-compatible server**, so the MoeMemos Android app can write, tick off, pin and archive your notes.
 - **Passwordless login** with magic links and passkeys.
 
 ## Features
@@ -84,9 +85,10 @@ You choose the folder to import into. The top-level folder is allowed. The impor
   sublists, are created as categories below the chosen one, reusing categories of the same name,
   ignoring case. Lists with only links create no category. A note with the same title and content as
   one of your notes, or one earlier in the file, is skipped, and a note larger than 512 KB is left
-  out.
+  out. An archived text bookmark becomes an archived note, shown under **Archived** on the Notes
+  page.
 - Not imported: Karakeep asset bookmarks, Karakeep smart lists, Linkwarden uploads without a URL
-  (PDFs, images), and archived, favourited and pinned flags.
+  (PDFs, images), and the archived, favourited and pinned flags of links.
 - The import is all or nothing, and the file can have at most 10 MB. Afterwards, the page shows how
   many links, folders, notes and categories were added and what was skipped.
 - Favicons, descriptions and preview images of the imported links are fetched in the background, as
@@ -187,6 +189,12 @@ click it to open the note.
   notes; create, edit, move and delete categories from there. A category stays when it has no
   notes. Deleting one makes its notes uncategorized and moves its subcategories up a level. The
   category of a note is shown as a badge; click the badge to change it.
+- **Pinning and archiving**: the menu of a note has **Pin note** and **Archive note**. Pinned
+  notes come first and show a pin, on the Notes page within the chosen category and in the note
+  widgets of dashboards. Archived notes leave "All notes", "Uncategorized" and the categories, and
+  their counts; the **Archived** entry at the end of the side panel shows them. Note widgets still
+  show archived notes, dimmed and marked as archived. Pinning, archiving and their opposites count
+  as changes, so the note moves up in "last changed" lists.
 - **Getting notes in**: share text into the installed app (see [Install as an app](#install-as-an-app))
   to save it as a note, save a text bookmark in a connected Karakeep app (see
   [Karakeep-compatible server](#karakeep-compatible-server)), or import the text bookmarks of a
@@ -194,7 +202,7 @@ click it to open the note.
   category for new notes**, which you choose in Settings → Profile.
 - **Storage**: note content is stored as a JSON document of Boardly's own, not as Markdown. Each
   todo has a stable ID, so later features (todo widgets, link tagging, Markdown import and export,
-  a Memos-compatible API) can refer to it.
+  the [Memos-compatible server](#memos-compatible-server)) can refer to it.
 
 ### Karakeep-compatible server
 
@@ -205,8 +213,8 @@ such as the CLI aren't supported.
 
 Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
-- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep or
-  [Linkwarden](#linkwarden-compatible-server)), a **folder** of the favourites tree (the top-level folder gives access to everything),
+- **Connect app** creates an API key. It asks for a name (e.g. "Phone"), the app (Karakeep,
+  [Linkwarden](#linkwarden-compatible-server) or [Memos](#memos-compatible-server)), a **folder** of the favourites tree (the top-level folder gives access to everything),
   for Karakeep a **category for notes** ("All notes", the default, or a category with its
   subcategories) and an expiry: 30 days, 90 days (default), 1 year, never or a date.
 - The key (`bdly_…`) is shown **once**, together with the server address to enter in the app:
@@ -234,7 +242,9 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
     category (uncategorized with "All notes"). They show up with the links, newest first, and in
     searches by their title and text. Editing a note's text in the app keeps the IDs of its todos
     whose text stays the same; formatting Markdown can't express exactly, such as empty lines
-    between paragraphs, may be simplified. Notes have no tags and aren't in lists.
+    between paragraphs, may be simplified. Notes have no tags and aren't in lists. Archiving a
+    text bookmark in the app archives the note, and making it a favourite pins it; the app's
+    archive and favourites lists show the archived and pinned notes.
 - Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
   contents", only keys for the deleted folder itself are revoked. Deleting a note category that a
   key uses as its category does the same; keys for its subcategories keep working.
@@ -245,8 +255,8 @@ title, tags and list. In the app you can browse, search, save, edit and delete b
 manage lists and tags. Bookmark cards show the link's **description** and **preview image**, or
 the site's favicon when there is no preview; the description can be edited in the app. Tapping a
 bookmark opens the page. Karakeep features Boardly doesn't have
-answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving,
-favourites, highlights, reading progress, AI tagging and summaries, smart and public lists, list
+answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving
+and favouriting links, highlights, reading progress, AI tagging and summaries, smart and public lists, list
 icons and descriptions, and list sharing.
 
 Requests under `/api/karakeep/` are authenticated only by `Authorization: Bearer <key>`, never by
@@ -296,6 +306,38 @@ cross-origin calls, as for Karakeep. IDs are numbers, because the Linkwarden cli
 every folder, link and tag has a stable integer ID next to its internal one. The endpoints and data
 shapes follow Linkwarden v2.16.3 (commit `952ac45`, September 2026), and Boardly reports that
 version to the clients.
+
+### Memos-compatible server
+
+The [MoeMemos](https://github.com/mudkipme/MoeMemosAndroid) Android app can connect to Boardly as if
+it were a [Memos](https://usememos.com) server, and then shows your notes as memos. Boardly answers
+the Memos v1 API that MoeMemos calls and reports itself as Memos 0.31.0, the newest version
+MoeMemos supports.
+
+- On **Settings → Connected apps**, choose **Connect app** with the app **Memos**. A Memos key has
+  no folder, only a **category for notes**: "All notes" (the default) or a category with its
+  subcategories. The category can be changed later with **Edit**.
+- In MoeMemos, enter the server address `<BOARDLY_BASE_URL>/api/memos` and log in with the key as
+  **access token**.
+- **Memos are notes** of the key's category. A memo's text is the note as Markdown; a note's title
+  becomes a leading `# Title` line. When a memo is saved, a leading `# ` heading becomes the
+  note's title, so changing it renames the note and removing it clears the title. A note without
+  a title whose text starts with a `# ` heading gets that heading as its title the first time the
+  app saves it. Todos keep their IDs when their text stays the same.
+- New memos go into the key's category, or stay uncategorized with "All notes". A memo written
+  offline keeps the time it was written as its creation time.
+- **Pin** and **archive** in the app pin and archive the note, and the app's archive shows the
+  archived notes.
+- A change from the app always wins. A note open in the web editor at the same time shows that it
+  was changed elsewhere.
+- Moving a note out of the key's category removes it from the app on its next sync.
+- Not supported yet: **attachments**. Uploading a photo fails with a message, and memos with
+  attachments can't be saved. Every memo is private, so MoeMemos' explore list stays empty. Tags
+  aren't counted, and locations are ignored.
+
+Requests under `/api/memos/` are authenticated only by `Authorization: Bearer <key>` and allow
+cross-origin calls, as for Karakeep. Errors use Memos' format (`{"code", "message", "details"}`).
+The endpoints and data shapes follow MoeMemos' `MemosV1Api.kt` (October 2026).
 
 ### Themes
 

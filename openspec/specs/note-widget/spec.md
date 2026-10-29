@@ -25,7 +25,7 @@ The widget kind `note` ("Note" / "Notiz") SHALL have, besides the common width a
 - **THEN** the server responds 400 with `invalid_layout`
 
 ### Requirement: Note widget rendering
-A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; at the top, its icon and its title, if any, followed on the same line by its category badge, if it has a category (a note with neither title, icon nor category shows no title line); and its rendered content with task items as checkboxes in their state. A long title is shortened so the badge stays on the line. The badge SHALL NOT open a category picker. Content is not cut off or faded: with height `auto` the widget is as tall as the note, and with a fixed height content that doesn't fit scrolls inside the widget. Links in the content SHALL NOT open.
+A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; at the top, its icon and its title, if any, followed on the same line by its category badge, if it has a category, and at the end of the line a pin icon with the tooltip "Pinned" / "Angeheftet" for a pinned note and the mark "Archived" / "Archiviert" for an archived note (a note with neither title, icon, category nor mark shows no title line); and its rendered content with task items as checkboxes in their state. A long title is shortened so the badge stays on the line. The badge SHALL NOT open a category picker. Content is not cut off or faded: with height `auto` the widget is as tall as the note, and with a fixed height content that doesn't fit scrolls inside the widget. Links in the content SHALL NOT open.
 
 #### Scenario: Card look
 - **WHEN** "Groceries" has the colour `green`, the symbol icon "cart" and the category "Home"
@@ -39,6 +39,10 @@ A note widget SHALL show its note like a note card (see "Note cards" in the `not
 - **WHEN** Ann adds a task to "Groceries" on `/notes` and opens the dashboard
 - **THEN** the widget shows the new task
 
+#### Scenario: Archived note
+- **WHEN** the widget's note is archived
+- **THEN** the widget still shows the note, with the mark "Archived"
+
 ### Requirement: Note widget size
 The size SHALL set the text size of the widget's title and content, including the size of the checkboxes and the icon, on the same S/M/L scale as the other widgets. The padding SHALL stay the same for every size.
 
@@ -47,7 +51,7 @@ The size SHALL set the text size of the widget's title and content, including th
 - **THEN** its text and checkboxes are larger than with M, and its padding is the same
 
 ### Requirement: Note widget for the owner
-For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Notiz öffnen" button that opens the note's editor in a modal over the dashboard, without leaving it. The modal edits the note as on `/notes/<id>` (title, icon, colour, category, content, delete) and saves it the same way; it has a close button instead of the way back to the notes, and closing it, also with Escape or a click outside, saves what is left. While and after editing, the widget shows the saved note; when the note is deleted in the modal, the modal closes and the widget shows that the note no longer exists. A checkbox SHALL toggle its task item with a click, a tap or the keyboard. The change is saved right away and shown at once, without leaving the dashboard. When saving fails, the widget SHALL show the note as it is on the server again and a message SHALL say that the change couldn't be saved, or that the note was changed elsewhere when the save got `version_conflict`. The widget offers no other editing. In edit mode, the checkboxes SHALL NOT toggle and there is no "Open note" button.
+For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Notiz öffnen" button that opens the note's editor in a modal over the dashboard, without leaving it. The modal edits the note as on `/notes/<id>` (title, icon, colour, category, content, pin, archive, delete) and saves it the same way; it has a close button instead of the way back to the notes, and closing it, also with Escape or a click outside, saves what is left. While and after editing, the widget shows the saved note; when the note is deleted in the modal, the modal closes and the widget shows that the note no longer exists. A checkbox SHALL toggle its task item with a click, a tap or the keyboard. The change is saved right away and shown at once, without leaving the dashboard. When saving fails, the widget SHALL show the note as it is on the server again and a message SHALL say that the change couldn't be saved, or that the note was changed elsewhere when the save got `version_conflict`. The widget offers no other editing. In edit mode, the checkboxes SHALL NOT toggle and there is no "Open note" button.
 
 #### Scenario: Tick off a todo
 - **WHEN** Ann clicks the unchecked task "milk" in the "Groceries" widget on her dashboard
@@ -60,6 +64,10 @@ For the owner, outside edit mode, a note widget SHALL show an "Open note" / "Not
 #### Scenario: Edit in the modal
 - **WHEN** Ann changes the title of "Groceries" to "Shopping" in the modal and closes it
 - **THEN** the change is saved and the widget shows "Shopping"
+
+#### Scenario: Pin in the modal
+- **WHEN** Ann chooses "Pin note" in the modal and closes it
+- **THEN** the widget shows the pin icon
 
 #### Scenario: Delete in the modal
 - **WHEN** Ann deletes "Groceries" in the modal
@@ -85,7 +93,7 @@ When the note of a note widget no longer exists, the widget SHALL show "This not
 - **THEN** the layout is saved
 
 ### Requirement: Note widget on public dashboards
-For anyone other than the owner, a note widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its note. With the flag on, visitors get the widget read-only: checkboxes show their state but can't be toggled, and there is no "Open note" button. A visitor's response contains only what the widget shows: the note's title, icon, colour and content, and its category's title, icon and colour, and nothing else from the owner's notes, such as other notes, the note's version or times, or other category names. For visitors, the badge's tooltip is the category's title.
+For anyone other than the owner, a note widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its note. With the flag on, visitors get the widget read-only: checkboxes show their state but can't be toggled, and there is no "Open note" button. A visitor's response contains only what the widget shows: the note's title, icon, colour, content, whether it is pinned and archived, and its category's title, icon and colour, and nothing else from the owner's notes, such as other notes, the note's version or times, or other category names. For visitors, the badge's tooltip is the category's title.
 
 #### Scenario: Flag off
 - **WHEN** a visitor opens Ann's public dashboard with a note widget whose "Show on public dashboard" is off

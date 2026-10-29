@@ -138,6 +138,8 @@ const rosesRow: ListedNote = {
 	title: "Roses",
 	icon: null,
 	color: "green",
+	pinned: false,
+	archived: false,
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
 
@@ -217,7 +219,14 @@ describe("the selected notes widget", () => {
 						{ showIfPublic: true },
 						{
 							notes: [
-								{ title: "Roses", icon: null, color: null, category: null },
+								{
+									title: "Roses",
+									icon: null,
+									color: null,
+									pinned: false,
+									archived: false,
+									category: null,
+								},
 							],
 						},
 					),

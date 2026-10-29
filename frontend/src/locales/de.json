@@ -117,10 +117,10 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden mit deinen Favoriten. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst, und bei Karakeep die Notizen der gewählten Kategorie.",
+			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden, oder eine Memos-App wie MoeMemos, mit deinen Favoriten und Notizen. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst, und bei Karakeep und Memos die Notizen der gewählten Kategorie.",
 			"connect": "App verbinden",
 			"emptyTitle": "Noch keine verbundenen Apps",
-			"emptyText": "Verbinde eine Karakeep- oder Linkwarden-App, um Links direkt in einem Ordner deiner Favoriten zu speichern. Die App sieht nur diesen Ordner und seinen Inhalt.",
+			"emptyText": "Verbinde eine Karakeep- oder Linkwarden-App, um Links direkt in einem Ordner deiner Favoriten zu speichern, oder eine Memos-App, um unterwegs Notizen zu schreiben. Die App sieht nur den Ordner oder die Kategorie, die du auswählst.",
 			"deletedFolder": "Gelöschter Ordner",
 			"status": {
 				"active": "Aktiv",
@@ -149,6 +149,7 @@
 				"name": "Name",
 				"namePlaceholder": "z. B. Handy",
 				"app": "App",
+				"memosHint": "Für Memos-Apps wie MoeMemos. Sie sehen nur Notizen, keine Favoriten.",
 				"root": "Ordner",
 				"rootHint": "Die App sieht und speichert nur in diesem Ordner und den Ordnern darin.",
 				"rootInvalid": "Wähle einen deiner Ordner.",
@@ -166,6 +167,7 @@
 				"creating": "Wird erstellt…",
 				"rootCategory": "Kategorie für Notizen",
 				"rootCategoryHint": "Text-Lesezeichen aus der App werden als Notizen in dieser Kategorie gespeichert. Die App sieht die Notizen dieser Kategorie und ihrer Unterkategorien.",
+				"rootCategoryHintMemos": "Neue Memos aus der App werden als Notizen in dieser Kategorie gespeichert. Die App sieht die Notizen dieser Kategorie und ihrer Unterkategorien.",
 				"rootCategoryInvalid": "Wähle eine deiner Kategorien."
 			},
 			"secret": {
@@ -907,6 +909,10 @@
 		"empty": "Noch keine Notizen",
 		"emptyHint": "Schreib Aufgaben, Listen und Ideen auf. Sie werden beim Tippen gespeichert.",
 		"emptyCategory": "Keine Notizen in dieser Kategorie",
+		"emptyArchived": "Keine archivierten Notizen",
+		"allArchived": "Alle Notizen sind archiviert",
+		"pinned": "Angeheftet",
+		"archived": "Archiviert",
 		"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
 		"changedElsewhere": "Die Notiz wurde woanders geändert. Ihre Karte zeigt den aktuellen Stand.",
 		"colours": {
@@ -927,6 +933,7 @@
 			"heading": "Kategorien",
 			"all": "Alle Notizen",
 			"none": "Ohne Kategorie",
+			"archived": "Archiviert",
 			"new": "Neue Kategorie",
 			"newSub": "Neue Unterkategorie",
 			"edit": "Bearbeiten",
@@ -977,6 +984,10 @@
 			"content": "Inhalt",
 			"placeholder": "Schreib etwas…",
 			"menu": "Weitere Aktionen",
+			"pin": "Notiz anheften",
+			"unpin": "Notiz lösen",
+			"archive": "Notiz archivieren",
+			"unarchive": "Notiz wiederherstellen",
 			"delete": "Notiz löschen",
 			"deleteDialog": {
 				"title": "Notiz löschen?",

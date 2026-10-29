@@ -362,7 +362,7 @@ func TestLinkwardenAuth(t *testing.T) {
 		r.Header.Set("Access-Control-Request-Method", "PUT")
 		r.Header.Set("Access-Control-Request-Headers", "authorization,content-type")
 	})
-	if rec.Code != http.StatusNoContent || rec.Header().Get("Access-Control-Allow-Methods") != "GET, POST, PUT, DELETE" ||
+	if rec.Code != http.StatusNoContent || rec.Header().Get("Access-Control-Allow-Methods") != "GET, POST, PUT, PATCH, DELETE" ||
 		rec.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("preflight: %d %v", rec.Code, rec.Header())
 	}

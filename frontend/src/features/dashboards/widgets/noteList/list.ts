@@ -16,6 +16,8 @@ export type ListedNote = {
 	title: string | null;
 	icon: NoteIcon | null;
 	color: NoteColour | null;
+	pinned: boolean;
+	archived: boolean;
 	/** The category of a note that isn't directly in the chosen one. */
 	category: { title: string; path?: string[] } | null;
 };
@@ -26,8 +28,8 @@ export type NoteListData = { notes: ListedNote[] } | { missing: true };
 const byID = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
- * The notes a note list shows, as the server picks and orders them: "updated"
- * and "created" newest first, then by ID descending; "title" by display title
+ * The notes a note list shows, as the server picks and orders them: pinned
+ * notes first, then each by the sort: "updated" and "created" newest first, then by ID descending; "title" by display title
  * ignoring case and accents, untitled last, then by ID; at most limit. The
  * server's collation may differ in rare cases.
  */
@@ -60,6 +62,7 @@ export function noteList(
 	if (config.sort === "title") {
 		const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 		titled.sort((a, b) => {
+			if (a.note.pinned !== b.note.pinned) return a.note.pinned ? -1 : 1;
 			if (a.title === null || b.title === null)
 				return (
 					(a.title === null ? 1 : 0) - (b.title === null ? 1 : 0) ||
@@ -72,6 +75,7 @@ export function noteList(
 			config.sort === "created" ? n.createdAt : n.updatedAt;
 		titled.sort(
 			(a, b) =>
+				Number(b.note.pinned) - Number(a.note.pinned) ||
 				Date.parse(timeOf(b.note)) - Date.parse(timeOf(a.note)) ||
 				byID(b.note.id, a.note.id),
 		);
@@ -88,6 +92,8 @@ export function noteList(
 				title,
 				icon: note.icon,
 				color: note.color,
+				pinned: note.pinned,
+				archived: note.archived,
 				category: category
 					? {
 							title: category.title,

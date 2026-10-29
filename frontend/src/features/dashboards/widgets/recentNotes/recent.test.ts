@@ -18,6 +18,8 @@ const note = (
 	color: null,
 	categoryId: null,
 	content: { v: 1, blocks: [] },
+	pinned: false,
+	archived: false,
 	version: 1,
 	createdAt: daysAgo(created),
 	updatedAt: daysAgo(updated),
@@ -84,6 +86,8 @@ describe("recentNotes", () => {
 			title: "call the plumber",
 			icon: null,
 			color: null,
+			pinned: false,
+			archived: false,
 			time: daysAgo(1),
 			category: null,
 		});

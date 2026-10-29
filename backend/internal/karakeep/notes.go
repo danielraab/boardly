@@ -34,6 +34,8 @@ func noteBookmark(userID string, n notes.Note) Bookmark {
 		UserID:     userID,
 		Tags:       []Tag{},
 		Content:    TextContent{Type: "text", Text: notes.ToMarkdown(n.Content)},
+		Archived:   n.Archived,
+		Favourited: n.Pinned,
 		Assets:     []struct{}{},
 	}
 }
@@ -155,15 +157,19 @@ func (s *Service) createNote(ctx context.Context, sc Scope, in CreateBookmarkInp
 	if err != nil {
 		return CreatedBookmark{}, err
 	}
-	n, err := s.Notes.CreateNote(ctx, sc.UserID, notes.NewNote{Title: in.Title, CategoryID: category, Content: content})
+	n, err := s.Notes.CreateNote(ctx, sc.UserID, notes.NewNote{
+		Title: in.Title, CategoryID: category, Content: content,
+		Archived: isTrue(in.Archived), Pinned: isTrue(in.Favourited),
+	})
 	if err != nil {
 		return CreatedBookmark{}, err
 	}
 	return CreatedBookmark{Bookmark: noteBookmark(sc.UserID, n)}, nil
 }
 
-// updateNote is bookmarks.updateBookmark for a note: its title and its text,
-// whose tasks keep their IDs where their text is the same.
+// updateNote is bookmarks.updateBookmark for a note: its title, its text,
+// whose tasks keep their IDs where their text is the same, and whether it is
+// archived and favourited (pinned).
 func (s *Service) updateNote(ctx context.Context, sc Scope, n notes.Note, in UpdateBookmarkInput) (Bookmark, error) {
 	if in.URL != nil || in.Description != nil {
 		return Bookmark{}, &InputError{"Text bookmarks have no address or description in Boardly"}
@@ -185,7 +191,13 @@ func (s *Service) updateNote(ctx context.Context, sc Scope, n notes.Note, in Upd
 			return Bookmark{}, err
 		}
 	}
-	if patch.Title == nil && patch.Content == nil {
+	if in.Archived != nil && *in.Archived != n.Archived {
+		patch.Archived = in.Archived
+	}
+	if in.Favourited != nil && *in.Favourited != n.Pinned {
+		patch.Pinned = in.Favourited
+	}
+	if patch.Title == nil && patch.Content == nil && patch.Archived == nil && patch.Pinned == nil {
 		return noteBookmark(sc.UserID, n), nil
 	}
 	updated, err := s.Notes.UpdateNote(ctx, sc.UserID, n.ID, n.Version, patch)

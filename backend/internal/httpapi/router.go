@@ -104,6 +104,7 @@ func New(d Deps) http.Handler {
 	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))
 	root.Handle(karakeepPrefix+"/", a.appAPI(apptokens.AppKarakeep, a.karakeepAPI()))
 	root.Handle(linkwardenPrefix+"/", a.appAPI(apptokens.AppLinkwarden, a.linkwardenAPI()))
+	root.Handle(memosPrefix+"/", a.appAPI(apptokens.AppMemos, a.memosAPI()))
 	root.Handle("/", d.Web)
 	return logRequests(d.LogRequests, root)
 }

@@ -14,6 +14,7 @@ import { noteBackground } from "./colours";
 import { displayTitle } from "./document/text";
 import { setTaskChecked } from "./document/types";
 import { NoteEditor } from "./editor/NoteEditor";
+import { NoteMarks } from "./NoteMarks";
 import { NoteRenderer } from "./NoteRenderer";
 import { iconProps } from "./noteIcon";
 import { SaveIndicator } from "./SaveIndicator";
@@ -129,19 +130,29 @@ function CardBody({
 			<Maximize2 className="size-4" aria-hidden />
 		</Link>
 	);
-	const badge = draft.categoryId && (
-		<div className="relative z-[2] mt-3 flex">
-			<CategoryBadge
-				categoryId={draft.categoryId}
-				categories={categories}
-				onChange={(categoryId) => {
-					setDraft((d) => ({ ...d, categoryId }));
-					saver.saveNow({ categoryId });
-				}}
-			/>
+	const pin = note.pinned && (
+		<NoteMarks
+			pinned
+			archived={false}
+			className="absolute top-3.5 right-10 z-[2]"
+		/>
+	);
+	const badge = (draft.categoryId || note.archived) && (
+		<div className="relative z-[2] mt-3 flex items-center gap-2">
+			{draft.categoryId && (
+				<CategoryBadge
+					categoryId={draft.categoryId}
+					categories={categories}
+					onChange={(categoryId) => {
+						setDraft((d) => ({ ...d, categoryId }));
+						saver.saveNow({ categoryId });
+					}}
+				/>
+			)}
+			<NoteMarks pinned={false} archived={note.archived} />
 		</div>
 	);
-	const frame = `relative flex flex-col rounded-xl border border-line p-4 shadow-[0_1px_2px_var(--color-shadow)] ${note.color ? "" : "bg-surface"}`;
+	const frame = `relative flex flex-col rounded-xl border border-line p-4 shadow-[0_1px_2px_var(--color-shadow)] ${note.color ? "" : "bg-surface"} ${note.archived ? "opacity-70" : ""}`;
 
 	if (editing) {
 		return (
@@ -159,7 +170,9 @@ function CardBody({
 					if (!e.currentTarget.contains(e.relatedTarget)) onEditEnd();
 				}}
 			>
-				<div className="mb-2 flex items-center gap-2 pr-8">
+				<div
+					className={`mb-2 flex items-center gap-2 ${note.pinned ? "pr-14" : "pr-8"}`}
+				>
 					{note.icon && (
 						<ChosenIcon {...iconProps(note.icon)} className="size-5 shrink-0" />
 					)}
@@ -185,6 +198,7 @@ function CardBody({
 					<SaveIndicator status={saver.status} onRetry={saver.retry} />
 				</div>
 				{openLink}
+				{pin}
 				{badge}
 			</article>
 		);
@@ -198,7 +212,7 @@ function CardBody({
 			{(note.icon || draft.title) && (
 				<h2
 					ref={titleRef}
-					className="mb-2 flex items-center gap-2 pr-8 font-semibold"
+					className={`mb-2 flex items-center gap-2 font-semibold ${note.pinned ? "pr-14" : "pr-8"}`}
 				>
 					{note.icon && (
 						<ChosenIcon {...iconProps(note.icon)} className="size-5" />
@@ -236,6 +250,7 @@ function CardBody({
 				}}
 			/>
 			{openLink}
+			{pin}
 			{badge}
 		</article>
 	);

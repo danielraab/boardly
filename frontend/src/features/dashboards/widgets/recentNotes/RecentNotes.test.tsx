@@ -18,6 +18,8 @@ const groceriesRow: RecentNote = {
 	title: "Groceries",
 	icon: { type: "symbol", name: "shopping-cart" },
 	color: "green",
+	pinned: false,
+	archived: false,
 	time: daysAgo(2),
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
@@ -26,6 +28,8 @@ const untitledRow: RecentNote = {
 	title: null,
 	icon: null,
 	color: null,
+	pinned: false,
+	archived: false,
 	time: daysAgo(1),
 	category: null,
 };
@@ -205,6 +209,8 @@ describe("the recent notes widget", () => {
 									title: "Groceries",
 									icon: null,
 									color: null,
+									pinned: false,
+									archived: false,
 									time: groceries.createdAt,
 									category: { title: "Garden" },
 								},

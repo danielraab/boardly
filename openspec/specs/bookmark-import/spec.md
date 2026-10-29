@@ -148,7 +148,7 @@ A Karakeep JSON export SHALL be read as an object with `bookmarks` and `lists`:
 - A bookmark is `{"createdAt", "title", "tags", "lists", "content", "note", "summary", "archived"}`. `createdAt` is in Unix seconds, `tags` are tag names, and `lists` are list IDs. A bookmark with `content.type` `link` becomes a link with the URL `content.url`. It goes into the folder of the first ID in `lists` that is a manual list, or into the import folder when there is none.
 - A bookmark with `content.type` `text` becomes a note with the Markdown text `content.text` (see "Imported notes"). It goes into the category of the first ID in `lists` that is a manual list, or into the import category when there is none.
 - A bookmark of another `content.type`, such as `asset`, is not imported and is counted as "not a link".
-- For a link, `note` and, when present, `summary` go into the description (see "Description from notes"). `archived` and `favourited` are ignored.
+- For a link, `note` and, when present, `summary` go into the description (see "Description from notes"), and `archived` is ignored. For a text bookmark, `archived` `true` makes the note archived (see "Imported notes"); a missing `archived` counts as `false`. `favourited`, which Karakeep doesn't export, is ignored for every bookmark.
 
 Unknown fields SHALL be ignored. A file that isn't a JSON object with a `bookmarks` array is not a Karakeep export.
 
@@ -175,6 +175,10 @@ Unknown fields SHALL be ignored. A file that isn't a JSON object with a `bookmar
 #### Scenario: Archived bookmark
 - **WHEN** a link bookmark has `archived` `true`
 - **THEN** it is imported like any other link
+
+#### Scenario: Archived text bookmark
+- **WHEN** a text bookmark has `archived` `true`
+- **THEN** its note is imported archived, into the category it would go to anyway
 
 ### Requirement: Linkwarden JSON format
 A Linkwarden JSON export SHALL be read as an object with a `collections` array:
@@ -310,7 +314,7 @@ Notes of an import SHALL go into an import category that the user picks, or the 
 Each imported note SHALL have:
 - the bookmark's title as title, trimmed and cut to 200 characters; an empty title becomes no title,
 - as content, the Markdown text converted as in "Content from Markdown" in the note-document spec, followed by the bookmark's `note` as a paragraph starting with `Note: ` and its `summary` as a paragraph starting with `Summary: `, each only when not empty, and then a last paragraph with the bookmark's tags, each written as `#` followed by the tag name with whitespace replaced by `-`, separated by spaces, only when there are tags,
-- no icon and no colour,
+- no icon and no colour, not pinned, and archived when the bookmark is archived,
 - the bookmark's creation date as creation time and time of last change, or the import time when the bookmark has none or it can't be read,
 - version 1.
 
@@ -323,6 +327,14 @@ A note whose content would be larger than the document size limit is not importe
 #### Scenario: Karakeep note on a text bookmark
 - **WHEN** a text bookmark has the text "Door code 1234" and the note "ask Bob first"
 - **THEN** the note's content is a paragraph "Door code 1234" followed by a paragraph "Note: ask Bob first"
+
+#### Scenario: Archived note
+- **WHEN** a text bookmark with the text "old plan" has `archived` `true`
+- **THEN** the note is archived, isn't pinned, and is shown with "Archived" on `/notes`
+
+#### Scenario: Archived duplicate
+- **WHEN** `skipDuplicates` is `true`, the user has a note that isn't archived, and the file has the same note as an archived text bookmark
+- **THEN** the bookmark is skipped as a duplicate, and the existing note stays unarchived
 
 #### Scenario: Too large
 - **WHEN** a text bookmark has 700 KB of text

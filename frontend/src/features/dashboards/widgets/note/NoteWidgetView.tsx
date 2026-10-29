@@ -9,6 +9,7 @@ import {
 import { type NoteColour, noteBackground } from "#/features/notes/colours";
 import { displayTitle } from "#/features/notes/document/text";
 import type { NoteDoc } from "#/features/notes/document/types";
+import { NoteMarks } from "#/features/notes/NoteMarks";
 import { NoteRenderer } from "#/features/notes/NoteRenderer";
 import { iconProps } from "#/features/notes/noteIcon";
 import { sizeStyles, type WidgetSize } from "../sizes";
@@ -21,6 +22,8 @@ export type ShownNote = {
 	icon: NoteIcon | null;
 	color: NoteColour | null;
 	content: NoteDoc;
+	pinned: boolean;
+	archived: boolean;
 	category: (ShownCategory & { path?: string[] }) | null;
 };
 
@@ -34,8 +37,8 @@ const titleText: Record<WidgetSize, string> = {
 };
 
 /**
- * A note as a card that fills its widget: colour, a header with icon, title
- * and category badge, and the content. Checkboxes only toggle with
+ * A note as a card that fills its widget: colour, a header with icon, title,
+ * category badge and the pin and archive marks, and the content. Checkboxes only toggle with
  * onToggleTask, and "Open note" is only shown with onOpen.
  */
 export function NoteWidgetView({
@@ -64,12 +67,13 @@ export function NoteWidgetView({
 	}
 	const Heading = `h${headingLevel}` as "h2";
 	const name = displayTitle(data) ?? t("notes.untitled");
+	const marked = data.pinned || data.archived;
 	return (
 		<article
 			className={`relative flex min-h-full flex-col rounded-xl border border-line p-4 shadow-[0_1px_2px_var(--color-shadow)] ${data.color ? "" : "bg-surface"}`}
 			style={{ background: noteBackground(data.color) }}
 		>
-			{(data.icon || data.title || data.category) && (
+			{(data.icon || data.title || data.category || marked) && (
 				<div className={`mb-2 flex items-center gap-2 ${onOpen ? "pr-8" : ""}`}>
 					{(data.icon || data.title) && (
 						<Heading
@@ -94,11 +98,18 @@ export function NoteWidgetView({
 							/>
 						</div>
 					)}
+					<NoteMarks
+						pinned={data.pinned}
+						archived={data.archived}
+						className="ml-auto"
+					/>
 				</div>
 			)}
 			<div
 				className={
-					onOpen && !(data.icon || data.title || data.category) ? "pr-6" : ""
+					onOpen && !(data.icon || data.title || data.category || marked)
+						? "pr-6"
+						: ""
 				}
 			>
 				<NoteRenderer

@@ -75,7 +75,7 @@ func check(t *testing.T, tree favourites.ImportTree, want string, report favouri
 }
 
 // renderNotes prints the categories as an indented outline: categories end
-// with "/", notes show their title, content and date.
+// with "/", notes show their title, content, date and "(archived)".
 func renderNotes(c notes.ImportCategory) string {
 	var sb strings.Builder
 	var walk func(c notes.ImportCategory, indent string)
@@ -91,7 +91,11 @@ func renderNotes(c notes.ImportCategory) string {
 			raw, _ := json.Marshal(n.Content.Blocks)
 			// Task IDs are random.
 			content := taskIDRe.ReplaceAllString(string(raw), `"id":"…"`)
-			fmt.Fprintf(&sb, "%s%s %s%s\n", indent, title, content, date)
+			archived := ""
+			if n.Archived {
+				archived = " (archived)"
+			}
+			fmt.Fprintf(&sb, "%s%s %s%s%s\n", indent, title, content, date, archived)
 		}
 		for _, sub := range c.Categories {
 			fmt.Fprintf(&sb, "%s%s/\n", indent, sub.Name)
@@ -139,6 +143,8 @@ func TestKarakeepNotes(t *testing.T) {
 		{"createdAt": null, "title": null, "tags": [], "lists": [],
 		 "content": {"type": "text", "text": "Door code 1234"}, "note": " ask Bob first ", "summary": "short"},
 		{"createdAt": 1790365701, "title": "", "tags": [], "lists": ["blank"], "content": {"type": "text", "text": "in a blank list"}},
+		{"createdAt": 1790365701, "title": "Old plan", "tags": [], "lists": ["reading"], "content": {"type": "text", "text": "old plan"}, "archived": true},
+		{"createdAt": 1790365701, "title": "Odd flag", "tags": [], "lists": [], "content": {"type": "text", "text": "x"}, "archived": "yes"},
 		{"createdAt": 1790365701, "title": "` + strings.Repeat("t", 210) + `", "tags": [], "lists": ["long"], "content": {"type": "text", "text": ""}},
 		{"createdAt": 1790365701, "title": "Big", "tags": [], "lists": [], "content": {"type": "text", "text": "` + strings.Repeat("x", 600<<10) + `"}},
 		{"createdAt": 1790365701, "title": "Go", "tags": [], "lists": ["reading"], "content": {"type": "link", "url": "https://go.dev"}},
@@ -148,10 +154,13 @@ func TestKarakeepNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := `- [{"type":"paragraph","content":[{"type":"text","text":"Door code 1234"}]},{"type":"paragraph","content":[{"type":"text","text":"Note: ask Bob first"}]},{"type":"paragraph","content":[{"type":"text","text":"Summary: short"}]}]
+Odd flag [{"type":"paragraph","content":[{"type":"text","text":"x"}]}] @2026-09-25T19:48:21Z
 - [{"type":"paragraph","content":[{"type":"text","text":"in a blank list"}]}] @2026-09-25T19:48:21Z
 Dev/
   Snippets/
     Pasta [{"type":"list","style":"task","items":[{"id":"…","checked":false,"content":[{"type":"text","text":"buy basil"}]}]},{"type":"paragraph","content":[{"type":"text","text":"#cooking #weekend-plans"}]}] @2026-09-25T19:48:21Z
+Reading/
+  Old plan [{"type":"paragraph","content":[{"type":"text","text":"old plan"}]}] @2026-09-25T19:48:21Z (archived)
 ` + strings.Repeat("c", 200) + `/
   ` + strings.Repeat("t", 200) + ` [] @2026-09-25T19:48:21Z
 `
@@ -164,7 +173,7 @@ Dev/
 	if res.Links.Report.Skipped.NotLinks != 1 {
 		t.Errorf("not links = %d, want 1 (the asset)", res.Links.Report.Skipped.NotLinks)
 	}
-	// Lists with only links are folders, but no categories.
+	// Lists with links are folders.
 	if got := render(res.Links.Root.Items); !strings.Contains(got, "Reading/") {
 		t.Errorf("links =\n%s", got)
 	}

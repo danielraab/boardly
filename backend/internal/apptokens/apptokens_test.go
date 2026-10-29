@@ -363,3 +363,46 @@ func TestDeletingRootCategoryRevokes(t *testing.T) {
 		t.Errorf("authenticate the revoked token: err = %v", err)
 	}
 }
+
+func TestMemosTokens(t *testing.T) {
+	f := newFixture(t)
+	ns := notes.NewStore(f.s.DB)
+	inbox, _ := ns.CreateCategory(f.ctx, f.user, notes.NewCategory{Title: "Inbox"})
+
+	all, secret, err := f.s.Create(f.ctx, f.user, NewToken{Name: "MoeMemos", App: AppMemos})
+	if err != nil || all.App != AppMemos || all.RootID != nil || all.NoteScope != NoteScopeAll {
+		t.Fatalf("memos token = %+v, %v; want no root and all notes", all, err)
+	}
+	if auth, err := f.s.Authenticate(f.ctx, secret, AppMemos); err != nil || auth.ID != all.ID {
+		t.Errorf("authenticate = %+v, %v", auth, err)
+	}
+	if _, err := f.s.Authenticate(f.ctx, secret, AppKarakeep); !errors.Is(err, ErrInvalidToken) {
+		t.Errorf("as Karakeep: err = %v, want ErrInvalidToken", err)
+	}
+	inInbox, _, err := f.s.Create(f.ctx, f.user, NewToken{Name: "Inbox", App: AppMemos, RootCategoryID: &inbox.ID})
+	if err != nil || inInbox.NoteScope != NoteScopeCategory || *inInbox.RootCategoryID != inbox.ID {
+		t.Errorf("with a category = %+v, %v", inInbox, err)
+	}
+	if _, _, err := f.s.Create(f.ctx, f.user, NewToken{Name: "x", App: AppMemos, RootID: f.folder}); !errors.Is(err, ErrInvalidRoot) {
+		t.Errorf("with a root folder: err = %v, want ErrInvalidRoot", err)
+	}
+	if _, _, err := f.s.Create(f.ctx, f.user, NewToken{Name: "x", App: AppKarakeep}); !errors.Is(err, ErrInvalidRoot) {
+		t.Errorf("Karakeep without a root folder: err = %v, want ErrInvalidRoot", err)
+	}
+
+	category := &inbox.ID
+	got, err := f.s.Update(f.ctx, f.user, all.ID, Patch{RootID: ptr(""), RootCategoryID: &category})
+	if err != nil || got.RootID != nil || got.NoteScope != NoteScopeCategory {
+		t.Fatalf("change the category = %+v, %v", got, err)
+	}
+	if _, err := f.s.Update(f.ctx, f.user, all.ID, Patch{RootID: &f.folder}); !errors.Is(err, ErrInvalidRoot) {
+		t.Errorf("set a root folder: err = %v, want ErrInvalidRoot", err)
+	}
+	// Deleting the category revokes the token, as for Karakeep.
+	if err := ns.DeleteCategory(f.ctx, f.user, inbox.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Authenticate(f.ctx, secret, AppMemos); !errors.Is(err, ErrInvalidToken) {
+		t.Errorf("after deleting its category: err = %v, want ErrInvalidToken", err)
+	}
+}

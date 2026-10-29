@@ -18,6 +18,8 @@ import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError } from "#/lib/api";
 import {
 	type AppTokenApp,
+	appHasNotes,
+	appHasRoot,
 	appNames,
 	appTokensQueryKey,
 	type CreatedAppToken,
@@ -71,8 +73,8 @@ function expiresAt(expiry: Expiry, customDate: string, now = new Date()) {
 }
 
 /**
- * "Connect app": asks for the token's name, app, root folder, root category
- * (Karakeep only) and expiry, then shows the new secret once. Closing the
+ * "Connect app": asks for the token's name, app, root folder (not for Memos),
+ * root category (Karakeep and Memos) and expiry, then shows the new secret once. Closing the
  * dialog forgets the secret.
  */
 export function CreateAppTokenDialog() {
@@ -127,8 +129,8 @@ function FormStep({
 			createAppToken({
 				name,
 				app,
-				rootId,
-				...(app === "karakeep" ? { rootCategoryId } : {}),
+				...(appHasRoot(app) ? { rootId } : {}),
+				...(appHasNotes(app) ? { rootCategoryId } : {}),
 				expiresAt: expires ? expires.toISOString() : null,
 			}),
 		onSuccess: (token) => {
@@ -195,22 +197,30 @@ function FormStep({
 							</option>
 						))}
 					</select>
+					{app === "memos" && (
+						<p className="mt-1 text-sm text-muted">
+							{t("settings.apps.form.memosHint")}
+						</p>
+					)}
 				</div>
-				<div>
-					<FavouritePicker
-						id="app-token-root"
-						label={t("settings.apps.form.root")}
-						mode="folder"
-						value={rootId}
-						onChange={setRootId}
-					/>
-					<p className="mt-1 text-sm text-muted">
-						{t("settings.apps.form.rootHint")}
-					</p>
-				</div>
-				{app === "karakeep" && (
+				{appHasRoot(app) && (
+					<div>
+						<FavouritePicker
+							id="app-token-root"
+							label={t("settings.apps.form.root")}
+							mode="folder"
+							value={rootId}
+							onChange={setRootId}
+						/>
+						<p className="mt-1 text-sm text-muted">
+							{t("settings.apps.form.rootHint")}
+						</p>
+					</div>
+				)}
+				{appHasNotes(app) && (
 					<RootCategoryField
 						id="app-token-root-category"
+						app={app}
 						value={rootCategoryId}
 						onChange={setRootCategoryId}
 					/>
@@ -278,7 +288,7 @@ function FormStep({
 						disabled={
 							create.isPending ||
 							name.trim() === "" ||
-							rootId === "" ||
+							(appHasRoot(app) && rootId === "") ||
 							expires === undefined
 						}
 					>
@@ -292,13 +302,15 @@ function FormStep({
 	);
 }
 
-/** The root category of a Karakeep token, with "All notes" for none. */
+/** The root category of a Karakeep or Memos token, with "All notes" for none. */
 export function RootCategoryField({
 	id,
+	app,
 	value,
 	onChange,
 }: {
 	id: string;
+	app: AppTokenApp;
 	value: string | null;
 	onChange: (id: string | null) => void;
 }) {
@@ -313,7 +325,11 @@ export function RootCategoryField({
 				onChange={onChange}
 			/>
 			<p className="mt-1 text-sm text-muted">
-				{t("settings.apps.form.rootCategoryHint")}
+				{t(
+					app === "memos"
+						? "settings.apps.form.rootCategoryHintMemos"
+						: "settings.apps.form.rootCategoryHint",
+				)}
 			</p>
 		</div>
 	);

@@ -76,16 +76,26 @@ export function categoryPath(categories: NoteCategory[], id: string): string[] {
 }
 
 /** The side panel's choice: all notes, the uncategorized ones, or a category. */
-export type CategoryFilter = "all" | "none" | { id: string };
+export type CategoryFilter = "all" | "none" | "archived" | { id: string };
 
-/** The notes a filter shows, in the order given. */
+/**
+ * The notes a filter shows, in the order given: "archived" every archived
+ * note, the others only notes that aren't archived.
+ */
 export function filterNotes(
 	notes: Note[],
 	categories: NoteCategory[],
 	filter: CategoryFilter,
 ): Note[] {
-	if (filter === "all") return notes;
-	if (filter === "none") return notes.filter((n) => n.categoryId === null);
+	if (filter === "archived") return notes.filter((n) => n.archived);
+	const active = notes.filter((n) => !n.archived);
+	if (filter === "all") return active;
+	if (filter === "none") return active.filter((n) => n.categoryId === null);
 	const ids = subtreeIds(categories, filter.id);
-	return notes.filter((n) => n.categoryId !== null && ids.has(n.categoryId));
+	return active.filter((n) => n.categoryId !== null && ids.has(n.categoryId));
+}
+
+/** Notes with pinned ones first, otherwise in the order given. */
+export function pinnedFirst(notes: Note[]): Note[] {
+	return [...notes.filter((n) => n.pinned), ...notes.filter((n) => !n.pinned)];
 }

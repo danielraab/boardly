@@ -18,6 +18,8 @@ const note = (
 	color: null,
 	categoryId: null,
 	content: { v: 1, blocks: [] },
+	pinned: false,
+	archived: false,
 	version: 1,
 	createdAt: at(created),
 	updatedAt: at(updated),
@@ -135,5 +137,24 @@ describe("noteList", () => {
 			Roses: { title: "Garden", path: ["Home", "Garden"] },
 			Draft: null,
 		});
+	});
+
+	it("puts pinned notes first and keeps archived ones", () => {
+		const marked = [
+			note("Plumber", 0, 3, { categoryId: "home" }),
+			note("Roses", 1, 1, { categoryId: "garden", pinned: true }),
+			note("Draft", 2, 2, { archived: true }),
+		];
+		expect(titles(noteList(marked, categories, config))).toEqual([
+			"Roses",
+			"Plumber",
+			"Draft",
+		]);
+		expect(
+			titles(noteList(marked, categories, { ...config, sort: "title" })),
+		).toEqual(["Roses", "Draft", "Plumber"]);
+		expect(
+			titles(noteList(marked, categories, { ...config, limit: 1 })),
+		).toEqual(["Roses"]);
 	});
 });

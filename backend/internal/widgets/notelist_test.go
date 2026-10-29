@@ -105,8 +105,8 @@ func TestNoteListResolve(t *testing.T) {
 	}
 	data, _ := json.Marshal(owner[1]["data"])
 	want := canonical(t, `{"notes":[`+
-		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"category":null},`+
-		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden","path":["Home","Garden"]}}]}`)
+		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"pinned":false,"archived":false,"category":null},`+
+		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","pinned":false,"archived":false,"category":{"title":"Garden","path":["Home","Garden"]}}]}`)
 	if string(data) != want {
 		t.Errorf("home =\n%s\nwant\n%s", data, want)
 	}
@@ -126,8 +126,8 @@ func TestNoteListResolve(t *testing.T) {
 		}
 		data, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"notes":[`+
-			`{"title":"call the plumber","icon":null,"color":null,"category":null},`+
-			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden"}}]}`)
+			`{"title":"call the plumber","icon":null,"color":null,"pinned":false,"archived":false,"category":null},`+
+			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","pinned":false,"archived":false,"category":{"title":"Garden"}}]}`)
 		if string(data) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, data, want)
 		}
