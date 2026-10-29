@@ -1,15 +1,14 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ListChecks } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
-import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
+import { useOpenNote } from "#/features/dashboards/noteParam";
 import {
 	noteCategoriesQueryOptions,
 	notesQueryOptions,
 } from "#/features/notes/api";
-import { NoteDialog } from "../note/NoteDialog";
 import type { NoteListData } from "../noteList/list";
 import { NoteListView } from "../noteList/NoteListView";
 import type {
@@ -37,14 +36,9 @@ export type SelectedNotesConfig = {
  */
 function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const { t } = useTranslation();
-	const queryClient = useQueryClient();
 	const config = widget.config as SelectedNotesConfig;
 	const isOwner = useCurrentDashboard()?.isOwner ?? false;
-	// The last opened note stays while the modal closes.
-	const [opened, setOpened] = useState<{ id: string; name: string } | null>(
-		null,
-	);
-	const [open, setOpen] = useState(false);
+	const openNote = useOpenNote();
 	const notes = useQuery({ ...notesQueryOptions, enabled: editing });
 	const categories = useQuery({
 		...noteCategoriesQueryOptions,
@@ -58,45 +52,23 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	}
 	if (!data) return null;
 	const canOpen = isOwner && !editing;
-	const refresh = () =>
-		void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
+	// Selected notes are never empty: without notes they're missing.
 	return (
-		<>
-			{/* Selected notes are never empty: without notes they're missing. */}
-			<NoteListView
-				data={data}
-				category="all"
-				size={config.size}
-				title={config.title}
-				headingLevel={headingLevel}
-				missingText={t("dashboards.widgets.selectedNotes.missing")}
-				onOpen={
-					canOpen
-						? (note) => {
-								if (!note.id) return;
-								setOpened({
-									id: note.id,
-									name: note.title ?? t("notes.untitled"),
-								});
-								setOpen(true);
-							}
-						: undefined
-				}
-			/>
-			{canOpen && opened && (
-				<NoteDialog
-					noteId={opened.id}
-					name={opened.name}
-					open={open}
-					onClose={() => setOpen(false)}
-					onChanged={refresh}
-					onDeleted={() => {
-						setOpen(false);
-						refresh();
-					}}
-				/>
-			)}
-		</>
+		<NoteListView
+			data={data}
+			category="all"
+			size={config.size}
+			title={config.title}
+			headingLevel={headingLevel}
+			missingText={t("dashboards.widgets.selectedNotes.missing")}
+			onOpen={
+				canOpen
+					? (note) => {
+							if (note.id) openNote(note.id);
+						}
+					: undefined
+			}
+		/>
 	);
 }
 
