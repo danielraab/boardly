@@ -6,7 +6,7 @@ App tokens let external apps such as the Karakeep browser extension and mobile a
 ## Requirements
 
 ### Requirement: App token properties
-An app token SHALL belong to one user and have a name, an app, a root folder, a note scope, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep` or `linkwarden`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder. The note scope of a `karakeep` token is either the top level (`all`: every note of the user) or a root category (`category`: one category of the user with all its subcategories); a `linkwarden` token has no note access (`none`). A token's secret starts with `bdly_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
+An app token SHALL belong to one user and have a name, an app, a root folder (except `memos` tokens), a note scope, a creation date, a last-used date (empty until first use), an optional expiry date and an optional revocation date. The name is 1 to 100 characters after trimming. The app is `karakeep`, `linkwarden` or `memos`; other apps are added by later changes. The root folder is any folder of the user's favourites tree, including the top-level folder; a `memos` token has no root folder, because Memos has no bookmarks. The note scope of a `karakeep` or `memos` token is either the top level (`all`: every note of the user) or a root category (`category`: one category of the user with all its subcategories); a `linkwarden` token has no note access (`none`). A token's secret starts with `bdly_`, is followed by at least 32 random characters, and is never stored in plain text. The first 12 characters of the secret are the token's public prefix, which identifies it in the list.
 
 #### Scenario: Secret format
 - **WHEN** a token is created
@@ -15,6 +15,10 @@ An app token SHALL belong to one user and have a name, an app, a root folder, a 
 #### Scenario: Linkwarden token
 - **WHEN** the user creates a token for the app `linkwarden`
 - **THEN** the server responds 201 and the token is listed with the app `linkwarden` and the note scope `none`
+
+#### Scenario: Memos token
+- **WHEN** the user creates a token for the app `memos` without a root category
+- **THEN** the server responds 201 and the token is listed with the app `memos`, no root folder and the note scope `all`
 
 #### Scenario: Existing Karakeep token
 - **WHEN** a Karakeep token was created before tokens had a note scope
@@ -32,7 +36,7 @@ A token's status SHALL be `revoked` when it has a revocation date, else `expired
 - **THEN** it is not revoked and its status stays `expired`
 
 ### Requirement: Create an app token
-`POST /api/app-tokens` with `{"name", "app", "rootId", "rootCategoryId", "expiresAt"}` SHALL create a token for the signed-in user and respond 201 with the token and its `secret`. `rootCategoryId` is the ID of a category of the user for the note scope `category`, or `null` or missing for the top level; it is only accepted for `karakeep` tokens. `expiresAt` is an RFC 3339 time in the future or `null` for no expiry. The secret is returned only in this response and can never be read again. Errors respond 400 with `invalid_name` (name empty or too long after trimming), `invalid_app` (unknown app), `invalid_root` (not a folder of the user's tree), `invalid_root_category` (not a category of the user, or given for a `linkwarden` token) or `invalid_expiry` (not a valid time, or not in the future).
+`POST /api/app-tokens` with `{"name", "app", "rootId", "rootCategoryId", "expiresAt"}` SHALL create a token for the signed-in user and respond 201 with the token and its `secret`. `rootId` is required for `karakeep` and `linkwarden` tokens and SHALL be missing or `null` for `memos` tokens. `rootCategoryId` is the ID of a category of the user for the note scope `category`, or `null` or missing for the top level; it is only accepted for `karakeep` and `memos` tokens. `expiresAt` is an RFC 3339 time in the future or `null` for no expiry. The secret is returned only in this response and can never be read again. Errors respond 400 with `invalid_name` (name empty or too long after trimming), `invalid_app` (unknown app), `invalid_root` (not a folder of the user's tree, or given for a `memos` token), `invalid_root_category` (not a category of the user, or given for a `linkwarden` token) or `invalid_expiry` (not a valid time, or not in the future).
 
 #### Scenario: Create
 - **WHEN** the user creates a token named "Phone" for `karakeep` with their folder "Reading" and no expiry
@@ -58,12 +62,20 @@ A token's status SHALL be `revoked` when it has a revocation date, else `expired
 - **WHEN** the user creates a `linkwarden` token with a `rootCategoryId`
 - **THEN** the server responds 400 with `invalid_root_category`
 
+#### Scenario: Memos token with a root category
+- **WHEN** the user creates a `memos` token with their category "Inbox" as `rootCategoryId`
+- **THEN** the token has the note scope `category` and `rootCategoryId` the ID of "Inbox"
+
+#### Scenario: Root folder for Memos
+- **WHEN** the user creates a `memos` token with a `rootId`
+- **THEN** the server responds 400 with `invalid_root` and no token is created
+
 #### Scenario: Expiry in the past
 - **WHEN** `expiresAt` is yesterday
 - **THEN** the server responds 400 with `invalid_expiry`
 
 ### Requirement: List app tokens
-`GET /api/app-tokens` SHALL return all of the signed-in user's tokens, newest first, each with `id`, `name`, `app`, `prefix`, `rootId` (`null` if the root folder was deleted), `noteScope` (`all`, `category` or `none`), `rootCategoryId` (the root category's ID for the note scope `category`, `null` if that category was deleted, and `null` for the other scopes), `createdAt`, `lastUsedAt`, `expiresAt`, `revokedAt` and `status`. It SHALL never return secrets or their hashes.
+`GET /api/app-tokens` SHALL return all of the signed-in user's tokens, newest first, each with `id`, `name`, `app`, `prefix`, `rootId` (`null` if the root folder was deleted, and always `null` for `memos` tokens), `noteScope` (`all`, `category` or `none`), `rootCategoryId` (the root category's ID for the note scope `category`, `null` if that category was deleted, and `null` for the other scopes), `createdAt`, `lastUsedAt`, `expiresAt`, `revokedAt` and `status`. It SHALL never return secrets or their hashes.
 
 #### Scenario: No secret in the list
 - **WHEN** the user lists their tokens after creating one
@@ -100,7 +112,7 @@ A token's status SHALL be `revoked` when it has a revocation date, else `expired
 - **THEN** the server responds 204 and the token is no longer listed
 
 ### Requirement: Connected apps tab
-The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the user's tokens with name, app, root folder path (or "Deleted folder" / "Gelöschter Ordner"), for Karakeep tokens the root category path (or "All notes" / "Alle Notizen" for the top level, or "Deleted category" / "Gelöschte Kategorie"), prefix, creation date, last-used date (or "Never used" / "Nie verwendet"), expiry date (or "No expiry" / "Läuft nicht ab") and a status badge "Active" / "Aktiv", "Expired" / "Abgelaufen" or "Revoked" / "Widerrufen". Each token SHALL show the official logo of its app, in its original colors, in front of the token's details. The logo is decorative: the app name stays in the text, and the logo has no text alternative of its own. The logos SHALL be served by Boardly itself, not loaded from a third-party site. Where an app's logo comes in a light and a dark variant, the variant follows the theme mode (see "Images follow the theme mode" in `theming`). Active tokens have an "Edit" / "Bearbeiten" action, which opens the edit dialog, and a "Revoke" / "Widerrufen" action; expired and revoked tokens have a "Delete" / "Löschen" action. Revoke and delete ask for confirmation. With no tokens, the tab explains what connected apps are. A "Connect app" / "App verbinden" action opens the create dialog.
+The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the user's tokens with name, app, for Karakeep and Linkwarden tokens the root folder path (or "Deleted folder" / "Gelöschter Ordner"), for Karakeep and Memos tokens the root category path (or "All notes" / "Alle Notizen" for the top level, or "Deleted category" / "Gelöschte Kategorie"), prefix, creation date, last-used date (or "Never used" / "Nie verwendet"), expiry date (or "No expiry" / "Läuft nicht ab") and a status badge "Active" / "Aktiv", "Expired" / "Abgelaufen" or "Revoked" / "Widerrufen". Each token SHALL show the official logo of its app, in its original colors, in front of the token's details. The logo is decorative: the app name stays in the text, and the logo has no text alternative of its own. The logos SHALL be served by Boardly itself, not loaded from a third-party site. Where an app's logo comes in a light and a dark variant, the variant follows the theme mode (see "Images follow the theme mode" in `theming`). Active tokens have an "Edit" / "Bearbeiten" action, which opens the edit dialog, and a "Revoke" / "Widerrufen" action; expired and revoked tokens have a "Delete" / "Löschen" action. Revoke and delete ask for confirmation. With no tokens, the tab explains what connected apps are. A "Connect app" / "App verbinden" action opens the create dialog.
 
 #### Scenario: Empty
 - **WHEN** a user without tokens opens the tab
@@ -122,6 +134,10 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 - **WHEN** the list has a Karakeep token and a Linkwarden token
 - **THEN** the Karakeep token shows the Karakeep logo and the Linkwarden token shows the Linkwarden logo, and both still show their app name as text
 
+#### Scenario: Memos token in the list
+- **WHEN** the list has a Memos token with the root category "Inbox"
+- **THEN** it shows the Memos logo, the app name "Memos", the category "Inbox" and no root folder
+
 #### Scenario: Logo in a dark theme
 - **WHEN** the theme `black` is active and the list has a Karakeep token
 - **THEN** the token shows the dark variant of the Karakeep logo
@@ -131,7 +147,7 @@ The "Connected apps" / "Verbundene Apps" tab of the settings page SHALL list the
 - **THEN** the token shows the Linkwarden logo, which has only one variant
 
 ### Requirement: Create dialog
-The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Linkwarden"), the root folder (picked from the favourites tree, folders only, including the top-level folder), for Karakeep only the root category (picked from the user's categories as a tree, or "All notes" / "Alle Notizen", preselected, with a hint that text bookmarks from the app are saved there as notes) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<BOARDLY_BASE_URL>/api/karakeep` for Karakeep, `<BOARDLY_BASE_URL>/api/linkwarden` for Linkwarden) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
+The create dialog SHALL ask for a name, the app ("Karakeep", preselected, "Linkwarden" or "Memos", with the hint "for apps like MoeMemos" / "für Apps wie MoeMemos"), for Karakeep and Linkwarden the root folder (picked from the favourites tree, folders only, including the top-level folder), for Karakeep and Memos the root category (picked from the user's categories as a tree, or "All notes" / "Alle Notizen", preselected, with a hint that text bookmarks from Karakeep, or new memos from Memos, are saved there as notes) and the expiry: "30 days", "90 days" (default), "1 year", "No expiry" or a custom date. A custom date must be in the future. After creating, the dialog SHALL show the secret once, with a copy button, the server address (also with a copy button) to enter in the app (`<BOARDLY_BASE_URL>/api/karakeep` for Karakeep, `<BOARDLY_BASE_URL>/api/linkwarden` for Linkwarden, `<BOARDLY_BASE_URL>/api/memos` for Memos) and a clearly highlighted warning that the secret won't be shown again. After the dialog is closed, the secret can't be shown again.
 
 #### Scenario: Show secret once
 - **WHEN** the user creates a token and closes the dialog
@@ -149,9 +165,13 @@ The create dialog SHALL ask for a name, the app ("Karakeep", preselected, or "Li
 - **WHEN** the user creates a token for "Linkwarden"
 - **THEN** the dialog shows the server address `<BOARDLY_BASE_URL>/api/linkwarden`
 
+#### Scenario: Memos without a folder
+- **WHEN** the user switches the app to "Memos"
+- **THEN** the root folder is no longer shown and the root category is, the token is created without `rootId`, and after creating the dialog shows the server address `<BOARDLY_BASE_URL>/api/memos`
+
 #### Scenario: Root category only for Karakeep
 - **WHEN** the user switches the app to "Linkwarden"
-- **THEN** the root category is no longer shown, and the token is created without `rootCategoryId`
+- **THEN** the root category is no longer shown, the root folder is, and the token is created without `rootCategoryId`
 
 ### Requirement: Karakeep tRPC transport
 The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchLink`, `superjson` transformer) to `<server address>/api/trpc`. Boardly SHALL answer these calls at `/api/karakeep/api/trpc/<procedures>?batch=1`, where `<procedures>` is a comma-separated list of procedure names such as `apiKeys.validate`. Queries are sent with `GET` and their inputs in the `input` query parameter; mutations are sent with `POST` and their inputs in the JSON body. In both cases the inputs are a JSON object keyed by the call's index (`"0"`, `"1"`, …), each value a superjson envelope `{"json": <value>, "meta"?: …}`; a missing key means no input. Dates in an input arrive as ISO 8601 strings in `json`, and Boardly SHALL accept them as such; `meta` is not needed to read an input. The response SHALL be a JSON array with one entry per procedure, in the request's order: `{"result": {"data": {"json": <output>}}}` on success, or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus", "path"}}}}` on failure, where `code` is the JSON-RPC number of the tRPC error code (for example `-32001` for `UNAUTHORIZED`, `-32004` for `NOT_FOUND`). When an output contains dates or maps, the result SHALL also carry superjson's `meta` (`{"json": …, "meta": {"values": {<path>: ["Date"] | ["map"]}}}`), with dates as ISO 8601 strings and maps as arrays of `[key, value]` pairs in `json`, so the clients get real `Date` and `Map` values. The HTTP status SHALL be the common status of all entries, or 207 when they differ. Only the procedures named in this and later changes are implemented; any other procedure answers with a `NOT_FOUND` error entry. A query sent with `POST`, or a mutation sent with `GET`, answers with a `METHOD_NOT_SUPPORTED` error entry. A request without `batch=1`, or whose `input` isn't valid JSON, answers 400 with a single `BAD_REQUEST` error entry.
@@ -173,7 +193,7 @@ The Karakeep browser extension and mobile app talk tRPC (version 11, `httpBatchL
 - **THEN** the result's `json.createdAt` is `"2026-03-01T12:00:00.000Z"` and `meta.values` maps `createdAt` to `["Date"]`
 
 ### Requirement: Bearer authentication for app endpoints
-Requests to `/api/karakeep/` and `/api/linkwarden/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. The cross-site request check of the web app's API does not apply to these paths. Procedures and endpoints marked as public in this spec or in the app's spec work without a token; every other procedure or endpoint requires an active token for the app of its path: `karakeep` under `/api/karakeep/`, `linkwarden` under `/api/linkwarden/`. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL fail such a procedure with an `UNAUTHORIZED` error entry (HTTP status 401), and such a Linkwarden endpoint with 401 and `{"response": "You must be logged in."}`, with the same message in every case. A request authenticated by a token records the token's last use, at most once per minute.
+Requests to `/api/karakeep/`, `/api/linkwarden/` and `/api/memos/` SHALL be authenticated only by the header `Authorization: Bearer <secret>`. The session cookie SHALL NOT authenticate these requests and is ignored. The cross-site request check of the web app's API does not apply to these paths. Procedures and endpoints marked as public in this spec or in the app's spec work without a token; every other procedure or endpoint requires an active token for the app of its path: `karakeep` under `/api/karakeep/`, `linkwarden` under `/api/linkwarden/`, `memos` under `/api/memos/`. A missing, malformed, unknown, revoked or expired token, or a token for another app, SHALL fail such a procedure with an `UNAUTHORIZED` error entry (HTTP status 401), such a Linkwarden endpoint with 401 and `{"response": "You must be logged in."}`, and such a Memos endpoint with 401 and the Memos error `{"code": 16, "message": "Unauthenticated.", "details": []}`, with the same message in every case. A request authenticated by a token records the token's last use, at most once per minute.
 
 #### Scenario: Valid token
 - **WHEN** a client calls `users.whoami` with an active Karakeep token
@@ -199,12 +219,16 @@ Requests to `/api/karakeep/` and `/api/linkwarden/` SHALL be authenticated only 
 - **WHEN** the Linkwarden app calls `GET /api/linkwarden/api/v1/users/me` with an active Linkwarden token
 - **THEN** the call succeeds
 
+#### Scenario: Memos endpoint with a Karakeep token
+- **WHEN** MoeMemos calls `GET /api/memos/api/v1/auth/me` with an active Karakeep token
+- **THEN** the server responds 401 with the Memos error code `16`
+
 #### Scenario: Token for another app
 - **WHEN** a client calls `GET /api/linkwarden/api/v1/users/me` with an active Karakeep token
 - **THEN** the server responds 401 with `{"response": "You must be logged in."}`
 
 ### Requirement: CORS for app endpoints
-Responses on `/api/karakeep/` and `/api/linkwarden/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`. Preflight `OPTIONS` requests SHALL be answered with 204 before authentication, with the allowed methods `GET, POST, PUT, DELETE` and the request headers the preflight asks for (`Access-Control-Request-Headers`), because the extensions can add user-configured headers. The web app's other `/api/` endpoints are unchanged.
+Responses on `/api/karakeep/`, `/api/linkwarden/` and `/api/memos/` SHALL allow cross-origin requests from any origin, including browser-extension origins, without credentials: `Access-Control-Allow-Origin: *`. Preflight `OPTIONS` requests SHALL be answered with 204 before authentication, with the allowed methods `GET, POST, PUT, PATCH, DELETE` and the request headers the preflight asks for (`Access-Control-Request-Headers`), because the extensions can add user-configured headers. The web app's other `/api/` endpoints are unchanged.
 
 #### Scenario: Preflight from an extension
 - **WHEN** a request `OPTIONS /api/karakeep/api/trpc/users.whoami?batch=1` arrives with `Origin: chrome-extension://abc` and `Access-Control-Request-Headers: authorization,content-type`
@@ -212,7 +236,7 @@ Responses on `/api/karakeep/` and `/api/linkwarden/` SHALL allow cross-origin re
 
 #### Scenario: Preflight for an update
 - **WHEN** a request `OPTIONS /api/linkwarden/api/v1/links/7` arrives with `Access-Control-Request-Method: PUT`
-- **THEN** the server responds 204 and allows the methods `GET, POST, PUT, DELETE`
+- **THEN** the server responds 204 and allows the methods `GET, POST, PUT, PATCH, DELETE`
 
 ### Requirement: Karakeep login procedures
 Boardly SHALL implement the procedures the extension and the mobile app need to log in:
@@ -250,7 +274,7 @@ Boardly SHALL implement the procedures the extension and the mobile app need to 
 - **THEN** the server responds 404
 
 ### Requirement: Token subtree scope
-A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it, and notes in the token's note scope: every note of the user for `all`, the notes in the root category and in all its subcategories at every depth for `category`, and none for `none`. Nodes and notes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. Notes created through the token go into the root category, or are uncategorized for `all`. This applies to every procedure and endpoint under `/api/karakeep/` and `/api/linkwarden/`.
+A request authenticated with an app token SHALL only read and change nodes in the subtree of the token's root folder: the root and everything below it, and notes in the token's note scope: every note of the user for `all`, the notes in the root category and in all its subcategories at every depth for `category`, and none for `none`. Nodes and notes outside it are treated as if they didn't exist. A node can't be created in, moved to, or moved from a folder outside the subtree, and the root folder itself can't be deleted, moved or renamed through the token. Notes created through the token go into the root category, or are uncategorized for `all`. A `memos` token reaches no nodes at all. This applies to every procedure and endpoint under `/api/karakeep/`, `/api/linkwarden/` and `/api/memos/`.
 
 #### Scenario: Node outside the subtree
 - **WHEN** a token rooted at "Reading" asks for a link in "Work"
@@ -273,7 +297,7 @@ A request authenticated with an app token SHALL only read and change nodes in th
 - **THEN** the token can't see that note, while a token with the note scope `all` can
 
 ### Requirement: Edit an app token
-`PATCH /api/app-tokens/{id}` with `rootId` and/or `rootCategoryId` SHALL change the root folder and, for `karakeep` tokens, the note scope of an active token of the signed-in user and respond 200 with the token. `rootCategoryId` `null` sets the note scope `all`, and a category ID sets `category`. The same validation as on create applies (`invalid_root`, `invalid_root_category`). Any other field, including `name`, `app`, `expiresAt` and `secret`, responds 400 with `invalid_request` and changes nothing. A token that isn't active is rejected with 409 and `token_inactive`. An unknown ID or another user's token responds 404 with `not_found`. The token's secret, prefix, dates and status stay the same, and the next request with it uses the new scope.
+`PATCH /api/app-tokens/{id}` with `rootId` and/or `rootCategoryId` SHALL change the root folder of an active `karakeep` or `linkwarden` token and the note scope of an active `karakeep` or `memos` token of the signed-in user and respond 200 with the token. `rootCategoryId` `null` sets the note scope `all`, and a category ID sets `category`. The same validation as on create applies (`invalid_root`, also for any `rootId` other than `null` on a `memos` token, and `invalid_root_category`). Any other field, including `name`, `app`, `expiresAt` and `secret`, responds 400 with `invalid_request` and changes nothing. A token that isn't active is rejected with 409 and `token_inactive`. An unknown ID or another user's token responds 404 with `not_found`. The token's secret, prefix, dates and status stay the same, and the next request with it uses the new scope.
 
 #### Scenario: Move to another folder
 - **WHEN** the user changes the root folder of their active token "Phone" from "Reading" to "Work"
@@ -282,6 +306,10 @@ A request authenticated with an app token SHALL only read and change nodes in th
 #### Scenario: Change the root category
 - **WHEN** the user changes the root category of a Karakeep token from the top level to "Inbox"
 - **THEN** the token has the note scope `category`, and new text bookmarks from the app go into "Inbox"
+
+#### Scenario: Change the category of a Memos token
+- **WHEN** the user changes the root category of a Memos token from "Inbox" to the top level
+- **THEN** the token has the note scope `all`, and the next memo list with it contains every note of the user
 
 #### Scenario: Revoked token
 - **WHEN** the user edits a revoked token
@@ -292,7 +320,7 @@ A request authenticated with an app token SHALL only read and change nodes in th
 - **THEN** the server responds 400 with `invalid_request`, and the token is unchanged
 
 ### Requirement: Edit dialog
-The edit dialog SHALL show the token's name and app as text, and ask for the root folder (picked like in the create dialog, the current one preselected) and, for Karakeep tokens, the root category (picked like in the create dialog, the current one preselected). Saving sends only the changed values and closes the dialog; the list then shows the new folder and category. A failed save shows a translated error and keeps the dialog open. All text SHALL be translated (English and German).
+The edit dialog SHALL show the token's name and app as text, and ask, for Karakeep and Linkwarden tokens, for the root folder (picked like in the create dialog, the current one preselected) and, for Karakeep and Memos tokens, for the root category (picked like in the create dialog, the current one preselected). Saving sends only the changed values and closes the dialog; the list then shows the new folder and category. A failed save shows a translated error and keeps the dialog open. All text SHALL be translated (English and German).
 
 #### Scenario: Change the folder
 - **WHEN** the user opens "Edit" on the token "Phone", picks the folder "Work" and saves
@@ -301,3 +329,7 @@ The edit dialog SHALL show the token's name and app as text, and ask for the roo
 #### Scenario: Linkwarden token
 - **WHEN** the user opens "Edit" on a Linkwarden token
 - **THEN** the dialog shows only the root folder choice
+
+#### Scenario: Memos token
+- **WHEN** the user opens "Edit" on a Memos token
+- **THEN** the dialog shows only the root category choice

@@ -33,4 +33,4 @@
 
 - [x] 6.1 Add a "Memos-compatible server" section to the README (MoeMemos setup, what syncs, the limits on attachments and visibility, moving notes out of the category); verify the README describes every limit in the proposal
 - [x] 6.2 Run `make check` and `make test` and verify both pass
-- [ ] 6.3 Manual check with MoeMemos on an Android device or emulator against a dev server: log in, sync, create, tick off a task, pin, archive and delete; verify each change shows on `/notes`
+- [x] 6.3 Manual check with MoeMemos on an Android device or emulator against a dev server: log in, sync, create, tick off a task, pin, archive and delete; verify each change shows on `/notes`
