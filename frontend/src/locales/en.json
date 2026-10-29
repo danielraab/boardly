@@ -716,6 +716,72 @@
 				"missing": "This note no longer exists",
 				"changeFailed": "The note couldn't be changed. Please try again.",
 				"changedElsewhere": "The note was changed elsewhere. The widget shows the current state."
+			},
+			"recentNotes": {
+				"name": "Recent notes",
+				"description": "Shows your newest notes.",
+				"addTitle": "Add recent notes",
+				"editTitle": "Edit recent notes",
+				"sortLabel": "Sort by",
+				"sort": {
+					"created": "Added",
+					"updated": "Last changed"
+				},
+				"sortHint": "The time the notes are ordered and limited by, and shown with.",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the notes.",
+				"limitLabel": "Number of notes",
+				"limitHint": "1 to {{max}}.",
+				"daysLabel": "Only the last … days",
+				"daysHint": "Optional, 1 to {{max}}. Empty shows notes of any age.",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the titles of your newest notes, but not their content. Otherwise only you see the widget.",
+				"empty": "No notes",
+				"emptyDays_one": "No notes in the last day",
+				"emptyDays_other": "No notes in the last {{count}} days"
+			},
+			"noteList": {
+				"name": "Note list",
+				"description": "Shows the notes of a category.",
+				"addTitle": "Add note list",
+				"editTitle": "Edit note list",
+				"categoryLabel": "Category",
+				"subcategoriesLabel": "Include subcategories",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the notes.",
+				"sortLabel": "Sort",
+				"sort": {
+					"updated": "Last changed",
+					"created": "Added",
+					"title": "Alphabetical"
+				},
+				"limitLabel": "Number of notes",
+				"limitHint": "1 to {{max}}.",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
+				"empty": "No notes",
+				"emptyCategory": "No notes in this category",
+				"missing": "This category no longer exists"
+			},
+			"selectedNotes": {
+				"name": "Selected notes",
+				"description": "Shows notes you pick, in your order.",
+				"addTitle": "Add selected notes",
+				"editTitle": "Edit selected notes",
+				"notesLabel": "Notes",
+				"addPlaceholder": "Add a note…",
+				"noMatches": "No matching notes",
+				"full": "At most {{max}} notes can be selected.",
+				"drag": "Drag {{name}}",
+				"moveUp": "Move {{name}} up",
+				"moveDown": "Move {{name}} down",
+				"remove": "Remove {{name}}",
+				"gone": "This note no longer exists",
+				"titleLabel": "Title",
+				"titleHint": "Optional. Shown above the notes.",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
+				"missing": "None of the selected notes exist anymore"
 			}
 		}
 	},

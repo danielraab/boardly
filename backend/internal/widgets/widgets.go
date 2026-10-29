@@ -22,6 +22,9 @@ func Register(d *dashboards.Store, fav *favourites.Store, noteStore *notes.Store
 	d.Kinds[KindLinkList] = LinkList(fav, icons)
 	d.Kinds[KindRecentFavourites] = RecentFavourites(fav, icons)
 	d.Kinds[KindNote] = Note(noteStore)
+	d.Kinds[KindRecentNotes] = RecentNotes(noteStore)
+	d.Kinds[KindNoteList] = NoteList(noteStore)
+	d.Kinds[KindSelectedNotes] = SelectedNotes(noteStore)
 }
 
 // Limits shared by the kinds' configs.

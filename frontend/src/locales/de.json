@@ -716,6 +716,72 @@
 				"missing": "Diese Notiz existiert nicht mehr",
 				"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
 				"changedElsewhere": "Die Notiz wurde woanders geändert. Das Widget zeigt den aktuellen Stand."
+			},
+			"recentNotes": {
+				"name": "Neueste Notizen",
+				"description": "Zeigt deine neuesten Notizen.",
+				"addTitle": "Neueste Notizen hinzufügen",
+				"editTitle": "Neueste Notizen bearbeiten",
+				"sortLabel": "Sortieren nach",
+				"sort": {
+					"created": "Hinzugefügt",
+					"updated": "Zuletzt geändert"
+				},
+				"sortHint": "Nach dieser Zeit werden die Notizen sortiert und begrenzt, und sie wird bei ihnen angezeigt.",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"limitLabel": "Anzahl Notizen",
+				"limitHint": "1 bis {{max}}.",
+				"daysLabel": "Nur die letzten … Tage",
+				"daysHint": "Optional, 1 bis {{max}}. Leer zeigt Notizen jeden Alters.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel deiner neuesten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"empty": "Keine Notizen",
+				"emptyDays_one": "Keine Notizen am letzten Tag",
+				"emptyDays_other": "Keine Notizen in den letzten {{count}} Tagen"
+			},
+			"noteList": {
+				"name": "Notizliste",
+				"description": "Zeigt die Notizen einer Kategorie.",
+				"addTitle": "Notizliste hinzufügen",
+				"editTitle": "Notizliste bearbeiten",
+				"categoryLabel": "Kategorie",
+				"subcategoriesLabel": "Unterkategorien einbeziehen",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"sortLabel": "Sortierung",
+				"sort": {
+					"updated": "Zuletzt geändert",
+					"created": "Hinzugefügt",
+					"title": "Alphabetisch"
+				},
+				"limitLabel": "Anzahl Notizen",
+				"limitHint": "1 bis {{max}}.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"empty": "Keine Notizen",
+				"emptyCategory": "Keine Notizen in dieser Kategorie",
+				"missing": "Diese Kategorie existiert nicht mehr"
+			},
+			"selectedNotes": {
+				"name": "Ausgewählte Notizen",
+				"description": "Zeigt Notizen deiner Wahl in deiner Reihenfolge.",
+				"addTitle": "Ausgewählte Notizen hinzufügen",
+				"editTitle": "Ausgewählte Notizen bearbeiten",
+				"notesLabel": "Notizen",
+				"addPlaceholder": "Notiz hinzufügen …",
+				"noMatches": "Keine passenden Notizen",
+				"full": "Es können höchstens {{max}} Notizen ausgewählt werden.",
+				"drag": "{{name}} ziehen",
+				"moveUp": "{{name}} nach oben",
+				"moveDown": "{{name}} nach unten",
+				"remove": "{{name}} entfernen",
+				"gone": "Diese Notiz existiert nicht mehr",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Notizen angezeigt.",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"missing": "Keine der ausgewählten Notizen existiert mehr"
 			}
 		}
 	},

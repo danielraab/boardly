@@ -20,6 +20,7 @@ import { RecentFavouritesView } from "./RecentFavouritesView";
 import {
 	maxRecentDays,
 	maxRecentLimit,
+	parseCount,
 	type RecentData,
 	recentLinks,
 } from "./recent";
@@ -90,14 +91,6 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 			)}
 		</>
 	);
-}
-
-/** The whole number in value if it is from 1 to max, otherwise null. */
-function parseCount(value: string, max: number): number | null {
-	const n = Number(value);
-	return value.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= max
-		? n
-		: null;
 }
 
 function Settings(props: WidgetSettingsProps) {

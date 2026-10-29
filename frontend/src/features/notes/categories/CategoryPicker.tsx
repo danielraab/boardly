@@ -10,17 +10,21 @@ const INDENT_REM = 1;
 /**
  * A choice of one of the user's categories, shown as a tree, or of the empty
  * choice (null) labelled emptyLabel, such as "No category" or "Top level".
+ * Without emptyLabel, null means nothing is chosen. extraChoices are offered
+ * between the empty choice and the tree; their IDs must not be category IDs.
  */
 export function CategoryPicker({
 	id,
 	label,
 	emptyLabel,
+	extraChoices = [],
 	value,
 	onChange,
 }: {
 	id: string;
 	label: string;
-	emptyLabel: string;
+	emptyLabel?: string;
+	extraChoices?: { id: string; title: string }[];
 	value: string | null;
 	onChange: (id: string | null) => void;
 }) {
@@ -29,7 +33,10 @@ export function CategoryPicker({
 	const labelId = `${id}-label`;
 
 	const options = [
-		{ id: null, title: emptyLabel, depth: 0, icon: null },
+		...(emptyLabel === undefined
+			? []
+			: [{ id: null, title: emptyLabel, depth: 0, icon: null }]),
+		...extraChoices.map((c) => ({ ...c, depth: 0, icon: null })),
 		...flatten(buildTree(categories.data ?? [], i18n.language)).map((n) => ({
 			id: n.category.id,
 			title: n.category.title,

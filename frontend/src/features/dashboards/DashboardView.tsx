@@ -1,7 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Ellipsis, LayoutGrid, Settings } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryIconButton } from "#/components/buttonStyles";
 import { menuItem, menuPopup } from "#/components/menuStyles";
@@ -13,14 +13,25 @@ import { DashboardDialog, type DashboardDialogTarget } from "./DashboardDialog";
 import { LayoutEditor } from "./layout/LayoutEditor";
 import { DashboardGrid } from "./layout/SectionGrid";
 import { useColumns } from "./layout/useColumns";
+import { DashboardNoteDialog, useDropNote } from "./noteParam";
 
-/** Search params of pages that show a dashboard; `edit` opens edit mode. */
-export type DashboardSearch = { edit?: true };
+/**
+ * Search params of pages that show a dashboard; `edit` opens edit mode and
+ * `note` the editor modal of that note.
+ */
+export type DashboardSearch = { edit?: true; note?: string };
 
 export function validateDashboardSearch(
 	search: Record<string, unknown>,
 ): DashboardSearch {
-	return { edit: search.edit === true ? true : undefined };
+	const note = search.note;
+	return {
+		edit: search.edit === true ? true : undefined,
+		note:
+			typeof note === "string" && note !== "" && note.length <= 64
+				? note
+				: undefined,
+	};
 }
 
 /**
@@ -44,9 +55,21 @@ export function DashboardView({
 	const setEditing = (edit: boolean) =>
 		void navigate({
 			to: ".",
-			search: (prev: DashboardSearch) => ({ ...prev, edit: edit || undefined }),
+			search: (prev: DashboardSearch) => ({
+				...prev,
+				edit: edit || undefined,
+				note: undefined,
+			}),
 			replace: !edit,
 		});
+
+	// Only the owner outside edit mode opens notes; otherwise `note` goes.
+	const canOpenNote = view.isOwner && !editing;
+	const dropNote = useDropNote();
+	const strayNote = search.note !== undefined && !canOpenNote;
+	useEffect(() => {
+		if (strayNote) dropNote();
+	}, [strayNote, dropNote]);
 
 	// After a save, follow the dashboard when its current address stops showing it.
 	const onSaved = (saved: Dashboard) => {
@@ -90,6 +113,7 @@ export function DashboardView({
 			) : (
 				<DashboardGrid sections={view.sections} columns={columns} />
 			)}
+			{canOpenNote && <DashboardNoteDialog noteId={search.note} />}
 		</DashboardPage>
 	);
 }

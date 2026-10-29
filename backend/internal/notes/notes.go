@@ -140,6 +140,34 @@ func (s *Store) Note(ctx context.Context, userID, id string) (Note, error) {
 	return note(ctx, s.DB, userID, id)
 }
 
+// NotesByID returns those of the user's notes whose ID is among ids, in no
+// particular order. Unknown IDs and other users' notes are left out.
+func (s *Store) NotesByID(ctx context.Context, userID string, ids []string) ([]Note, error) {
+	out := []Note{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, userID)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT `+noteColumns+` FROM notes WHERE user_id = ? AND id IN (?`+strings.Repeat(`, ?`, len(ids)-1)+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		n, err := scanNote(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
 func note(ctx context.Context, q db.Querier, userID, id string) (Note, error) {
 	n, err := scanNote(q.QueryRowContext(ctx,
 		`SELECT `+noteColumns+` FROM notes WHERE id = ? AND user_id = ?`, id, userID))

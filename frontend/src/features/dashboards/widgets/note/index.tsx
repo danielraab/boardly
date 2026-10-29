@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
 import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { useCurrentDashboard } from "#/features/dashboards/currentDashboard";
+import { useOpenNote } from "#/features/dashboards/noteParam";
 import {
 	isVersionConflict,
 	type Note,
@@ -22,7 +23,6 @@ import type {
 } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { WidgetSettingsForm } from "../WidgetSettingsForm";
-import { NoteDialog } from "./NoteDialog";
 import {
 	type NoteData,
 	NoteWidgetView,
@@ -47,10 +47,8 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 	const { t } = useTranslation();
 	const config = widget.config as NoteConfig;
 	const isOwner = useCurrentDashboard()?.isOwner ?? false;
-	const queryClient = useQueryClient();
 	const [error, setError] = useState<SaveError | null>(null);
-	// Kept above the version-keyed note, so a refresh doesn't close the modal.
-	const [opened, setOpened] = useState(false);
+	const openNote = useOpenNote();
 	const notes = useQuery({ ...notesQueryOptions, enabled: editing });
 	const categories = useQuery({
 		...noteCategoriesQueryOptions,
@@ -100,33 +98,19 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 				? "dashboards.widgets.note.changedElsewhere"
 				: "dashboards.widgets.note.changeFailed",
 		);
-	const refresh = () =>
-		void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
+	const noteId = data.id;
+	// A newer version from the server starts over with a new saver.
 	return (
-		<>
-			{/* A newer version from the server starts over with a new saver. */}
-			<OwnerNote
-				key={data.version}
-				data={{ ...data, id: data.id }}
-				size={config.size}
-				headingLevel={headingLevel}
-				message={message}
-				onOpen={() => setOpened(true)}
-				onToggled={() => setError(null)}
-				onError={setError}
-			/>
-			<NoteDialog
-				noteId={data.id}
-				name={displayTitle(data) ?? t("notes.untitled")}
-				open={opened}
-				onClose={() => setOpened(false)}
-				onChanged={refresh}
-				onDeleted={() => {
-					setOpened(false);
-					refresh();
-				}}
-			/>
-		</>
+		<OwnerNote
+			key={data.version}
+			data={{ ...data, id: noteId }}
+			size={config.size}
+			headingLevel={headingLevel}
+			message={message}
+			onOpen={() => openNote(noteId)}
+			onToggled={() => setError(null)}
+			onError={setError}
+		/>
 	);
 }
 
