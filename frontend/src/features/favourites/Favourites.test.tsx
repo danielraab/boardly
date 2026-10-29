@@ -682,6 +682,15 @@ describe("delete from the edit dialog", () => {
 		expect(server.titles()).toEqual(["Docs"]);
 	});
 
+	it("is an icon-only button named Delete", async () => {
+		fakeServer([link("Docs")]);
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Docs");
+		const button = within(dialog).getByRole("button", { name: "Delete" });
+		expect(button).toHaveTextContent("");
+		expect(button).toHaveAttribute("title", "Delete");
+	});
+
 	it("isn't offered for folders or new nodes", async () => {
 		fakeServer([folder("Work")]);
 		const { user } = renderApp("/favourites");

@@ -561,13 +561,17 @@ On `/favourites`, every name in the tree SHALL keep a minimum width (about 6rem 
 - **THEN** each level is indented half as much as on a wide screen
 
 ### Requirement: Delete from the link edit dialog
-The dialog to edit an existing link SHALL show a "Delete" / "Löschen" button, apart from "Cancel" and "Save". Activating it SHALL open the same confirmation as deleting the link from the tree, on top of the edit dialog. Confirming SHALL delete the link and close both dialogs, without saving any unsaved changes in the edit dialog. Cancelling the confirmation SHALL return to the edit dialog with its unsaved changes kept. When the delete fails, the confirmation SHALL stay open and show a translated message.
+The dialog to edit an existing link SHALL show an icon-only delete button with a trash icon in the danger color, apart from "Cancel" and "Save". It SHALL have the accessible name and tooltip "Delete" / "Löschen" and show no text. Activating it SHALL open the same confirmation as deleting the link from the tree, on top of the edit dialog. Confirming SHALL delete the link and close both dialogs, without saving any unsaved changes in the edit dialog. Cancelling the confirmation SHALL return to the edit dialog with its unsaved changes kept. When the delete fails, the confirmation SHALL stay open and show a translated message.
 
 The dialogs for a new link, a new folder and editing a folder SHALL NOT show this button.
 
 #### Scenario: Delete a link from its edit dialog
 - **WHEN** the user opens the edit dialog of "Docs" on `/favourites`, activates "Delete" and confirms
 - **THEN** both dialogs close and "Docs" is removed from the tree
+
+#### Scenario: Icon-only button
+- **WHEN** the user opens the edit dialog of a link
+- **THEN** the button named "Delete" shows only a trash icon, and the button row fits on a phone screen
 
 #### Scenario: Cancel the confirmation
 - **WHEN** the user opens the edit dialog of "Docs", changes the title to "Team docs", activates "Delete" and cancels the confirmation

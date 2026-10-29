@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { primaryButton, secondaryButton } from "#/components/buttonStyles";
+import {
+	dangerIconButton,
+	primaryButton,
+	secondaryButton,
+} from "#/components/buttonStyles";
 import {
 	dialogBackdrop,
 	dialogPopup,
@@ -234,11 +238,12 @@ function NodeForm({
 					{editing && kind === "link" && (
 						<button
 							type="button"
-							className={`${secondaryButton} me-auto`}
+							className={`${dangerIconButton} me-auto`}
+							aria-label={t("favourites.dialog.delete")}
+							title={t("favourites.dialog.delete")}
 							onClick={() => setConfirmDelete(true)}
 						>
 							<Trash2 className="size-4" aria-hidden />
-							{t("favourites.dialog.delete")}
 						</button>
 					)}
 					<Dialog.Close className={secondaryButton}>

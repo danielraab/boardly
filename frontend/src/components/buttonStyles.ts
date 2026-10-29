@@ -13,6 +13,10 @@ export const secondaryIconButton =
 
 export const dangerButton = `${textButton} bg-danger text-on-danger hover:bg-danger/90 disabled:opacity-50`;
 
+/** An icon-only button for destructive actions, shaped like secondaryIconButton. */
+export const dangerIconButton =
+	"inline-flex size-[2.375rem] shrink-0 items-center justify-center rounded-lg border border-danger/40 text-danger hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50";
+
 export const iconButton =
 	"inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-paper hover:text-ink";
 
