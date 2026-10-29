@@ -714,6 +714,7 @@
 				"editTitle": "Notiz bearbeiten",
 				"noteLabel": "Notiz",
 				"notePlaceholder": "Notiz wählen",
+				"noMatches": "Keine passenden Notizen",
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen die ganze Notiz, können sie aber nicht ändern. Sonst siehst nur du das Widget.",
 				"missing": "Diese Notiz existiert nicht mehr",

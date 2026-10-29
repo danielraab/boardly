@@ -24,23 +24,25 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { secondaryIconButton } from "#/components/buttonStyles";
-import { ChosenIcon } from "#/components/icons/ChosenIcon";
-import type { Note } from "#/features/notes/api";
+import type { Note, NoteCategory } from "#/features/notes/api";
 import { displayTitle } from "#/features/notes/document/text";
-import { iconProps } from "#/features/notes/noteIcon";
+import { NoteChoiceLabel } from "../NoteChoiceLabel";
+import { notePath } from "./selected";
 
 /**
- * The chosen notes in their order, each with a drag handle and buttons to
- * move it up, down or remove it. IDs without a note in notes are shown as
+ * The chosen notes in their order, each with its category path, a drag
+ * handle and buttons to move it up, down or remove it. IDs without a note in notes are shown as
  * notes that no longer exist.
  */
 export function ChosenNotes({
 	noteIds,
 	notes,
+	categories,
 	onChange,
 }: {
 	noteIds: string[];
 	notes: Note[];
+	categories: NoteCategory[];
 	onChange: (noteIds: string[]) => void;
 }) {
 	const sensors = useSensors(
@@ -75,6 +77,7 @@ export function ChosenNotes({
 							key={id}
 							id={id}
 							note={byID.get(id)}
+							categories={categories}
 							first={i === 0}
 							last={i === noteIds.length - 1}
 							onUp={() => move(i, i - 1)}
@@ -91,6 +94,7 @@ export function ChosenNotes({
 function ChosenNote({
 	id,
 	note,
+	categories,
 	first,
 	last,
 	onUp,
@@ -99,6 +103,7 @@ function ChosenNote({
 }: {
 	id: string;
 	note: Note | undefined;
+	categories: NoteCategory[];
 	first: boolean;
 	last: boolean;
 	onUp: () => void;
@@ -115,9 +120,11 @@ function ChosenNote({
 		transition,
 		isDragging,
 	} = useSortable({ id });
+	const title = note ? displayTitle(note) : null;
 	const name = note
-		? (displayTitle(note) ?? t("notes.untitled"))
+		? (title ?? t("notes.untitled"))
 		: t("dashboards.widgets.selectedNotes.gone");
+	const path = note ? notePath(note, categories) : [];
 	const button = `${secondaryIconButton} size-8 shrink-0 disabled:opacity-40`;
 
 	return (
@@ -141,18 +148,23 @@ function ChosenNote({
 			>
 				<GripVertical className="size-4" aria-hidden />
 			</button>
-			{note ? (
-				note.icon && (
-					<ChosenIcon {...iconProps(note.icon)} className="size-4 shrink-0" />
-				)
-			) : (
-				<TriangleAlert className="size-4 shrink-0 text-danger" aria-hidden />
-			)}
 			<span
-				title={name}
-				className={`min-w-0 flex-1 truncate text-sm ${note ? "" : "text-muted italic"}`}
+				title={path.length > 0 ? `${name} · ${path.join(" › ")}` : name}
+				className={`flex min-w-0 flex-1 items-center gap-2 text-sm ${note?.archived ? "opacity-70" : ""}`}
 			>
-				{name}
+				{note ? (
+					<NoteChoiceLabel note={note} title={title} path={path} />
+				) : (
+					<>
+						<TriangleAlert
+							className="size-4 shrink-0 text-danger"
+							aria-hidden
+						/>
+						<span className="min-w-0 flex-1 truncate text-muted italic">
+							{name}
+						</span>
+					</>
+				)}
 			</span>
 			<button
 				type="button"

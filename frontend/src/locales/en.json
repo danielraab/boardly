@@ -714,6 +714,7 @@
 				"editTitle": "Edit note",
 				"noteLabel": "Note",
 				"notePlaceholder": "Choose a note",
+				"noMatches": "No matching notes",
 				"publicLabel": "Show on public dashboard",
 				"publicHint": "Visitors of a public dashboard see the whole note, but can't change it. Otherwise only you see the widget.",
 				"missing": "This note no longer exists",

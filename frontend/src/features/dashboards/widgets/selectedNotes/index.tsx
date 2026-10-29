@@ -119,6 +119,7 @@ function Settings(props: WidgetSettingsProps) {
 						<ChosenNotes
 							noteIds={noteIds}
 							notes={notes.data}
+							categories={categories.data}
 							onChange={setNoteIds}
 						/>
 						<NoteSearch

@@ -13,7 +13,6 @@ import {
 	notesQueryOptions,
 } from "#/features/notes/api";
 import { categoryPath } from "#/features/notes/categories/tree";
-import { displayTitle } from "#/features/notes/document/text";
 import { setTaskChecked } from "#/features/notes/document/types";
 import { useAutosave } from "#/features/notes/useAutosave";
 import type {
@@ -23,6 +22,7 @@ import type {
 } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { WidgetSettingsForm } from "../WidgetSettingsForm";
+import { NotePicker } from "./NotePicker";
 import {
 	type NoteData,
 	NoteWidgetView,
@@ -180,6 +180,7 @@ function Settings(props: WidgetSettingsProps) {
 	const { t } = useTranslation();
 	const config = props.widget.config as NoteConfig;
 	const notes = useQuery(notesQueryOptions);
+	const categories = useQuery(noteCategoriesQueryOptions);
 	const [noteId, setNoteId] = useState(config.noteId);
 	const [size, setSize] = useState(config.size);
 	const [showIfPublic, setShowIfPublic] = useState(config.showIfPublic);
@@ -214,22 +215,22 @@ function Settings(props: WidgetSettingsProps) {
 				<label htmlFor="note-widget-note" className="block text-sm font-medium">
 					{t("dashboards.widgets.note.noteLabel")}
 				</label>
-				<select
-					id="note-widget-note"
-					value={chosen}
-					onChange={(e) => setNoteId(e.target.value)}
-					disabled={!notes.data}
-					className={textInput}
-				>
-					<option value="" disabled>
-						{t("dashboards.widgets.note.notePlaceholder")}
-					</option>
-					{notes.data?.map((n) => (
-						<option key={n.id} value={n.id}>
-							{displayTitle(n) ?? t("notes.untitled")}
-						</option>
-					))}
-				</select>
+				{notes.data && categories.data ? (
+					<NotePicker
+						id="note-widget-note"
+						notes={notes.data}
+						categories={categories.data}
+						value={chosen}
+						onChange={setNoteId}
+					/>
+				) : (
+					<input
+						id="note-widget-note"
+						disabled
+						placeholder={t("dashboards.widgets.note.notePlaceholder")}
+						className={textInput}
+					/>
+				)}
 				{config.noteId !== "" && notes.data && chosen === "" && (
 					<p className="mt-1 text-sm text-muted">
 						{t("dashboards.widgets.note.missing")}

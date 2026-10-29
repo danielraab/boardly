@@ -2,10 +2,9 @@ import { Combobox } from "@base-ui/react/combobox";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
-import { ChosenIcon } from "#/components/icons/ChosenIcon";
 import { menuItem, menuPopup } from "#/components/menuStyles";
 import type { Note, NoteCategory } from "#/features/notes/api";
-import { iconProps } from "#/features/notes/noteIcon";
+import { NoteChoiceLabel } from "../NoteChoiceLabel";
 import { maxSelectedNotes, noteChoices } from "./selected";
 
 /**
@@ -75,22 +74,13 @@ export function NoteSearch({
 									<Combobox.Item
 										key={noteId}
 										value={noteId}
-										className={menuItem}
+										className={`${menuItem} ${choice.note.archived ? "opacity-70" : ""}`}
 									>
-										{choice.note.icon && (
-											<ChosenIcon
-												{...iconProps(choice.note.icon)}
-												className="size-4 shrink-0"
-											/>
-										)}
-										<span className="truncate">
-											{choice.title ?? t("notes.untitled")}
-										</span>
-										{choice.path.length > 0 && (
-											<span className="ml-auto shrink-0 pl-2 text-xs text-muted">
-												{choice.path.join(" › ")}
-											</span>
-										)}
+										<NoteChoiceLabel
+											note={choice.note}
+											title={choice.title}
+											path={choice.path}
+										/>
 									</Combobox.Item>
 								);
 							}}

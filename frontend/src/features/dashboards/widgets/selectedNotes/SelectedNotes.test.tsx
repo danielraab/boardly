@@ -19,15 +19,21 @@ const plumber = note("plumber", {
 });
 const draft = note("draft", { title: "Draft", categoryId: "home" });
 const arzte = note("arzte", { title: "Ärzte" });
+const oldList = note("old", { title: "Old list", archived: true });
 const home = category("home", "Home");
 const garden = category("garden", "Garden", "home");
-const allNotes = [roses, plumber, draft, arzte];
+const allNotes = [roses, plumber, draft, arzte, oldList];
 
 function Chosen({ initial }: { initial: string[] }) {
 	const [ids, setIds] = useState(initial);
 	return (
 		<>
-			<ChosenNotes noteIds={ids} notes={allNotes} onChange={setIds} />
+			<ChosenNotes
+				noteIds={ids}
+				notes={allNotes}
+				categories={[home, garden]}
+				onChange={setIds}
+			/>
 			<NoteSearch
 				id="search"
 				notes={allNotes}
@@ -42,7 +48,7 @@ function Chosen({ initial }: { initial: string[] }) {
 const chosenNames = () =>
 	screen
 		.getAllByRole("listitem")
-		.map((li) => li.querySelector("span[title]")?.textContent);
+		.map((li) => li.querySelector("span[title]")?.getAttribute("title"));
 
 const options = () => screen.getAllByRole("option").map((o) => o.textContent);
 
@@ -65,13 +71,25 @@ describe("the note search", () => {
 		expect(await screen.findByText("No matching notes")).toBeVisible();
 	});
 
+	it("marks and dims archived notes", async () => {
+		const user = userEvent.setup();
+		render(<Chosen initial={[]} />);
+		await user.type(screen.getByPlaceholderText("Add a note…"), "o");
+		const option = screen.getByRole("option", { name: /Old list/ });
+		expect(within(option).getByRole("img", { name: "Archived" })).toBeVisible();
+		expect(option).toHaveClass("opacity-70");
+		expect(screen.getByRole("option", { name: /Roses/ })).not.toHaveClass(
+			"opacity-70",
+		);
+	});
+
 	it("adds a chosen note at the end and offers it no more", async () => {
 		const user = userEvent.setup();
 		render(<Chosen initial={["roses"]} />);
 		const search = screen.getByPlaceholderText("Add a note…");
 		await user.type(search, "draft");
 		await user.click(screen.getByRole("option", { name: /Draft/ }));
-		expect(chosenNames()).toEqual(["Roses", "Draft"]);
+		expect(chosenNames()).toEqual(["Roses · Home › Garden", "Draft · Home"]);
 		expect(search).toHaveValue("");
 		await user.type(search, "dra");
 		expect(screen.queryByRole("option", { name: /Draft/ })).toBeNull();
@@ -106,30 +124,68 @@ describe("the chosen notes", () => {
 			screen.getByRole("button", { name: "Move Roses down" }),
 		).toBeDisabled();
 		await user.click(screen.getByRole("button", { name: "Move Roses up" }));
-		expect(chosenNames()).toEqual(["Draft", "Roses", "call the plumber"]);
+		expect(chosenNames()).toEqual([
+			"Draft · Home",
+			"Roses · Home › Garden",
+			"call the plumber",
+		]);
 		await user.click(screen.getByRole("button", { name: "Move Draft down" }));
-		expect(chosenNames()).toEqual(["Roses", "Draft", "call the plumber"]);
+		expect(chosenNames()).toEqual([
+			"Roses · Home › Garden",
+			"Draft · Home",
+			"call the plumber",
+		]);
 	});
 
 	it("can be removed and are then offered again", async () => {
 		const user = userEvent.setup();
 		render(<Chosen initial={["draft", "roses"]} />);
 		await user.click(screen.getByRole("button", { name: "Remove Draft" }));
-		expect(chosenNames()).toEqual(["Roses"]);
+		expect(chosenNames()).toEqual(["Roses · Home › Garden"]);
 		await user.type(screen.getByPlaceholderText("Add a note…"), "dra");
 		expect(screen.getByRole("option", { name: /Draft/ })).toBeVisible();
+	});
+
+	it("show their category path, and mark and dim archived notes", () => {
+		render(<Chosen initial={["roses", "arzte", "old"]} />);
+		const [rosesItem, arzteItem, oldItem] = screen.getAllByRole("listitem");
+		expect(within(rosesItem).getByText("Home › Garden")).toBeVisible();
+		expect(arzteItem.querySelector("span[title]")).toHaveTextContent(/^Ärzte$/);
+		expect(
+			within(oldItem).getByRole("img", { name: "Archived" }),
+		).toBeVisible();
+		expect(oldItem.querySelector("span[title]")).toHaveClass("opacity-70");
+		expect(rosesItem.querySelector("span[title]")).not.toHaveClass(
+			"opacity-70",
+		);
+	});
+
+	it("tell notes with the same title apart by their category", () => {
+		const work = note("work", { title: "Roses", categoryId: "home" });
+		render(
+			<ChosenNotes
+				noteIds={["roses", "work"]}
+				notes={[roses, work]}
+				categories={[home, garden]}
+				onChange={() => {}}
+			/>,
+		);
+		expect(chosenNames()).toEqual(["Roses · Home › Garden", "Roses · Home"]);
 	});
 
 	it("shows notes that no longer exist so they can be removed", async () => {
 		const user = userEvent.setup();
 		render(<Chosen initial={["roses", "gone"]} />);
-		expect(chosenNames()).toEqual(["Roses", "This note no longer exists"]);
+		expect(chosenNames()).toEqual([
+			"Roses · Home › Garden",
+			"This note no longer exists",
+		]);
 		await user.click(
 			screen.getByRole("button", {
 				name: "Remove This note no longer exists",
 			}),
 		);
-		expect(chosenNames()).toEqual(["Roses"]);
+		expect(chosenNames()).toEqual(["Roses · Home › Garden"]);
 	});
 });
 

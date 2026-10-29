@@ -21,7 +21,7 @@ The widget kind "Selected notes" / "Ausgewählte Notizen" SHALL have a list of n
 - **THEN** the server responds 400 with `invalid_layout`
 
 ### Requirement: Adding notes
-The settings dialog SHALL offer an "Add a note…" / "Notiz hinzufügen …" search field over the owner's notes that aren't in the list yet. Each result SHALL show the note's icon, its display title (see "Display title" in the `notes` capability) and, if it has a category, the category's path (e.g. "Home › Garden"). Typing filters the results to notes whose display title or category path contains the typed text, ignoring case and accents. Results are ordered by display title, with untitled notes without text last. Choosing a result, with the pointer or the keyboard, adds the note at the end of the list and removes it from the results. When no note matches, the results show "No matching notes" / "Keine passenden Notizen".
+The settings dialog SHALL offer an "Add a note…" / "Notiz hinzufügen …" search field over the owner's notes that aren't in the list yet, archived ones included. Each result SHALL show the note's icon, its display title (see "Display title" in the `notes` capability) and, if it has a category, the category's path (e.g. "Home › Garden"). An archived note's result SHALL show an archive icon with the tooltip "Archived" / "Archiviert" and be dimmed. Typing filters the results to notes whose display title or category path contains the typed text, ignoring case and accents. Results are ordered by display title, with untitled notes without text last. Choosing a result, with the pointer or the keyboard, adds the note at the end of the list and removes it from the results. When no note matches, the results show "No matching notes" / "Keine passenden Notizen".
 
 #### Scenario: Search
 - **WHEN** Ann types "plum" and she has the notes "Plumber" in "Home" and "Groceries"
@@ -30,6 +30,10 @@ The settings dialog SHALL offer an "Add a note…" / "Notiz hinzufügen …" sea
 #### Scenario: Search by category
 - **WHEN** Ann types "garden" and "Roses" is in "Home › Garden"
 - **THEN** the results show "Roses"
+
+#### Scenario: Archived note in the search
+- **WHEN** Ann's note "Old plan" is archived and not in the list
+- **THEN** its result shows the archive icon with the tooltip "Archived" and is dimmed
 
 #### Scenario: Add a note
 - **WHEN** Ann chooses "Plumber" from the results while the list holds "Groceries"
@@ -40,7 +44,7 @@ The settings dialog SHALL offer an "Add a note…" / "Notiz hinzufügen …" sea
 - **THEN** the search field is disabled and says that at most 100 notes can be selected
 
 ### Requirement: Ordering and removing notes
-The settings dialog SHALL show the list of notes in their order, each with its icon, its display title, a drag handle, "Move up" / "Nach oben", "Move down" / "Nach unten" and "Remove" / "Entfernen" buttons. Dragging a note by its handle, with the pointer, by touch or with the keyboard, moves it to the place where it is dropped. "Move up" is disabled for the first note and "Move down" for the last. "Remove" takes the note out of the list and offers it again in the search. Changes take effect only when the dialog is confirmed.
+The settings dialog SHALL show the list of notes in their order, each with its icon, its display title, its category's path (e.g. "Home › Garden") if it has a category, a drag handle, "Move up" / "Nach oben", "Move down" / "Nach unten" and "Remove" / "Entfernen" buttons. An archived note SHALL show an archive icon with the tooltip "Archived" / "Archiviert" and its entry is dimmed. When the title and the path don't both fit, they are cut off with "…" and the entry has the display title and path as a tooltip. Dragging a note by its handle, with the pointer, by touch or with the keyboard, moves it to the place where it is dropped. "Move up" is disabled for the first note and "Move down" for the last. "Remove" takes the note out of the list and offers it again in the search. Changes take effect only when the dialog is confirmed.
 
 #### Scenario: Move up
 - **WHEN** the list holds "Groceries", "Plumber", "Roses" and Ann activates "Move up" on "Roses"
@@ -53,6 +57,14 @@ The settings dialog SHALL show the list of notes in their order, each with its i
 #### Scenario: Remove
 - **WHEN** Ann removes "Plumber" from the list
 - **THEN** "Plumber" is offered again in the search
+
+#### Scenario: Same title in different categories
+- **WHEN** the list holds "Groceries" in "Home" and "Groceries" in "Work › Office"
+- **THEN** the entries show "Groceries" with "Home" and "Groceries" with "Work › Office"
+
+#### Scenario: Archived note in the list
+- **WHEN** the list holds the archived note "Old plan"
+- **THEN** its entry shows the archive icon with the tooltip "Archived" and is dimmed
 
 ### Requirement: Selected notes shown
 The widget SHALL show the notes of its list that still exist, archived ones included: first the pinned notes, then the others, each in the order of the list. Notes that no longer exist are skipped. The rows always show the current notes. Each note SHALL be shown in its own row with its icon, if it has one, and its display title. Every note with a category SHALL show its category's title in smaller text as a second line below the display title, with the category's path (e.g. "Home › Garden") as its tooltip. Notes without a category have no second line. Each row SHALL look like a small note card (see "Note cards" in the `notes` capability): it has a border and rounded corners, and the note's colour as its background, or `surface` when the note has none. Rows are separated by a small gap. A pinned note SHALL show a pin icon at the end of its row, with the tooltip "Pinned" / "Angeheftet". An archived note SHALL show an archive icon at the end of its row, with the tooltip "Archived" / "Archiviert", and its row is dimmed. Rows SHALL NOT show the note's content or any time. Text that doesn't fit is cut off with "…" and the row has the full display title as a tooltip.

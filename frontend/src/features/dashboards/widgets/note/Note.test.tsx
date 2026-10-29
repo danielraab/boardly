@@ -1,4 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import type { ContentWidget, Widget } from "#/features/dashboards/api";
 import type { NoteDoc } from "#/features/notes/document/types";
@@ -7,6 +9,7 @@ import { section, viewData } from "#/test/dashboards";
 import { category, fakeNotesServer, note, paragraphs } from "#/test/notes";
 import { renderApp } from "#/test/renderApp";
 import type { NoteConfig } from ".";
+import { NotePicker } from "./NotePicker";
 import type { NoteData } from "./NoteWidgetView";
 
 const todos: NoteDoc = {
@@ -380,14 +383,18 @@ describe("the note widget", () => {
 		).not.toBeChecked();
 		expect(within(dialog).getByLabelText("Fit the content")).toBeChecked();
 
-		const select = within(dialog).getByLabelText("Note");
-		await waitFor(() => expect(select).toBeEnabled());
-		expect(
-			within(select)
-				.getAllByRole("option")
-				.map((o) => o.textContent),
-		).toEqual(["Choose a note", "call the plumber tomorrow", "Groceries"]);
-		await user.selectOptions(select, "Groceries");
+		const search = await within(dialog).findByRole("combobox", {
+			name: "Note",
+		});
+		expect(search).toHaveValue("");
+		expect(search).toHaveAttribute("placeholder", "Choose a note");
+		await user.click(search);
+		expect(options()).toEqual([
+			"call the plumber tomorrow",
+			"GroceriesHome › Garden",
+		]);
+		await user.click(screen.getByRole("option", { name: /Groceries/ }));
+		expect(search).toHaveValue("Groceries");
 		await user.selectOptions(within(dialog).getByLabelText("Size"), "L");
 		await user.click(within(dialog).getByLabelText("Show on public dashboard"));
 		await user.click(add);
@@ -421,10 +428,91 @@ describe("the note widget", () => {
 			within(dialog).getByText("This note no longer exists"),
 		).toBeVisible();
 		expect(apply).toBeDisabled();
-		await user.selectOptions(
-			within(dialog).getByLabelText("Note"),
-			"Groceries",
-		);
+		const search = await within(dialog).findByRole("combobox", {
+			name: "Note",
+		});
+		expect(search).toHaveValue("");
+		await user.type(search, "groc");
+		await user.click(screen.getByRole("option", { name: /Groceries/ }));
 		expect(apply).toBeEnabled();
+	});
+});
+
+const options = () => screen.getAllByRole("option").map((o) => o.textContent);
+
+const office = category("office", "Office", "work");
+const work = category("work", "Work");
+const workGroceries = note("work-groceries", {
+	title: "Groceries",
+	categoryId: "office",
+});
+const oldPlan = note("old-plan", { title: "Old plan", archived: true });
+const pickerNotes = [groceries, workGroceries, untitled, oldPlan];
+
+function Picker({ initial = "" }: { initial?: string }) {
+	const [value, setValue] = useState(initial);
+	return (
+		<>
+			<label htmlFor="picker">Note</label>
+			<NotePicker
+				id="picker"
+				notes={pickerNotes}
+				categories={[home, garden, work, office]}
+				value={value}
+				onChange={setValue}
+			/>
+			<output>{value}</output>
+			<button type="button">Next</button>
+		</>
+	);
+}
+
+describe("the note picker", () => {
+	it("tells notes with the same title apart by their category", async () => {
+		const user = userEvent.setup();
+		render(<Picker />);
+		await user.type(screen.getByRole("combobox"), "groc");
+		expect(options()).toEqual([
+			"GroceriesHome › Garden",
+			"GroceriesWork › Office",
+		]);
+		await user.clear(screen.getByRole("combobox"));
+		await user.type(screen.getByRole("combobox"), "office");
+		expect(options()).toEqual(["GroceriesWork › Office"]);
+		await user.click(screen.getByRole("option", { name: /Groceries/ }));
+		expect(screen.getByRole("status")).toHaveTextContent("work-groceries");
+	});
+
+	it("marks and dims archived notes, which can still be chosen", async () => {
+		const user = userEvent.setup();
+		render(<Picker />);
+		await user.type(screen.getByRole("combobox"), "plan");
+		const option = screen.getByRole("option", { name: /Old plan/ });
+		expect(within(option).getByRole("img", { name: "Archived" })).toBeVisible();
+		expect(option).toHaveClass("opacity-70");
+		await user.click(option);
+		expect(screen.getByRole("status")).toHaveTextContent("old-plan");
+	});
+
+	it("shows the chosen note with its category path and offers all notes", async () => {
+		const user = userEvent.setup();
+		render(<Picker initial="work-groceries" />);
+		const search = screen.getByRole("combobox");
+		expect(search).toHaveValue("Groceries");
+		expect(screen.getByText("Work › Office")).toBeVisible();
+		await user.click(search);
+		expect(options()).toHaveLength(pickerNotes.length);
+		await user.type(search, "x");
+		expect(screen.queryByText("Work › Office")).toBeNull();
+		await user.tab();
+		expect(search).toHaveValue("Groceries");
+		expect(screen.getByText("Work › Office")).toBeVisible();
+	});
+
+	it("says when nothing matches", async () => {
+		const user = userEvent.setup();
+		render(<Picker />);
+		await user.type(screen.getByRole("combobox"), "nothing like it");
+		expect(await screen.findByText("No matching notes")).toBeVisible();
 	});
 });

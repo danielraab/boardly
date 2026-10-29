@@ -44,6 +44,10 @@ export function selectedNotes(
 	};
 }
 
+/** The path of note's category, or none when it has no category. */
+export const notePath = (note: Note, categories: NoteCategory[]) =>
+	note.categoryId !== null ? categoryPath(categories, note.categoryId) : [];
+
 /** A note the search offers, with its display title and category path. */
 export type NoteChoice = {
 	note: Note;
@@ -77,10 +81,7 @@ export function noteChoices(
 		.map((note) => ({
 			note,
 			title: displayTitle(note),
-			path:
-				note.categoryId !== null
-					? categoryPath(categories, note.categoryId)
-					: [],
+			path: notePath(note, categories),
 		}))
 		.filter(
 			(c) =>
