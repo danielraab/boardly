@@ -13,6 +13,8 @@ export type RecentNote = {
 	title: string | null;
 	icon: NoteIcon | null;
 	color: NoteColour | null;
+	pinned: boolean;
+	archived: boolean;
 	/** The time sorted by, as RFC 3339. */
 	time: string;
 	category: { title: string; path?: string[] } | null;
@@ -25,7 +27,7 @@ const dayMs = 24 * 60 * 60 * 1000;
 /**
  * The newest of notes, as the server picks them: by creation time or time of
  * last change, within the last days × 24 hours (any time without days),
- * newest first, then by ID descending, at most limit.
+ * pinned first, then newest first, then by ID descending, at most limit.
  */
 export function recentNotes(
 	notes: Note[],
@@ -42,6 +44,7 @@ export function recentNotes(
 		.filter((n) => Date.parse(timeOf(n)) >= since)
 		.sort(
 			(a, b) =>
+				Number(b.pinned) - Number(a.pinned) ||
 				Date.parse(timeOf(b)) - Date.parse(timeOf(a)) ||
 				(a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
 		)
@@ -54,6 +57,8 @@ export function recentNotes(
 				title: displayTitle(n),
 				icon: n.icon,
 				color: n.color,
+				pinned: n.pinned,
+				archived: n.archived,
 				time: timeOf(n),
 				category: category
 					? {

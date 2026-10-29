@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
 import type { NoteIcon } from "#/features/notes/api";
 import { type NoteColour, noteBackground } from "#/features/notes/colours";
+import { NoteMarks } from "#/features/notes/NoteMarks";
 import { iconProps } from "#/features/notes/noteIcon";
 import { fullDate, relativeTime } from "./relativeTime";
 import { sizeStyles, type WidgetSize } from "./sizes";
@@ -13,6 +14,8 @@ export type NoteRow = {
 	title: string | null;
 	icon: NoteIcon | null;
 	color: NoteColour | null;
+	pinned: boolean;
+	archived: boolean;
 	category: { title: string; path?: string[] } | null;
 	/** A time to show at the row's end, as RFC 3339. */
 	time?: string;
@@ -34,8 +37,9 @@ const rowGap: Record<WidgetSize, string> = {
 
 /**
  * Notes as rows with their icon, display title, category as a second line
- * and, when they have one, a time relative to now. Each row looks like a small
- * note card in the note's colour. With onOpen, each row is a button that calls
+ * and, when they have one, a time relative to now, followed by the pin and
+ * archive marks. Each row looks like a small note card in the note's colour;
+ * archived notes are dimmed. With onOpen, each row is a button that calls
  * it with the note.
  */
 export function NoteRows<T extends NoteRow>({
@@ -80,10 +84,16 @@ export function NoteRows<T extends NoteRow>({
 								{relativeTime(new Date(note.time), now, i18n.language)}
 							</time>
 						)}
+						<NoteMarks
+							pinned={note.pinned}
+							archived={note.archived}
+							compact
+							className={note.time ? "" : "ml-auto pl-2"}
+						/>
 					</>
 				);
 				// Like a note card: a border and the note's colour, or surface.
-				const rowClass = `flex w-full min-w-0 items-center gap-2 rounded-lg border border-line px-2 text-left ${style.row} ${note.color ? "" : "bg-surface"}`;
+				const rowClass = `flex w-full min-w-0 items-center gap-2 rounded-lg border border-line px-2 text-left ${style.row} ${note.color ? "" : "bg-surface"} ${note.archived ? "opacity-70" : ""}`;
 				const background = { background: noteBackground(note.color) };
 				return (
 					<li key={note.id ?? i}>

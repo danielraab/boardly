@@ -104,7 +104,7 @@ func TestNoteResolve(t *testing.T) {
 	}
 	got, _ := json.Marshal(owner[0]["data"])
 	want := canonical(t, `{"id":"`+groceries.ID+`","version":1,"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","content":`+doc+
-		`,"category":{"title":"Garden","icon":null,"color":"green","path":["Home","Garden"]}}`)
+		`,"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green","path":["Home","Garden"]}}`)
 	if string(got) != want {
 		t.Errorf("owner data =\n%s\nwant\n%s", got, want)
 	}
@@ -125,7 +125,7 @@ func TestNoteResolve(t *testing.T) {
 		}
 		got, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","content":`+doc+
-			`,"category":{"title":"Garden","icon":null,"color":"green"}}`)
+			`,"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green"}}`)
 		if string(got) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, got, want)
 		}

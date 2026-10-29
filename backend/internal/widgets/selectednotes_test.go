@@ -100,8 +100,8 @@ func TestSelectedNotesResolve(t *testing.T) {
 	}
 	data, _ := json.Marshal(owner[1]["data"])
 	want := canonical(t, `{"notes":[`+
-		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden","path":["Home","Garden"]}},`+
-		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"category":null}]}`)
+		`{"id":"`+roses.ID+`","title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","pinned":false,"archived":false,"category":{"title":"Garden","path":["Home","Garden"]}},`+
+		`{"id":"`+plumber.ID+`","title":"call the plumber","icon":null,"color":null,"pinned":false,"archived":false,"category":null}]}`)
 	if string(data) != want {
 		t.Errorf("owner data =\n%s\nwant\n%s", data, want)
 	}
@@ -123,8 +123,8 @@ func TestSelectedNotesResolve(t *testing.T) {
 		}
 		data, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"notes":[`+
-			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","category":{"title":"Garden"}},`+
-			`{"title":"call the plumber","icon":null,"color":null,"category":null}]}`)
+			`{"title":"Roses","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","pinned":false,"archived":false,"category":{"title":"Garden"}},`+
+			`{"title":"call the plumber","icon":null,"color":null,"pinned":false,"archived":false,"category":null}]}`)
 		if string(data) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, data, want)
 		}
@@ -133,5 +133,17 @@ func TestSelectedNotesResolve(t *testing.T) {
 				t.Errorf("visitor %q data contains %s: %s", viewer, hidden, data)
 			}
 		}
+	}
+
+	// Pinned notes come first, and visitors see the marks.
+	yes := true
+	if _, err := f.notes.UpdateNote(f.ctx, f.ann, plumber.ID, plumber.Version, notes.NotePatch{Pinned: &yes, Archived: &yes}); err != nil {
+		t.Fatal(err)
+	}
+	if got := noteTitles(t, f.lookup(f.ann)[1]["data"]); got != "call the plumber,Roses" {
+		t.Errorf("with a pinned note = %s, want it first", got)
+	}
+	if data, _ := json.Marshal(f.lookup("")[0]["data"]); !strings.Contains(string(data), `"archived":true,"category":null,"color":null,"icon":null,"pinned":true,"title":"call the plumber"`) {
+		t.Errorf("visitor data without the marks: %s", data)
 	}
 }

@@ -379,6 +379,66 @@ describe("note editor page", () => {
 	});
 });
 
+describe("pinning and archiving in the editor", () => {
+	const menuItems = async () =>
+		(await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+
+	it("offers pin and archive above delete", async () => {
+		const { user } = await openNote({ title: "Groceries" });
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		expect(await menuItems()).toEqual([
+			"Pin note",
+			"Archive note",
+			"Delete note",
+		]);
+	});
+
+	it("pins a note right away and offers Unpin", async () => {
+		const server = await openNote({ title: "Groceries" });
+		const { user } = server;
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		await user.click(await screen.findByRole("menuitem", { name: "Pin note" }));
+		expect(screen.getByRole("img", { name: "Pinned" })).toBeVisible();
+		await waitFor(() => expect(server.notes[0].pinned).toBe(true));
+		expect(server.notes[0].version).toBe(2);
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		expect(
+			await screen.findByRole("menuitem", { name: "Unpin note" }),
+		).toBeInTheDocument();
+	});
+
+	it("archives and unarchives a note", async () => {
+		const server = await openNote({ title: "Old plan" });
+		const { user } = server;
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		await user.click(
+			await screen.findByRole("menuitem", { name: "Archive note" }),
+		);
+		expect(screen.getByText("Archived")).toBeVisible();
+		await waitFor(() => expect(server.notes[0].archived).toBe(true));
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		await user.click(
+			await screen.findByRole("menuitem", { name: "Unarchive note" }),
+		);
+		await waitFor(() => expect(server.notes[0].archived).toBe(false));
+		expect(screen.queryByText("Archived")).toBeNull();
+	});
+
+	it("stops when the note was changed elsewhere", async () => {
+		const server = await openNote({ title: "Groceries" });
+		const { user } = server;
+		server.api.set({
+			"PATCH /api/notes/n1": apiError(409, "version_conflict"),
+		});
+		await user.click(screen.getByRole("button", { name: "More actions" }));
+		await user.click(await screen.findByRole("menuitem", { name: "Pin note" }));
+		expect(
+			await screen.findByText(/This note was changed elsewhere/),
+		).toBeInTheDocument();
+		expect(server.notes[0].pinned).toBe(false);
+	});
+});
+
 describe("autosave", () => {
 	it(
 		"shows Saving… and then Saved, and sends only the changed fields",

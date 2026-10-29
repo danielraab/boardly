@@ -963,3 +963,35 @@ func TestAppTokenNoteScopeMigration(t *testing.T) {
 		t.Error("an unknown note scope was accepted")
 	}
 }
+
+func TestNotePinArchiveMigration(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0019")); err != nil {
+		t.Fatalf("Migrate to 0019: %v", err)
+	}
+	const ts = "2026-01-01T00:00:00.000Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO notes (id, user_id, content, created_at, updated_at) VALUES ('n1', 'u1', '{}', '` + ts + `', '` + ts + `')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	var pinned, archived int
+	if err := db.QueryRow(`SELECT pinned, archived FROM notes WHERE id = 'n1'`).Scan(&pinned, &archived); err != nil || pinned != 0 || archived != 0 {
+		t.Fatalf("existing note: pinned %d, archived %d, err %v; want 0, 0", pinned, archived, err)
+	}
+	if _, err := db.Exec(`UPDATE notes SET pinned = 2 WHERE id = 'n1'`); err == nil {
+		t.Error("pinned = 2 was accepted")
+	}
+}

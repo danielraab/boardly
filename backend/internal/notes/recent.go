@@ -7,9 +7,9 @@ import (
 	"boardly/internal/db"
 )
 
-// RecentNotes returns at most limit of the user's notes, newest first by
-// creation time, or by time of last change when byUpdated is set, then by ID
-// descending. A non-zero since leaves out notes whose time is before it.
+// RecentNotes returns at most limit of the user's notes, pinned ones first,
+// then newest first by creation time, or by time of last change when
+// byUpdated is set, then by ID descending. A non-zero since leaves out notes whose time is before it.
 func (s *Store) RecentNotes(ctx context.Context, userID string, byUpdated bool, since time.Time, limit int) ([]Note, error) {
 	// The column is one of two fixed names, never from input.
 	col := "created_at"
@@ -22,7 +22,7 @@ func (s *Store) RecentNotes(ctx context.Context, userID string, byUpdated bool, 
 	}
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT `+noteColumns+` FROM notes WHERE user_id = ? AND `+col+` >= ?
-		ORDER BY `+col+` DESC, id DESC LIMIT ?`, userID, after, limit)
+		ORDER BY pinned DESC, `+col+` DESC, id DESC LIMIT ?`, userID, after, limit)
 	if err != nil {
 		return nil, err
 	}

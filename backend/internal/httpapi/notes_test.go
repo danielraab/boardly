@@ -72,6 +72,19 @@ func TestNotesAPI(t *testing.T) {
 		t.Errorf("patched = %+v", p)
 	}
 
+	rec = s.req("PATCH", "/api/notes/"+n.ID, `{"version":2,"archived":true}`, withCookie(ann))
+	if a := decodeJSONBody[notes.Note](t, rec); rec.Code != http.StatusOK || !a.Archived || a.Pinned || a.Version != 3 {
+		t.Fatalf("archive: %d %s", rec.Code, rec.Body)
+	}
+	rec = s.req("GET", "/api/notes", "", withCookie(ann))
+	if list := decodeJSONBody[[]notes.Note](t, rec); len(list) != 3 || list[0].ID != n.ID || !list[0].Archived {
+		t.Errorf("list after archiving = %s", rec.Body)
+	}
+	rec = s.req("POST", "/api/notes", `{"pinned":true}`, withCookie(ann))
+	if c := decodeJSONBody[notes.Note](t, rec); rec.Code != http.StatusCreated || !c.Pinned || c.Archived {
+		t.Errorf("create pinned: %d %s", rec.Code, rec.Body)
+	}
+
 	for name, tt := range map[string]struct {
 		method, path, body, cookie string
 		code                       int
@@ -86,7 +99,9 @@ func TestNotesAPI(t *testing.T) {
 		"unknown colour":       {"POST", "/api/notes", `{"color":"magenta"}`, ann, 400, "invalid_note"},
 		"unknown symbol":       {"POST", "/api/notes", `{"icon":{"type":"symbol","name":"nope"}}`, ann, 400, "invalid_note"},
 		"unknown category":     {"POST", "/api/notes", `{"categoryId":"nope"}`, ann, 400, "invalid_note"},
-		"unknown field":        {"POST", "/api/notes", `{"pinned":true}`, ann, 400, "invalid_note"},
+		"unknown field":        {"POST", "/api/notes", `{"starred":true}`, ann, 400, "invalid_note"},
+		"pinned not a boolean": {"PATCH", "/api/notes/" + n.ID, `{"version":3,"pinned":"yes"}`, ann, 400, "invalid_note"},
+		"archived null":        {"POST", "/api/notes", `{"archived":null}`, ann, 400, "invalid_note"},
 		"wrong type":           {"POST", "/api/notes", `{"title":3}`, ann, 400, "invalid_note"},
 		"invalid document":     {"POST", "/api/notes", `{"content":{"v":1,"blocks":[{"type":"iframe"}]}}`, ann, 400, "invalid_document"},
 		"script link":          {"POST", "/api/notes", `{"content":{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"link","url":"javascript:alert(1)","content":[]}]}]}}`, ann, 400, "invalid_document"},
@@ -125,10 +140,10 @@ func TestNotesAPI(t *testing.T) {
 	if rec := s.req("PATCH", "/api/note-categories/"+home.ID, `{"parentId":"`+garden.ID+`"}`, withCookie(ann)); rec.Code != 400 || !strings.Contains(rec.Body.String(), "invalid_parent") {
 		t.Errorf("cycle: %d %s", rec.Code, rec.Body)
 	}
-	if rec := s.req("PATCH", "/api/notes/"+n.ID, `{"version":2,"categoryId":"`+home.ID+`"}`, withCookie(ann)); rec.Code != 200 {
+	if rec := s.req("PATCH", "/api/notes/"+n.ID, `{"version":3,"categoryId":"`+home.ID+`"}`, withCookie(ann)); rec.Code != 200 {
 		t.Fatalf("set category: %d %s", rec.Code, rec.Body)
 	}
-	if rec := s.req("PATCH", "/api/notes/"+n.ID, `{"version":3,"categoryId":"`+home.ID+`"}`, withCookie(bob)); rec.Code != 404 {
+	if rec := s.req("PATCH", "/api/notes/"+n.ID, `{"version":4,"categoryId":"`+home.ID+`"}`, withCookie(bob)); rec.Code != 404 {
 		t.Errorf("Bob sets category: %d", rec.Code)
 	}
 	if rec := s.req("DELETE", "/api/note-categories/"+home.ID, "", withCookie(bob)); rec.Code != 404 {
@@ -138,7 +153,7 @@ func TestNotesAPI(t *testing.T) {
 		t.Fatalf("delete category: %d %s", rec.Code, rec.Body)
 	}
 	rec = s.req("GET", "/api/notes/"+n.ID, "", withCookie(ann))
-	if got := decodeJSONBody[notes.Note](t, rec); got.CategoryID != nil || got.Version != 3 {
+	if got := decodeJSONBody[notes.Note](t, rec); got.CategoryID != nil || got.Version != 4 {
 		t.Errorf("note after category delete = %+v", got)
 	}
 	rec = s.req("GET", "/api/note-categories", "", withCookie(ann))

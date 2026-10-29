@@ -187,6 +187,12 @@ click it to open the note.
   notes; create, edit, move and delete categories from there. A category stays when it has no
   notes. Deleting one makes its notes uncategorized and moves its subcategories up a level. The
   category of a note is shown as a badge; click the badge to change it.
+- **Pinning and archiving**: the menu of a note has **Pin note** and **Archive note**. Pinned
+  notes come first and show a pin, on the Notes page within the chosen category and in the note
+  widgets of dashboards. Archived notes leave "All notes", "Uncategorized" and the categories, and
+  their counts; the **Archived** entry at the end of the side panel shows them. Note widgets still
+  show archived notes, dimmed and marked as archived. Pinning, archiving and their opposites count
+  as changes, so the note moves up in "last changed" lists.
 - **Getting notes in**: share text into the installed app (see [Install as an app](#install-as-an-app))
   to save it as a note, save a text bookmark in a connected Karakeep app (see
   [Karakeep-compatible server](#karakeep-compatible-server)), or import the text bookmarks of a

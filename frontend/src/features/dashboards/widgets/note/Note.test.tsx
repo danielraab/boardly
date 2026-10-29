@@ -139,6 +139,29 @@ describe("the note widget", () => {
 		);
 	});
 
+	it("shows the pin and archive marks, also to visitors", async () => {
+		dashboard(
+			() => [
+				section(
+					"Work",
+					{},
+					noteWidget(
+						"w1",
+						{ showIfPublic: true },
+						resolved(false, { pinned: true, archived: true }),
+					),
+				),
+			],
+			{},
+			false,
+		);
+		renderApp("/ann/home");
+		const heading = await screen.findByRole("heading", { name: "Groceries" });
+		const card = heading.closest("article") as HTMLElement;
+		expect(within(card).getByRole("img", { name: "Pinned" })).toBeVisible();
+		expect(within(card).getByText("Archived")).toBeVisible();
+	});
+
 	it("says when the note no longer exists", async () => {
 		dashboard(() => [
 			section("Work", {}, noteWidget("w1", {}, { missing: true })),

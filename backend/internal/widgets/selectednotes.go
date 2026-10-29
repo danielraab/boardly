@@ -80,15 +80,18 @@ func SelectedNotes(store *notes.Store) dashboards.Kind {
 					return nil, false, err
 				}
 			}
+			// Pinned notes first, each group in the owner's order.
 			ordered := make([]notes.Note, 0, len(found))
-			for _, id := range c.NoteIDs {
-				if n, ok := byID[id]; ok {
-					ordered = append(ordered, n)
+			for _, pinned := range []bool{true, false} {
+				for _, id := range c.NoteIDs {
+					if n, ok := byID[id]; ok && n.Pinned == pinned {
+						ordered = append(ordered, n)
+					}
 				}
 			}
 			rows := make([]listedNote, len(ordered))
 			for i, n := range ordered {
-				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color}
+				rows[i] = listedNote{Title: notes.DisplayTitle(n), Icon: n.Icon, Color: n.Color, Pinned: n.Pinned, Archived: n.Archived}
 				if n.CategoryID != nil {
 					if cat := categoryOf(categories, *n.CategoryID, viewer.IsOwner); cat != nil {
 						rows[i].Category = &recentNoteCategory{Title: cat.Title, Path: cat.Path}

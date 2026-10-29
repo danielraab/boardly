@@ -27,6 +27,8 @@ export function note(id: string, fields: Partial<Note> = {}): Note {
 		color: null,
 		categoryId: null,
 		content: paragraphs(`${id} text`),
+		pinned: false,
+		archived: false,
 		version: 1,
 		createdAt: new Date(time).toISOString(),
 		updatedAt: new Date(time).toISOString(),

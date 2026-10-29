@@ -125,6 +125,16 @@ func noteFields(body map[string]json.RawMessage, p *notes.NotePatch) error {
 	} else if ok {
 		p.CategoryID = &category
 	}
+	for name, dst := range map[string]**bool{"pinned": &p.Pinned, "archived": &p.Archived} {
+		var flag *bool
+		if ok, err := field(body, name, &flag, bad); err != nil {
+			return err
+		} else if ok && flag == nil {
+			return bad
+		} else if ok {
+			*dst = flag
+		}
+	}
 	if raw, ok := body["content"]; ok {
 		delete(body, "content")
 		p.Content = raw
@@ -171,6 +181,12 @@ func (a *api) createNote(w http.ResponseWriter, r *http.Request) error {
 	}
 	if p.CategoryID != nil {
 		n.CategoryID = *p.CategoryID
+	}
+	if p.Pinned != nil {
+		n.Pinned = *p.Pinned
+	}
+	if p.Archived != nil {
+		n.Archived = *p.Archived
 	}
 	user, _ := CurrentUser(r.Context())
 	created, err := a.notes.CreateNote(r.Context(), user.ID, n)

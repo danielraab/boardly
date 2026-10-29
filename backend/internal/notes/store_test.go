@@ -271,6 +271,37 @@ func TestNotesOrderAndVersions(t *testing.T) {
 	}
 }
 
+func TestPinAndArchive(t *testing.T) {
+	f := newFixture(t)
+	minimal := f.note("Minimal", nil)
+	if minimal.Pinned || minimal.Archived {
+		t.Errorf("new note pinned %v, archived %v; want neither", minimal.Pinned, minimal.Archived)
+	}
+	created, err := f.s.CreateNote(f.ctx, f.user, NewNote{Pinned: true, Archived: true})
+	if err != nil || !created.Pinned || !created.Archived {
+		t.Fatalf("create with flags = %+v, %v", created, err)
+	}
+
+	f.tick()
+	pinned, err := f.s.UpdateNote(f.ctx, f.user, minimal.ID, 1, NotePatch{Pinned: ptr(true)})
+	if err != nil || !pinned.Pinned || pinned.Archived || pinned.Version != 2 || !pinned.UpdatedAt.Equal(f.now) {
+		t.Fatalf("pin = %+v, %v; want pinned at version 2, changed now", pinned, err)
+	}
+	f.tick()
+	both, err := f.s.UpdateNote(f.ctx, f.user, minimal.ID, 2, NotePatch{Archived: ptr(true)})
+	if err != nil || !both.Pinned || !both.Archived || both.Version != 3 {
+		t.Fatalf("archive = %+v, %v; want pinned and archived at version 3", both, err)
+	}
+	list, _ := f.s.Notes(f.ctx, f.user)
+	if len(list) != 2 {
+		t.Errorf("notes = %d, want archived notes listed too", len(list))
+	}
+	off, err := f.s.UpdateNote(f.ctx, f.user, minimal.ID, 3, NotePatch{Pinned: ptr(false), Archived: ptr(false)})
+	if err != nil || off.Pinned || off.Archived || off.Version != 4 {
+		t.Errorf("unpin and unarchive = %+v, %v", off, err)
+	}
+}
+
 func TestNotesOfOtherUsers(t *testing.T) {
 	f := newFixture(t)
 	n := f.note("Mine", nil)

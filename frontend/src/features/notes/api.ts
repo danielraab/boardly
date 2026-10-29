@@ -15,6 +15,8 @@ export type Note = {
 	color: NoteColour | null;
 	categoryId: string | null;
 	content: NoteDoc;
+	pinned: boolean;
+	archived: boolean;
 	version: number;
 	createdAt: string;
 	updatedAt: string;
@@ -23,7 +25,7 @@ export type Note = {
 /** The fields of a note that can be changed. */
 export type NoteFields = Pick<
 	Note,
-	"title" | "icon" | "color" | "categoryId" | "content"
+	"title" | "icon" | "color" | "categoryId" | "content" | "pinned" | "archived"
 >;
 
 export type NoteCategory = {

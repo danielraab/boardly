@@ -2,7 +2,17 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Menu } from "@base-ui/react/menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Ellipsis, RotateCw, Trash2, X } from "lucide-react";
+import {
+	Archive,
+	ArchiveRestore,
+	ArrowLeft,
+	Ellipsis,
+	Pin,
+	PinOff,
+	RotateCw,
+	Trash2,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -28,6 +38,7 @@ import { noteBackground } from "./colours";
 import { displayTitle } from "./document/text";
 import { emptyDoc } from "./document/types";
 import { NoteEditor } from "./editor/NoteEditor";
+import { NoteMarks } from "./NoteMarks";
 import { iconChoice, noteIcon } from "./noteIcon";
 import { SaveIndicator } from "./SaveIndicator";
 import { useAutosave } from "./useAutosave";
@@ -65,12 +76,14 @@ export function NoteEditorPage({
 		color: note?.color ?? null,
 		categoryId: note ? note.categoryId : initialCategory,
 		content: note?.content ?? emptyDoc(),
+		pinned: note?.pinned ?? false,
+		archived: note?.archived ?? false,
 	}));
 	const [titleText, setTitleText] = useState(note?.title ?? "");
 	const [icon, setIcon] = useState<IconChoice>(iconChoice(draft.icon));
 	const [noteId, setNoteId] = useState(note?.id ?? null);
 	const [deleting, setDeleting] = useState(false);
-	const { status, change, retry, discard } = useAutosave({
+	const { status, change, saveNow, retry, discard } = useAutosave({
 		note,
 		draft,
 		onCreated: (created) => {
@@ -84,6 +97,12 @@ export function NoteEditorPage({
 	const update = (fields: Partial<NoteFields>) => {
 		setDraft((d) => ({ ...d, ...fields }));
 		change(fields);
+	};
+
+	// Pinning and archiving are saved right away, with any other changes.
+	const toggle = (fields: Pick<Partial<NoteFields>, "pinned" | "archived">) => {
+		setDraft((d) => ({ ...d, ...fields }));
+		saveNow(fields);
 	};
 
 	const name = displayTitle(draft) ?? t("notes.untitled");
@@ -118,6 +137,36 @@ export function NoteEditorPage({
 						<Menu.Portal>
 							<Menu.Positioner align="end" sideOffset={6} className="z-50">
 								<Menu.Popup className={menuPopup}>
+									<Menu.Item
+										className={menuItem}
+										disabled={readOnly}
+										onClick={() => toggle({ pinned: !draft.pinned })}
+									>
+										{draft.pinned ? (
+											<PinOff className="size-4" aria-hidden />
+										) : (
+											<Pin className="size-4" aria-hidden />
+										)}
+										{t(
+											draft.pinned ? "notes.editor.unpin" : "notes.editor.pin",
+										)}
+									</Menu.Item>
+									<Menu.Item
+										className={menuItem}
+										disabled={readOnly}
+										onClick={() => toggle({ archived: !draft.archived })}
+									>
+										{draft.archived ? (
+											<ArchiveRestore className="size-4" aria-hidden />
+										) : (
+											<Archive className="size-4" aria-hidden />
+										)}
+										{t(
+											draft.archived
+												? "notes.editor.unarchive"
+												: "notes.editor.archive",
+										)}
+									</Menu.Item>
 									<Menu.Item
 										className={menuItem}
 										disabled={noteId === null}
@@ -178,7 +227,7 @@ export function NoteEditorPage({
 					className="min-w-0 flex-1 bg-transparent text-2xl font-semibold outline-none placeholder:text-muted"
 				/>
 			</div>
-			<div className="mt-3">
+			<div className="mt-3 flex flex-wrap items-center gap-2">
 				<CategoryBadge
 					categoryId={draft.categoryId}
 					categories={categories.data ?? []}
@@ -186,6 +235,7 @@ export function NoteEditorPage({
 					showAdd
 					disabled={readOnly}
 				/>
+				<NoteMarks pinned={draft.pinned} archived={draft.archived} />
 			</div>
 			<div className="mt-6">
 				<NoteEditor

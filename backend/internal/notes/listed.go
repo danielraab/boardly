@@ -35,8 +35,8 @@ const (
 	SortTitle   = "title"
 )
 
-// ListedNotes returns at most limit of the user's notes in sel, sorted by
-// order: SortUpdated and SortCreated newest first, then by ID descending;
+// ListedNotes returns at most limit of the user's notes in sel, pinned ones
+// first, each sorted by order: SortUpdated and SortCreated newest first, then by ID descending;
 // SortTitle by display title ignoring case and accents, notes without one
 // last, then by ID.
 func (s *Store) ListedNotes(ctx context.Context, userID string, sel Selection, order string, limit int) ([]Note, error) {
@@ -63,7 +63,7 @@ func (s *Store) ListedNotes(ctx context.Context, userID string, sel Selection, o
 		if order == SortCreated {
 			col = "created_at"
 		}
-		query += ` ORDER BY ` + col + ` DESC, id DESC LIMIT ?`
+		query += ` ORDER BY pinned DESC, ` + col + ` DESC, id DESC LIMIT ?`
 		args = append(args, limit)
 	}
 	rows, err := s.DB.QueryContext(ctx, query, args...)
@@ -91,8 +91,8 @@ func (s *Store) ListedNotes(ctx context.Context, userID string, sel Selection, o
 	return out, nil
 }
 
-// sortByTitle sorts notes by display title, ignoring case and accents, with
-// untitled notes last and ties by ID.
+// sortByTitle sorts pinned notes first, then by display title, ignoring case
+// and accents, with untitled notes last and ties by ID.
 func sortByTitle(list []Note) []Note {
 	type titled struct {
 		note  Note
@@ -105,6 +105,12 @@ func sortByTitle(list []Note) []Note {
 	// A collator isn't safe for concurrent use, so each sort has its own.
 	c := collate.New(language.Und, collate.IgnoreCase, collate.IgnoreDiacritics)
 	slices.SortFunc(all, func(a, b titled) int {
+		if a.note.Pinned != b.note.Pinned {
+			if a.note.Pinned {
+				return -1
+			}
+			return 1
+		}
 		switch {
 		case a.title == nil && b.title == nil:
 			return cmp.Compare(a.note.ID, b.note.ID)

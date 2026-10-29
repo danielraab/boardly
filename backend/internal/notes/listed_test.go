@@ -129,3 +129,52 @@ func TestNotesByID(t *testing.T) {
 		}
 	}
 }
+
+func TestPinnedNotesFirst(t *testing.T) {
+	f := newFixture(t)
+	home := f.category("Home", nil)
+	work := f.category("Work", nil)
+	zoo := f.note("zoo", &home)
+	f.now = f.now.Add(24 * time.Hour)
+	f.note("Ärzte", &home)
+	f.now = f.now.Add(24 * time.Hour)
+	f.note("Plumber", &home)
+	f.note("Groceries", &work)
+	f.tick()
+	if _, err := f.s.CreateNote(f.ctx, f.user, NewNote{Title: ptr("Old plan"), CategoryID: &home, Archived: true}); err != nil {
+		t.Fatal(err)
+	}
+	// Pin "zoo" without a change, so that it stays the oldest change.
+	if _, err := f.s.DB.Exec(`UPDATE notes SET pinned = 1 WHERE id = ?`, zoo.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	sel := Selection{Mode: SelectCategory, CategoryID: home}
+	for _, tc := range []struct {
+		name  string
+		order string
+		limit int
+		want  []string
+	}{
+		{"by title", SortTitle, 10, []string{"zoo", "Ärzte", "Old plan", "Plumber"}},
+		{"by created", SortCreated, 10, []string{"zoo", "Old plan", "Plumber", "Ärzte"}},
+		{"pinned within the count", SortUpdated, 2, []string{"zoo", "Old plan"}},
+	} {
+		list, err := f.s.ListedNotes(f.ctx, f.user, sel, tc.order, tc.limit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := titles(list); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+
+	recent, err := f.s.RecentNotes(f.ctx, f.user, false, time.Time{}, 2)
+	if err != nil || !reflect.DeepEqual(titles(recent), []string{"zoo", "Old plan"}) {
+		t.Errorf("recent = %q, %v; want the pinned note first", titles(recent), err)
+	}
+	recent, err = f.s.RecentNotes(f.ctx, f.user, false, f.now.Add(-time.Hour), 10)
+	if err != nil || slices.Contains(titles(recent), "zoo") {
+		t.Errorf("recent within an hour = %q, %v; want no pinned note outside the day limit", titles(recent), err)
+	}
+}

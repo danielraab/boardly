@@ -14,6 +14,8 @@ const rosesRow: ListedNote = {
 	title: "Roses",
 	icon: { type: "symbol", name: "shopping-cart" },
 	color: "green",
+	pinned: false,
+	archived: false,
 	category: { title: "Garden", path: ["Home", "Garden"] },
 };
 const plumberRow: ListedNote = {
@@ -21,6 +23,8 @@ const plumberRow: ListedNote = {
 	title: null,
 	icon: null,
 	color: null,
+	pinned: false,
+	archived: false,
 	category: null,
 };
 
@@ -65,6 +69,23 @@ describe("NoteListView", () => {
 		expect(rows[1].querySelector("svg")).toBeNull();
 		expect(document.querySelector("time")).toBeNull();
 		expect(screen.queryByRole("button")).toBeNull();
+	});
+
+	it("marks pinned and archived rows", () => {
+		view({
+			notes: [
+				{ ...rosesRow, pinned: true },
+				{ ...plumberRow, archived: true },
+			],
+		});
+		const rows = screen.getAllByRole("listitem");
+		expect(within(rows[0]).getByRole("img", { name: "Pinned" })).toBeVisible();
+		expect(within(rows[0]).queryByRole("img", { name: "Archived" })).toBeNull();
+		expect(
+			within(rows[1]).getByRole("img", { name: "Archived" }),
+		).toBeVisible();
+		expect(rows[1].firstElementChild).toHaveClass("opacity-70");
+		expect(rows[0].firstElementChild).not.toHaveClass("opacity-70");
 	});
 
 	it("calls onOpen with the activated note", async () => {
@@ -178,7 +199,14 @@ describe("the note list widget", () => {
 						{ showIfPublic: true },
 						{
 							notes: [
-								{ title: "Roses", icon: null, color: null, category: null },
+								{
+									title: "Roses",
+									icon: null,
+									color: null,
+									pinned: false,
+									archived: false,
+									category: null,
+								},
 							],
 						},
 					),
