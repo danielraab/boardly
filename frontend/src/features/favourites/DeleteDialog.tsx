@@ -18,12 +18,15 @@ import { label, removedFolders } from "./tree";
 
 export type DeleteTarget = { node: FavouriteNode; parentLabel: string };
 
+/** Confirms and deletes a node. onDeleted is called after a successful delete. */
 export function DeleteDialog({
 	target,
 	onClose,
+	onDeleted,
 }: {
 	target: DeleteTarget | null;
 	onClose: () => void;
+	onDeleted?: () => void;
 }) {
 	return (
 		<AlertDialog.Root
@@ -38,6 +41,7 @@ export function DeleteDialog({
 							key={target.node.id}
 							target={target}
 							onClose={onClose}
+							onDeleted={onDeleted}
 						/>
 					)}
 				</AlertDialog.Popup>
@@ -49,9 +53,11 @@ export function DeleteDialog({
 function DeleteForm({
 	target,
 	onClose,
+	onDeleted,
 }: {
 	target: DeleteTarget;
 	onClose: () => void;
+	onDeleted?: () => void;
 }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
@@ -80,6 +86,7 @@ function DeleteForm({
 			void queryClient.invalidateQueries({ queryKey: favouritesQueryKey });
 			void queryClient.invalidateQueries({ queryKey: ["tags"] });
 			void queryClient.invalidateQueries({ queryKey: appTokensQueryKey });
+			onDeleted?.();
 			onClose();
 		},
 	});

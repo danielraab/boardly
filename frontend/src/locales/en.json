@@ -407,6 +407,7 @@
 			"removePreview": "Remove preview",
 			"iconLabel": "Icon",
 			"refreshIcon": "Refresh icon",
+			"delete": "Delete",
 			"fetchHint": "The description and preview image are loaded from the page in the background. You can edit them afterwards."
 		},
 		"errors": {

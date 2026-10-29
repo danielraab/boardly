@@ -19,6 +19,7 @@ import {
 	refreshFavicon,
 	updateFavourite,
 } from "./api";
+import { DeleteDialog } from "./DeleteDialog";
 import { LinkFields } from "./LinkFields";
 import { findNode, label } from "./tree";
 import {
@@ -39,18 +40,21 @@ export type NodeDialogTarget =
 
 /**
  * Creates or edits a favourite. With chooseFolder, a new node's folder can be
- * chosen, starting at the target's parent. onSaved gets the saved node.
+ * chosen, starting at the target's parent. onSaved gets the saved node. An
+ * edited link can also be deleted, after which onDeleted is called.
  */
 export function NodeDialog({
 	target,
 	onClose,
 	chooseFolder = false,
 	onSaved,
+	onDeleted,
 }: {
 	target: NodeDialogTarget | null;
 	onClose: () => void;
 	chooseFolder?: boolean;
 	onSaved?: (node: FavouriteNode) => void;
+	onDeleted?: () => void;
 }) {
 	return (
 		<Dialog.Root
@@ -68,6 +72,7 @@ export function NodeDialog({
 							onClose={onClose}
 							chooseFolder={chooseFolder}
 							onSaved={onSaved}
+							onDeleted={onDeleted}
 						/>
 					)}
 				</Dialog.Popup>
@@ -81,11 +86,13 @@ function NodeForm({
 	onClose,
 	chooseFolder,
 	onSaved,
+	onDeleted,
 }: {
 	target: NodeDialogTarget;
 	onClose: () => void;
 	chooseFolder: boolean;
 	onSaved?: (node: FavouriteNode) => void;
+	onDeleted?: () => void;
 }) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
@@ -103,6 +110,7 @@ function NodeForm({
 	const [parentId, setParentId] = useState(
 		"parent" in target ? target.parent.id : "",
 	);
+	const [confirmDelete, setConfirmDelete] = useState(false);
 
 	const save = useMutation({
 		mutationFn: () => {
@@ -223,6 +231,16 @@ function NodeForm({
 					</p>
 				)}
 				<div className="flex justify-end gap-3 pt-2">
+					{editing && kind === "link" && (
+						<button
+							type="button"
+							className={`${secondaryButton} me-auto`}
+							onClick={() => setConfirmDelete(true)}
+						>
+							<Trash2 className="size-4" aria-hidden />
+							{t("favourites.dialog.delete")}
+						</button>
+					)}
 					<Dialog.Close className={secondaryButton}>
 						{t("favourites.dialog.cancel")}
 					</Dialog.Close>
@@ -237,6 +255,16 @@ function NodeForm({
 					</button>
 				</div>
 			</form>
+			{editing && (
+				<DeleteDialog
+					target={confirmDelete ? { node: editing, parentLabel: "" } : null}
+					onClose={() => setConfirmDelete(false)}
+					onDeleted={() => {
+						onDeleted?.();
+						onClose();
+					}}
+				/>
+			)}
 		</>
 	);
 }

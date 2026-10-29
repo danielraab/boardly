@@ -60,7 +60,8 @@ export function useFavouriteLink(favouriteId: string | null | undefined) {
 /**
  * The read-only details of the owner's link favouriteId while it is set, with
  * actions to open and edit it. Editing swaps the details for the link's edit
- * dialog and returns to them on close; onSaved runs after a save.
+ * dialog and returns to them on close; onSaved runs after a save, and also
+ * after the link was deleted from the edit dialog, which closes the details.
  */
 export function FavouriteDetailsDialog({
 	favouriteId,
@@ -89,6 +90,10 @@ export function FavouriteDetailsDialog({
 			<NodeDialog
 				target={editing && link ? { node: link } : null}
 				onSaved={onSaved}
+				onDeleted={() => {
+					onSaved?.();
+					onClose();
+				}}
 				onClose={() => setEditing(false)}
 			/>
 		</>

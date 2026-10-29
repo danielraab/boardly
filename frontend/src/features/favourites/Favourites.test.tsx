@@ -626,6 +626,76 @@ describe("delete", () => {
 	});
 });
 
+describe("delete from the edit dialog", () => {
+	it("deletes the link and closes both dialogs", async () => {
+		const server = fakeServer([link("Docs"), link("Other")]);
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Docs");
+		await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+		const confirm = await screen.findByRole("alertdialog");
+		expect(confirm).toHaveTextContent("“Docs” will be removed");
+		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+		await waitFor(() => expect(server.titles()).toEqual(["Other"]));
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(server.api.callsTo("PATCH", "/api/favourites/Docs")).toHaveLength(0);
+		await waitFor(() =>
+			expect(screen.queryByRole("link", { name: "Docs" })).toBeNull(),
+		);
+	});
+
+	it("returns to the edit dialog with its changes on cancel", async () => {
+		const server = fakeServer([link("Docs")]);
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Docs");
+		const title = within(dialog).getByLabelText("Title (optional)");
+		await user.clear(title);
+		await user.type(title, "Team docs");
+		await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		expect(screen.getByRole("dialog")).toBe(dialog);
+		expect(title).toHaveValue("Team docs");
+		expect(server.api.callsTo("DELETE", "/api/favourites/Docs")).toHaveLength(
+			0,
+		);
+	});
+
+	it("keeps the confirmation open when the delete fails", async () => {
+		const server = fakeServer([link("Docs")]);
+		server.api.set({
+			"DELETE /api/favourites/Docs": apiError(500, "internal"),
+		});
+		const { user } = renderApp("/favourites");
+		const dialog = await openEdit(user, "Docs");
+		await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+		expect(await within(confirm).findByRole("alert")).toBeVisible();
+		expect(screen.getByRole("alertdialog")).toBe(confirm);
+		expect(server.titles()).toEqual(["Docs"]);
+	});
+
+	it("isn't offered for folders or new nodes", async () => {
+		fakeServer([folder("Work")]);
+		const { user } = renderApp("/favourites");
+		let dialog = await openEdit(user, "Work");
+		expect(within(dialog).queryByRole("button", { name: "Delete" })).toBeNull();
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		await user.click(screen.getByRole("button", { name: "Add link" }));
+		dialog = await screen.findByRole("dialog");
+		expect(within(dialog).queryByRole("button", { name: "Delete" })).toBeNull();
+	});
+});
+
 describe("moving with the keyboard", () => {
 	it("reorders within a folder", async () => {
 		const server = fakeServer([link("A"), link("B"), link("C")]);

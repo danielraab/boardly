@@ -407,6 +407,7 @@
 			"removePreview": "Vorschaubild entfernen",
 			"iconLabel": "Icon",
 			"refreshIcon": "Icon neu laden",
+			"delete": "Löschen",
 			"fetchHint": "Beschreibung und Vorschaubild werden im Hintergrund von der Seite geladen. Du kannst sie danach bearbeiten."
 		},
 		"errors": {

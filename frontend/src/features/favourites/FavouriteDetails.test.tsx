@@ -37,6 +37,10 @@ function renderDialog(id: string, links: FavouriteNode[] = [go, bare]) {
 			tree = treeOf(node, bare);
 			return { body: node };
 		},
+		"DELETE /api/favourites/go": () => {
+			tree = treeOf(bare);
+			return { status: 204 };
+		},
 	});
 	const client = new QueryClient();
 	client.setQueryData(favouritesQueryKey, tree);
@@ -169,5 +173,22 @@ describe("FavouriteDetailsDialog", () => {
 		const details = await screen.findByRole("dialog", { name: "Go tour" });
 		expect(within(details).getByText("A tour of Go")).toBeVisible();
 		expect(api.callsTo("PATCH", "/api/favourites/go")).toHaveLength(0);
+	});
+
+	it("closes and refreshes after the link is deleted from the edit dialog", async () => {
+		const { api, onClose, onSaved, user } = renderDialog("go");
+		await user.click(screen.getByRole("button", { name: "Edit" }));
+		const edit = await screen.findByRole("dialog", { name: "Edit link" });
+		await user.click(within(edit).getByRole("button", { name: "Delete" }));
+		const confirm = await screen.findByRole("alertdialog");
+		await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+		expect(onSaved).toHaveBeenCalledOnce();
+		expect(api.callsTo("DELETE", "/api/favourites/go")).toHaveLength(1);
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 });
