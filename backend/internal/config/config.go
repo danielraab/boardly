@@ -14,6 +14,10 @@ type Config struct {
 	DBPath    string
 	LogFormat string // "json" or "text"
 
+	// LogRequests picks which HTTP requests get a log line: "all", "errors"
+	// (status 500 and higher) or "none".
+	LogRequests string
+
 	// DataDir holds the files the server writes itself, such as images.
 	DataDir string
 
@@ -88,10 +92,11 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		return v
 	}
 	cfg := Config{
-		DBPath:    "./data/boardly.db",
-		LogFormat: "json",
-		DataDir:   "./data",
-		AppTitle:  DefaultAppTitle,
+		DBPath:      "./data/boardly.db",
+		LogFormat:   "json",
+		LogRequests: "all",
+		DataDir:     "./data",
+		AppTitle:    DefaultAppTitle,
 		SMTP: SMTP{
 			Port: 587,
 			From: "Boardly <noreply@localhost>",
@@ -126,6 +131,13 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("BOARDLY_LOG_FORMAT: %q must be \"json\" or \"text\"", v)
 		}
 		cfg.LogFormat = v
+	}
+
+	if v := getenv("BOARDLY_LOG_REQUESTS"); v != "" {
+		if v != "all" && v != "errors" && v != "none" {
+			return Config{}, fmt.Errorf("BOARDLY_LOG_REQUESTS: %q must be \"all\", \"errors\" or \"none\"", v)
+		}
+		cfg.LogRequests = v
 	}
 
 	baseURL := getenv("BOARDLY_BASE_URL")

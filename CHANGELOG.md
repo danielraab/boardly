@@ -8,6 +8,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `BOARDLY_LOG_REQUESTS` chooses which HTTP requests are logged: `all` (default), `errors`
+  (status 500 and higher) or `none`.
 - The Karakeep import creates notes from text bookmarks, in a category chosen on the import form.
   Lists with text bookmarks become categories, the bookmark's tags become a `#tag` line, and notes
   that are already saved are skipped. The report counts notes and categories.
@@ -28,6 +30,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Each page now has a width that suits its content: dashboards and the notes overview use the full
   1536 px, favourites, the dashboards list and the landing page up to 1152 px, settings, a note and
   the not-found page up to 768 px. All narrower pages are centred.
+- Successful health checks (`GET /api/health` answered with 200) are no longer logged.
 
 ## [0.2.0] - 2026-10-27
 

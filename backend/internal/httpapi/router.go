@@ -43,6 +43,8 @@ type Deps struct {
 	SecureCookies bool
 	// TrustProxyHeaders takes the client IP from X-Forwarded-For.
 	TrustProxyHeaders bool
+	// LogRequests picks which requests get a log line: "all", "errors" or "none".
+	LogRequests string
 }
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
@@ -103,7 +105,7 @@ func New(d Deps) http.Handler {
 	root.Handle(karakeepPrefix+"/", a.appAPI(apptokens.AppKarakeep, a.karakeepAPI()))
 	root.Handle(linkwardenPrefix+"/", a.appAPI(apptokens.AppLinkwarden, a.linkwardenAPI()))
 	root.Handle("/", d.Web)
-	return logRequests(root)
+	return logRequests(d.LogRequests, root)
 }
 
 func health(db Pinger) HandlerFunc {

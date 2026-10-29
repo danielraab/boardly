@@ -120,6 +120,7 @@ func run() error {
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,
+			LogRequests:       cfg.LogRequests,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

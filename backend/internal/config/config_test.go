@@ -29,7 +29,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Port != 8080 || cfg.DBPath != "./data/boardly.db" || cfg.LogFormat != "json" {
+	if cfg.Port != 8080 || cfg.DBPath != "./data/boardly.db" || cfg.LogFormat != "json" || cfg.LogRequests != "all" {
 		t.Fatalf("got %+v", cfg)
 	}
 	if got := cfg.BaseURL.String(); got != "http://localhost:3000" {
@@ -61,6 +61,7 @@ func TestLoadOverrides(t *testing.T) {
 		"BOARDLY_PORT":                "9000",
 		"BOARDLY_DB_PATH":             "/tmp/x.db",
 		"BOARDLY_LOG_FORMAT":          "text",
+		"BOARDLY_LOG_REQUESTS":        "errors",
 		"BOARDLY_BASE_URL":            "https://dash.example.org/",
 		"BOARDLY_SMTP_HOST":           "smtp.example.org",
 		"BOARDLY_SMTP_PORT":           "465",
@@ -79,7 +80,7 @@ func TestLoadOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Port != 9000 || cfg.DBPath != "/tmp/x.db" || cfg.LogFormat != "text" {
+	if cfg.Port != 9000 || cfg.DBPath != "/tmp/x.db" || cfg.LogFormat != "text" || cfg.LogRequests != "errors" {
 		t.Fatalf("got %+v", cfg)
 	}
 	if got := cfg.BaseURL.String(); got != "https://dash.example.org" {
@@ -159,6 +160,18 @@ func TestLoadPort(t *testing.T) {
 	}
 }
 
+func TestLogRequests(t *testing.T) {
+	for _, mode := range []string{"all", "errors", "none"} {
+		cfg, err := Load(env(withBaseURL(map[string]string{"BOARDLY_LOG_REQUESTS": mode})))
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", mode, err)
+		}
+		if cfg.LogRequests != mode {
+			t.Fatalf("LogRequests = %q, want %q", cfg.LogRequests, mode)
+		}
+	}
+}
+
 func TestOriginIgnoresPath(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"BOARDLY_BASE_URL": "https://example.org:8443/dash"}))
 	if err != nil {
@@ -176,6 +189,7 @@ func TestLoadInvalid(t *testing.T) {
 		{"port not a number", "BOARDLY_PORT", "abc"},
 		{"port out of range", "BOARDLY_PORT", "70000"},
 		{"unknown log format", "BOARDLY_LOG_FORMAT", "xml"},
+		{"unknown request log mode", "BOARDLY_LOG_REQUESTS", "verbose"},
 		{"base URL relative", "BOARDLY_BASE_URL", "/dash"},
 		{"base URL without host", "BOARDLY_BASE_URL", "http://"},
 		{"base URL other scheme", "BOARDLY_BASE_URL", "ftp://example.org"},
