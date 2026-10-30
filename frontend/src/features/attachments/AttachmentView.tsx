@@ -53,8 +53,9 @@ const fileCard =
 /**
  * An attachment block of a note: an image, an audio or video player, or a
  * file card with a download link, and "Attachment missing" for one that
- * doesn't exist. With interactive off, as on the cards of /notes, nothing
- * reacts to activation. onOpenImage opens an image in the image viewer.
+ * doesn't exist. With interactive off, as on the cards of /notes, files and
+ * players don't react to activation. onOpenImage opens an image in the image
+ * viewer, also with interactive off; without it, the image is inert.
  */
 export function AttachmentView({
 	attachment,
@@ -84,13 +85,13 @@ export function AttachmentView({
 				className="h-auto max-w-full rounded-md"
 			/>
 		);
-		if (!interactive || !onOpenImage) return image;
+		if (!onOpenImage) return image;
 		return (
 			<button
 				type="button"
 				onClick={onOpenImage}
 				aria-label={t("attachments.viewImage", { name: attachment.name })}
-				className="block max-w-full cursor-zoom-in rounded-md focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+				className="pointer-events-auto block max-w-full cursor-zoom-in rounded-md focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
 			>
 				{image}
 			</button>
