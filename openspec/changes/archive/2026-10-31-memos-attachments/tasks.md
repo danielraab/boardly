@@ -22,4 +22,4 @@
 ## 4. Docs and check
 
 - [x] 4.1 Update the README's MoeMemos section so it says attachments are supported, and that files at the end of a note show as the memo's attachments
-- [ ] 4.2 Manual check with MoeMemos against a local server: attach a photo to a new memo, see it in `/notes/<id>`, add a file at the end of a note in the web app and see it in MoeMemos after a sync, then remove it in MoeMemos
+- [x] 4.2 Manual check with MoeMemos against a local server: attach a photo to a new memo, see it in `/notes/<id>`, add a file at the end of a note in the web app and see it in MoeMemos after a sync, then remove it in MoeMemos
