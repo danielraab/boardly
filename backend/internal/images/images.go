@@ -15,8 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
-
+	"boardly/internal/blobs"
 	"boardly/internal/db"
 )
 
@@ -55,11 +54,11 @@ type Store struct {
 
 // NewStore returns a store for <dataDir>/images, creating the directory.
 func NewStore(database *sql.DB, dataDir string) (*Store, error) {
-	dir := filepath.Join(dataDir, "images")
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	dir, err := blobs.Open(filepath.Join(dataDir, "images"))
+	if err != nil {
 		return nil, fmt.Errorf("creating image directory: %w", err)
 	}
-	return &Store{DB: database, Dir: dir, Now: time.Now}, nil
+	return &Store{DB: database, Dir: string(dir), Now: time.Now}, nil
 }
 
 // icoMagic starts every ICO file (reserved 0, type 1 = icon).
@@ -103,8 +102,8 @@ func (s *Store) Save(ctx context.Context, source, userID string, data []byte) (I
 	if err != nil {
 		return Image{}, err
 	}
-	img := Image{ID: uuid.NewString(), Source: source, ContentType: contentType, Size: int64(len(data))}
-	if err := s.writeFile(img.ID, data); err != nil {
+	img := Image{ID: blobs.NewID(), Source: source, ContentType: contentType, Size: int64(len(data))}
+	if err := s.files().Write(img.ID, data); err != nil {
 		return Image{}, err
 	}
 	var owner any
@@ -115,7 +114,7 @@ func (s *Store) Save(ctx context.Context, source, userID string, data []byte) (I
 		`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		img.ID, source, owner, contentType, img.Size, db.FormatTime(s.Now()),
 	); err != nil {
-		_ = os.Remove(s.path(img.ID))
+		_ = s.files().Remove(img.ID)
 		return Image{}, err
 	}
 	return img, nil
@@ -127,7 +126,7 @@ func (s *Store) Replace(ctx context.Context, id string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := s.writeFile(id, data); err != nil {
+	if err := s.files().Write(id, data); err != nil {
 		return err
 	}
 	res, err := s.DB.ExecContext(ctx,
@@ -136,7 +135,7 @@ func (s *Store) Replace(ctx context.Context, id string, data []byte) error {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		_ = os.Remove(s.path(id))
+		_ = s.files().Remove(id)
 		return ErrNotFound
 	}
 	return nil
@@ -154,7 +153,7 @@ func (s *Store) Open(ctx context.Context, id string) (Image, *os.File, error) {
 	if err != nil {
 		return Image{}, nil, err
 	}
-	f, err := os.Open(s.path(id))
+	f, err := os.Open(s.files().Path(id))
 	if errors.Is(err, os.ErrNotExist) {
 		return Image{}, nil, ErrNotFound
 	}
@@ -169,10 +168,7 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	if _, err := s.DB.ExecContext(ctx, `DELETE FROM images WHERE id = ?`, id); err != nil {
 		return err
 	}
-	if err := os.Remove(s.path(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	return nil
+	return s.files().Remove(id)
 }
 
 // ReadLimited reads r up to MaxSize bytes and fails with ErrTooLarge beyond.
@@ -192,29 +188,5 @@ func ReadLimit(r io.Reader, limit int64) ([]byte, error) {
 	return data, nil
 }
 
-// path is the file of an image. IDs are UUIDs, so they are safe file names;
-// anything else is mapped to a name that can't exist.
-func (s *Store) path(id string) string {
-	if u, err := uuid.Parse(id); err != nil || u.String() != id {
-		return filepath.Join(s.Dir, "invalid")
-	}
-	return filepath.Join(s.Dir, id)
-}
-
-// writeFile writes the bytes to a temporary file and renames it into place,
-// so readers never see half a file.
-func (s *Store) writeFile(id string, data []byte) error {
-	tmp, err := os.CreateTemp(s.Dir, ".tmp-*")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(tmp.Name()) }()
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), s.path(id))
-}
+// files is the image directory as a blob directory.
+func (s *Store) files() blobs.Dir { return blobs.Dir(s.Dir) }

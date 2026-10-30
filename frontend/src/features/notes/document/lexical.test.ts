@@ -9,6 +9,7 @@ import {
 	createEditor,
 } from "lexical";
 import { describe, expect, it } from "vitest";
+import { $createAttachmentNode, UploadingNode } from "../editor/attachments";
 import {
 	$docToLexical,
 	$lexicalToDoc,
@@ -109,6 +110,26 @@ describe("Lexical mapping", () => {
 		expect(list.type === "list" && list.items).toEqual([
 			{ id: "keep", checked: false, content: [{ type: "text", text: "a" }] },
 			{ checked: true, content: [{ type: "text", text: "b" }] },
+		]);
+	});
+
+	it("leaves out files that are still uploading", () => {
+		const e = editor();
+		e.update(
+			() => {
+				$getRoot()
+					.clear()
+					.append(
+						$createParagraphNode().append($createTextNode("a")),
+						new UploadingNode("u1", "photo.jpg"),
+						$createAttachmentNode("att-1"),
+					);
+			},
+			{ discrete: true },
+		);
+		expect(e.read(() => $lexicalToDoc()).blocks).toEqual([
+			{ type: "paragraph", content: [{ type: "text", text: "a" }] },
+			{ type: "attachment", id: "att-1" },
 		]);
 	});
 

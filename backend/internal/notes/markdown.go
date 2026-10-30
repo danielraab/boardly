@@ -28,14 +28,18 @@ var markdown = goldmark.New(goldmark.WithExtensions(
 // FromMarkdown builds a document from Markdown (CommonMark with GitHub's task
 // lists, strikethrough, tables and bare URLs). Whatever the document can't
 // hold is kept as text, and line breaks inside a paragraph stay line breaks.
-// Task items have no IDs yet; ParseDoc assigns them.
-func FromMarkdown(src string) Doc {
+// Task items have no IDs yet; ParseDoc assigns them. Images, and links alone
+// in their paragraph, whose URL is that of one of att's attachments become
+// attachment blocks; att may be nil.
+func FromMarkdown(src string, att *MarkdownAttachments) Doc {
 	source := []byte(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(src))
 	root := markdown.Parser().Parse(text.NewReader(source))
-	c := converter{src: source}
+	c := converter{src: source, att: att}
 	d := EmptyDoc()
 	for n := root.FirstChild(); n != nil; n = n.NextSibling() {
-		if b, ok := c.block(n); ok {
+		if p, ok := n.(*ast.Paragraph); ok && att != nil {
+			d.Blocks = append(d.Blocks, c.paragraph(p)...)
+		} else if b, ok := c.block(n); ok {
 			d.Blocks = append(d.Blocks, b)
 		}
 	}
@@ -63,7 +67,61 @@ func mergeBlockRuns(b *Block) {
 	}
 }
 
-type converter struct{ src []byte }
+type converter struct {
+	src []byte
+	att *MarkdownAttachments
+}
+
+// paragraph converts a top-level paragraph that may hold attachments: a link
+// to one alone in the paragraph, or images of them, which split the
+// paragraph around them.
+func (c converter) paragraph(p *ast.Paragraph) []Block {
+	if l, ok := p.FirstChild().(*ast.Link); ok && l.NextSibling() == nil {
+		if id := c.att.id(c.destination(l.Destination)); id != "" {
+			return []Block{{Type: BlockAttachment, ID: id}}
+		}
+	}
+	var (
+		blocks []Block
+		cur    = []Inline{}
+		split  bool
+	)
+	flush := func() {
+		for len(cur) > 0 && cur[0].Type == InlineBreak {
+			cur = cur[1:]
+		}
+		for len(cur) > 0 && cur[len(cur)-1].Type == InlineBreak {
+			cur = cur[:len(cur)-1]
+		}
+		if len(cur) > 0 {
+			content := cur
+			blocks = append(blocks, Block{Type: BlockParagraph, Content: &content})
+		}
+		cur = []Inline{}
+	}
+	for child := p.FirstChild(); child != nil; child = child.NextSibling() {
+		if img, ok := child.(*ast.Image); ok {
+			if id := c.att.id(c.destination(img.Destination)); id != "" {
+				flush()
+				blocks = append(blocks, Block{Type: BlockAttachment, ID: id})
+				split = true
+				continue
+			}
+		}
+		cur = append(cur, c.inline(child, nil)...)
+	}
+	if !split {
+		return []Block{{Type: BlockParagraph, Content: &cur}}
+	}
+	flush()
+	return blocks
+}
+
+// destination returns a link or image address without Markdown escapes and
+// entities, which goldmark keeps.
+func (c converter) destination(dest []byte) string {
+	return string(util.UnescapePunctuations(util.ResolveNumericReferences(util.ResolveEntityNames(dest))))
+}
 
 // block converts a top-level block node, or reports false to leave it out.
 func (c converter) block(n ast.Node) (Block, bool) {
@@ -193,60 +251,65 @@ func (c converter) flatten(n ast.Node) []Inline {
 func (c converter) inlines(n ast.Node, marks []string) []Inline {
 	out := []Inline{}
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
-		switch child := child.(type) {
-		case *ast.Text:
-			v := child.Value(c.src)
-			if !child.IsRaw() {
-				v = util.UnescapePunctuations(util.ResolveNumericReferences(util.ResolveEntityNames(v)))
-			}
-			if len(v) > 0 {
-				out = append(out, textRun(string(v), marks))
-			}
-			if child.SoftLineBreak() || child.HardLineBreak() {
-				out = append(out, Inline{Type: InlineBreak})
-			}
-		case *ast.String:
-			out = append(out, textRun(string(child.Value), marks))
-		case *ast.CodeSpan:
-			var b strings.Builder
-			for t := child.FirstChild(); t != nil; t = t.NextSibling() {
-				if s, ok := t.(*ast.Text); ok {
-					b.Write(s.Value(c.src))
-				} else if s, ok := t.(*ast.String); ok {
-					b.Write(s.Value)
-				}
-			}
-			out = append(out, textRun(strings.ReplaceAll(b.String(), "\n", " "), withMark(marks, "code")))
-		case *ast.Emphasis:
-			mark := "italic"
-			if child.Level >= 2 {
-				mark = "bold"
-			}
-			out = append(out, c.inlines(child, withMark(marks, mark))...)
-		case *extast.Strikethrough:
-			out = append(out, c.inlines(child, withMark(marks, "strike"))...)
-		case *ast.Link:
-			// goldmark keeps escapes and entities in the address.
-			dest := util.UnescapePunctuations(util.ResolveNumericReferences(util.ResolveEntityNames(child.Destination)))
-			out = append(out, link(string(dest), c.inlines(child, marks))...)
-		case *ast.AutoLink:
-			u := string(child.URL(c.src))
-			if child.AutoLinkType == ast.AutoLinkEmail && !strings.HasPrefix(strings.ToLower(u), "mailto:") {
-				u = "mailto:" + u
-			}
-			out = append(out, link(u, []Inline{textRun(string(child.Label(c.src)), marks)})...)
-		case *ast.RawHTML:
-			var b strings.Builder
-			for i := 0; i < child.Segments.Len(); i++ {
-				s := child.Segments.At(i)
-				b.Write(s.Value(c.src))
-			}
-			out = append(out, textLines(b.String(), marks)...)
-		case *extast.TaskCheckBox:
-		default:
-			// Images (their alt text) and anything else: the inline content.
-			out = append(out, c.inlines(child, marks)...)
+		out = append(out, c.inline(child, marks)...)
+	}
+	return out
+}
+
+// inline converts one inline node with the marks.
+func (c converter) inline(child ast.Node, marks []string) []Inline {
+	var out []Inline
+	switch child := child.(type) {
+	case *ast.Text:
+		v := child.Value(c.src)
+		if !child.IsRaw() {
+			v = util.UnescapePunctuations(util.ResolveNumericReferences(util.ResolveEntityNames(v)))
 		}
+		if len(v) > 0 {
+			out = append(out, textRun(string(v), marks))
+		}
+		if child.SoftLineBreak() || child.HardLineBreak() {
+			out = append(out, Inline{Type: InlineBreak})
+		}
+	case *ast.String:
+		out = append(out, textRun(string(child.Value), marks))
+	case *ast.CodeSpan:
+		var b strings.Builder
+		for t := child.FirstChild(); t != nil; t = t.NextSibling() {
+			if s, ok := t.(*ast.Text); ok {
+				b.Write(s.Value(c.src))
+			} else if s, ok := t.(*ast.String); ok {
+				b.Write(s.Value)
+			}
+		}
+		out = append(out, textRun(strings.ReplaceAll(b.String(), "\n", " "), withMark(marks, "code")))
+	case *ast.Emphasis:
+		mark := "italic"
+		if child.Level >= 2 {
+			mark = "bold"
+		}
+		out = append(out, c.inlines(child, withMark(marks, mark))...)
+	case *extast.Strikethrough:
+		out = append(out, c.inlines(child, withMark(marks, "strike"))...)
+	case *ast.Link:
+		out = append(out, link(c.destination(child.Destination), c.inlines(child, marks))...)
+	case *ast.AutoLink:
+		u := string(child.URL(c.src))
+		if child.AutoLinkType == ast.AutoLinkEmail && !strings.HasPrefix(strings.ToLower(u), "mailto:") {
+			u = "mailto:" + u
+		}
+		out = append(out, link(u, []Inline{textRun(string(child.Label(c.src)), marks)})...)
+	case *ast.RawHTML:
+		var b strings.Builder
+		for i := 0; i < child.Segments.Len(); i++ {
+			s := child.Segments.At(i)
+			b.Write(s.Value(c.src))
+		}
+		out = append(out, textLines(b.String(), marks)...)
+	case *extast.TaskCheckBox:
+	default:
+		// Images (their alt text) and anything else: the inline content.
+		out = append(out, c.inlines(child, marks)...)
 	}
 	return out
 }
@@ -401,8 +464,9 @@ func linkify(line string) []Inline {
 // the start and end of a line and line breaks at the end of a block are
 // dropped, and a mark may be lost where CommonMark can't read it for sure:
 // when it starts or ends inside a word, between punctuation and a letter or
-// digit, or right where another mark ends.
-func ToMarkdown(d Doc) string {
+// digit, or right where another mark ends. Attachments are written as images
+// or links to their URL, with their names from att, which may be nil.
+func ToMarkdown(d Doc, att *MarkdownAttachments) string {
 	var parts []string
 	// Lists directly after each other stay separate when their markers differ.
 	prevMarker := ""
@@ -431,6 +495,8 @@ func ToMarkdown(d Doc) string {
 		case BlockList:
 			marker = listMarker(b.Style, prevMarker)
 			md = writeList(b, marker)
+		case BlockAttachment:
+			md = att.markdown(b.ID)
 		}
 		prevMarker = marker
 		if md != "" {
@@ -950,13 +1016,13 @@ func escapeText(s string, atLineStart bool) string {
 // unused task item of the old content with the same text, in document order,
 // so tasks keep their IDs when a connected app edits a note's text; the
 // others get new IDs when the result is parsed. Checked states come from md.
-func ReplaceContentFromMarkdown(old Doc, md string) Doc {
+func ReplaceContentFromMarkdown(old Doc, md string, att *MarkdownAttachments) Doc {
 	ids := map[string][]string{}
 	walkTasks(&old, func(it *Item) {
 		key := taskText(it.Content)
 		ids[key] = append(ids[key], it.ID)
 	})
-	d := FromMarkdown(md)
+	d := FromMarkdown(md, att)
 	walkTasks(&d, func(it *Item) {
 		key := taskText(it.Content)
 		if free := ids[key]; len(free) > 0 {

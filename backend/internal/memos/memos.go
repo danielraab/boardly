@@ -164,13 +164,13 @@ const (
 func memoName(id string) string { return "memos/" + id }
 
 // Content is a note's memo content: its content as Markdown, preceded by
-// its title as a level-1 heading.
-func Content(n notes.Note) string {
-	return notes.ToMarkdown(notes.WithTitleHeading(n.Title, n.Content))
+// its title as a level-1 heading. Attachment URLs start with origin.
+func Content(n notes.Note, origin string) string {
+	return notes.ToMarkdown(notes.WithTitleHeading(n.Title, n.Content), notes.NoteMarkdownAttachments(origin, n))
 }
 
 // MemoOf is the memo of a note of the user with the given ID.
-func MemoOf(userID string, n notes.Note) Memo {
+func MemoOf(userID, origin string, n notes.Note) Memo {
 	state := StateNormal
 	if n.Archived {
 		state = StateArchived
@@ -178,7 +178,7 @@ func MemoOf(userID string, n notes.Note) Memo {
 	return Memo{
 		Name: memoName(n.ID), State: state, Creator: UserName(userID),
 		CreateTime: Time(n.CreatedAt), UpdateTime: Time(n.UpdatedAt), DisplayTime: Time(n.CreatedAt),
-		Content: Content(n), Visibility: "PRIVATE", Pinned: n.Pinned,
+		Content: Content(n, origin), Visibility: "PRIVATE", Pinned: n.Pinned,
 		Attachments: []struct{}{}, Tags: []string{}, Relations: []struct{}{},
 	}
 }

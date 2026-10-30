@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"boardly/internal/apptokens"
+	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
@@ -32,7 +33,9 @@ type Deps struct {
 	Dashboards *dashboards.Store
 	Notes      *notes.Store
 	Images     *images.Store
-	Favicons   *images.Favicons
+	// Attachments stores the files attached to notes.
+	Attachments *attachments.Store
+	Favicons    *images.Favicons
 	// Previews takes preview images that connected apps send.
 	Previews  *images.Previews
 	AppTokens *apptokens.Store
@@ -49,7 +52,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, images: d.Images, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -92,6 +95,12 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
 	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
 	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))
+	mux.Handle("GET /api/attachments", a.requireUser(a.listAttachments))
+	mux.Handle("POST /api/attachments", a.requireUser(a.uploadAttachment))
+	mux.Handle("PATCH /api/attachments/{id}", a.requireUser(a.patchAttachment))
+	mux.Handle("DELETE /api/attachments/{id}", a.requireUser(a.deleteAttachment))
+	mux.Handle("GET /api/attachments/{id}", HandlerFunc(a.getAttachment))
+	mux.Handle("GET /api/attachments/{id}/{name}", HandlerFunc(a.getAttachment))
 	mux.Handle("POST /api/favicons", a.requireUser(a.getFavicon))
 	mux.Handle("POST /api/favicons/refresh", a.requireUser(a.refreshFavicon))
 	mux.Handle("GET /api/app-tokens", a.requireUser(a.listAppTokens))

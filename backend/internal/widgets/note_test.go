@@ -104,7 +104,7 @@ func TestNoteResolve(t *testing.T) {
 	}
 	got, _ := json.Marshal(owner[0]["data"])
 	want := canonical(t, `{"id":"`+groceries.ID+`","version":1,"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","content":`+doc+
-		`,"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green","path":["Home","Garden"]}}`)
+		`,"attachments":[],"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green","path":["Home","Garden"]}}`)
 	if string(got) != want {
 		t.Errorf("owner data =\n%s\nwant\n%s", got, want)
 	}
@@ -125,7 +125,7 @@ func TestNoteResolve(t *testing.T) {
 		}
 		got, _ := json.Marshal(visitor[0]["data"])
 		want := canonical(t, `{"title":"Groceries","icon":{"type":"symbol","name":"shopping-cart"},"color":"green","content":`+doc+
-			`,"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green"}}`)
+			`,"attachments":[],"pinned":false,"archived":false,"category":{"title":"Garden","icon":null,"color":"green"}}`)
 		if string(got) != want {
 			t.Errorf("visitor %q data =\n%s\nwant\n%s", viewer, got, want)
 		}
@@ -135,5 +135,31 @@ func TestNoteResolve(t *testing.T) {
 				t.Errorf("visitor %q response contains %s: %s", viewer, hidden, raw)
 			}
 		}
+	}
+}
+
+func TestNoteResolveAttachments(t *testing.T) {
+	f := newFixture(t)
+	const roses, other = "00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"
+	for _, a := range []struct{ id, name string }{{roses, "roses.jpg"}, {other, "other-secret.pdf"}} {
+		if _, err := f.notes.DB.Exec(
+			`INSERT INTO attachments (id, user_id, name, content_type, size, created_at) VALUES (?, ?, ?, 'image/jpeg', 42, '2026-01-01T00:00:00.000Z')`,
+			a.id, f.ann, a.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	garden := f.note(f.ann, notes.NewNote{Content: json.RawMessage(`{"v":1,"blocks":[{"type":"attachment","id":"` + roses + `"}]}`)})
+	raw, _ := json.Marshal(noteConfig{NoteID: garden.ID, Size: "M", ShowIfPublic: true})
+	if err := f.save(noteWidget(string(raw))); err != nil {
+		t.Fatal(err)
+	}
+	visitor := f.lookup("")
+	got, _ := json.Marshal(visitor[0]["data"].(map[string]any)["attachments"])
+	want := `[{"contentType":"image/jpeg","id":"` + roses + `","name":"roses.jpg","size":42,"url":"/api/attachments/` + roses + `/roses.jpg"}]`
+	if string(got) != want {
+		t.Errorf("visitor attachments =\n%s\nwant\n%s", got, want)
+	}
+	if all, _ := json.Marshal(visitor); strings.Contains(string(all), "other-secret") {
+		t.Errorf("visitor sees another attachment: %s", all)
 	}
 }

@@ -17,6 +17,7 @@ import (
 
 	"boardly/internal/aaguid"
 	"boardly/internal/apptokens"
+	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/config"
 	"boardly/internal/dashboards"
@@ -97,6 +98,13 @@ func run() error {
 	}
 	go imageStore.RunCleanup(ctx, time.Hour)
 
+	attachmentStore, err := attachments.NewStore(database, cfg.DataDir,
+		cfg.Attachments.MaxBytes, cfg.Attachments.Types, cfg.Attachments.DeleteAfterDays)
+	if err != nil {
+		return err
+	}
+	go attachmentStore.RunCleanup(ctx, time.Hour)
+
 	favouriteStore := favourites.NewStore(database)
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
@@ -114,6 +122,7 @@ func run() error {
 			Dashboards:        dashboardStore,
 			Notes:             noteStore,
 			Images:            imageStore,
+			Attachments:       attachmentStore,
 			Favicons:          favicons,
 			Previews:          previews,
 			AppTokens:         apptokens.NewStore(database),

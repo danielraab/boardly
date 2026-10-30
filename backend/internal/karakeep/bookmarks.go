@@ -165,7 +165,7 @@ func (s *Service) Search(ctx context.Context, sc Scope, in SearchInput) (SearchP
 		return SearchPage{}, err
 	}
 	ns = slices.DeleteFunc(ns, func(n notes.Note) bool {
-		md := notes.ToMarkdown(n.Content)
+		md := notes.ToMarkdown(n.Content, notes.NoteMarkdownAttachments(s.Origin, n))
 		for _, term := range terms {
 			if !noteMatches(n, md, term) {
 				return true

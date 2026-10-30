@@ -223,7 +223,7 @@ func (s *Service) bookmark(ctx context.Context, sc Scope, id string) (Bookmark, 
 		if err != nil {
 			return Bookmark{}, err
 		}
-		return noteBookmark(sc.UserID, note), nil
+		return s.noteBookmark(sc.UserID, note), nil
 	}
 	if err != nil {
 		return Bookmark{}, err

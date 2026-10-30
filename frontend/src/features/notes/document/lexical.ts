@@ -36,6 +36,12 @@ import {
 	type LexicalNode,
 	type TextFormatType,
 } from "lexical";
+import {
+	$createAttachmentNode,
+	$isAttachmentNode,
+	AttachmentNode,
+	UploadingNode,
+} from "../editor/attachments";
 import type {
 	Block,
 	Inline,
@@ -59,6 +65,8 @@ export const editorNodes = [
 	LinkNode,
 	CodeNode,
 	HorizontalRuleNode,
+	AttachmentNode,
+	UploadingNode,
 ];
 
 /** The stable ID of a task item, kept in the list item's node state. */
@@ -168,6 +176,8 @@ function block(node: LexicalNode): Block | null {
 	if ($isQuoteNode(node)) return { type: "quote", content: inlines(node) };
 	if ($isCodeNode(node)) return { type: "code", text: node.getTextContent() };
 	if ($isHorizontalRuleNode(node)) return { type: "divider" };
+	if ($isAttachmentNode(node))
+		return { type: "attachment", id: node.getAttachmentId() };
 	if ($isListNode(node)) {
 		const list = listBlock(node);
 		return list.items.length ? list : null;
@@ -251,6 +261,8 @@ function $blockNode(b: Block): LexicalNode {
 			return $createHorizontalRuleNode();
 		case "list":
 			return $listNode(b);
+		case "attachment":
+			return $createAttachmentNode(b.id);
 	}
 }
 

@@ -8,6 +8,7 @@
 		"dashboards": "Dashboards",
 		"favourites": "Favoriten",
 		"notes": "Notizen",
+		"attachments": "Anhänge",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden",
 		"addLink": "Link hinzufügen",
@@ -1022,6 +1023,63 @@
 				"apply": "Übernehmen",
 				"remove": "Link entfernen",
 				"invalid": "Gib eine http-, https- oder mailto-Adresse ein."
+			}
+		}
+	},
+	"attachments": {
+		"missing": "Anhang fehlt",
+		"viewImage": "{{name}} ansehen",
+		"download": "{{name}} herunterladen",
+		"downloadShort": "Herunterladen",
+		"uploading": "{{name}} wird hochgeladen…",
+		"upload": {
+			"tooLarge": "{{name}} ist größer als {{max}} und wurde nicht hinzugefügt.",
+			"unsupported": "{{name}} wurde nicht hinzugefügt: Diese Art von Datei kann nicht angehängt werden.",
+			"failed": "{{name}} konnte nicht hochgeladen werden."
+		},
+		"viewer": {
+			"previous": "Zurück",
+			"next": "Weiter"
+		},
+		"button": {
+			"label": "Anhänge",
+			"none": "Keine Anhänge",
+			"add": "Anhang hinzufügen",
+			"remove": "{{name}} aus Notiz entfernen",
+			"removeShort": "Aus Notiz entfernen",
+			"open": "{{name}} öffnen"
+		},
+		"page": {
+			"title": "Anhänge",
+			"intro": "Alle Dateien in deinen Notizen. Dateien, die keine Notiz verwendet, werden nach einem Tag zum Löschen markiert und später gelöscht, außer du behältst sie.",
+			"summary_one": "{{count}} Anhang · {{size}}",
+			"summary_other": "{{count}} Anhänge · {{size}}",
+			"empty": "Noch keine Anhänge",
+			"emptyHint": "Füge Dateien mit der Büroklammer zu einer Notiz hinzu, oder füge sie ein oder zieh sie hinein.",
+			"emptyFilter": "Hier gibt es keine Anhänge.",
+			"filters": {
+				"label": "Anzeigen",
+				"all": "Alle",
+				"in-use": "Verwendet",
+				"unused": "Unbenutzt",
+				"marked": "Zum Löschen markiert",
+				"kept": "Behalten"
+			},
+			"notUsed": "In keiner Notiz verwendet",
+			"deleteOn": "Wird am {{date}} gelöscht",
+			"kept": "Behalten",
+			"markedOn": "markiert am {{date}}",
+			"keep": "Behalten",
+			"dontKeep": "Nicht behalten",
+			"delete": "Löschen",
+			"deleteName": "{{name}} löschen",
+			"inUse": "Wird noch in Notizen verwendet",
+			"changeFailed": "Die Änderung konnte nicht gespeichert werden.",
+			"deleteDialog": {
+				"title": "Anhang löschen?",
+				"text": "„{{name}}“ wird gelöscht. Das kann nicht rückgängig gemacht werden.",
+				"confirm": "Löschen",
+				"cancel": "Abbrechen"
 			}
 		}
 	}

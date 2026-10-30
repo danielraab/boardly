@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"boardly/internal/attachments"
 )
 
 // Config holds the server settings.
@@ -54,6 +56,19 @@ type Config struct {
 	FetchAllowPrivate bool
 
 	Previews Previews
+
+	Attachments Attachments
+}
+
+// Attachments holds the limits of note attachments.
+type Attachments struct {
+	// MaxBytes is the largest attachment.
+	MaxBytes int64
+	// DeleteAfterDays is how long a marked attachment is kept before it is
+	// deleted.
+	DeleteAfterDays int
+	// Types are the allowed content types (see attachments.Types).
+	Types []string
 }
 
 // Previews holds the limits of link preview images.
@@ -104,6 +119,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		},
 		AllowRegistration: true,
 		Previews:          Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
+		Attachments:       Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
 	}
 
 	port, err := LoadPort(lookupEnv)
@@ -201,6 +217,8 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		{"BOARDLY_PREVIEW_MAX_SIZE_MB", func(n int64) { cfg.Previews.MaxBytes = n << 20 }},
 		{"BOARDLY_PREVIEW_MAX_PIXELS", func(n int64) { cfg.Previews.MaxPixels = n }},
 		{"BOARDLY_PREVIEW_WIDTH", func(n int64) { cfg.Previews.Width = int(n) }},
+		{"BOARDLY_ATTACHMENT_MAX_SIZE_MB", func(n int64) { cfg.Attachments.MaxBytes = n << 20 }},
+		{"BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS", func(n int64) { cfg.Attachments.DeleteAfterDays = int(n) }},
 	} {
 		if v := getenv(p.name); v != "" {
 			n, err := strconv.ParseInt(v, 10, 32)
@@ -210,6 +228,12 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			p.set(n)
 		}
 	}
+
+	types, err := attachments.ParseAllowed(getenv("BOARDLY_ATTACHMENT_TYPES"))
+	if err != nil {
+		return Config{}, fmt.Errorf("BOARDLY_ATTACHMENT_TYPES: %w", err)
+	}
+	cfg.Attachments.Types = types
 
 	cfg.WebAuthnRPID = cfg.BaseURL.Hostname()
 	if v := getenv("BOARDLY_WEBAUTHN_RP_ID"); v != "" {

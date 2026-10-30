@@ -1055,3 +1055,52 @@ func TestMemosAppTokensMigration(t *testing.T) {
 		t.Errorf("root category after delete = %v, %v", category, err)
 	}
 }
+
+func TestAttachmentsConstraints(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	const ts = "2026-01-01T00:00:00Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO notes (id, user_id, content, created_at, updated_at) VALUES ('n1', 'u1', '{}', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO attachments (id, user_id, name, content_type, size, created_at) VALUES ('a1', 'u1', 'a.pdf', 'application/pdf', 3, '` + ts + `')`,
+		`INSERT INTO note_attachments (note_id, attachment_id, position) VALUES ('n1', 'a1', 0)`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+
+	// An attachment a note refers to can't be deleted.
+	if _, err := db.Exec(`DELETE FROM attachments WHERE id = 'a1'`); err == nil {
+		t.Fatal("deleting an attachment in use succeeded")
+	}
+	// Deleting the note removes the reference, not the attachment.
+	if _, err := db.Exec(`DELETE FROM notes WHERE id = 'n1'`); err != nil {
+		t.Fatal(err)
+	}
+	var refs, atts int
+	if err := db.QueryRow(`SELECT (SELECT COUNT(*) FROM note_attachments), (SELECT COUNT(*) FROM attachments)`).Scan(&refs, &atts); err != nil || refs != 0 || atts != 1 {
+		t.Fatalf("refs = %d, attachments = %d, err %v; want 0, 1", refs, atts, err)
+	}
+
+	// Deleting a user with a note that refers to an attachment cascades to both.
+	for _, q := range []string{
+		`INSERT INTO notes (id, user_id, content, created_at, updated_at) VALUES ('n2', 'u1', '{}', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO note_attachments (note_id, attachment_id, position) VALUES ('n2', 'a1', 0)`,
+		`DELETE FROM users WHERE id = 'u1'`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := db.QueryRow(`SELECT (SELECT COUNT(*) FROM note_attachments), (SELECT COUNT(*) FROM attachments)`).Scan(&refs, &atts); err != nil || refs != 0 || atts != 0 {
+		t.Fatalf("after deleting the user: refs = %d, attachments = %d, err %v", refs, atts, err)
+	}
+}

@@ -181,6 +181,15 @@ click it to open the note.
   and `[text](https://…)` inline. A toolbar offers the same, which helps on phones. Tick a todo by
   clicking its checkbox. Links open with Ctrl or Cmd held. Changes are saved a second after you
   stop typing. A note without a title is shown by its first line.
+- **Attachments**: add files to a note with the paperclip button of the editor (**Add
+  attachment**), or paste or drop them into the content; they go where the cursor is, or at the
+  end. Images are shown in the note and open large in a viewer when clicked, where the arrow keys
+  move between the note's images; audio and video play in the note; other files are shown as a
+  card with a download button. The paperclip's list shows the note's files, and **Remove from
+  note** takes one out of the note without deleting it. Which files are allowed and how large they
+  may be is set by the server (see [Attachments](#attachments)). Attachments are **public**:
+  anyone with a file's link can open it, as with images, so note widgets on public dashboards
+  can show them.
 - **Icon and colour**: a note can have a symbol or an uploaded image as its icon, and one of nine
   colours. The colours have a light and a dark shade, so they suit every theme.
 - **Categories**: each note can be in one category. Categories have a title, an optional icon and
@@ -202,7 +211,16 @@ click it to open the note.
   category for new notes**, which you choose in Settings → Profile.
 - **Storage**: note content is stored as a JSON document of Boardly's own, not as Markdown. Each
   todo has a stable ID, so later features (todo widgets, link tagging, Markdown import and export,
-  the [Memos-compatible server](#memos-compatible-server)) can refer to it.
+  the [Memos-compatible server](#memos-compatible-server)) can refer to it. In connected apps, an
+  attachment is an image or a link to its address, and stays an attachment when the app saves the
+  note.
+
+The **Attachments** page (`/attachments`, linked from the user menu) lists all your files, newest
+first, with the notes that use them as links. Filters show the files in use, the unused ones, those
+marked for deletion and those you keep. A file that no note uses is marked for deletion once it is a
+day old and deleted after `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` days (30), unless a note uses it
+again or you choose **Keep**. A file can only be deleted by hand when no note uses it, archived
+notes included.
 
 ### Karakeep-compatible server
 
@@ -540,6 +558,9 @@ precedence over the file.
 | `BOARDLY_PREVIEW_MAX_SIZE_MB` | `10` | Largest preview image, in megabytes, that the server downloads from a page or accepts from a connected app before converting it |
 | `BOARDLY_PREVIEW_MAX_PIXELS` | `25000000` | Largest preview image, as width times height, that the server decodes. Lower it on machines with little memory: decoding takes about 4 bytes per pixel |
 | `BOARDLY_PREVIEW_WIDTH` | `800` | Width, in pixels, that larger preview images are scaled down to |
+| `BOARDLY_ATTACHMENT_MAX_SIZE_MB` | `5` | Largest note attachment, in megabytes |
+| `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
+| `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
@@ -640,6 +661,21 @@ Mailpit instead (http://localhost:8025).
 - **Images are stored as files** in `BOARDLY_DATA_DIR/images`, next to the database in the
   container's `/data` volume. Uploaded images that nothing uses (no widget, note or note category)
   are deleted after 24 hours, and previews that no link uses any more after about an hour.
+
+### Attachments
+
+- **Files are stored** in `BOARDLY_DATA_DIR/attachments`, next to the images, and served to
+  anyone at `/api/attachments/<id>/<name>`. The IDs are random, so a file can only be found
+  through its link.
+- **Types are checked by content** for images, PDF, audio and video, so a renamed file is caught,
+  and by the file name's extension for the others (text, Office documents, archives, …). Only the
+  types in `BOARDLY_ATTACHMENT_TYPES` are accepted; [.env.example](.env.example) lists all of
+  them. Images (except SVG), PDF, audio and video open in the browser; every other file is
+  downloaded. SVG and HTML files can contain scripts: they are off by default, and if you allow
+  them they are always downloaded and never run on Boardly's address.
+- **Unused files are cleaned up** on start and then hourly: a file at least a day old that no note
+  uses is marked for deletion, and deleted `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` days (30) later
+  if still no note uses it and it isn't kept. A marked file still opens until it is deleted.
 
 ### Passkeys
 

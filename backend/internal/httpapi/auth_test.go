@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"boardly/internal/apptokens"
+	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
 	"boardly/internal/dbtest"
@@ -74,15 +75,16 @@ func (o *outbox) last(t *testing.T) mail.Message {
 }
 
 type server struct {
-	h        http.Handler
-	db       *sql.DB
-	auth     *auth.Service
-	clock    *clock
-	mail     *outbox
-	images   *images.Store
-	favicons *images.Favicons
-	previews *images.Previews
-	jobs     *jobs.Queue
+	h           http.Handler
+	db          *sql.DB
+	auth        *auth.Service
+	clock       *clock
+	mail        *outbox
+	images      *images.Store
+	attachments *attachments.Store
+	favicons    *images.Favicons
+	previews    *images.Previews
+	jobs        *jobs.Queue
 }
 
 func newServer(t *testing.T) *server {
@@ -120,6 +122,11 @@ func newServer(t *testing.T) *server {
 	favouriteStore.Now = c.Now
 	favouriteStore.Jobs = queue
 	noteStore := notes.NewStore(database)
+	attachmentStore, err := attachments.NewStore(database, t.TempDir(), 1<<20, attachments.DefaultAllowed(), 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachmentStore.Now = c.Now
 	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)
 
 	appTokens := apptokens.NewStore(database)
@@ -127,10 +134,10 @@ func newServer(t *testing.T) *server {
 
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore,
-		Images: imageStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
+		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

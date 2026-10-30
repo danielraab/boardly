@@ -31,13 +31,15 @@ type noteCategory struct {
 // noteData is what a visitor gets of a shown note: only what the widget
 // shows.
 type noteData struct {
-	Title    *string       `json:"title"`
-	Icon     *notes.Icon   `json:"icon"`
-	Color    *string       `json:"color"`
-	Content  notes.Doc     `json:"content"`
-	Pinned   bool          `json:"pinned"`
-	Archived bool          `json:"archived"`
-	Category *noteCategory `json:"category"`
+	Title   *string     `json:"title"`
+	Icon    *notes.Icon `json:"icon"`
+	Color   *string     `json:"color"`
+	Content notes.Doc   `json:"content"`
+	// Attachments are those the content contains.
+	Attachments []notes.NoteAttachment `json:"attachments"`
+	Pinned      bool                   `json:"pinned"`
+	Archived    bool                   `json:"archived"`
+	Category    *noteCategory          `json:"category"`
 }
 
 // ownerNoteData adds what the owner needs to toggle the note's tasks.
@@ -84,7 +86,10 @@ func Note(store *notes.Store) dashboards.Kind {
 			case err != nil:
 				return nil, false, err
 			}
-			data := noteData{Title: n.Title, Icon: n.Icon, Color: n.Color, Content: n.Content, Pinned: n.Pinned, Archived: n.Archived}
+			data := noteData{
+				Title: n.Title, Icon: n.Icon, Color: n.Color, Content: n.Content, Attachments: n.Attachments,
+				Pinned: n.Pinned, Archived: n.Archived,
+			}
 			if n.CategoryID != nil {
 				categories, err := store.Categories(ctx, viewer.OwnerID)
 				if err != nil {

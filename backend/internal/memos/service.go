@@ -22,6 +22,8 @@ const (
 // Service serves the memos of a token's note scope.
 type Service struct {
 	Notes *notes.Store
+	// Origin is Boardly's origin, which attachment URLs in memos start with.
+	Origin string
 }
 
 // ListInput is the query of GET /api/v1/memos.
@@ -77,7 +79,7 @@ func (s *Service) List(ctx context.Context, sc notes.Scope, in ListInput) (ListR
 	}
 	end := min(offset+size, len(ns))
 	for _, n := range ns[offset:end] {
-		out.Memos = append(out.Memos, MemoOf(sc.UserID, n))
+		out.Memos = append(out.Memos, MemoOf(sc.UserID, s.Origin, n))
 	}
 	if end < len(ns) {
 		out.NextPageToken = pageToken(end)
@@ -137,7 +139,11 @@ func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (M
 	if in.Content == nil {
 		return Memo{}, errContent
 	}
-	title, doc := notes.TitleFromHeading(notes.FromMarkdown(*in.Content))
+	att, err := s.Notes.UserMarkdownAttachments(ctx, sc.UserID, s.Origin)
+	if err != nil {
+		return Memo{}, err
+	}
+	title, doc := notes.TitleFromHeading(notes.FromMarkdown(*in.Content, att))
 	content, err := json.Marshal(doc)
 	if err != nil {
 		return Memo{}, err
@@ -154,7 +160,7 @@ func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (M
 	if err != nil {
 		return Memo{}, storeError(err)
 	}
-	return MemoOf(sc.UserID, created), nil
+	return MemoOf(sc.UserID, s.Origin, created), nil
 }
 
 // UpdateInput is what PATCH /api/v1/memos/{id} changes; nil fields stay.
@@ -220,7 +226,7 @@ func (s *Service) Update(ctx context.Context, sc notes.Scope, id string, in Upda
 		if err != nil {
 			return Memo{}, storeError(err)
 		}
-		patch, err := patchOf(n, in)
+		patch, err := s.patchOf(ctx, sc.UserID, n, in)
 		if err != nil {
 			return Memo{}, err
 		}
@@ -231,16 +237,20 @@ func (s *Service) Update(ctx context.Context, sc notes.Scope, id string, in Upda
 		if err != nil {
 			return Memo{}, storeError(err)
 		}
-		return MemoOf(sc.UserID, updated), nil
+		return MemoOf(sc.UserID, s.Origin, updated), nil
 	}
 }
 
 // patchOf is the change of the note n that in asks for; fields that are
 // already as asked are left out, so an unchanged memo isn't a change.
-func patchOf(n notes.Note, in UpdateInput) (notes.NotePatch, error) {
+func (s *Service) patchOf(ctx context.Context, userID string, n notes.Note, in UpdateInput) (notes.NotePatch, error) {
 	var p notes.NotePatch
-	if in.Content != nil && *in.Content != Content(n) {
-		title, doc := notes.TitleFromHeading(notes.ReplaceContentFromMarkdown(n.Content, *in.Content))
+	if in.Content != nil && *in.Content != Content(n, s.Origin) {
+		att, err := s.Notes.UserMarkdownAttachments(ctx, userID, s.Origin)
+		if err != nil {
+			return p, err
+		}
+		title, doc := notes.TitleFromHeading(notes.ReplaceContentFromMarkdown(n.Content, *in.Content, att))
 		content, err := json.Marshal(doc)
 		if err != nil {
 			return p, err

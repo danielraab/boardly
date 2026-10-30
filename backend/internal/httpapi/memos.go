@@ -22,7 +22,7 @@ const memosPrefix = "/api/memos"
 // isn't listed, among them the legacy api/v1/status, answers 404 in Memos'
 // error format, so MoeMemos uses the v1 API.
 func (a *api) memosAPI() *http.ServeMux {
-	svc := &memos.Service{Notes: a.notes}
+	svc := &memos.Service{Notes: a.notes, Origin: a.origin}
 	v1 := memosPrefix + "/api/v1"
 	mux := http.NewServeMux()
 	// respond registers a handler that needs a token; its result is written

@@ -3,6 +3,7 @@ package notes
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -34,9 +35,9 @@ func TestToMarkdown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := mustParse(t, FromMarkdown(tt.md))
-			if got := ToMarkdown(d); got != tt.want {
-				t.Errorf("ToMarkdown(FromMarkdown(%q))\n got: %q\nwant: %q", tt.md, got, tt.want)
+			d := mustParse(t, FromMarkdown(tt.md, nil))
+			if got := ToMarkdown(d, nil); got != tt.want {
+				t.Errorf("ToMarkdown(FromMarkdown(%q), nil)\n got: %q\nwant: %q", tt.md, got, tt.want)
 			}
 		})
 	}
@@ -50,7 +51,7 @@ func TestToMarkdownExceptions(t *testing.T) {
 		{Type: BlockParagraph, Content: &[]Inline{textRun("b", nil), {Type: InlineBreak}}},
 		{Type: BlockHeading, Level: 1, Content: &[]Inline{textRun("c", nil), {Type: InlineBreak}, textRun("d", nil)}},
 	}}
-	if got, want := ToMarkdown(d), "a\n\nb\n\n# c d"; got != want {
+	if got, want := ToMarkdown(d, nil), "a\n\nb\n\n# c d"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
@@ -172,8 +173,8 @@ func canonInlines(content []Inline, heading, marks bool) string {
 // no text and no structure.
 func roundTrip(t *testing.T, d Doc, strictMarks bool) {
 	t.Helper()
-	md := ToMarkdown(d)
-	back := mustParse(t, FromMarkdown(md))
+	md := ToMarkdown(d, nil)
+	back := mustParse(t, FromMarkdown(md, nil))
 	got, want := canon(back, strictMarks), canon(d, strictMarks)
 	if got != want {
 		t.Errorf("round trip changed the document\nmarkdown:\n%s\n got:\n%s\nwant:\n%s", md, got, want)
@@ -187,7 +188,7 @@ func TestToMarkdownRoundTrip(t *testing.T) {
 		"1. one\n2. two\n   1. sub\n\n1) other\n\n---\n\nend with \\* and \\_ and <tag> & co",
 		"Mail ann@example.org or visit www.example.org.\n\nprice: 5 * 3 = 15 # total\n- not a list\n\\\nafter an empty line",
 	} {
-		roundTrip(t, mustParse(t, FromMarkdown(md)), true)
+		roundTrip(t, mustParse(t, FromMarkdown(md, nil)), true)
 	}
 }
 
@@ -203,7 +204,7 @@ func FuzzToMarkdown(f *testing.F) {
 		if !utf8.ValidString(md) {
 			return
 		}
-		d := FromMarkdown(md)
+		d := FromMarkdown(md, nil)
 		raw, err := jsonSize(d)
 		if err != nil || raw > MaxDocSize/2 {
 			return
@@ -226,11 +227,11 @@ func tasksByText(d Doc) map[string][]string {
 }
 
 func TestReplaceContentFromMarkdown(t *testing.T) {
-	old := mustParse(t, FromMarkdown("- [x] milk\n- [ ] eggs\n- [ ] call\n- [ ] call"))
+	old := mustParse(t, FromMarkdown("- [x] milk\n- [ ] eggs\n- [ ] call\n- [ ] call", nil))
 	before := tasksByText(old)
 
 	t.Run("edited list", func(t *testing.T) {
-		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [x] milk\n- [ ] eggs\n- [ ] bread"))
+		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [x] milk\n- [ ] eggs\n- [ ] bread", nil))
 		after := tasksByText(d)
 		if after["milk"][0] != before["milk"][0] || after["eggs"][0] != before["eggs"][0] {
 			t.Errorf("milk or eggs lost their IDs: %v → %v", before, after)
@@ -241,7 +242,7 @@ func TestReplaceContentFromMarkdown(t *testing.T) {
 	})
 
 	t.Run("reordered tasks", func(t *testing.T) {
-		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] eggs\n- [x] milk"))
+		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] eggs\n- [x] milk", nil))
 		after := tasksByText(d)
 		if after["milk"][0] != before["milk"][0] || after["eggs"][0] != before["eggs"][0] {
 			t.Errorf("IDs changed: %v → %v", before, after)
@@ -249,14 +250,14 @@ func TestReplaceContentFromMarkdown(t *testing.T) {
 	})
 
 	t.Run("renamed task", func(t *testing.T) {
-		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [x] oat milk"))
+		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [x] oat milk", nil))
 		if id := tasksByText(d)["oat milk"][0]; id == before["milk"][0] {
 			t.Error("a renamed task kept its ID")
 		}
 	})
 
 	t.Run("same text more often", func(t *testing.T) {
-		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] call\n- [ ] call\n- [ ] call"))
+		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] call\n- [ ] call\n- [ ] call", nil))
 		after := tasksByText(d)["call"]
 		if after[0] != before["call"][0] || after[1] != before["call"][1] || slices.Contains(before["call"], after[2]) {
 			t.Errorf("call IDs %v, want the old %v and a new one", after, before["call"])
@@ -264,7 +265,7 @@ func TestReplaceContentFromMarkdown(t *testing.T) {
 	})
 
 	t.Run("checked state from the text", func(t *testing.T) {
-		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] milk"))
+		d := mustParse(t, ReplaceContentFromMarkdown(old, "- [ ] milk", nil))
 		if *(*d.Blocks[0].Items)[0].Checked {
 			t.Error("milk is still checked")
 		}
@@ -272,18 +273,18 @@ func TestReplaceContentFromMarkdown(t *testing.T) {
 }
 
 func TestTitleHeading(t *testing.T) {
-	content := FromMarkdown("- [ ] milk\n\n# Inner")
+	content := FromMarkdown("- [ ] milk\n\n# Inner", nil)
 	for _, title := range []string{"Groceries", "2 * 3 # not a heading", "[x] _a_"} {
-		md := ToMarkdown(WithTitleHeading(&title, content))
-		got, rest := TitleFromHeading(FromMarkdown(md))
+		md := ToMarkdown(WithTitleHeading(&title, content), nil)
+		got, rest := TitleFromHeading(FromMarkdown(md, nil))
 		if got == nil || *got != title {
 			t.Errorf("title %q: read back %v from %q", title, got, md)
 		}
-		if ToMarkdown(rest) != ToMarkdown(content) {
-			t.Errorf("title %q: content %q, want %q", title, ToMarkdown(rest), ToMarkdown(content))
+		if ToMarkdown(rest, nil) != ToMarkdown(content, nil) {
+			t.Errorf("title %q: content %q, want %q", title, ToMarkdown(rest, nil), ToMarkdown(content, nil))
 		}
 	}
-	if md := ToMarkdown(WithTitleHeading(nil, content)); md != ToMarkdown(content) {
+	if md := ToMarkdown(WithTitleHeading(nil, content), nil); md != ToMarkdown(content, nil) {
 		t.Errorf("no title = %q", md)
 	}
 	for name, md := range map[string]string{
@@ -293,8 +294,72 @@ func TestTitleHeading(t *testing.T) {
 		"too long":    "# " + strings.Repeat("x", MaxNoteTitle+1),
 		"blank title": "#\n\ntext",
 	} {
-		if title, rest := TitleFromHeading(FromMarkdown(md)); title != nil || len(rest.Blocks) != len(FromMarkdown(md).Blocks) {
+		if title, rest := TitleFromHeading(FromMarkdown(md, nil)); title != nil || len(rest.Blocks) != len(FromMarkdown(md, nil).Blocks) {
 			t.Errorf("%s: title %v, want none and all blocks kept", name, title)
 		}
+	}
+}
+
+func TestMarkdownAttachments(t *testing.T) {
+	const origin = "https://boardly.example"
+	roses := NoteAttachment{ID: "00000000-0000-4000-8000-000000000001", Name: "roses.jpg", ContentType: "image/jpeg"}
+	report := NoteAttachment{ID: "00000000-0000-4000-8000-000000000002", Name: "my report (1).pdf", ContentType: "application/pdf"}
+	att := &MarkdownAttachments{Origin: origin, ByID: map[string]NoteAttachment{roses.ID: roses, report.ID: report}}
+	d := Doc{V: DocVersion, Blocks: []Block{
+		{Type: BlockParagraph, Content: &[]Inline{textRun("Garden", nil)}},
+		{Type: BlockAttachment, ID: roses.ID},
+		{Type: BlockAttachment, ID: report.ID},
+	}}
+
+	md := ToMarkdown(d, att)
+	want := "Garden\n\n![roses.jpg](" + origin + "/api/attachments/" + roses.ID + "/roses.jpg)\n\n" +
+		"[my report (1).pdf](" + origin + "/api/attachments/" + report.ID + "/my%20report%20%281%29.pdf)"
+	if md != want {
+		t.Fatalf("ToMarkdown =\n%s\nwant\n%s", md, want)
+	}
+	if back := FromMarkdown(md, att); !reflect.DeepEqual(back, d) {
+		t.Fatalf("round trip = %+v", back.Blocks)
+	}
+
+	// Without attachments to resolve, the image is its alt text and the file a link.
+	plain := FromMarkdown(md, nil)
+	if len(plain.Blocks) != 3 || plain.Blocks[1].Type != BlockParagraph || plain.Blocks[2].Type != BlockParagraph {
+		t.Fatalf("without attachments = %+v", plain.Blocks)
+	}
+
+	for name, tt := range map[string]struct {
+		md   string
+		want []string // block types, attachments as their ID
+	}{
+		"own image by path":       {"![x](/api/attachments/" + roses.ID + "/x.jpg)", []string{roses.ID}},
+		"file link alone":         {"[report](/api/attachments/" + report.ID + ")", []string{report.ID}},
+		"image splits paragraph":  {"before ![x](" + origin + "/api/attachments/" + roses.ID + "/x) after", []string{BlockParagraph, roses.ID, BlockParagraph}},
+		"image on its own line":   {"before\n![x](" + origin + "/api/attachments/" + roses.ID + "/x)\nafter", []string{BlockParagraph, roses.ID, BlockParagraph}},
+		"file link in text":       {"see [report](/api/attachments/" + report.ID + ") here", []string{BlockParagraph}},
+		"other user's attachment": {"![x](" + origin + "/api/attachments/00000000-0000-4000-8000-0000000000ff/x.png)", []string{BlockParagraph}},
+		"other origin":            {"![x](https://evil.example/api/attachments/" + roses.ID + "/x.jpg)", []string{BlockParagraph}},
+	} {
+		got := FromMarkdown(tt.md, att)
+		var types []string
+		for _, b := range got.Blocks {
+			if b.Type == BlockAttachment {
+				types = append(types, b.ID)
+			} else {
+				types = append(types, b.Type)
+			}
+		}
+		if !reflect.DeepEqual(types, tt.want) {
+			t.Errorf("%s: blocks %v, want %v", name, types, tt.want)
+		}
+	}
+
+	split := FromMarkdown("before\n![x](/api/attachments/"+roses.ID+")\nafter", att)
+	if first := *split.Blocks[0].Content; len(first) != 1 || *first[0].Text != "before" {
+		t.Errorf("text before the image = %+v", first)
+	}
+
+	// Replacing content keeps attachments too.
+	if got := ReplaceContentFromMarkdown(d, md, att); !reflect.DeepEqual(got.Blocks, d.Blocks) {
+		t.Errorf("ReplaceContentFromMarkdown = %+v", got.Blocks)
 	}
 }

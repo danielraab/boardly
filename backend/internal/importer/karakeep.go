@@ -125,7 +125,7 @@ func karakeepNote(bm karakeepBookmark) (n notes.ImportNote, ok bool) {
 	}
 	n.CreatedAt = bm.CreatedAt.time()
 	n.Archived = bool(bm.Archived)
-	n.Content = notes.FromMarkdown(string(bm.Content.Text))
+	n.Content = notes.FromMarkdown(string(bm.Content.Text), nil)
 	for _, extra := range []struct{ prefix, text string }{{"Note: ", string(bm.Note)}, {"Summary: ", string(bm.Summary)}} {
 		if t := strings.TrimSpace(extra.text); t != "" {
 			n.Content.Blocks = append(n.Content.Blocks, notes.FromText(extra.prefix+t).Blocks...)

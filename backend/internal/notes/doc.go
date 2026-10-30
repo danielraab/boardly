@@ -33,6 +33,8 @@ const (
 	BlockCode      = "code"
 	BlockDivider   = "divider"
 	BlockList      = "list"
+	// BlockAttachment shows one of the owner's attachments. It has no text.
+	BlockAttachment = "attachment"
 )
 
 // List styles.
@@ -56,6 +58,9 @@ var (
 	marks       = map[string]bool{"bold": true, "italic": true, "strike": true, "code": true}
 	linkSchemes = map[string]bool{"http": true, "https": true, "mailto": true}
 	taskIDRe    = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
+	// attachmentIDRe matches the shape of an attachment ID; whether it is
+	// one of the owner's attachments is checked when the note is saved.
+	attachmentIDRe = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
 )
 
 // Doc is a note's content.
@@ -72,6 +77,7 @@ type Block struct {
 	Text    *string   `json:"text,omitempty"`
 	Style   string    `json:"style,omitempty"`
 	Items   *[]Item   `json:"items,omitempty"`
+	ID      string    `json:"id,omitempty"`
 }
 
 // Item is a list item. ID and Checked are only set in task lists.
@@ -128,6 +134,9 @@ func ParseDoc(raw []byte) (Doc, error) {
 
 // checkBlock validates b, which is nested in depth lists.
 func checkBlock(b *Block, depth int) error {
+	if b.Type != BlockAttachment && b.ID != "" {
+		return fmt.Errorf("%s with an ID", b.Type)
+	}
 	switch b.Type {
 	case BlockParagraph, BlockQuote, BlockHeading:
 		if b.Text != nil || b.Style != "" || b.Items != nil {
@@ -158,10 +167,31 @@ func checkBlock(b *Block, depth int) error {
 		}
 	case BlockList:
 		return checkList(b, depth+1)
+	case BlockAttachment:
+		if b.Level != 0 || b.Content != nil || b.Text != nil || b.Style != "" || b.Items != nil {
+			return errors.New("attachment with other fields")
+		}
+		if !attachmentIDRe.MatchString(b.ID) {
+			return fmt.Errorf("invalid attachment ID %q", b.ID)
+		}
 	default:
 		return fmt.Errorf("unknown block type %q", b.Type)
 	}
 	return nil
+}
+
+// AttachmentIDs returns the IDs of the attachments in a document, each once,
+// in the order they first appear.
+func AttachmentIDs(d Doc) []string {
+	ids := []string{}
+	seen := map[string]bool{}
+	for _, b := range d.Blocks {
+		if b.Type == BlockAttachment && !seen[b.ID] {
+			seen[b.ID] = true
+			ids = append(ids, b.ID)
+		}
+	}
+	return ids
 }
 
 // checkList validates a list at depth (1 for a top-level list).

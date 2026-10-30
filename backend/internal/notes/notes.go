@@ -54,6 +54,9 @@ type Note struct {
 	Version    int       `json:"version"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
+	// Attachments are the attachments the content contains, each once, in
+	// the order they first appear (see attachments.go).
+	Attachments []NoteAttachment `json:"attachments"`
 }
 
 // NewNote is the input of CreateNote. A nil Content is an empty document. A
@@ -103,13 +106,16 @@ func normalizeNoteTitle(title *string) (*string, error) {
 	return &t, nil
 }
 
-const noteColumns = `id, title, icon_symbol, icon_image_id, color, category_id, content, pinned, archived, version, created_at, updated_at`
+const noteColumns = `id, title, icon_symbol, icon_image_id, color, category_id, content, pinned, archived, version, created_at, updated_at, ` + noteAttachmentsColumn
 
 func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
 	var symbol, imageID *string
-	var content, created, updated string
-	if err := row.Scan(&n.ID, &n.Title, &symbol, &imageID, &n.Color, &n.CategoryID, &content, &n.Pinned, &n.Archived, &n.Version, &created, &updated); err != nil {
+	var content, created, updated, attachments string
+	if err := row.Scan(&n.ID, &n.Title, &symbol, &imageID, &n.Color, &n.CategoryID, &content, &n.Pinned, &n.Archived, &n.Version, &created, &updated, &attachments); err != nil {
+		return Note{}, err
+	}
+	if err := scanNoteAttachments(attachments, &n); err != nil {
 		return Note{}, err
 	}
 	n.Icon = iconOf(symbol, imageID)
@@ -202,17 +208,18 @@ func checkCategory(ctx context.Context, q db.Querier, userID string, id *string)
 	return nil
 }
 
-// parseContent validates a document; nil is an empty one.
-func parseContent(raw json.RawMessage) (string, error) {
+// parseContent validates a document; nil is an empty one. It returns the
+// document and its JSON form.
+func parseContent(raw json.RawMessage) (Doc, string, error) {
 	d := EmptyDoc()
 	if raw != nil {
 		var err error
 		if d, err = ParseDoc(raw); err != nil {
-			return "", err
+			return Doc{}, "", err
 		}
 	}
 	b, err := json.Marshal(d)
-	return string(b), err
+	return d, string(b), err
 }
 
 // CreateNote adds a note with version 1. Errors are ErrInvalidTitle,
@@ -226,7 +233,7 @@ func (s *Store) CreateNote(ctx context.Context, userID string, n NewNote) (Note,
 	if err := checkColor(n.Color); err != nil {
 		return Note{}, err
 	}
-	content, err := parseContent(n.Content)
+	doc, content, err := parseContent(n.Content)
 	if err != nil {
 		return Note{}, err
 	}
@@ -254,6 +261,9 @@ func (s *Store) CreateNote(ctx context.Context, userID string, n NewNote) (Note,
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
 		id, userID, n.CategoryID, title, symbol, imageID, n.Color, content, n.Pinned, n.Archived, db.FormatTime(createdAt), now,
 	); err != nil {
+		return Note{}, err
+	}
+	if err := setAttachments(ctx, tx, userID, id, doc); err != nil {
 		return Note{}, err
 	}
 	created, err := note(ctx, tx, userID, id)
@@ -312,8 +322,11 @@ func (s *Store) UpdateNote(ctx context.Context, userID, id string, version int, 
 		sets, args = append(sets, "category_id = ?"), append(args, *p.CategoryID)
 	}
 	if p.Content != nil {
-		content, err := parseContent(p.Content)
+		doc, content, err := parseContent(p.Content)
 		if err != nil {
+			return Note{}, err
+		}
+		if err := setAttachments(ctx, tx, userID, id, doc); err != nil {
 			return Note{}, err
 		}
 		sets, args = append(sets, "content = ?"), append(args, content)

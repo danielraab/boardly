@@ -1,6 +1,7 @@
 import { Maximize2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
+import type { NoteAttachment } from "#/features/attachments/api";
 import type { NoteIcon } from "#/features/notes/api";
 import {
 	ReadOnlyCategoryBadge,
@@ -22,6 +23,7 @@ export type ShownNote = {
 	icon: NoteIcon | null;
 	color: NoteColour | null;
 	content: NoteDoc;
+	attachments: NoteAttachment[];
 	pinned: boolean;
 	archived: boolean;
 	category: (ShownCategory & { path?: string[] }) | null;
@@ -114,6 +116,8 @@ export function NoteWidgetView({
 			>
 				<NoteRenderer
 					doc={data.content}
+					attachments={data.attachments}
+					interactiveAttachments
 					size={size}
 					onToggleTask={onToggleTask}
 				/>

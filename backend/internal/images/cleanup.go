@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"boardly/internal/db"
@@ -74,7 +73,7 @@ func (s *Store) deleteImages(ctx context.Context, query string, args ...any) (in
 		return 0, err
 	}
 	for _, id := range deleted {
-		if err := os.Remove(s.path(id)); err != nil && !os.IsNotExist(err) {
+		if err := s.files().Remove(id); err != nil {
 			return len(deleted), err
 		}
 	}
@@ -114,34 +113,12 @@ func (s *Store) removeUnusedRaw(ctx context.Context, now time.Time) error {
 }
 
 // removeOrphans deletes files without a record, such as leftovers of a crash.
-// Only files older than an hour are touched, so a Save that has written its
-// file but not yet its record isn't affected.
 func (s *Store) removeOrphans(ctx context.Context, now time.Time) error {
-	entries, err := os.ReadDir(s.Dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		info, err := e.Info()
-		if err != nil || e.IsDir() || now.Sub(info.ModTime()) < time.Hour {
-			continue
-		}
-		name := e.Name()
-		if !strings.HasPrefix(name, ".tmp-") {
-			var exists bool
-			if err := s.DB.QueryRowContext(ctx,
-				`SELECT EXISTS (SELECT 1 FROM images WHERE id = ?)`, name).Scan(&exists); err != nil {
-				return err
-			}
-			if exists {
-				continue
-			}
-		}
-		if err := os.Remove(filepath.Join(s.Dir, name)); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-	}
-	return nil
+	return s.files().RemoveOrphans(ctx, now, func(ctx context.Context, id string) (bool, error) {
+		var exists bool
+		err := s.DB.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM images WHERE id = ?)`, id).Scan(&exists)
+		return exists, err
+	})
 }
 
 // RunCleanup sweeps now and then every interval until ctx is done.

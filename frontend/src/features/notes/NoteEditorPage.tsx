@@ -2,6 +2,7 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Menu } from "@base-ui/react/menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import type { LexicalEditor } from "lexical";
 import {
 	Archive,
 	ArchiveRestore,
@@ -13,7 +14,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	dangerButton,
@@ -24,7 +25,10 @@ import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { type IconChoice, IconChooser } from "#/components/IconChooser";
 import { menuItem, menuPopup } from "#/components/menuStyles";
 import { narrowPage } from "#/components/pageWidths";
+import type { NoteAttachment } from "#/features/attachments/api";
+import { useImageViewer } from "#/features/attachments/ImageViewer";
 import { usePageTitle } from "#/lib/usePageTitle";
+import { AttachmentsButton } from "./AttachmentsButton";
 import {
 	deleteNote,
 	type Note,
@@ -36,7 +40,11 @@ import { ColourButton } from "./ColourPicker";
 import { CategoryBadge } from "./categories/CategoryBadge";
 import { noteBackground } from "./colours";
 import { displayTitle } from "./document/text";
-import { emptyDoc } from "./document/types";
+import { attachmentIds, emptyDoc } from "./document/types";
+import {
+	INSERT_ATTACHMENTS_COMMAND,
+	REMOVE_ATTACHMENT_COMMAND,
+} from "./editor/attachments";
 import { NoteEditor } from "./editor/NoteEditor";
 import { NoteMarks } from "./NoteMarks";
 import { iconChoice, noteIcon } from "./noteIcon";
@@ -83,6 +91,16 @@ export function NoteEditorPage({
 	const [icon, setIcon] = useState<IconChoice>(iconChoice(draft.icon));
 	const [noteId, setNoteId] = useState(note?.id ?? null);
 	const [deleting, setDeleting] = useState(false);
+	const editor = useRef<LexicalEditor | null>(null);
+	// The note's attachments and those added since it was opened.
+	const [known, setKnown] = useState<NoteAttachment[]>(
+		() => note?.attachments ?? [],
+	);
+	const byId = Object.fromEntries(known.map((a) => [a.id, a]));
+	const attachments = attachmentIds(draft.content)
+		.map((id) => byId[id])
+		.filter((a) => a !== undefined);
+	const images = useImageViewer();
 	const { status, change, saveNow, retry, discard } = useAutosave({
 		note,
 		draft,
@@ -126,6 +144,22 @@ export function NoteEditorPage({
 						value={draft.color}
 						onChange={(color) => update({ color })}
 						disabled={readOnly}
+					/>
+					<AttachmentsButton
+						attachments={attachments}
+						disabled={readOnly}
+						onAdd={(files) =>
+							editor.current?.dispatchCommand(INSERT_ATTACHMENTS_COMMAND, files)
+						}
+						onRemove={(id) =>
+							editor.current?.dispatchCommand(REMOVE_ATTACHMENT_COMMAND, id)
+						}
+						onOpenImage={(id) =>
+							images.open(
+								attachments.filter((a) => a.contentType.startsWith("image/")),
+								id,
+							)
+						}
 					/>
 					<Menu.Root>
 						<Menu.Trigger
@@ -240,10 +274,14 @@ export function NoteEditorPage({
 			<div className="mt-6">
 				<NoteEditor
 					initial={draft.content}
+					attachments={known}
+					onAttachmentAdded={(a) => setKnown((list) => [...list, a])}
+					editorRef={editor}
 					editable={!readOnly}
 					onChange={(content) => update({ content })}
 				/>
 			</div>
+			{images.viewer}
 
 			<DeleteNoteDialog
 				open={deleting}

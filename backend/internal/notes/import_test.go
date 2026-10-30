@@ -16,7 +16,7 @@ func importFile() ImportTree {
 		Notes: []ImportNote{{Title: ptr("Door"), Content: FromText("code 1234")}},
 		Categories: []ImportCategory{{Name: "recipes", Categories: []ImportCategory{{
 			Name:  "Pasta",
-			Notes: []ImportNote{{Title: ptr("Basil"), Content: FromMarkdown("- [ ] buy basil"), CreatedAt: created}},
+			Notes: []ImportNote{{Title: ptr("Basil"), Content: FromMarkdown("- [ ] buy basil", nil), CreatedAt: created}},
 		}}}},
 	}, TooLarge: 2}
 }

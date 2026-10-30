@@ -32,7 +32,11 @@ export type Block =
 	| { type: "quote"; content: Inline[] }
 	| { type: "code"; text: string }
 	| { type: "divider" }
-	| ListBlock;
+	| ListBlock
+	| AttachmentBlock;
+
+/** One of the owner's attachments, shown as its own block. */
+export type AttachmentBlock = { type: "attachment"; id: string };
 
 export const emptyDoc = (): NoteDoc => ({ v: 1, blocks: [] });
 
@@ -66,4 +70,13 @@ export function setTaskChecked(
 		...doc,
 		blocks: doc.blocks.map((b) => (b.type === "list" ? inList(b) : b)),
 	};
+}
+
+/** The IDs of the attachments of a document, each once, in content order. */
+export function attachmentIds(doc: NoteDoc): string[] {
+	const ids: string[] = [];
+	for (const b of doc.blocks) {
+		if (b.type === "attachment" && !ids.includes(b.id)) ids.push(b.id);
+	}
+	return ids;
 }

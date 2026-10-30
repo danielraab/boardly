@@ -8,6 +8,7 @@
 		"dashboards": "Dashboards",
 		"favourites": "Favourites",
 		"notes": "Notes",
+		"attachments": "Attachments",
 		"settings": "Settings",
 		"signOut": "Sign out",
 		"addLink": "Add link",
@@ -1022,6 +1023,63 @@
 				"apply": "Apply",
 				"remove": "Remove link",
 				"invalid": "Enter an http, https or mailto address."
+			}
+		}
+	},
+	"attachments": {
+		"missing": "Attachment missing",
+		"viewImage": "View {{name}}",
+		"download": "Download {{name}}",
+		"downloadShort": "Download",
+		"uploading": "Uploading {{name}}…",
+		"upload": {
+			"tooLarge": "{{name}} is larger than {{max}} and wasn't added.",
+			"unsupported": "{{name}} wasn't added: this type of file can't be attached.",
+			"failed": "{{name}} couldn't be uploaded."
+		},
+		"viewer": {
+			"previous": "Previous",
+			"next": "Next"
+		},
+		"button": {
+			"label": "Attachments",
+			"none": "No attachments",
+			"add": "Add attachment",
+			"remove": "Remove {{name}} from note",
+			"removeShort": "Remove from note",
+			"open": "Open {{name}}"
+		},
+		"page": {
+			"title": "Attachments",
+			"intro": "All files in your notes. Files that no note uses are marked for deletion after a day and deleted later, unless you keep them.",
+			"summary_one": "{{count}} attachment · {{size}}",
+			"summary_other": "{{count}} attachments · {{size}}",
+			"empty": "No attachments yet",
+			"emptyHint": "Add files to a note with the paperclip button, or paste or drop them into it.",
+			"emptyFilter": "No attachments here.",
+			"filters": {
+				"label": "Show",
+				"all": "All",
+				"in-use": "In use",
+				"unused": "Unused",
+				"marked": "Marked for deletion",
+				"kept": "Kept"
+			},
+			"notUsed": "Not used in any note",
+			"deleteOn": "Will be deleted on {{date}}",
+			"kept": "Kept",
+			"markedOn": "marked on {{date}}",
+			"keep": "Keep",
+			"dontKeep": "Don't keep",
+			"delete": "Delete",
+			"deleteName": "Delete {{name}}",
+			"inUse": "Still used in notes",
+			"changeFailed": "The change couldn't be saved.",
+			"deleteDialog": {
+				"title": "Delete attachment?",
+				"text": "“{{name}}” will be deleted. This can't be undone.",
+				"confirm": "Delete",
+				"cancel": "Cancel"
 			}
 		}
 	}

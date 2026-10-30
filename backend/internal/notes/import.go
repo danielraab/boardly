@@ -157,7 +157,7 @@ func (im *importer) addNote(ctx context.Context, categoryID *string, n ImportNot
 	if err != nil {
 		return err
 	}
-	content, err := parseContent(raw)
+	doc, content, err := parseContent(raw)
 	if err != nil {
 		return err
 	}
@@ -177,11 +177,15 @@ func (im *importer) addNote(ctx context.Context, categoryID *string, n ImportNot
 		created = im.now
 	}
 	at := db.FormatTime(created)
+	id := uuid.NewString()
 	if _, err := im.q.ExecContext(ctx,
 		`INSERT INTO notes (id, user_id, category_id, title, content, archived, version, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-		uuid.NewString(), im.userID, categoryID, title, content, n.Archived, at, at,
+		id, im.userID, categoryID, title, content, n.Archived, at, at,
 	); err != nil {
+		return err
+	}
+	if err := setAttachments(ctx, im.q, im.userID, id, doc); err != nil {
 		return err
 	}
 	im.report.Notes++

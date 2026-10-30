@@ -153,16 +153,16 @@ func TestFromMarkdown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := mustParse(t, FromMarkdown(tt.md))
+			d := mustParse(t, FromMarkdown(tt.md, nil))
 			if got := describe(d); got != tt.want {
-				t.Errorf("FromMarkdown(%q)\n got: %s\nwant: %s", tt.md, got, tt.want)
+				t.Errorf("FromMarkdown(%q, nil)\n got: %s\nwant: %s", tt.md, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestFromMarkdownTaskIDs(t *testing.T) {
-	d := mustParse(t, FromMarkdown("- [ ] a\n- [X] b"))
+	d := mustParse(t, FromMarkdown("- [ ] a\n- [X] b", nil))
 	items := *d.Blocks[0].Items
 	if items[0].ID == "" || items[1].ID == "" || items[0].ID == items[1].ID {
 		t.Errorf("task IDs = %q, %q, want two different IDs", items[0].ID, items[1].ID)
@@ -177,7 +177,7 @@ func TestFromMarkdownDeepLists(t *testing.T) {
 	for i := range 9 {
 		fmt.Fprintf(&md, "%s- level %d\n", strings.Repeat("  ", i), i+1)
 	}
-	d := mustParse(t, FromMarkdown(md.String()))
+	d := mustParse(t, FromMarkdown(md.String(), nil))
 	want := "- level 1\n  - level 2\n    - level 3\n      - level 4\n        - level 5\n          - level 6⏎level 7⏎level 8⏎level 9"
 	if got := describe(d); got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
@@ -215,7 +215,7 @@ func FuzzFromMarkdown(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, md string) {
-		raw, err := json.Marshal(FromMarkdown(md))
+		raw, err := json.Marshal(FromMarkdown(md, nil))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,7 +223,7 @@ func FuzzFromMarkdown(f *testing.F) {
 			return
 		}
 		if _, err := ParseDoc(raw); err != nil {
-			t.Fatalf("ParseDoc rejects FromMarkdown(%q): %v\n%s", md, err, raw)
+			t.Fatalf("ParseDoc rejects FromMarkdown(%q, nil): %v\n%s", md, err, raw)
 		}
 	})
 }

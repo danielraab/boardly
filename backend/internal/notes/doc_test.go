@@ -167,3 +167,22 @@ func TestTaskIDs(t *testing.T) {
 		}
 	})
 }
+
+func TestAttachmentIDs(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "docs", "valid", "attachment.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := ParseDoc(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Blocks = append(d.Blocks, Block{Type: BlockAttachment, ID: "0b8f1c2e-3d4a-4b5c-8d6e-7f8091a2b3c4"})
+	want := []string{"0b8f1c2e-3d4a-4b5c-8d6e-7f8091a2b3c4", "1c9e2d3f-4e5b-4c6d-9e7f-8091a2b3c4d5"}
+	if got := AttachmentIDs(d); !reflect.DeepEqual(got, want) {
+		t.Fatalf("AttachmentIDs = %v, want %v", got, want)
+	}
+	if FirstLine(Doc{V: 1, Blocks: []Block{{Type: BlockAttachment, ID: "x"}}}) != "" {
+		t.Fatal("an attachment has text")
+	}
+}

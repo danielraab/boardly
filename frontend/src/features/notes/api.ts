@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import type { NoteAttachment } from "#/features/attachments/api";
 import { ApiError, api } from "#/lib/api";
 import type { NoteColour } from "./colours";
 import type { NoteDoc } from "./document/types";
@@ -20,6 +21,8 @@ export type Note = {
 	version: number;
 	createdAt: string;
 	updatedAt: string;
+	/** The attachments the content contains, in the order they appear. */
+	attachments: NoteAttachment[];
 };
 
 /** The fields of a note that can be changed. */

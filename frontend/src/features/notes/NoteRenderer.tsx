@@ -1,17 +1,39 @@
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
+import { AttachmentView } from "#/features/attachments/AttachmentView";
+import type { NoteAttachment } from "#/features/attachments/api";
+import { useImageViewer } from "#/features/attachments/ImageViewer";
 import {
 	sizeStyles,
 	type WidgetSize,
 } from "#/features/dashboards/widgets/sizes";
 import { inlineText } from "./document/text";
-import type {
-	Block,
-	Inline,
-	ListBlock,
-	Mark,
-	NoteDoc,
-	TextRun,
+import {
+	attachmentIds,
+	type Block,
+	type Inline,
+	type ListBlock,
+	type Mark,
+	type NoteDoc,
+	type TextRun,
 } from "./document/types";
+
+/** The attachments of the rendered note, and how they react. */
+const RenderedAttachments = createContext<{
+	byId: Record<string, NoteAttachment>;
+	interactive: boolean;
+	openImage?: (id: string) => void;
+}>({ byId: {}, interactive: false });
+
+function Attachment({ id }: { id: string }) {
+	const { byId, interactive, openImage } = useContext(RenderedAttachments);
+	return (
+		<AttachmentView
+			attachment={byId[id]}
+			interactive={interactive}
+			onOpenImage={openImage && (() => openImage(id))}
+		/>
+	);
+}
 
 /** Tailwind classes of the marks. */
 const markClass: Record<Mark, string> = {
@@ -158,6 +180,8 @@ function BlockView({
 			return <hr className="border-line" />;
 		case "list":
 			return <List list={block} onToggleTask={onToggleTask} />;
+		case "attachment":
+			return <Attachment id={block.id} />;
 	}
 }
 
@@ -166,23 +190,48 @@ function BlockView({
  * the note widget. Headings start one level below the card's title. Links
  * don't react to activation; checkboxes only do with onToggleTask. A size
  * sets the text size as for widgets; without one it is the cards' text-sm.
+ * attachments are the note's; with interactiveAttachments, as in widgets,
+ * images open in the image viewer and files can be downloaded, while on the
+ * cards activating them starts editing like the rest.
  */
 export function NoteRenderer({
 	doc,
+	attachments = [],
+	interactiveAttachments = false,
 	onToggleTask,
 	size,
 }: {
 	doc: NoteDoc;
+	attachments?: NoteAttachment[];
+	interactiveAttachments?: boolean;
 	onToggleTask?: OnToggleTask;
 	size?: WidgetSize;
 }) {
 	const text = size ? sizeStyles[size].text : "text-sm";
+	const images = useImageViewer();
+	const byId = Object.fromEntries(attachments.map((a) => [a.id, a]));
+	const openImage = (id: string) =>
+		images.open(
+			attachmentIds(doc)
+				.map((a) => byId[a])
+				.filter((a) => a?.contentType.startsWith("image/")),
+			id,
+		);
 	return (
-		<div className={`space-y-1.5 ${text} break-words`}>
-			{doc.blocks.map((block, i) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
-				<BlockView key={i} block={block} onToggleTask={onToggleTask} />
-			))}
-		</div>
+		<RenderedAttachments
+			value={{
+				byId,
+				interactive: interactiveAttachments,
+				openImage: interactiveAttachments ? openImage : undefined,
+			}}
+		>
+			<div className={`space-y-1.5 ${text} break-words`}>
+				{doc.blocks.map((block, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
+					<BlockView key={i} block={block} onToggleTask={onToggleTask} />
+				))}
+			</div>
+			{interactiveAttachments && images.viewer}
+		</RenderedAttachments>
 	);
 }

@@ -7,6 +7,7 @@ import {
 	LogIn,
 	LogOut,
 	NotebookPen,
+	Paperclip,
 	Settings,
 	Star,
 } from "lucide-react";
@@ -75,6 +76,14 @@ export function UserMenu() {
 								>
 									<NotebookPen className="size-4 text-muted" aria-hidden />
 									{t("shell.notes")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/attachments" />}
+								>
+									<Paperclip className="size-4 text-muted" aria-hidden />
+									{t("shell.attachments")}
 								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick

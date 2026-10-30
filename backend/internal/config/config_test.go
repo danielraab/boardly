@@ -2,8 +2,11 @@ package config
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
+
+	"boardly/internal/attachments"
 )
 
 func env(vars map[string]string) func(string) (string, bool) {
@@ -53,6 +56,36 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if want := (Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800}); cfg.Previews != want {
 		t.Fatalf("Previews = %+v, want %+v", cfg.Previews, want)
+	}
+	if want := (Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30, Types: attachments.DefaultAllowed()}); !reflect.DeepEqual(cfg.Attachments, want) {
+		t.Fatalf("Attachments = %+v, want %+v", cfg.Attachments, want)
+	}
+}
+
+func TestLoadAttachments(t *testing.T) {
+	cfg, err := Load(env(map[string]string{
+		"BOARDLY_BASE_URL":                     "http://localhost:3000",
+		"BOARDLY_ATTACHMENT_MAX_SIZE_MB":       "20",
+		"BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS": "7",
+		"BOARDLY_ATTACHMENT_TYPES":             "image/*,video/*",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Attachments.MaxBytes != 20<<20 || cfg.Attachments.DeleteAfterDays != 7 ||
+		!slices.Contains(cfg.Attachments.Types, "video/mp4") || slices.Contains(cfg.Attachments.Types, "application/pdf") {
+		t.Fatalf("Attachments = %+v", cfg.Attachments)
+	}
+
+	for name, vars := range map[string]map[string]string{
+		"BOARDLY_ATTACHMENT_TYPES":             {"BOARDLY_ATTACHMENT_TYPES": "application/x-msdownload"},
+		"BOARDLY_ATTACHMENT_MAX_SIZE_MB":       {"BOARDLY_ATTACHMENT_MAX_SIZE_MB": "0"},
+		"BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS": {"BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS": "soon"},
+	} {
+		vars["BOARDLY_BASE_URL"] = "http://localhost:3000"
+		if _, err := Load(env(vars)); err == nil || !strings.Contains(err.Error(), name) {
+			t.Errorf("%s: error %v doesn't name the variable", name, err)
+		}
 	}
 }
 

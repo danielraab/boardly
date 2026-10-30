@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
 import { Route as NotesRouteImport } from './routes/notes'
@@ -25,6 +26,11 @@ import { Route as NotesNoteIdRouteImport } from './routes/notes.$noteId'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttachmentsRoute = AttachmentsRouteImport.update({
+  id: '/attachments',
+  path: '/attachments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardsRoute = DashboardsRouteImport.update({
@@ -85,6 +91,7 @@ const NotesNoteIdRoute = NotesNoteIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/notes': typeof NotesRouteWithChildren
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/settings': typeof SettingsRoute
@@ -113,6 +121,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/notes': typeof NotesRouteWithChildren
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/attachments'
     | '/dashboards'
     | '/favourites'
     | '/notes'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/attachments'
     | '/dashboards'
     | '/favourites'
     | '/settings'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/attachments'
     | '/dashboards'
     | '/favourites'
     | '/notes'
@@ -171,6 +183,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AttachmentsRoute: typeof AttachmentsRoute
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
   NotesRoute: typeof NotesRouteWithChildren
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attachments': {
+      id: '/attachments'
+      path: '/attachments'
+      fullPath: '/attachments'
+      preLoaderRoute: typeof AttachmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboards': {
@@ -285,6 +305,7 @@ const NotesRouteWithChildren = NotesRoute._addFileChildren(NotesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AttachmentsRoute: AttachmentsRoute,
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
   NotesRoute: NotesRouteWithChildren,

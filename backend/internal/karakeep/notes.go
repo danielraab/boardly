@@ -25,7 +25,7 @@ type TextContent struct {
 var errNoteInList = &InputError{"Notes can't be in lists in Boardly"}
 
 // noteBookmark is a note as a text bookmark.
-func noteBookmark(userID string, n notes.Note) Bookmark {
+func (s *Service) noteBookmark(userID string, n notes.Note) Bookmark {
 	return Bookmark{
 		ID:         n.ID,
 		CreatedAt:  trpc.Date(n.CreatedAt),
@@ -33,7 +33,7 @@ func noteBookmark(userID string, n notes.Note) Bookmark {
 		Title:      n.Title,
 		UserID:     userID,
 		Tags:       []Tag{},
-		Content:    TextContent{Type: "text", Text: notes.ToMarkdown(n.Content)},
+		Content:    TextContent{Type: "text", Text: notes.ToMarkdown(n.Content, notes.NoteMarkdownAttachments(s.Origin, n))},
 		Archived:   n.Archived,
 		Favourited: n.Pinned,
 		Assets:     []struct{}{},
@@ -108,7 +108,7 @@ func (s *Service) render(ctx context.Context, sc Scope, items []item) ([]Bookmar
 			out[i] = rendered[next]
 			next++
 		} else {
-			out[i] = noteBookmark(sc.UserID, *it.note)
+			out[i] = s.noteBookmark(sc.UserID, *it.note)
 		}
 	}
 	return out, nil
@@ -153,7 +153,11 @@ func (s *Service) createNote(ctx context.Context, sc Scope, in CreateBookmarkInp
 	if in.Text == nil {
 		return CreatedBookmark{}, &InputError{"A text bookmark needs a text"}
 	}
-	content, err := json.Marshal(notes.FromMarkdown(*in.Text))
+	att, err := s.Notes.UserMarkdownAttachments(ctx, sc.UserID, s.Origin)
+	if err != nil {
+		return CreatedBookmark{}, err
+	}
+	content, err := json.Marshal(notes.FromMarkdown(*in.Text, att))
 	if err != nil {
 		return CreatedBookmark{}, err
 	}
@@ -164,7 +168,7 @@ func (s *Service) createNote(ctx context.Context, sc Scope, in CreateBookmarkInp
 	if err != nil {
 		return CreatedBookmark{}, err
 	}
-	return CreatedBookmark{Bookmark: noteBookmark(sc.UserID, n)}, nil
+	return CreatedBookmark{Bookmark: s.noteBookmark(sc.UserID, n)}, nil
 }
 
 // updateNote is bookmarks.updateBookmark for a note: its title, its text,
@@ -186,8 +190,12 @@ func (s *Service) updateNote(ctx context.Context, sc Scope, n notes.Note, in Upd
 		}
 		patch.Title = &t
 	}
-	if in.Text != nil && *in.Text != notes.ToMarkdown(n.Content) {
-		if patch.Content, err = json.Marshal(notes.ReplaceContentFromMarkdown(n.Content, *in.Text)); err != nil {
+	if in.Text != nil && *in.Text != notes.ToMarkdown(n.Content, notes.NoteMarkdownAttachments(s.Origin, n)) {
+		att, err := s.Notes.UserMarkdownAttachments(ctx, sc.UserID, s.Origin)
+		if err != nil {
+			return Bookmark{}, err
+		}
+		if patch.Content, err = json.Marshal(notes.ReplaceContentFromMarkdown(n.Content, *in.Text, att)); err != nil {
 			return Bookmark{}, err
 		}
 	}
@@ -198,11 +206,11 @@ func (s *Service) updateNote(ctx context.Context, sc Scope, n notes.Note, in Upd
 		patch.Pinned = in.Favourited
 	}
 	if patch.Title == nil && patch.Content == nil && patch.Archived == nil && patch.Pinned == nil {
-		return noteBookmark(sc.UserID, n), nil
+		return s.noteBookmark(sc.UserID, n), nil
 	}
 	updated, err := s.Notes.UpdateNote(ctx, sc.UserID, n.ID, n.Version, patch)
 	if err != nil {
 		return Bookmark{}, err
 	}
-	return noteBookmark(sc.UserID, updated), nil
+	return s.noteBookmark(sc.UserID, updated), nil
 }

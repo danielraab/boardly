@@ -22,7 +22,7 @@ func (f *fixture) withNotes(categoryID string) {
 
 func (f *fixture) note(title, md string, category *string) notes.Note {
 	f.t.Helper()
-	content, _ := json.Marshal(notes.FromMarkdown(md))
+	content, _ := json.Marshal(notes.FromMarkdown(md, nil))
 	n, err := f.notes.CreateNote(f.ctx, f.user, notes.NewNote{Title: &title, CategoryID: category, Content: content})
 	if err != nil {
 		f.t.Fatal(err)
@@ -174,7 +174,7 @@ func TestUpdateNoteBookmark(t *testing.T) {
 	f := newFixture(t)
 	f.withNotes("")
 	n := f.note("Shopping", "- [x] milk\n- [ ] eggs", nil)
-	md := notes.ToMarkdown(n.Content)
+	md := notes.ToMarkdown(n.Content, nil)
 
 	// The same text changes nothing.
 	b, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: n.ID, Text: &md})

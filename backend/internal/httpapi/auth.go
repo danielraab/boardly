@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"boardly/internal/apptokens"
+	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
@@ -33,14 +34,15 @@ const (
 const maxBodyBytes = 64 << 10
 
 type api struct {
-	auth       *auth.Service
-	users      *users.Store
-	favourites *favourites.Store
-	dashboards *dashboards.Store
-	notes      *notes.Store
-	images     *images.Store
-	favicons   *images.Favicons
-	previews   *images.Previews
+	auth        *auth.Service
+	users       *users.Store
+	favourites  *favourites.Store
+	dashboards  *dashboards.Store
+	notes       *notes.Store
+	images      *images.Store
+	attachments *attachments.Store
+	favicons    *images.Favicons
+	previews    *images.Previews
 	// refreshLimiter limits favicon refreshes per user.
 	refreshLimiter *ratelimit.Limiter
 	appTokens      *apptokens.Store

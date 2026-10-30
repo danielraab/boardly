@@ -74,6 +74,8 @@ function CardBody({
 }: NoteCardProps & { onConflict: () => void }) {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState(() => draftOf(note));
+	// The note's attachments and those added while editing it here.
+	const [attachments, setAttachments] = useState(note.attachments);
 	const editingRef = useRef(editing);
 	editingRef.current = editing;
 	const titleRef = useRef<HTMLHeadingElement>(null);
@@ -99,7 +101,10 @@ function CardBody({
 	// Shows the note as the list has it, unless changes of its own are
 	// still on their way.
 	useEffect(() => {
-		if (!editingRef.current && idle()) setDraft(draftOf(note));
+		if (!editingRef.current && idle()) {
+			setDraft(draftOf(note));
+			setAttachments(note.attachments);
+		}
 	}, [note, idle]);
 
 	// Ending inline editing saves what is left right away.
@@ -190,6 +195,8 @@ function CardBody({
 				</div>
 				<NoteEditor
 					initial={draft.content}
+					attachments={attachments}
+					onAttachmentAdded={(a) => setAttachments((list) => [...list, a])}
 					toolbar={false}
 					autoFocus={editing === "content"}
 					onChange={(content) => update({ content })}
@@ -226,6 +233,7 @@ function CardBody({
 			<div className="pointer-events-none relative z-[1] min-h-0 flex-1 overflow-hidden pr-6 [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
 				<NoteRenderer
 					doc={draft.content}
+					attachments={attachments}
 					onToggleTask={(id, checked) => {
 						const content = setTaskChecked(draft.content, id, checked);
 						setDraft((d) => ({ ...d, content }));

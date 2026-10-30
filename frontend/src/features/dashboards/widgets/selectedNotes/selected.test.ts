@@ -14,6 +14,7 @@ const note = (id: string, fields: Partial<Note> = {}): Note => ({
 	version: 1,
 	createdAt: "2026-10-01T12:00:00Z",
 	updatedAt: "2026-10-01T12:00:00Z",
+	attachments: [],
 	...fields,
 });
 

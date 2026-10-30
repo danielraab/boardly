@@ -112,12 +112,12 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Dashboards, Favourites, Notes, Settings, GitHub and Sign out in this order", async () => {
+	it("shows name, email, Dashboards, Favourites, Notes, Attachments, Settings, GitHub and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"Annann@example.orgDashboardsFavouritesNotesSettingsGitHubSign out",
+			"Annann@example.orgDashboardsFavouritesNotesAttachmentsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu)
@@ -127,6 +127,7 @@ describe("signed-in user menu", () => {
 			"Dashboards",
 			"Favourites",
 			"Notes",
+			"Attachments",
 			"Settings",
 			"GitHub",
 			"Sign out",
@@ -138,7 +139,7 @@ describe("signed-in user menu", () => {
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"ann@example.orgDashboardsFavouritesNotesSettingsGitHubSign out",
+			"ann@example.orgDashboardsFavouritesNotesAttachmentsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
@@ -195,6 +196,25 @@ describe("signed-in user menu", () => {
 		const menu = await openMenu(user);
 		await user.click(within(menu).getByRole("menuitem", { name: "Notes" }));
 		await waitFor(() => expect(router.state.location.pathname).toBe("/notes"));
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+	});
+
+	it("goes to /attachments from the Attachments item and closes the menu", async () => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/attachments": {
+				body: { attachments: [], maxSize: 5242880, allowedTypes: [] },
+			},
+			"GET /api/notes": { body: [] },
+		});
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Attachments" }),
+		);
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/attachments"),
+		);
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 	});
 

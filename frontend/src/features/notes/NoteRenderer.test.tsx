@@ -1,5 +1,11 @@
 import { readFileSync } from "node:fs";
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NoteDoc } from "./document/types";
 import { NoteRenderer } from "./NoteRenderer";
@@ -76,5 +82,97 @@ describe("NoteRenderer", () => {
 		render(<NoteRenderer doc={allTypes} />);
 		expect(screen.queryByRole("link")).toBeNull();
 		expect(screen.getByText("docs")).toBeInTheDocument();
+	});
+});
+
+describe("NoteRenderer attachments", () => {
+	const roses = {
+		id: "a1",
+		name: "roses.jpg",
+		contentType: "image/jpeg",
+		size: 2048,
+		url: "/api/attachments/a1/roses.jpg",
+	};
+	const tulips = { ...roses, id: "a2", name: "tulips.jpg", url: "/t.jpg" };
+	const plan = {
+		id: "a3",
+		name: "report.pdf",
+		contentType: "application/pdf",
+		size: 300 * 1024,
+		url: "/api/attachments/a3/report.pdf",
+	};
+	const doc: NoteDoc = {
+		v: 1,
+		blocks: [
+			{ type: "attachment", id: "a1" },
+			{ type: "attachment", id: "a3" },
+			{ type: "attachment", id: "a2" },
+			{ type: "attachment", id: "gone" },
+		],
+	};
+
+	it("shows images, file cards and missing attachments", () => {
+		render(
+			<NoteRenderer
+				doc={doc}
+				attachments={[roses, plan, tulips]}
+				interactiveAttachments
+			/>,
+		);
+		expect(screen.getByRole("img", { name: "roses.jpg" })).toHaveAttribute(
+			"src",
+			roses.url,
+		);
+		expect(screen.getByText("report.pdf")).toHaveTextContent(
+			"report.pdf · 300 KB",
+		);
+		expect(
+			screen.getByRole("link", { name: "Download report.pdf" }),
+		).toHaveAttribute("href", plan.url);
+		expect(screen.getByText("Attachment missing")).toBeInTheDocument();
+	});
+
+	it("is inert on cards", () => {
+		render(<NoteRenderer doc={doc} attachments={[roses, plan, tulips]} />);
+		expect(
+			screen.queryByRole("button", { name: "View roses.jpg" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("link", { name: "Download report.pdf" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("opens images in the viewer and moves between them", async () => {
+		render(
+			<NoteRenderer
+				doc={doc}
+				attachments={[roses, plan, tulips]}
+				interactiveAttachments
+			/>,
+		);
+		const open = screen.getByRole("button", { name: "View roses.jpg" });
+		open.focus();
+		fireEvent.click(open);
+		const viewer = await screen.findByRole("dialog", { name: "roses.jpg" });
+		expect(
+			within(viewer).getByRole("link", { name: "Download roses.jpg" }),
+		).toHaveAttribute("href", roses.url);
+
+		fireEvent.keyDown(viewer, { key: "ArrowRight" });
+		expect(
+			await screen.findByRole("dialog", { name: "tulips.jpg" }),
+		).toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Next" }));
+		expect(
+			await screen.findByRole("dialog", { name: "roses.jpg" }),
+		).toBeInTheDocument();
+
+		fireEvent.keyDown(document.activeElement ?? document.body, {
+			key: "Escape",
+		});
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		await waitFor(() => expect(open).toHaveFocus());
 	});
 });

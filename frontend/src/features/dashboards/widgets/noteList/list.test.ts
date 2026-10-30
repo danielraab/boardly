@@ -23,6 +23,7 @@ const note = (
 	version: 1,
 	createdAt: at(created),
 	updatedAt: at(updated),
+	attachments: [],
 	...fields,
 });
 

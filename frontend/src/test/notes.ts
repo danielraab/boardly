@@ -32,6 +32,7 @@ export function note(id: string, fields: Partial<Note> = {}): Note {
 		version: 1,
 		createdAt: new Date(time).toISOString(),
 		updatedAt: new Date(time).toISOString(),
+		attachments: [],
 		...fields,
 	};
 }

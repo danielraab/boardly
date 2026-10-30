@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"boardly/internal/blobs"
 	"boardly/internal/images"
 )
 
@@ -44,10 +45,8 @@ func (a *api) getImage(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer f.Close()
 	h := w.Header()
-	h.Set("Content-Type", img.ContentType)
+	blobs.SetHeaders(h, img.ContentType)
 	h.Set("Content-Length", strconv.FormatInt(img.Size, 10))
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "sandbox")
 	if img.Source == images.SourceUpload || img.Source == images.SourcePreview {
 		h.Set("Cache-Control", uploadCacheControl)
 	} else {
