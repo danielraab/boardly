@@ -576,6 +576,33 @@ describe("checkboxes on cards", () => {
 	});
 });
 
+describe("images on cards", () => {
+	it("opens an image in the viewer without editing the note", async () => {
+		const roses = {
+			id: "a1",
+			name: "roses.jpg",
+			contentType: "image/jpeg",
+			size: 2048,
+			url: "/api/attachments/a1/roses.jpg",
+		};
+		fakeNotesServer([
+			note("Garden", {
+				content: { v: 1, blocks: [{ type: "attachment", id: "a1" }] },
+				attachments: [roses],
+			}),
+		]);
+		const { user, router } = renderApp("/notes");
+		const open = await screen.findByRole("button", { name: "View roses.jpg" });
+		await user.click(open);
+		const viewer = await screen.findByRole("dialog", { name: "roses.jpg" });
+		expect(screen.queryByRole("textbox", { name: "Content" })).toBeNull();
+		expect(router.state.location.pathname).toBe("/notes");
+		await user.click(within(viewer).getByRole("button", { name: "Close" }));
+		await waitFor(() => expect(open).toHaveFocus());
+		expect(screen.queryByRole("textbox", { name: "Content" })).toBeNull();
+	});
+});
+
 describe("inline editing", () => {
 	it("edits the content in place without a toolbar", slow, async () => {
 		const { notes } = fakeNotesServer([note("Groceries")]);

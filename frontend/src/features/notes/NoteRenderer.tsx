@@ -190,9 +190,10 @@ function BlockView({
  * the note widget. Headings start one level below the card's title. Links
  * don't react to activation; checkboxes only do with onToggleTask. A size
  * sets the text size as for widgets; without one it is the cards' text-sm.
- * attachments are the note's; with interactiveAttachments, as in widgets,
- * images open in the image viewer and files can be downloaded, while on the
- * cards activating them starts editing like the rest.
+ * attachments are the note's; images open in the image viewer. With
+ * interactiveAttachments, as in widgets, files can be downloaded and audio and
+ * video played, while on the cards activating them starts editing like the
+ * rest.
  */
 export function NoteRenderer({
 	doc,
@@ -222,7 +223,7 @@ export function NoteRenderer({
 			value={{
 				byId,
 				interactive: interactiveAttachments,
-				openImage: interactiveAttachments ? openImage : undefined,
+				openImage,
 			}}
 		>
 			<div className={`space-y-1.5 ${text} break-words`}>
@@ -231,7 +232,7 @@ export function NoteRenderer({
 					<BlockView key={i} block={block} onToggleTask={onToggleTask} />
 				))}
 			</div>
-			{interactiveAttachments && images.viewer}
+			{images.viewer}
 		</RenderedAttachments>
 	);
 }

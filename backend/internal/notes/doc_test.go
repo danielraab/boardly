@@ -186,3 +186,37 @@ func TestAttachmentIDs(t *testing.T) {
 		t.Fatal("an attachment has text")
 	}
 }
+
+func TestTrailingAttachments(t *testing.T) {
+	para := func(s string) Block {
+		return Block{Type: BlockParagraph, Content: &[]Inline{{Type: InlineText, Text: &s}}}
+	}
+	att := func(id string) Block { return Block{Type: BlockAttachment, ID: id} }
+	for _, tc := range []struct {
+		name     string
+		blocks   []Block
+		body     []Block
+		trailing []string
+	}{
+		{"photo at the end", []Block{para("roses"), att("a"), att("b")}, []Block{para("roses")}, []string{"a", "b"}},
+		{"attachment in the middle", []Block{att("a"), para("roses")}, []Block{att("a"), para("roses")}, []string{}},
+		{"only attachments", []Block{att("a")}, []Block{}, []string{"a"}},
+		{"duplicates", []Block{para("x"), att("a"), att("a")}, []Block{para("x")}, []string{"a"}},
+		{"empty", []Block{}, []Block{}, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, ids := SplitTrailingAttachments(Doc{V: 1, Blocks: tc.blocks})
+			if !reflect.DeepEqual(body.Blocks, tc.body) || body.V != 1 {
+				t.Fatalf("body = %+v, want %+v", body, tc.body)
+			}
+			if !reflect.DeepEqual(ids, tc.trailing) {
+				t.Fatalf("ids = %v, want %v", ids, tc.trailing)
+			}
+		})
+	}
+	got := JoinTrailingAttachments(Doc{V: 1, Blocks: []Block{para("x")}}, []string{"a", "b", "a"})
+	want := []Block{para("x"), att("a"), att("b")}
+	if !reflect.DeepEqual(got.Blocks, want) {
+		t.Fatalf("join = %+v, want %+v", got.Blocks, want)
+	}
+}

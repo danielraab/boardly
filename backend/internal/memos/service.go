@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"boardly/internal/attachments"
 	"boardly/internal/notes"
 )
 
@@ -21,7 +22,8 @@ const (
 
 // Service serves the memos of a token's note scope.
 type Service struct {
-	Notes *notes.Store
+	Notes       *notes.Store
+	Attachments *attachments.Store
 	// Origin is Boardly's origin, which attachment URLs in memos start with.
 	Origin string
 }
@@ -125,17 +127,15 @@ func matchesFilter(filter, userID string) bool {
 // CreateInput is the body of POST /api/v1/memos. Visibility and location are
 // ignored.
 type CreateInput struct {
-	Content     *string           `json:"content"`
-	Attachments []json.RawMessage `json:"attachments"`
-	CreateTime  *string           `json:"createTime"`
+	Content     *string         `json:"content"`
+	Attachments []AttachmentRef `json:"attachments"`
+	CreateTime  *string         `json:"createTime"`
 }
 
 // Create adds a note in the scope's root category, or uncategorized for all
-// notes, with the title and content from the memo's content.
+// notes, with the title and content from the memo's content, followed by
+// its attachments.
 func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (Memo, error) {
-	if len(in.Attachments) > 0 {
-		return Memo{}, ErrAttachments
-	}
 	if in.Content == nil {
 		return Memo{}, errContent
 	}
@@ -143,8 +143,12 @@ func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (M
 	if err != nil {
 		return Memo{}, err
 	}
+	ids, err := attachmentIDs(in.Attachments, att)
+	if err != nil {
+		return Memo{}, err
+	}
 	title, doc := notes.TitleFromHeading(notes.FromMarkdown(*in.Content, att))
-	content, err := json.Marshal(doc)
+	content, err := json.Marshal(notes.JoinTrailingAttachments(doc, ids))
 	if err != nil {
 		return Memo{}, err
 	}
@@ -168,7 +172,7 @@ type UpdateInput struct {
 	Content     *string
 	Pinned      *bool
 	State       *string
-	Attachments []json.RawMessage
+	Attachments *[]AttachmentRef
 }
 
 // UpdateFromBody reads the fields of a memo update from its body. With a
@@ -213,9 +217,6 @@ func UpdateFromBody(body map[string]json.RawMessage, mask string) (UpdateInput, 
 // Update changes the note of a memo in scope. A change from the app always
 // wins: it is applied to the note's current version.
 func (s *Service) Update(ctx context.Context, sc notes.Scope, id string, in UpdateInput) (Memo, error) {
-	if len(in.Attachments) > 0 {
-		return Memo{}, ErrAttachments
-	}
 	if in.State != nil && *in.State != StateNormal && *in.State != StateArchived {
 		return Memo{}, errState
 	}
@@ -242,20 +243,40 @@ func (s *Service) Update(ctx context.Context, sc notes.Scope, id string, in Upda
 }
 
 // patchOf is the change of the note n that in asks for; fields that are
-// already as asked are left out, so an unchanged memo isn't a change.
+// already as asked are left out, so an unchanged memo isn't a change. The
+// content replaces the note's content before its trailing attachments, and
+// the attachments replace the trailing attachments.
 func (s *Service) patchOf(ctx context.Context, userID string, n notes.Note, in UpdateInput) (notes.NotePatch, error) {
 	var p notes.NotePatch
+	var att *notes.MarkdownAttachments
+	if in.Content != nil || in.Attachments != nil {
+		var err error
+		if att, err = s.Notes.UserMarkdownAttachments(ctx, userID, s.Origin); err != nil {
+			return p, err
+		}
+	}
+	body, trailing := notes.SplitTrailingAttachments(n.Content)
+	changed := false
 	if in.Content != nil && *in.Content != Content(n, s.Origin) {
-		att, err := s.Notes.UserMarkdownAttachments(ctx, userID, s.Origin)
+		var title *string
+		title, body = notes.TitleFromHeading(notes.ReplaceContentFromMarkdown(body, *in.Content, att))
+		p.Title, changed = &title, true
+	}
+	if in.Attachments != nil {
+		ids, err := attachmentIDs(*in.Attachments, att)
 		if err != nil {
 			return p, err
 		}
-		title, doc := notes.TitleFromHeading(notes.ReplaceContentFromMarkdown(n.Content, *in.Content, att))
-		content, err := json.Marshal(doc)
+		if !slices.Equal(ids, trailing) {
+			trailing, changed = ids, true
+		}
+	}
+	if changed {
+		content, err := json.Marshal(notes.JoinTrailingAttachments(body, trailing))
 		if err != nil {
 			return p, err
 		}
-		p.Title, p.Content = &title, content
+		p.Content = content
 	}
 	if in.Pinned != nil && *in.Pinned != n.Pinned {
 		p.Pinned = in.Pinned

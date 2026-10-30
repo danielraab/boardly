@@ -132,11 +132,12 @@ describe("NoteRenderer attachments", () => {
 		expect(screen.getByText("Attachment missing")).toBeInTheDocument();
 	});
 
-	it("is inert on cards", () => {
+	it("opens images but leaves files inert on cards", async () => {
 		render(<NoteRenderer doc={doc} attachments={[roses, plan, tulips]} />);
+		fireEvent.click(screen.getByRole("button", { name: "View roses.jpg" }));
 		expect(
-			screen.queryByRole("button", { name: "View roses.jpg" }),
-		).not.toBeInTheDocument();
+			await screen.findByRole("dialog", { name: "roses.jpg" }),
+		).toBeInTheDocument();
 		expect(
 			screen.queryByRole("link", { name: "Download report.pdf" }),
 		).not.toBeInTheDocument();

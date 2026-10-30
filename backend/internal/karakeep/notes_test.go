@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"boardly/internal/db"
 	"boardly/internal/favourites"
 	"boardly/internal/notes"
 )
@@ -358,5 +359,86 @@ func TestNoteFlagsOnCreateAndUpdate(t *testing.T) {
 	}
 	if _, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: link, Archived: &no}); err != nil {
 		t.Errorf("archived false on a link: %v, want accepted", err)
+	}
+}
+
+// attachment adds an attachment of Ann with the given type.
+func (f *fixture) attachment(id, name, contentType string) string {
+	f.t.Helper()
+	if _, err := f.notes.DB.Exec(
+		`INSERT INTO attachments (id, user_id, name, content_type, size, created_at) VALUES (?, ?, ?, ?, 2048, ?)`,
+		id, f.user, name, contentType, db.FormatTime(f.now)); err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+func TestAssetBookmarks(t *testing.T) {
+	f := newFixture(t)
+	inbox := f.category("Inbox")
+	photo := f.attachment("00000000-0000-4000-8000-000000000001", "IMG_0042.jpg", "image/jpeg")
+	pdf := f.attachment("00000000-0000-4000-8000-000000000002", "invoice.pdf", "application/pdf")
+	video := f.attachment("00000000-0000-4000-8000-000000000003", "clip.mp4", "video/mp4")
+	long := f.attachment("00000000-0000-4000-8000-000000000004", strings.Repeat("n", 250)+".png", "image/png")
+
+	// A token without notes can't save files.
+	if _, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: photo}); !isInputError(err) {
+		t.Errorf("note scope none: err = %v", err)
+	}
+
+	// Save a file: a note with only the photo, titled by the file name.
+	f.withNotes(inbox)
+	created, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: photo, Favourited: new(true)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, _ := f.notes.Note(f.ctx, f.user, created.ID)
+	if n.Title == nil || *n.Title != "IMG_0042.jpg" || n.CategoryID == nil || *n.CategoryID != inbox || !n.Pinned ||
+		len(n.Content.Blocks) != 1 || n.Content.Blocks[0].ID != photo {
+		t.Fatalf("created note = %+v", n)
+	}
+	want := `"content":{"type":"asset","assetType":"image","assetId":"` + photo + `","fileName":"IMG_0042.jpg","size":2048,"sourceUrl":null,"content":null},` +
+		`"assets":[{"id":"` + photo + `","assetType":"bookmarkAsset","fileName":"IMG_0042.jpg"}],"alreadyExists":false}`
+	if got := jsonOf(t, created); !strings.HasSuffix(got, want) || created.Title == nil || !created.Favourited {
+		t.Errorf("created = %s", got)
+	}
+
+	// PDF; a given title wins; a long file name is cut to the title limit.
+	b, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: pdf, Title: new("Invoice")})
+	if err != nil || b.Content.(AssetContent).AssetType != "pdf" || *b.Title != "Invoice" {
+		t.Errorf("pdf = %+v, %v", b, err)
+	}
+	b, err = f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: long})
+	if err != nil || len(*b.Title) != notes.MaxNoteTitle {
+		t.Errorf("long name = %v, %v", b.Title, err)
+	}
+	// A video is a note with the file, but a text bookmark.
+	b, err = f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: video})
+	if c, ok := b.Content.(TextContent); err != nil || !ok || !strings.Contains(c.Text, "clip.mp4") || len(b.Assets) != 0 {
+		t.Errorf("video = %+v, %v", b, err)
+	}
+	if _, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "asset", AssetID: "unknown"}); !isInputError(err) {
+		t.Errorf("unknown file: err = %v", err)
+	}
+
+	// Rename: still an asset bookmark.
+	renamed, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: created.ID, Title: json.RawMessage(`"Roses"`)})
+	if _, ok := renamed.Content.(AssetContent); err != nil || !ok || *renamed.Title != "Roses" {
+		t.Errorf("renamed = %+v, %v", renamed, err)
+	}
+	// Text added: a text bookmark with the photo as a Markdown image.
+	text := "Our roses"
+	withText, err := f.s.UpdateBookmark(f.ctx, f.sc, UpdateBookmarkInput{BookmarkID: created.ID, Text: &text})
+	if c, ok := withText.Content.(TextContent); err != nil || !ok || c.Text != "Our roses" {
+		t.Errorf("with text = %+v, %v", withText, err)
+	}
+
+	// Delete: the note goes, the file stays.
+	if err := f.s.DeleteBookmark(f.ctx, f.sc, created.ID); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := f.notes.DB.QueryRow(`SELECT COUNT(*) FROM attachments WHERE id = ?`, photo).Scan(&count); err != nil || count != 1 {
+		t.Errorf("file after delete: %d, %v", count, err)
 	}
 }

@@ -252,8 +252,9 @@ note cards and note widgets), an attachment block SHALL be shown as its own bloc
 - audio and video with the browser's player;
 - any other file as a file card with an icon for its kind, its name, its size and a download link.
 
-Activating an image SHALL open the image viewer, except on note cards, where activating content
-starts inline editing as before (see "Inline editing on cards" in the `notes` capability). The
+Activating an image SHALL open the image viewer, also on note cards. On note cards, activating any
+other content, including file cards, audio and video, starts inline editing as before (see "Inline
+editing on cards" in the `notes` capability). The
 download link of a file card SHALL download the file in the editors and in note widgets, also for
 visitors of public dashboards. An attachment block whose attachment doesn't exist any more SHALL be
 shown as a file card "Attachment missing" / "Anhang fehlt" without a link.
@@ -269,6 +270,14 @@ shown as a file card "Attachment missing" / "Anhang fehlt" without a link.
 #### Scenario: Visitor downloads
 - **WHEN** a visitor of Ann's public dashboard activates the download link of `report.pdf` in a note widget
 - **THEN** the browser downloads the file
+
+#### Scenario: Image on a card
+- **WHEN** Ann clicks the photo `roses.jpg` on the card "Garden" on `/notes`
+- **THEN** the image viewer shows `roses.jpg`, the card doesn't start inline editing, and closing the viewer returns focus to the photo
+
+#### Scenario: File on a card
+- **WHEN** Ann clicks the file card `report.pdf` on the card "Taxes" on `/notes`
+- **THEN** the card starts inline editing and nothing is downloaded
 
 ### Requirement: Image viewer
 The image viewer SHALL show the image as large as fits the window, its name, a download button, and
