@@ -68,8 +68,8 @@ func TestNoteAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []NoteAttachment{
-		{ID: roses, Name: "roses.jpg", ContentType: "application/pdf", Size: 10, URL: "/api/attachments/" + roses + "/roses.jpg"},
-		{ID: plan, Name: "my plan.pdf", ContentType: "application/pdf", Size: 10, URL: "/api/attachments/" + plan + "/my%20plan.pdf"},
+		{ID: roses, Name: "roses.jpg", ContentType: "application/pdf", Size: 10, URL: "/api/attachments/" + roses + "/roses.jpg", CreatedAt: f.now},
+		{ID: plan, Name: "my plan.pdf", ContentType: "application/pdf", Size: 10, URL: "/api/attachments/" + plan + "/my%20plan.pdf", CreatedAt: f.now},
 	}
 	if !reflect.DeepEqual(n.Attachments, want) {
 		t.Fatalf("Attachments = %+v, want %+v", n.Attachments, want)

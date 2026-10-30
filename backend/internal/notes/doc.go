@@ -194,6 +194,33 @@ func AttachmentIDs(d Doc) []string {
 	return ids
 }
 
+// SplitTrailingAttachments splits off the attachment blocks at the end of d,
+// after its last block of another type, for connected apps that keep
+// attachments next to the text. It returns the rest of d and the IDs of the
+// split-off attachments, each once, in the order they first appear.
+func SplitTrailingAttachments(d Doc) (Doc, []string) {
+	end := len(d.Blocks)
+	for end > 0 && d.Blocks[end-1].Type == BlockAttachment {
+		end--
+	}
+	body := Doc{V: d.V, Blocks: d.Blocks[:end:end]}
+	return body, AttachmentIDs(Doc{Blocks: d.Blocks[end:]})
+}
+
+// JoinTrailingAttachments is d followed by an attachment block for each of
+// ids, each once, the opposite of SplitTrailingAttachments.
+func JoinTrailingAttachments(d Doc, ids []string) Doc {
+	blocks := append([]Block{}, d.Blocks...)
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			blocks = append(blocks, Block{Type: BlockAttachment, ID: id})
+		}
+	}
+	return Doc{V: d.V, Blocks: blocks}
+}
+
 // checkList validates a list at depth (1 for a top-level list).
 func checkList(b *Block, depth int) error {
 	if b.Type != BlockList {

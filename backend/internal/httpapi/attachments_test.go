@@ -244,17 +244,18 @@ func TestMemosKeepAttachments(t *testing.T) {
 	c := s.memosToken(t, ann, "")
 	report := s.mustUploadAttachment(t, ann, "report.pdf", testPDF)
 
-	rec := s.req("POST", "/api/notes", `{"title":"Taxes","content":{"v":1,"blocks":[{"type":"paragraph","content":[{"type":"text","text":"due"}]},{"type":"attachment","id":"`+report.ID+`"}]}}`, withCookie(ann))
+	rec := s.req("POST", "/api/notes", `{"title":"Taxes","content":{"v":1,"blocks":[{"type":"attachment","id":"`+report.ID+`"},{"type":"paragraph","content":[{"type":"text","text":"due"}]}]}}`, withCookie(ann))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", rec.Code, rec.Body)
 	}
 	n := decodeJSONBody[notes.Note](t, rec)
 
-	// The memo has the file as a link to its URL.
+	// A file with text after it is in the memo's content, as a link to its
+	// URL, and not among its attachments.
 	memo := c.list(t, "").Memos[0]
 	link := "[report.pdf](" + testOrigin + report.URL + ")"
-	if !strings.Contains(memo.Content, link) {
-		t.Fatalf("memo content = %q, want it to contain %q", memo.Content, link)
+	if !strings.Contains(memo.Content, link) || len(memo.Attachments) != 0 {
+		t.Fatalf("memo = %q with %d attachments, want the content to contain %q", memo.Content, len(memo.Attachments), link)
 	}
 
 	// Editing the text in the app keeps the attachment block.

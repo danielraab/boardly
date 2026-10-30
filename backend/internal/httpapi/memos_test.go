@@ -1,10 +1,15 @@
 package httpapi
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -222,6 +227,9 @@ func TestMemosWrite(t *testing.T) {
 		t.Errorf("second-level heading = %+v", n)
 	}
 	wantMemosError(t, c.do("POST", memosV1+"/memos", `{"content":"photo","attachments":[{"name":"attachments/1"}]}`), http.StatusBadRequest, memos.CodeInvalidArgument)
+	if got := c.list(t, ""); len(got.Memos) != 3 {
+		t.Errorf("a memo with an unknown attachment was created: %q", memoContents(got))
+	}
 	wantMemosError(t, c.do("POST", memosV1+"/memos", `{}`), http.StatusBadRequest, memos.CodeInvalidArgument)
 
 	// Tick off a task: it keeps its ID, and the version goes up by one.
@@ -292,17 +300,183 @@ func TestMemosWrite(t *testing.T) {
 	if rec := s.req("GET", "/api/notes/"+strings.TrimPrefix(m.Name, "memos/"), "", withCookie(ann)); rec.Code != http.StatusNotFound {
 		t.Errorf("deleted note: %d", rec.Code)
 	}
+}
 
-	// Attachments.
-	if rec := c.do("GET", memosV1+"/attachments", ""); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"attachments":[]`) {
-		t.Errorf("list attachments: %d %s", rec.Code, rec.Body)
+func (c memosClient) upload(t *testing.T, filename string, data []byte) memos.Attachment {
+	t.Helper()
+	rec := c.do("POST", memosV1+"/attachments", mustJSON(map[string]any{
+		"filename": filename, "type": "application/octet-stream", "content": base64.StdEncoding.EncodeToString(data),
+	}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upload %s: %d %s", filename, rec.Code, rec.Body)
 	}
-	rec = c.do("POST", memosV1+"/attachments", `{"filename":"a.png","type":"image/png","content":"AAAA"}`)
-	wantMemosError(t, rec, http.StatusBadRequest, memos.CodeInvalidArgument)
-	if !strings.Contains(rec.Body.String(), "attachments") {
-		t.Errorf("upload message = %s", rec.Body)
+	return decodeJSONBody[memos.Attachment](t, rec)
+}
+
+func attachmentNames(list []memos.Attachment) []string {
+	out := []string{}
+	for _, a := range list {
+		out = append(out, a.Filename)
 	}
-	wantMemosError(t, c.do("DELETE", memosV1+"/attachments/1", ""), http.StatusNotFound, memos.CodeNotFound)
+	return out
+}
+
+func TestMemosAttachments(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	bob := s.signIn(t, "bob@example.org")
+	home := s.noteCategory(t, ann, "Home", "")
+	work := s.noteCategory(t, ann, "Work", "")
+	c := s.memosToken(t, ann, home)
+
+	// Upload a photo: the type comes from the file, not from the app.
+	roses := c.upload(t, "roses.png", testPNG)
+	if !strings.HasPrefix(roses.Name, "attachments/") || roses.Filename != "roses.png" || roses.Type != "image/png" ||
+		roses.Size != strconv.Itoa(len(testPNG)) || roses.Memo != "" ||
+		roses.ExternalLink != testOrigin+"/api/attachments/"+strings.TrimPrefix(roses.Name, "attachments/")+"/roses.png" {
+		t.Fatalf("uploaded = %+v", roses)
+	}
+	if rec := s.req("GET", strings.TrimPrefix(roses.ExternalLink, testOrigin), ""); rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), testPNG) {
+		t.Errorf("external link: %d", rec.Code)
+	}
+	plan := c.upload(t, "my plan.pdf", testPDF)
+	if !strings.HasSuffix(plan.ExternalLink, "/my%20plan.pdf") {
+		t.Errorf("escaped link = %s", plan.ExternalLink)
+	}
+
+	// Uploads that fail store nothing.
+	before := len(decodeJSONBody[struct{ Attachments []any }](t, s.req("GET", "/api/attachments", "", withCookie(ann))).Attachments)
+	for name, body := range map[string]string{
+		"too large":   mustJSON(map[string]any{"filename": "big.pdf", "content": base64.StdEncoding.EncodeToString(append([]byte("%PDF-"), make([]byte, 1<<20)...))}),
+		"huge body":   mustJSON(map[string]any{"filename": "big.pdf", "content": strings.Repeat("A", 2<<20)}),
+		"svg":         mustJSON(map[string]any{"filename": "x.svg", "content": base64.StdEncoding.EncodeToString([]byte("<svg/>"))}),
+		"no content":  `{"filename":"a.png"}`,
+		"not base64":  `{"filename":"a.png","content":"!!"}`,
+		"no filename": mustJSON(map[string]any{"content": base64.StdEncoding.EncodeToString(testPNG)}),
+	} {
+		rec := c.do("POST", memosV1+"/attachments", body)
+		wantMemosError(t, rec, http.StatusBadRequest, memos.CodeInvalidArgument)
+		if name == "too large" && !strings.Contains(rec.Body.String(), "1 MB") {
+			t.Errorf("too large message = %s", rec.Body)
+		}
+	}
+	if after := len(decodeJSONBody[struct{ Attachments []any }](t, s.req("GET", "/api/attachments", "", withCookie(ann))).Attachments); after != before {
+		t.Errorf("failed uploads stored %d files", after-before)
+	}
+	// URL-safe base64 is read too.
+	rec := c.do("POST", memosV1+"/attachments", mustJSON(map[string]any{"filename": "b.png", "content": base64.RawURLEncoding.EncodeToString(testPNG)}))
+	if rec.Code != http.StatusOK {
+		t.Errorf("URL-safe base64: %d %s", rec.Code, rec.Body)
+	}
+
+	// Memo with a photo.
+	ref := func(a ...memos.Attachment) []map[string]string {
+		out := []map[string]string{}
+		for _, x := range a {
+			out = append(out, map[string]string{"name": x.Name})
+		}
+		return out
+	}
+	m := c.create(t, map[string]any{"content": "Roses are out", "attachments": ref(roses, plan)})
+	n := c.note(t, m)
+	if m.Content != "Roses are out" || !reflect.DeepEqual(attachmentNames(m.Attachments), []string{"roses.png", "my plan.pdf"}) ||
+		m.Attachments[0].Memo != m.Name || len(n.Content.Blocks) != 3 || n.Content.Blocks[2].Type != notes.BlockAttachment {
+		t.Fatalf("created memo %+v, note %+v", m, n.Content)
+	}
+	patch := func(body any) memos.Memo {
+		t.Helper()
+		rec := c.do("PATCH", memosV1+"/"+m.Name, mustJSON(body))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("patch %s: %d %s", mustJSON(body), rec.Code, rec.Body)
+		}
+		return decodeJSONBody[memos.Memo](t, rec)
+	}
+
+	// Unchanged memo: MoeMemos sends everything again.
+	version := n.Version
+	patch(map[string]any{"content": m.Content, "attachments": ref(roses, plan), "pinned": false, "state": "NORMAL"})
+	if c.note(t, m).Version != version {
+		t.Error("an unchanged memo was a change")
+	}
+	// Edit text only.
+	if got := patch(map[string]any{"content": "# Garden\n\nRoses"}); got.Content != "# Garden\n\nRoses" || len(got.Attachments) != 2 {
+		t.Errorf("text only = %+v", got)
+	}
+	// Remove a photo; the file still exists.
+	if got := patch(map[string]any{"content": "# Garden\n\nRoses", "attachments": ref(plan)}); !reflect.DeepEqual(attachmentNames(got.Attachments), []string{"my plan.pdf"}) {
+		t.Errorf("removed = %v", attachmentNames(got.Attachments))
+	}
+	if rec := s.req("GET", strings.TrimPrefix(roses.ExternalLink, testOrigin), ""); rec.Code != http.StatusOK {
+		t.Errorf("removed file: %d", rec.Code)
+	}
+	// Attachment on update.
+	if got := patch(map[string]any{"attachments": ref(plan, roses)}); !reflect.DeepEqual(attachmentNames(got.Attachments), []string{"my plan.pdf", "roses.png"}) || got.Content != "# Garden\n\nRoses" {
+		t.Errorf("added = %+v", got)
+	}
+	if n := c.note(t, m); n.Title == nil || *n.Title != "Garden" || len(n.Attachments) != 2 {
+		t.Errorf("note after update = %+v", n)
+	}
+
+	// Unknown attachments change nothing.
+	bobs := s.memosToken(t, bob, "").upload(t, "bob.png", testPNG)
+	version = c.note(t, m).Version
+	for _, body := range []any{
+		map[string]any{"content": "x", "attachments": ref(bobs)},
+		map[string]any{"attachments": []map[string]string{{"name": "roses.png"}}},
+	} {
+		wantMemosError(t, c.do("PATCH", memosV1+"/"+m.Name, mustJSON(body)), http.StatusBadRequest, memos.CodeInvalidArgument)
+	}
+	wantMemosError(t, c.do("POST", memosV1+"/memos", mustJSON(map[string]any{"content": "x", "attachments": ref(bobs)})), http.StatusBadRequest, memos.CodeInvalidArgument)
+	if c.note(t, m).Version != version {
+		t.Error("a failed update changed the note")
+	}
+
+	// Inline attachment kept: a file with text after it stays in the content.
+	rec = s.req("POST", "/api/notes", `{"categoryId":"`+home+`","content":{"v":1,"blocks":[{"type":"attachment","id":"`+strings.TrimPrefix(roses.Name, "attachments/")+`"},{"type":"paragraph","content":[{"type":"text","text":"roses"}]}]}}`, withCookie(ann))
+	inline := memos.Memo{Name: "memos/" + decodeJSONBody[notes.Note](t, rec).ID}
+	inlineBefore := c.note(t, inline)
+	var listed memos.Memo
+	for _, x := range c.list(t, "").Memos {
+		if x.Name == inline.Name {
+			listed = x
+		}
+	}
+	if len(listed.Attachments) != 0 || !strings.Contains(listed.Content, "roses.png") {
+		t.Errorf("inline memo = %+v", listed)
+	}
+	c.do("PATCH", memosV1+"/"+inline.Name, mustJSON(map[string]any{"content": listed.Content, "attachments": []any{}}))
+	if after := c.note(t, inline); after.Version != inlineBefore.Version || after.Content.Blocks[0].Type != notes.BlockAttachment {
+		t.Errorf("inline after save = %+v", after.Content)
+	}
+
+	// The list has what notes in scope refer to: not the unused upload, and
+	// not a file of a note in "Work".
+	budget := s.mustUploadAttachment(t, ann, "budget.pdf", testPDF)
+	if rec := s.req("POST", "/api/notes", `{"categoryId":"`+work+`","content":{"v":1,"blocks":[{"type":"attachment","id":"`+budget.ID+`"}]}}`, withCookie(ann)); rec.Code != http.StatusCreated {
+		t.Fatalf("work note: %d %s", rec.Code, rec.Body)
+	}
+	rec = c.do("GET", memosV1+"/attachments", "")
+	list := decodeJSONBody[memos.AttachmentList](t, rec)
+	if got := attachmentNames(list.Attachments); rec.Code != http.StatusOK || len(got) != 2 || slices.Contains(got, "budget.pdf") || slices.Contains(got, "b.png") ||
+		!strings.Contains(rec.Body.String(), `"nextPageToken":""`) {
+		t.Errorf("list = %v (%d)", got, rec.Code)
+	}
+
+	// Delete never deletes: a file in scope or unused succeeds, others 404.
+	del := func(id string) *httptest.ResponseRecorder { return c.do("DELETE", memosV1+"/attachments/"+id, "") }
+	if rec := del(strings.TrimPrefix(roses.Name, "attachments/")); rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "{}" {
+		t.Errorf("delete in scope: %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.req("GET", strings.TrimPrefix(roses.ExternalLink, testOrigin), ""); rec.Code != http.StatusOK {
+		t.Errorf("deleted file is gone: %d", rec.Code)
+	}
+	unused := decodeJSONBody[memos.Attachment](t, c.do("POST", memosV1+"/attachments", mustJSON(map[string]any{"filename": "c.png", "content": base64.StdEncoding.EncodeToString(testPNG)})))
+	if rec := del(strings.TrimPrefix(unused.Name, "attachments/")); rec.Code != http.StatusOK {
+		t.Errorf("delete unused: %d %s", rec.Code, rec.Body)
+	}
+	wantMemosError(t, del(budget.ID), http.StatusNotFound, memos.CodeNotFound)
+	wantMemosError(t, del(strings.TrimPrefix(bobs.Name, "attachments/")), http.StatusNotFound, memos.CodeNotFound)
+	wantMemosError(t, del("doesnotexist"), http.StatusNotFound, memos.CodeNotFound)
 }
 
 // taskIDsOf joins the task IDs of a note.

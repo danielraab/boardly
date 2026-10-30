@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -22,7 +23,7 @@ const memosPrefix = "/api/memos"
 // isn't listed, among them the legacy api/v1/status, answers 404 in Memos'
 // error format, so MoeMemos uses the v1 API.
 func (a *api) memosAPI() *http.ServeMux {
-	svc := &memos.Service{Notes: a.notes, Origin: a.origin}
+	svc := &memos.Service{Notes: a.notes, Attachments: a.attachments, Origin: a.origin}
 	v1 := memosPrefix + "/api/v1"
 	mux := http.NewServeMux()
 	// respond registers a handler that needs a token; its result is written
@@ -80,14 +81,14 @@ func (a *api) memosAPI() *http.ServeMux {
 	})
 	respond("POST "+v1+"/memos", func(r *http.Request, _ apptokens.Token, sc notes.Scope) (any, error) {
 		var in memos.CreateInput
-		if err := decodeMemos(r, &in); err != nil {
+		if err := decodeMemos(r, &in, maxNoteBytes, errMemoTooLarge); err != nil {
 			return nil, err
 		}
 		return svc.Create(r.Context(), sc, in)
 	})
 	respond("PATCH "+v1+"/memos/{id}", func(r *http.Request, _ apptokens.Token, sc notes.Scope) (any, error) {
 		var body map[string]json.RawMessage
-		if err := decodeMemos(r, &body); err != nil {
+		if err := decodeMemos(r, &body, maxNoteBytes, errMemoTooLarge); err != nil {
 			return nil, err
 		}
 		in, err := memos.UpdateFromBody(body, r.URL.Query().Get("updateMask"))
@@ -100,16 +101,21 @@ func (a *api) memosAPI() *http.ServeMux {
 		return struct{}{}, svc.Delete(r.Context(), sc, r.PathValue("id"))
 	})
 
-	// MoeMemos lists attachments while syncing, so an empty list keeps the
-	// sync going; uploads fail until attachments are supported.
-	respond("GET "+v1+"/attachments", func(*http.Request, apptokens.Token, notes.Scope) (any, error) {
-		return map[string]any{"attachments": []struct{}{}, "nextPageToken": ""}, nil
+	respond("GET "+v1+"/attachments", func(r *http.Request, _ apptokens.Token, sc notes.Scope) (any, error) {
+		return svc.ListAttachments(r.Context(), sc)
 	})
-	respond("POST "+v1+"/attachments", func(*http.Request, apptokens.Token, notes.Scope) (any, error) {
-		return nil, memos.ErrAttachments
+	respond("POST "+v1+"/attachments", func(r *http.Request, token apptokens.Token, _ notes.Scope) (any, error) {
+		// MoeMemos sends the file as base64 in JSON, so the body may be a
+		// third larger than the file, plus room for the other fields.
+		limit := int64(base64.StdEncoding.EncodedLen(int(a.attachments.MaxBytes))) + 64<<10
+		var in memos.UploadInput
+		if err := decodeMemos(r, &in, limit, svc.ErrUploadTooLarge()); err != nil {
+			return nil, err
+		}
+		return svc.Upload(r.Context(), token.UserID, in)
 	})
-	respond("DELETE "+v1+"/attachments/{id}", func(*http.Request, apptokens.Token, notes.Scope) (any, error) {
-		return nil, memos.ErrNotFound
+	respond("DELETE "+v1+"/attachments/{id}", func(r *http.Request, _ apptokens.Token, sc notes.Scope) (any, error) {
+		return struct{}{}, svc.DeleteAttachment(r.Context(), sc, r.PathValue("id"))
 	})
 
 	mux.Handle(memosPrefix+"/", memosServe(func(http.ResponseWriter, *http.Request) error {
@@ -139,11 +145,15 @@ func (a *api) memosUser(r *http.Request, token apptokens.Token) (memos.User, err
 	return memos.UserOf(user), nil
 }
 
-// decodeMemos reads a JSON body of at most the size of a note.
-func decodeMemos(r *http.Request, v any) error {
-	err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxNoteBytes)).Decode(v)
+// errMemoTooLarge is the error for a memo body above the size of a note.
+var errMemoTooLarge = &memos.Error{Status: http.StatusBadRequest, Code: memos.CodeInvalidArgument, Message: "The memo is too large."}
+
+// decodeMemos reads a JSON body of at most limit bytes; a larger one fails
+// with tooLarge.
+func decodeMemos(r *http.Request, v any, limit int64, tooLarge error) error {
+	err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, limit)).Decode(v)
 	if maxErr := new(http.MaxBytesError); errors.As(err, &maxErr) {
-		return &memos.Error{Status: http.StatusBadRequest, Code: memos.CodeInvalidArgument, Message: "The memo is too large."}
+		return tooLarge
 	}
 	if err != nil {
 		return &memos.Error{Status: http.StatusBadRequest, Code: memos.CodeInvalidArgument, Message: "The request body is not valid JSON."}

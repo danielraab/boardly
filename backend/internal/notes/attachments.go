@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"boardly/internal/attachments"
 	"boardly/internal/db"
@@ -18,13 +19,16 @@ type NoteAttachment struct {
 	ContentType string `json:"contentType"`
 	Size        int64  `json:"size"`
 	URL         string `json:"url"`
+	// CreatedAt is the upload time, for connected apps; the web app doesn't
+	// get it with a note.
+	CreatedAt time.Time `json:"-"`
 }
 
 // noteAttachmentsColumn selects a note's attachments as a JSON array, in
 // content order. It is part of noteColumns, so every note that is read has
 // them.
 const noteAttachmentsColumn = `COALESCE((
-	SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'contentType', a.content_type, 'size', a.size) ORDER BY na.position)
+	SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'contentType', a.content_type, 'size', a.size, 'createdAt', a.created_at) ORDER BY na.position)
 	FROM note_attachments AS na JOIN attachments AS a ON a.id = na.attachment_id
 	WHERE na.note_id = notes.id), '[]')`
 
@@ -34,9 +38,20 @@ func scanNoteAttachments(raw string, n *Note) error {
 	if err := json.Unmarshal([]byte(raw), &n.Attachments); err != nil {
 		return err
 	}
+	var created []struct {
+		CreatedAt string `json:"createdAt"`
+	}
+	if err := json.Unmarshal([]byte(raw), &created); err != nil {
+		return err
+	}
 	for i := range n.Attachments {
 		a := &n.Attachments[i]
 		a.URL = attachments.URL(a.ID, a.Name)
+		t, err := db.ParseTime(created[i].CreatedAt)
+		if err != nil {
+			return err
+		}
+		a.CreatedAt = t
 	}
 	return nil
 }
@@ -104,15 +119,21 @@ func NoteMarkdownAttachments(origin string, n Note) *MarkdownAttachments {
 // Markdown that may refer to any of them.
 func (s *Store) UserMarkdownAttachments(ctx context.Context, userID, origin string) (*MarkdownAttachments, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id, name, content_type, size FROM attachments WHERE user_id = ?`, userID)
+		`SELECT id, name, content_type, size, created_at FROM attachments WHERE user_id = ?`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	m := &MarkdownAttachments{Origin: origin, ByID: map[string]NoteAttachment{}}
 	for rows.Next() {
-		var a NoteAttachment
-		if err := rows.Scan(&a.ID, &a.Name, &a.ContentType, &a.Size); err != nil {
+		var (
+			a       NoteAttachment
+			created string
+		)
+		if err := rows.Scan(&a.ID, &a.Name, &a.ContentType, &a.Size, &created); err != nil {
+			return nil, err
+		}
+		if a.CreatedAt, err = db.ParseTime(created); err != nil {
 			return nil, err
 		}
 		a.URL = attachments.URL(a.ID, a.Name)

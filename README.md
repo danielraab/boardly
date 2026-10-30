@@ -349,9 +349,13 @@ MoeMemos supports.
 - A change from the app always wins. A note open in the web editor at the same time shows that it
   was changed elsewhere.
 - Moving a note out of the key's category removes it from the app on its next sync.
-- Not supported yet: **attachments**. Uploading a photo fails with a message, and memos with
-  attachments can't be saved. Every memo is private, so MoeMemos' explore list stays empty. Tags
-  aren't counted, and locations are ignored.
+- **Attachments**: photos and files added in the app are uploaded as attachments of the note, with
+  the same size and type limits as in the web app, and are added at the end of the note. The files
+  at the end of a note are the memo's attachments in the app; files with text after them stay in
+  the memo's text as images or links. Removing a file in the app removes it from the note, and the
+  file itself is deleted later like any unused file (see the Attachments page).
+- Every memo is private, so MoeMemos' explore list stays empty. Tags aren't counted, and locations
+  are ignored.
 
 Requests under `/api/memos/` are authenticated only by `Authorization: Bearer <key>` and allow
 cross-origin calls, as for Karakeep. Errors use Memos' format (`{"code", "message", "details"}`).

@@ -2,9 +2,10 @@
 // API that the MoeMemos Android app uses: a memo is a note, its content is
 // the note as Markdown with the title as a leading level-1 heading, its
 // pinned flag is the note's, and its state ARCHIVED is the note's archived
-// flag. Memos are always private, and attachments aren't supported yet. The
-// shapes follow MoeMemos' MemosV1Api.kt (mudkipme/MoeMemosAndroid, October
-// 2026), which talks to Memos 0.27 to 0.31.
+// flag, and the attachment blocks at the end of the note are its
+// attachments. Memos are always private. The shapes follow MoeMemos'
+// MemosV1Api.kt (mudkipme/MoeMemosAndroid, October 2026), which talks to
+// Memos 0.27 to 0.31.
 package memos
 
 import (
@@ -47,7 +48,7 @@ func invalid(message string) *Error {
 var (
 	ErrNotFound        = &Error{http.StatusNotFound, CodeNotFound, "Not found."}
 	ErrUnauthenticated = &Error{http.StatusUnauthorized, CodeUnauthenticated, "Unauthenticated."}
-	ErrAttachments     = invalid("Boardly doesn't support attachments yet.")
+	errAttachment      = invalid("Unknown attachment.")
 	errPageToken       = invalid("Invalid page token.")
 	errState           = invalid("The state must be NORMAL or ARCHIVED.")
 	errContent         = invalid("A memo needs a content.")
@@ -140,18 +141,18 @@ func StatsOf(userID string) Stats {
 
 // Memo is a note as a Memos memo.
 type Memo struct {
-	Name        string     `json:"name"`
-	State       string     `json:"state"`
-	Creator     string     `json:"creator"`
-	CreateTime  Time       `json:"createTime"`
-	UpdateTime  Time       `json:"updateTime"`
-	DisplayTime Time       `json:"displayTime"`
-	Content     string     `json:"content"`
-	Visibility  string     `json:"visibility"`
-	Pinned      bool       `json:"pinned"`
-	Attachments []struct{} `json:"attachments"`
-	Tags        []string   `json:"tags"`
-	Relations   []struct{} `json:"relations"`
+	Name        string       `json:"name"`
+	State       string       `json:"state"`
+	Creator     string       `json:"creator"`
+	CreateTime  Time         `json:"createTime"`
+	UpdateTime  Time         `json:"updateTime"`
+	DisplayTime Time         `json:"displayTime"`
+	Content     string       `json:"content"`
+	Visibility  string       `json:"visibility"`
+	Pinned      bool         `json:"pinned"`
+	Attachments []Attachment `json:"attachments"`
+	Tags        []string     `json:"tags"`
+	Relations   []struct{}   `json:"relations"`
 }
 
 // Memo states.
@@ -163,10 +164,12 @@ const (
 // memoName is the Memos name of a note, "memos/<id>".
 func memoName(id string) string { return "memos/" + id }
 
-// Content is a note's memo content: its content as Markdown, preceded by
-// its title as a level-1 heading. Attachment URLs start with origin.
+// Content is a note's memo content: its content without the trailing
+// attachments as Markdown, preceded by its title as a level-1 heading.
+// Attachment URLs start with origin.
 func Content(n notes.Note, origin string) string {
-	return notes.ToMarkdown(notes.WithTitleHeading(n.Title, n.Content), notes.NoteMarkdownAttachments(origin, n))
+	body, _ := notes.SplitTrailingAttachments(n.Content)
+	return notes.ToMarkdown(notes.WithTitleHeading(n.Title, body), notes.NoteMarkdownAttachments(origin, n))
 }
 
 // MemoOf is the memo of a note of the user with the given ID.
@@ -179,7 +182,7 @@ func MemoOf(userID, origin string, n notes.Note) Memo {
 		Name: memoName(n.ID), State: state, Creator: UserName(userID),
 		CreateTime: Time(n.CreatedAt), UpdateTime: Time(n.UpdatedAt), DisplayTime: Time(n.CreatedAt),
 		Content: Content(n, origin), Visibility: "PRIVATE", Pinned: n.Pinned,
-		Attachments: []struct{}{}, Tags: []string{}, Relations: []struct{}{},
+		Attachments: memoAttachments(origin, n), Tags: []string{}, Relations: []struct{}{},
 	}
 }
 
