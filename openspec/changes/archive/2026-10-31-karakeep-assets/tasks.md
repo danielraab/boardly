@@ -17,4 +17,4 @@
 ## 3. Docs and check
 
 - [x] 3.1 Add to the README's Karakeep section that photos and PDFs shared to the Karakeep app become notes with the file
-- [ ] 3.2 Manual check with the Karakeep mobile app against a local server: share a photo and a PDF, see both open in the app and as notes on `/notes`, rename one, and delete one
+- [x] 3.2 Manual check with the Karakeep mobile app against a local server: share a photo and a PDF, see both open in the app and as notes on `/notes`, rename one, and delete one
