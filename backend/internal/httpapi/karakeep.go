@@ -20,8 +20,8 @@ import (
 const karakeepPrefix = "/api/karakeep"
 
 // karakeepAPI serves what the Karakeep browser extension and mobile app call:
-// their tRPC procedures and two status endpoints. Nothing else of Karakeep's
-// API is implemented.
+// their tRPC procedures, two status endpoints, and uploading and loading the
+// files of asset bookmarks. Nothing else of Karakeep's API is implemented.
 func (a *api) karakeepAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET "+karakeepPrefix+"/api/health", HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
@@ -32,6 +32,8 @@ func (a *api) karakeepAPI() *http.ServeMux {
 		WriteJSON(w, http.StatusOK, map[string]string{"version": "Boardly"})
 		return nil
 	}))
+	mux.Handle("POST "+karakeepPrefix+"/api/assets", karakeepREST(a.karakeepUploadAsset))
+	mux.Handle("GET "+karakeepPrefix+"/api/assets/{id}", karakeepREST(a.karakeepAsset))
 	mux.Handle(karakeepPrefix+"/api/trpc/", &trpc.Server{
 		Prefix:     karakeepPrefix + "/api/trpc/",
 		Procedures: a.karakeepProcedures(),

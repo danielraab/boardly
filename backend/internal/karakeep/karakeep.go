@@ -83,22 +83,22 @@ type LinkContent struct {
 // Bookmark is Karakeep's bookmark shape. Content is a LinkContent for a link
 // and a TextContent for a note.
 type Bookmark struct {
-	ID                  string     `json:"id"`
-	CreatedAt           trpc.Date  `json:"createdAt"`
-	ModifiedAt          trpc.Date  `json:"modifiedAt"`
-	Title               *string    `json:"title"`
-	Archived            bool       `json:"archived"`
-	Favourited          bool       `json:"favourited"`
-	TaggingStatus       *string    `json:"taggingStatus"`
-	SummarizationStatus *string    `json:"summarizationStatus"`
-	EmbeddingStatus     *string    `json:"embeddingStatus"`
-	Note                *string    `json:"note"`
-	Summary             *string    `json:"summary"`
-	Source              *string    `json:"source"`
-	UserID              string     `json:"userId"`
-	Tags                []Tag      `json:"tags"`
-	Content             any        `json:"content"`
-	Assets              []struct{} `json:"assets"`
+	ID                  string    `json:"id"`
+	CreatedAt           trpc.Date `json:"createdAt"`
+	ModifiedAt          trpc.Date `json:"modifiedAt"`
+	Title               *string   `json:"title"`
+	Archived            bool      `json:"archived"`
+	Favourited          bool      `json:"favourited"`
+	TaggingStatus       *string   `json:"taggingStatus"`
+	SummarizationStatus *string   `json:"summarizationStatus"`
+	EmbeddingStatus     *string   `json:"embeddingStatus"`
+	Note                *string   `json:"note"`
+	Summary             *string   `json:"summary"`
+	Source              *string   `json:"source"`
+	UserID              string    `json:"userId"`
+	Tags                []Tag     `json:"tags"`
+	Content             any       `json:"content"`
+	Assets              []Asset   `json:"assets"`
 }
 
 // tree is a loaded subtree.
@@ -198,7 +198,7 @@ func (s *Service) bookmarks(ctx context.Context, userID string, links []*favouri
 				Type: "link", URL: *n.URL, Title: n.Title, Description: n.Description, ImageURL: imageURL, Favicon: favicon,
 				CrawlStatus: "success", CrawledAt: trpc.Date(n.CreatedAt),
 			},
-			Assets: []struct{}{},
+			Assets: []Asset{},
 		}
 	}
 	return out, nil

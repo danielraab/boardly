@@ -240,6 +240,7 @@ type CreateBookmarkInput struct {
 	URL        string  `json:"url"`
 	Text       *string `json:"text"`
 	Title      *string `json:"title"`
+	AssetID    string  `json:"assetId"`
 	Archived   *bool   `json:"archived"`
 	Favourited *bool   `json:"favourited"`
 	Note       *string `json:"note"`
@@ -254,9 +255,9 @@ type CreatedBookmark struct {
 
 // CreateBookmark is bookmarks.createBookmark: a new link first in the
 // token's root folder, or the existing bookmark with the same URL, or a new
-// note for a text bookmark.
+// note for a text or asset bookmark.
 func (s *Service) CreateBookmark(ctx context.Context, sc Scope, in CreateBookmarkInput) (CreatedBookmark, error) {
-	if in.Type != "link" && in.Type != "text" {
+	if in.Type != "link" && in.Type != "text" && in.Type != "asset" {
 		return CreatedBookmark{}, &InputError{"Boardly only stores links and notes, not " + in.Type + " bookmarks"}
 	}
 	link := in.Type == "link"
@@ -268,8 +269,11 @@ func (s *Service) CreateBookmark(ctx context.Context, sc Scope, in CreateBookmar
 	}); err != nil {
 		return CreatedBookmark{}, err
 	}
-	if in.Type == "text" {
+	switch in.Type {
+	case "text":
 		return s.createNote(ctx, sc, in)
+	case "asset":
+		return s.createAsset(ctx, sc, in)
 	}
 	t, err := s.load(ctx, sc)
 	if err != nil {
@@ -323,7 +327,7 @@ func (s *Service) UpdateBookmark(ctx context.Context, sc Scope, in UpdateBookmar
 		"changing the creation date": isSet(in.CreatedAt),
 		"publication dates":          isSet(in.DatePublished),
 		"modification dates":         isSet(in.DateModified),
-		"file bookmarks":             isSet(in.AssetContent),
+		"changing files":             isSet(in.AssetContent),
 	}); err != nil {
 		return Bookmark{}, err
 	}

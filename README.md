@@ -263,6 +263,11 @@ Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
     between paragraphs, may be simplified. Notes have no tags and aren't in lists. Archiving a
     text bookmark in the app archives the note, and making it a favourite pins it; the app's
     archive and favourites lists show the archived and pinned notes.
+  - **Photos and PDFs** shared to the app become notes in that category, with the file as their
+    only content and its name as their title, using the same size and type limits as attachments
+    in the web app. A note whose content is only one image or PDF shows as a file bookmark in the
+    app, which opens it in its image or PDF viewer; once text is added, it is a text bookmark.
+    Deleting it in the app deletes the note; the file is deleted later like any unused file.
 - Deleting a folder that connected apps use warns first and revokes their keys. With "keep the
   contents", only keys for the deleted folder itself are revoked. Deleting a note category that a
   key uses as its category does the same; keys for its subcategories keep working.
@@ -273,7 +278,7 @@ title, tags and list. In the app you can browse, search, save, edit and delete b
 manage lists and tags. Bookmark cards show the link's **description** and **preview image**, or
 the site's favicon when there is no preview; the description can be edited in the app. Tapping a
 bookmark opens the page. Karakeep features Boardly doesn't have
-answer with an error in the apps: notes on link bookmarks, file bookmarks and assets, archiving
+answer with an error in the apps: notes on link bookmarks, adding files to existing bookmarks, archiving
 and favouriting links, highlights, reading progress, AI tagging and summaries, smart and public lists, list
 icons and descriptions, and list sharing.
 

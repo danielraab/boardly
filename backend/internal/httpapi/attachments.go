@@ -98,9 +98,15 @@ func (a *api) deleteAttachment(w http.ResponseWriter, r *http.Request) error {
 // getAttachment serves an attachment to anyone. The name in the path is only
 // for the browser; the ID alone identifies the file.
 func (a *api) getAttachment(w http.ResponseWriter, r *http.Request) error {
-	att, f, err := a.attachments.Open(r.Context(), r.PathValue("id"))
+	return a.attachmentsError(a.serveAttachment(w, r, r.PathValue("id")))
+}
+
+// serveAttachment writes the attachment with the given ID, inline or as a
+// download depending on its type. It returns the store's errors.
+func (a *api) serveAttachment(w http.ResponseWriter, r *http.Request, id string) error {
+	att, f, err := a.attachments.Open(r.Context(), id)
 	if err != nil {
-		return a.attachmentsError(err)
+		return err
 	}
 	defer f.Close()
 	h := w.Header()

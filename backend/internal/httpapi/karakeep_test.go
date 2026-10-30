@@ -290,7 +290,7 @@ func TestKarakeepSavePageFromExtension(t *testing.T) {
 		t.Errorf("Reading = %+v", reading.Children)
 	}
 
-	// Files can't be stored; the save fails and adds nothing.
+	// A file bookmark without an uploaded file fails and adds nothing.
 	rec = s.trpcMutation("bookmarks.createBookmark", input(map[string]any{"type": "asset", "assetType": "image"}), bearer)
 	if rec.Code != http.StatusBadRequest || trpcErrorCode(t, rec) != "BAD_REQUEST" {
 		t.Errorf("asset bookmark: %d %s", rec.Code, rec.Body)
