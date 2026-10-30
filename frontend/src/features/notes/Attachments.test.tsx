@@ -7,7 +7,7 @@ import {
 	within,
 } from "@testing-library/react";
 import { $getRoot, $isElementNode } from "lexical";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { NoteAttachment } from "#/features/attachments/api";
 import { apiError, type MockResponse } from "#/test/api";
 import { editorOf } from "#/test/lexical";
@@ -66,7 +66,7 @@ async function openNote(
 
 const file = (name: string) => new File(["x"], name);
 
-/** Chooses files in the dropdown's file picker. */
+/** Chooses files in the toolbar's file picker. */
 function chooseFiles(...files: File[]) {
 	fireEvent.change(screen.getByTestId("attachment-input"), {
 		target: { files },
@@ -105,14 +105,9 @@ describe("attachments button", () => {
 		const menu = await screen.findByRole("menu");
 		const items = within(menu)
 			.getAllByRole("menuitem")
-			.map((i) => i.getAttribute("aria-label") ?? i.textContent);
-		expect(items).toEqual([
-			"Open roses.jpg",
-			"Remove roses.jpg from note",
-			"Open plan.pdf",
-			"Remove plan.pdf from note",
-			"Add attachment",
-		]);
+			.map((i) => i.textContent);
+		expect(items).toEqual(["roses.jpg2 KB", "plan.pdf2 KB"]);
+		expect(within(menu).queryByRole("separator")).not.toBeInTheDocument();
 	});
 
 	it("says when there are none", async () => {
@@ -121,26 +116,29 @@ describe("attachments button", () => {
 		expect(await screen.findByText("No attachments")).toBeInTheDocument();
 	});
 
-	it("removes an attachment from the note", async () => {
+	it("no longer lists an attachment whose block was deleted", async () => {
 		const server = await openNote(
 			[text("Taxes"), { type: "attachment", id: plan.id }],
 			[plan],
 		);
-		expect(screen.getByText("plan.pdf")).toBeInTheDocument();
-		fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
-		fireEvent.click(
-			await screen.findByRole("menuitem", {
-				name: "Remove plan.pdf from note",
-			}),
-		);
+		await act(async () => {
+			editorOf(server.content).update(
+				() => $getRoot().getLastChild()?.remove(),
+				{
+					discrete: true,
+				},
+			);
+		});
 		expect(await savedBlocks(server, 2)).toEqual([text("Taxes")]);
+		fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
+		expect(await screen.findByText("No attachments")).toBeInTheDocument();
 	});
 
 	it("opens images in the viewer", async () => {
 		await openNote([{ type: "attachment", id: roses.id }], [roses]);
 		fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
 		fireEvent.click(
-			await screen.findByRole("menuitem", { name: "Open roses.jpg" }),
+			await screen.findByRole("menuitem", { name: /roses\.jpg/ }),
 		);
 		expect(
 			await screen.findByRole("dialog", { name: "roses.jpg" }),
@@ -149,6 +147,25 @@ describe("attachments button", () => {
 });
 
 describe("adding attachments", () => {
+	it("offers the button in the toolbar right after the link", async () => {
+		await openNote([text("Garden")]);
+		const buttons = within(screen.getByRole("toolbar"))
+			.getAllByRole("button")
+			.map((b) => b.getAttribute("aria-label"));
+		expect(buttons.slice(-2)).toEqual(["Link", "Add attachment"]);
+	});
+
+	it("opens the file picker with the allowed types", async () => {
+		await openNote([text("Garden")]);
+		const input = screen.getByTestId("attachment-input");
+		const click = vi.spyOn(input, "click");
+		fireEvent.click(screen.getByRole("button", { name: "Add attachment" }));
+		expect(click).toHaveBeenCalled();
+		await waitFor(() =>
+			expect(input).toHaveAttribute("accept", "image/png,application/pdf"),
+		);
+	});
+
 	it("inserts them at the end when the editor never had a cursor", async () => {
 		const server = await openNote([text("Garden")]);
 		chooseFiles(file("a.pdf"), file("b.pdf"));

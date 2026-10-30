@@ -191,11 +191,6 @@ export const INSERT_ATTACHMENTS_COMMAND: LexicalCommand<File[]> = createCommand(
 	"INSERT_ATTACHMENTS_COMMAND",
 );
 
-/** Removes every block of the attachment with the ID. */
-export const REMOVE_ATTACHMENT_COMMAND: LexicalCommand<string> = createCommand(
-	"REMOVE_ATTACHMENT_COMMAND",
-);
-
 /** The top-level nodes for which match and filter hold. */
 function $findTopLevel<T extends LexicalNode>(
 	match: (node: LexicalNode) => node is T,
@@ -321,20 +316,6 @@ export function AttachmentsPlugin({
 					INSERT_ATTACHMENTS_COMMAND,
 					(files) => {
 						void insert(files);
-						return true;
-					},
-					COMMAND_PRIORITY_EDITOR,
-				),
-				editor.registerCommand(
-					REMOVE_ATTACHMENT_COMMAND,
-					(id) => {
-						editor.update(() => {
-							for (const node of $findTopLevel(
-								$isAttachmentNode,
-								(n) => n.getAttachmentId() === id,
-							))
-								node.remove();
-						});
 						return true;
 					},
 					COMMAND_PRIORITY_EDITOR,

@@ -12,7 +12,7 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import type { LexicalEditor } from "lexical";
-import { type RefObject, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NoteAttachment } from "#/features/attachments/api";
 import { useImageViewer } from "#/features/attachments/ImageViewer";
@@ -42,7 +42,6 @@ export function NoteEditor({
 	onChange,
 	attachments = [],
 	onAttachmentAdded,
-	editorRef,
 	editable = true,
 	toolbar = true,
 	autoFocus = false,
@@ -51,8 +50,6 @@ export function NoteEditor({
 	onChange: (doc: NoteDoc) => void;
 	attachments?: NoteAttachment[];
 	onAttachmentAdded?: (attachment: NoteAttachment) => void;
-	/** Gets the Lexical editor, for commands from outside. */
-	editorRef?: RefObject<LexicalEditor | null>;
 	editable?: boolean;
 	toolbar?: boolean;
 	/** Puts the cursor at the end of the content on mount. */
@@ -123,12 +120,7 @@ export function NoteEditor({
 					onAttachmentAdded?.(attachment);
 				}}
 			/>
-			<EditorRefPlugin
-				editorRef={(editor) => {
-					lexicalRef.current = editor;
-					if (editorRef) editorRef.current = editor;
-				}}
-			/>
+			<EditorRefPlugin editorRef={lexicalRef} />
 			{images.viewer}
 			{autoFocus && <AutoFocusPlugin defaultSelection="rootEnd" />}
 			<HistoryPlugin />

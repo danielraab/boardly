@@ -1016,7 +1016,8 @@
 				"italic": "Kursiv",
 				"strike": "Durchgestrichen",
 				"code": "Code",
-				"link": "Link"
+				"link": "Link",
+				"attach": "Anhang hinzufügen"
 			},
 			"link": {
 				"label": "Link-Adresse",
@@ -1043,11 +1044,7 @@
 		},
 		"button": {
 			"label": "Anhänge",
-			"none": "Keine Anhänge",
-			"add": "Anhang hinzufügen",
-			"remove": "{{name}} aus Notiz entfernen",
-			"removeShort": "Aus Notiz entfernen",
-			"open": "{{name}} öffnen"
+			"none": "Keine Anhänge"
 		},
 		"page": {
 			"title": "Anhänge",

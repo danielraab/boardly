@@ -12,6 +12,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import { $findMatchingParent, $getNearestNodeOfType } from "@lexical/utils";
+import { useQuery } from "@tanstack/react-query";
 import {
 	$createParagraphNode,
 	$getSelection,
@@ -24,6 +25,7 @@ import {
 import {
 	Bold,
 	Code,
+	FilePlus2,
 	Heading,
 	Italic,
 	Link,
@@ -32,12 +34,14 @@ import {
 	ListOrdered,
 	Strikethrough,
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { textInput } from "#/components/dialogStyles";
 import { menuPopup } from "#/components/menuStyles";
+import { attachmentsQueryOptions } from "#/features/attachments/api";
 import { isLinkUrl } from "../document/types";
+import { INSERT_ATTACHMENTS_COMMAND } from "./attachments";
 
 type ListKind = "bullet" | "number" | "check";
 
@@ -185,7 +189,46 @@ export function Toolbar({ disabled }: { disabled: boolean }) {
 				</button>
 			))}
 			<LinkButton current={active.link} disabled={disabled} />
+			<AttachButton disabled={disabled} />
 		</div>
+	);
+}
+
+/** Lets the user choose files and inserts them at the cursor, or at the end. */
+function AttachButton({ disabled }: { disabled: boolean }) {
+	const { t } = useTranslation();
+	const [editor] = useLexicalComposerContext();
+	const fileInput = useRef<HTMLInputElement>(null);
+	const limits = useQuery({ ...attachmentsQueryOptions, enabled: !disabled });
+
+	return (
+		<>
+			<button
+				type="button"
+				className={toolButton}
+				aria-label={t("notes.editor.toolbar.attach")}
+				title={t("notes.editor.toolbar.attach")}
+				disabled={disabled}
+				onMouseDown={keepSelection}
+				onClick={() => fileInput.current?.click()}
+			>
+				<FilePlus2 className="size-4" aria-hidden />
+			</button>
+			<input
+				ref={fileInput}
+				type="file"
+				multiple
+				hidden
+				accept={limits.data?.allowedTypes.join(",")}
+				data-testid="attachment-input"
+				onChange={(e) => {
+					const files = [...(e.target.files ?? [])];
+					e.target.value = "";
+					if (files.length)
+						editor.dispatchCommand(INSERT_ATTACHMENTS_COMMAND, files);
+				}}
+			/>
+		</>
 	);
 }
 

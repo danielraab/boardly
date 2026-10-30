@@ -1016,7 +1016,8 @@
 				"italic": "Italic",
 				"strike": "Strikethrough",
 				"code": "Code",
-				"link": "Link"
+				"link": "Link",
+				"attach": "Add attachment"
 			},
 			"link": {
 				"label": "Link address",
@@ -1043,11 +1044,7 @@
 		},
 		"button": {
 			"label": "Attachments",
-			"none": "No attachments",
-			"add": "Add attachment",
-			"remove": "Remove {{name}} from note",
-			"removeShort": "Remove from note",
-			"open": "Open {{name}}"
+			"none": "No attachments"
 		},
 		"page": {
 			"title": "Attachments",

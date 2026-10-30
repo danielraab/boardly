@@ -2,7 +2,6 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Menu } from "@base-ui/react/menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { LexicalEditor } from "lexical";
 import {
 	Archive,
 	ArchiveRestore,
@@ -14,7 +13,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	dangerButton,
@@ -41,10 +40,6 @@ import { CategoryBadge } from "./categories/CategoryBadge";
 import { noteBackground } from "./colours";
 import { displayTitle } from "./document/text";
 import { attachmentIds, emptyDoc } from "./document/types";
-import {
-	INSERT_ATTACHMENTS_COMMAND,
-	REMOVE_ATTACHMENT_COMMAND,
-} from "./editor/attachments";
 import { NoteEditor } from "./editor/NoteEditor";
 import { NoteMarks } from "./NoteMarks";
 import { iconChoice, noteIcon } from "./noteIcon";
@@ -91,7 +86,6 @@ export function NoteEditorPage({
 	const [icon, setIcon] = useState<IconChoice>(iconChoice(draft.icon));
 	const [noteId, setNoteId] = useState(note?.id ?? null);
 	const [deleting, setDeleting] = useState(false);
-	const editor = useRef<LexicalEditor | null>(null);
 	// The note's attachments and those added since it was opened.
 	const [known, setKnown] = useState<NoteAttachment[]>(
 		() => note?.attachments ?? [],
@@ -147,13 +141,6 @@ export function NoteEditorPage({
 					/>
 					<AttachmentsButton
 						attachments={attachments}
-						disabled={readOnly}
-						onAdd={(files) =>
-							editor.current?.dispatchCommand(INSERT_ATTACHMENTS_COMMAND, files)
-						}
-						onRemove={(id) =>
-							editor.current?.dispatchCommand(REMOVE_ATTACHMENT_COMMAND, id)
-						}
 						onOpenImage={(id) =>
 							images.open(
 								attachments.filter((a) => a.contentType.startsWith("image/")),
@@ -276,7 +263,6 @@ export function NoteEditorPage({
 					initial={draft.content}
 					attachments={known}
 					onAttachmentAdded={(a) => setKnown((list) => [...list, a])}
-					editorRef={editor}
 					editable={!readOnly}
 					onChange={(content) => update({ content })}
 				/>

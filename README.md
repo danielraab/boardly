@@ -181,13 +181,13 @@ click it to open the note.
   and `[text](https://…)` inline. A toolbar offers the same, which helps on phones. Tick a todo by
   clicking its checkbox. Links open with Ctrl or Cmd held. Changes are saved a second after you
   stop typing. A note without a title is shown by its first line.
-- **Attachments**: add files to a note with the paperclip button of the editor (**Add
-  attachment**), or paste or drop them into the content; they go where the cursor is, or at the
-  end. Images are shown in the note and open large in a viewer when clicked, where the arrow keys
-  move between the note's images; audio and video play in the note; other files are shown as a
-  card with a download button. The paperclip's list shows the note's files, and **Remove from
-  note** takes one out of the note without deleting it. Which files are allowed and how large they
-  may be is set by the server (see [Attachments](#attachments)). Attachments are **public**:
+- **Attachments**: add files to a note with **Add attachment** in the editor's toolbar, or paste
+  or drop them into the content; they go where the cursor is, or at the end. Images are shown in
+  the note and open large in a viewer when clicked, where the arrow keys move between the note's
+  images; audio and video play in the note; other files are shown as a card with a download
+  button. The paperclip button lists the note's files. Deleting a file from the content takes it
+  out of the note without deleting the file. Which files are allowed and how large they may be is
+  set by the server (see [Attachments](#attachments)). Attachments are **public**:
   anyone with a file's link can open it, as with images, so note widgets on public dashboards
   can show them.
 - **Icon and colour**: a note can have a symbol or an uploaded image as its icon, and one of nine
