@@ -290,23 +290,26 @@ The note editor page and the note editor modal SHALL show an attachments button 
 icon, the accessible name "Attachments" / "Anhänge" and the number of the note's attachments when
 there are any. It SHALL open a dropdown that lists the note's attachments, each once, in the order
 they first appear in the content, with a small preview for images or an icon for other files, the
-name and the size. Activating an image in the list SHALL open the image viewer, and activating
-another file SHALL open its URL in a new tab. Each entry SHALL have a "Remove from note" / "Aus
-Notiz entfernen" action that removes every block of that attachment from the content; the
-attachment itself stays. The dropdown SHALL end with "Add attachment" / "Anhang hinzufügen", and
-show "No attachments" / "Keine Anhänge" above it when the note has none.
+name and the size, and nothing else. Activating an image in the list SHALL open the image viewer,
+and activating another file SHALL open its URL in a new tab. The dropdown SHALL show "No
+attachments" / "Keine Anhänge" when the note has none.
 
 #### Scenario: List
 - **WHEN** "Garden" contains `roses.jpg` twice and `plan.pdf` once, and Ann opens the dropdown
 - **THEN** it lists `roses.jpg` and `plan.pdf`, once each, and the button shows 2
 
+#### Scenario: Only files
+- **WHEN** Ann opens the dropdown of "Garden"
+- **THEN** it offers no action other than opening the listed files
+
 #### Scenario: Remove from note
-- **WHEN** Ann chooses "Remove from note" for `plan.pdf`
-- **THEN** the file card disappears from the content, the change is saved, and `plan.pdf` still exists on `/attachments`
+- **WHEN** Ann deletes the file card of `plan.pdf` from the content of "Garden"
+- **THEN** the dropdown no longer lists `plan.pdf`, the change is saved, and `plan.pdf` still exists on `/attachments`
 
 ### Requirement: Adding attachments
-"Add attachment" SHALL open the device's file picker, allowing several files and offering the
-allowed types (see "Attachments API"). Files can also be
+The content editor's toolbar SHALL offer an "Add attachment" / "Anhang hinzufügen" button right
+after the link button. It SHALL open the device's file picker, allowing several files and offering
+the allowed types (see "Attachments API"). Files can also be
 pasted into the content editor or dropped onto it, wherever the content editor is shown. Each file
 SHALL be uploaded and an attachment block for it inserted, in the order of the files: at the drop
 position for dropped files, otherwise at the cursor when the content editor has or last had one,
@@ -317,11 +320,11 @@ isn't allowed, or that it couldn't be uploaded. Inserting attachments counts as 
 saved automatically.
 
 #### Scenario: Insert at the cursor
-- **WHEN** Ann puts the cursor between two paragraphs of "Garden" and adds `roses.jpg` from the dropdown
+- **WHEN** Ann puts the cursor between two paragraphs of "Garden" and adds `roses.jpg` with the toolbar's "Add attachment"
 - **THEN** the photo appears between the two paragraphs, and after the autosave the note's content contains its attachment block there
 
 #### Scenario: Insert at the end
-- **WHEN** Ann opens "Garden" and adds two files from the dropdown without placing the cursor
+- **WHEN** Ann opens "Garden" and adds two files with the toolbar's "Add attachment" without placing the cursor
 - **THEN** both appear at the end of the note, in the order she chose them
 
 #### Scenario: Paste a screenshot
