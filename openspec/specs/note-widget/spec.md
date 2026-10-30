@@ -113,7 +113,7 @@ When the note of a note widget no longer exists, the widget SHALL show "This not
 - **THEN** the layout is saved
 
 ### Requirement: Note widget on public dashboards
-For anyone other than the owner, a note widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its note. With the flag on, visitors get the widget read-only: checkboxes show their state but can't be toggled, and there is no "Open note" button. A visitor's response contains only what the widget shows: the note's title, icon, colour, content, whether it is pinned and archived, and its category's title, icon and colour, and nothing else from the owner's notes, such as other notes, the note's version or times, or other category names. For visitors, the badge's tooltip is the category's title.
+For anyone other than the owner, a note widget with "Show on public dashboard" off SHALL be left out of the dashboard lookup response entirely, together with its note. With the flag on, visitors get the widget read-only: checkboxes show their state but can't be toggled, and there is no "Open note" button. A visitor's response contains only what the widget shows: the note's title, icon, colour, content, the name, content type, size and URL of the attachments its content contains, whether it is pinned and archived, and its category's title, icon and colour, and nothing else from the owner's notes, such as other notes, the note's version or times, other category names, or other attachments. For visitors, the badge's tooltip is the category's title. Visitors can view the note's images in the image viewer and download its files (see "Attachments in shown notes" in the `note-attachments` capability).
 
 #### Scenario: Flag off
 - **WHEN** a visitor opens Ann's public dashboard with a note widget whose "Show on public dashboard" is off
@@ -126,6 +126,10 @@ For anyone other than the owner, a note widget with "Show on public dashboard" o
 #### Scenario: Only what is shown
 - **WHEN** a visitor's response contains a note widget for a note in "Garden" below "Home"
 - **THEN** it contains the category "Garden" and not "Home"
+
+#### Scenario: Attachments for visitors
+- **WHEN** the flag is on and the note contains `roses.jpg`
+- **THEN** the visitor's response contains the name, type, size and URL of `roses.jpg` and nothing else about Ann's attachments, and the visitor sees the photo
 
 ### Requirement: Note editor modal in the address
 Opening a note's editor in a modal from a dashboard widget SHALL add `note=<note ID>` to the dashboard's address as a new browser history entry, keeping the dashboard's path. The browser's back button, including Android's, SHALL close the modal and go back to the dashboard's address without `note`. Closing the modal with its close button, Escape or a click outside SHALL do the same, so no extra history entry stays behind; when the modal was opened from an address that already contained `note` (a reload or a link), closing it replaces the address with the one without `note` instead. Unsaved changes are saved when the modal closes in any of these ways. An address with `note` SHALL open the dashboard with the modal of that note for the owner outside edit mode. For anyone other than the owner, in edit mode, or when the note doesn't exist, the parameter is removed from the address and no modal opens. Starting edit mode removes `note`.
