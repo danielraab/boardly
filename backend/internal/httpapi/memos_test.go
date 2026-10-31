@@ -480,6 +480,104 @@ func TestMemosAttachments(t *testing.T) {
 }
 
 // taskIDsOf joins the task IDs of a note.
+// blockTypes is the types of a note's blocks, joined with spaces.
+func blockTypes(n notes.Note) string {
+	var out []string
+	for _, b := range n.Content.Blocks {
+		out = append(out, b.Type)
+	}
+	return strings.Join(out, " ")
+}
+
+func TestMemosLocation(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	c := s.memosToken(t, ann, s.noteCategory(t, ann, "Inbox", ""))
+	cafe := map[string]any{"placeholder": "Café Central", "latitude": 48.2104, "longitude": 16.3655}
+	wantCafe := memos.Location{Placeholder: "Café Central", Latitude: 48.2104, Longitude: 16.3655}
+
+	// Memo with a location and a photo: text, location, attachment.
+	cup := c.upload(t, "cup.png", testPNG)
+	m := c.create(t, map[string]any{"content": "Coffee", "location": cafe, "attachments": []map[string]string{{"name": cup.Name}}})
+	n := c.note(t, m)
+	if m.Location == nil || *m.Location != wantCafe || m.Content != "Coffee" || blockTypes(n) != "paragraph location attachment" ||
+		*n.Content.Blocks[1].Label != "Café Central" || *n.Content.Blocks[1].Lat != 48.2104 {
+		t.Fatalf("created memo %+v, note %s", m, mustJSON(n.Content))
+	}
+	if got := c.list(t, "").Memos[0].Location; got == nil || *got != wantCafe {
+		t.Errorf("listed location = %+v", got)
+	}
+
+	patch := func(memo memos.Memo, query string, body any) memos.Memo {
+		t.Helper()
+		rec := c.do("PATCH", memosV1+"/"+memo.Name+query, mustJSON(body))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("patch %s: %d %s", mustJSON(body), rec.Code, rec.Body)
+		}
+		return decodeJSONBody[memos.Memo](t, rec)
+	}
+
+	// Unchanged memo: the same location again is no change.
+	version := n.Version
+	patch(m, "", map[string]any{"content": m.Content, "location": cafe, "attachments": []map[string]string{{"name": cup.Name}}})
+	if c.note(t, m).Version != version {
+		t.Error("an unchanged location was a change")
+	}
+	// Edit text keeps the location.
+	if got := patch(m, "", map[string]any{"content": "Coffee with Ann"}); got.Location == nil || *got.Location != wantCafe ||
+		blockTypes(c.note(t, m)) != "paragraph location attachment" {
+		t.Errorf("text edit = %+v, note %s", got, blockTypes(c.note(t, m)))
+	}
+	// Remove the location with a mask and no value.
+	if got := patch(m, "?updateMask=location", map[string]any{}); got.Location != nil || blockTypes(c.note(t, m)) != "paragraph attachment" {
+		t.Errorf("removed = %+v, note %s", got, blockTypes(c.note(t, m)))
+	}
+	// Set a location: it goes after the text and before the attachments.
+	version = c.note(t, m).Version
+	if got := patch(m, "?updateMask=location", map[string]any{"location": cafe}); got.Location == nil || *got.Location != wantCafe {
+		t.Errorf("set = %+v", got)
+	}
+	if n := c.note(t, m); blockTypes(n) != "paragraph location attachment" || n.Version != version+1 {
+		t.Errorf("set: note %s, version %d", blockTypes(n), n.Version)
+	}
+	// An unmasked null removes it too.
+	if got := patch(m, "", map[string]any{"location": nil}); got.Location != nil || blockTypes(c.note(t, m)) != "paragraph attachment" {
+		t.Errorf("null = %+v", got)
+	}
+
+	// A location in the middle is part of the content.
+	rec := s.req("POST", "/api/notes", mustJSON(map[string]any{"categoryId": c.note(t, m).CategoryID, "content": map[string]any{"v": 1, "blocks": []any{
+		map[string]any{"type": "location", "lat": 48.208176, "lng": 16.373819, "label": "Stephansplatz"},
+		map[string]any{"type": "paragraph", "content": []any{map[string]any{"type": "text", "text": "Meet here"}}},
+	}}}), withCookie(ann))
+	middle := memos.Memo{Name: "memos/" + decodeJSONBody[notes.Note](t, rec).ID}
+	listed := c.list(t, "").Memos
+	i := slices.IndexFunc(listed, func(memo memos.Memo) bool { return memo.Name == middle.Name })
+	if i < 0 || listed[i].Location != nil || listed[i].Content != "[Stephansplatz](geo:48.208176,16.373819)\n\nMeet here" {
+		t.Errorf("middle location memo at %d in %q", i, memoContents(c.list(t, "")))
+	}
+
+	// On the equator: MoeMemos leaves out the latitude 0.
+	quito := c.create(t, map[string]any{"content": "Quito", "location": map[string]any{"placeholder": "Quito", "longitude": -78.5}})
+	if q := c.note(t, quito).Content.Blocks; quito.Location == nil || *quito.Location != (memos.Location{Placeholder: "Quito", Longitude: -78.5}) ||
+		len(q) != 2 || *q[1].Lat != 0 || *q[1].Lng != -78.5 {
+		t.Errorf("equator memo = %+v", quito.Location)
+	}
+
+	// Invalid locations change nothing.
+	count := len(c.list(t, "").Memos)
+	for _, bad := range []string{`{"latitude":95,"longitude":16}`, `{"latitude":"48","longitude":16}`, `"here"`} {
+		wantMemosError(t, c.do("POST", memosV1+"/memos", `{"content":"x","location":`+bad+`}`), http.StatusBadRequest, memos.CodeInvalidArgument)
+		wantMemosError(t, c.do("PATCH", memosV1+"/"+m.Name, `{"content":"changed","location":`+bad+`}`), http.StatusBadRequest, memos.CodeInvalidArgument)
+	}
+	if got := len(c.list(t, "").Memos); got != count {
+		t.Errorf("memos after invalid creates = %d, want %d", got, count)
+	}
+	if got := c.list(t, ""); slices.Contains(memoContents(got), "changed") {
+		t.Error("an invalid location update changed the memo")
+	}
+}
+
 func taskIDsOf(t *testing.T, n notes.Note) string {
 	t.Helper()
 	var ids []string

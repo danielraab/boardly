@@ -22,6 +22,12 @@ func describe(d Doc) string {
 			fmt.Fprintf(&b, "%scode %q\n", indent, *bl.Text)
 		case BlockDivider:
 			fmt.Fprintf(&b, "%sdivider\n", indent)
+		case BlockLocation:
+			label := "-"
+			if bl.Label != nil {
+				label = *bl.Label
+			}
+			fmt.Fprintf(&b, "%slocation %v,%v %s\n", indent, *bl.Lat, *bl.Lng, label)
 		case BlockList:
 			for _, it := range *bl.Items {
 				marker := "-"
@@ -150,6 +156,14 @@ func TestFromMarkdown(t *testing.T) {
 		{"table", "| a | b |\n|---|---|\n| 1 | 2 |", "paragraph a | b⏎1 | 2"},
 		{"hard break", "a  \nb", "paragraph a⏎b"},
 		{"windows line ends", "a\r\nb\rc", "paragraph a⏎b⏎c"},
+		{"location", "[Stephansplatz](geo:48.208176,16.373819)", "location 48.208176,16.373819 Stephansplatz"},
+		{"location without label", "[48.2, 16.37](geo:48.2,16.37)", "location 48.2,16.37 -"},
+		{"location with empty text", "[](geo:48.2,16.37)", "location 48.2,16.37 -"},
+		{"location link inside text", "Meet at [Stephansplatz](geo:48.208176,16.373819)", "paragraph Meet at Stephansplatz"},
+		{"location out of range", "[x](geo:91,0)", "paragraph x"},
+		{"location with parameters", "[Hut](GEO:47.1,11.2,2100;u=30)", "location 47.1,11.2 Hut"},
+		{"location rounded", "[x](geo:48.20817634,16.3738189)", "location 48.208176,16.373819 x"},
+		{"location label with marks", "[**Dom** am\nPlatz](geo:1,2)", "location 1,2 Dom am Platz"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

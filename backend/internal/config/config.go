@@ -58,6 +58,9 @@ type Config struct {
 	Previews Previews
 
 	Attachments Attachments
+
+	// MapStyleURL is the MapLibre style that maps in notes are drawn from.
+	MapStyleURL string
 }
 
 // Attachments holds the limits of note attachments.
@@ -86,6 +89,9 @@ const DefaultAppTitle = "Boardly"
 
 // DefaultAAGUIDListURL is the community-maintained passkey provider list.
 const DefaultAAGUIDListURL = "https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/main/combined_aaguid.json"
+
+// DefaultMapStyleURL is OpenFreeMap's "liberty" style.
+const DefaultMapStyleURL = "https://tiles.openfreemap.org/styles/liberty"
 
 // SMTP holds the mail delivery settings. An empty Host disables delivery:
 // sign-in links are then written to the log.
@@ -251,6 +257,14 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			}
 		}
 		cfg.AAGUIDListURL = v
+	}
+
+	cfg.MapStyleURL = DefaultMapStyleURL
+	if v := strings.TrimSpace(getenv("BOARDLY_MAP_STYLE_URL")); v != "" {
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("BOARDLY_MAP_STYLE_URL: %q must be an absolute http(s) URL", v)
+		}
+		cfg.MapStyleURL = v
 	}
 
 	return cfg, nil

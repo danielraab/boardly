@@ -1,0 +1,9 @@
+{
+	"v": 1,
+	"blocks": [
+		{ "type": "paragraph", "content": [{ "type": "text", "text": "Meet here" }] },
+		{ "type": "location", "lat": 48.208176, "lng": 16.373819, "label": "Stephansplatz" },
+		{ "type": "location", "lat": 0, "lng": -0.5 },
+		{ "type": "location", "lat": -90, "lng": 180, "label": "South Pole" }
+	]
+}

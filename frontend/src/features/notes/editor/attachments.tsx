@@ -1,13 +1,9 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { DRAG_DROP_PASTE } from "@lexical/rich-text";
-import { $insertNodeToNearestRoot, mergeRegister } from "@lexical/utils";
+import { mergeRegister } from "@lexical/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-	$getNodeByKey,
 	$getRoot,
-	$getSelection,
-	$isRangeSelection,
-	$setSelection,
 	COMMAND_PRIORITY_EDITOR,
 	COMMAND_PRIORITY_LOW,
 	createCommand,
@@ -15,7 +11,6 @@ import {
 	type LexicalCommand,
 	type LexicalNode,
 	type NodeKey,
-	type RangeSelection,
 	type SerializedLexicalNode,
 	type Spread,
 } from "lexical";
@@ -40,6 +35,7 @@ import {
 	uploadAttachment,
 } from "#/features/attachments/api";
 import { ApiError } from "#/lib/api";
+import { $insertBlocksAtCursor, useLastSelection } from "./insertBlock";
 
 /** What the attachment blocks of an editor show and do. */
 type EditorAttachments = {
@@ -219,8 +215,7 @@ export function AttachmentsPlugin({
 	const { t, i18n } = useTranslation();
 	const queryClient = useQueryClient();
 	const [errors, setErrors] = useState<string[]>([]);
-	// The cursor stays where it was when the focus moves to a button.
-	const lastSelection = useRef<RangeSelection | null>(null);
+	const lastSelection = useLastSelection(editor);
 	const onUploadedRef = useRef(onUploaded);
 	onUploadedRef.current = onUploaded;
 
@@ -251,27 +246,12 @@ export function AttachmentsPlugin({
 				file,
 				uploadId: crypto.randomUUID(),
 			}));
-			editor.update(() => {
-				let selection = $getSelection();
-				const last = lastSelection.current;
-				if (
-					!$isRangeSelection(selection) &&
-					last &&
-					$getNodeByKey(last.anchor.key) &&
-					$getNodeByKey(last.focus.key)
-				) {
-					selection = last.clone();
-					$setSelection(selection);
-				}
-				const nodes = uploads.map(
-					(u) => new UploadingNode(u.uploadId, u.file.name),
-				);
-				if ($isRangeSelection(selection)) {
-					for (const node of nodes) $insertNodeToNearestRoot(node);
-				} else {
-					$getRoot().append(...nodes);
-				}
-			});
+			editor.update(() =>
+				$insertBlocksAtCursor(
+					uploads.map((u) => new UploadingNode(u.uploadId, u.file.name)),
+					lastSelection.current,
+				),
+			);
 			for (const { file, uploadId } of uploads) {
 				const isThis = (n: UploadingNode) => n.__uploadId === uploadId;
 				try {
@@ -291,19 +271,12 @@ export function AttachmentsPlugin({
 				}
 			}
 		},
-		[editor, errorMessage],
+		[editor, errorMessage, lastSelection],
 	);
 
 	useEffect(
 		() =>
 			mergeRegister(
-				editor.registerUpdateListener(({ editorState }) => {
-					editorState.read(() => {
-						const selection = $getSelection();
-						if ($isRangeSelection(selection))
-							lastSelection.current = selection.clone();
-					});
-				}),
 				editor.registerCommand(
 					DRAG_DROP_PASTE,
 					(files) => {

@@ -32,6 +32,9 @@ func TestToMarkdown(t *testing.T) {
 		{"line start", `\# not a heading` + "\n" + `1\. not a list`, `\# not a heading` + "\n" + `1\. not a list`},
 		{"empty line in a paragraph", "a\n\\\nb", "a\n\\\nb"},
 		{"item with lines", "- a\n  b", "- a\n  b"},
+		{"location", "[Stephansplatz](geo:48.208176,16.373819)", "[Stephansplatz](geo:48.208176,16.373819)"},
+		{"location without label", "[48.2, 16.37](geo:48.2,16.37)", "[48.2, 16.37](geo:48.2,16.37)"},
+		{"location with Markdown in its label", `[a \*b\* \[c\]](geo:-1.5,2)`, `[a \*b\* \[c\]](geo:-1.5,2)`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -75,6 +78,12 @@ func canon(d Doc, marks bool) string {
 			fmt.Fprintf(&b, "%scode %q\n", indent, *bl.Text)
 		case BlockDivider:
 			fmt.Fprintf(&b, "%sdivider\n", indent)
+		case BlockLocation:
+			label := "-"
+			if bl.Label != nil {
+				label = *bl.Label
+			}
+			fmt.Fprintf(&b, "%slocation %v,%v %s\n", indent, *bl.Lat, *bl.Lng, label)
 		case BlockList:
 			fmt.Fprintf(&b, "%slist %s\n", indent, bl.Style)
 			for _, it := range *bl.Items {
@@ -187,6 +196,7 @@ func TestToMarkdownRoundTrip(t *testing.T) {
 		"> quoted *text*\n> with `code` and https://example.org\n\n```go\nfmt.Println(\"`\")\n```",
 		"1. one\n2. two\n   1. sub\n\n1) other\n\n---\n\nend with \\* and \\_ and <tag> & co",
 		"Mail ann@example.org or visit www.example.org.\n\nprice: 5 * 3 = 15 # total\n- not a list\n\\\nafter an empty line",
+		"Trip\n\n[Stephansplatz](geo:48.208176,16.373819)\n\n[-12.5, 0](geo:-12.5,0)\n\n[# 1 \\* x](geo:0,-180)",
 	} {
 		roundTrip(t, mustParse(t, FromMarkdown(md, nil)), true)
 	}
@@ -195,7 +205,7 @@ func TestToMarkdownRoundTrip(t *testing.T) {
 func FuzzToMarkdown(f *testing.F) {
 	for _, s := range []string{
 		"## Week\n- [ ] a\n  - [x] b", "> q\n> - a", "*a **b `c` d** e*", "1. a\n2. b\n\n1) c",
-		"[a\nb](https://e.org)", "a\n\\\nb", "\\# x\n\\- y", "<https://e.org/a(b)>", "`` ` ``",
+		"[a\nb](https://e.org)", "[x](geo:1,2)", "[ \\* ](geo:-0.0000004,180)", "a\n\\\nb", "\\# x\n\\- y", "<https://e.org/a(b)>", "`` ` ``",
 	} {
 		f.Add(s)
 	}

@@ -1046,13 +1046,39 @@
 				"strike": "Durchgestrichen",
 				"code": "Code",
 				"link": "Link",
-				"attach": "Anhang hinzufügen"
+				"attach": "Anhang hinzufügen",
+				"location": "Ort hinzufügen"
 			},
 			"link": {
 				"label": "Link-Adresse",
 				"apply": "Übernehmen",
 				"remove": "Link entfernen",
 				"invalid": "Gib eine http-, https- oder mailto-Adresse ein."
+			}
+		},
+		"locations": {
+			"chip": "Ort: {{name}}",
+			"map": "Karte",
+			"loadingMap": "Karte wird geladen…",
+			"mapUnavailable": "Die Karte konnte nicht geladen werden.",
+			"edit": "Bearbeiten",
+			"form": {
+				"addTitle": "Ort hinzufügen",
+				"editTitle": "Ort bearbeiten",
+				"latitude": "Breitengrad",
+				"longitude": "Längengrad",
+				"label": "Bezeichnung",
+				"optional": "optional",
+				"useMyLocation": "Meinen Standort verwenden",
+				"locating": "Standort wird ermittelt…",
+				"mapHint": "Klick auf die Karte, um den Punkt zu setzen.",
+				"invalidLatitude": "Gib einen Breitengrad zwischen -90 und 90 ein.",
+				"invalidLongitude": "Gib einen Längengrad zwischen -180 und 180 ein.",
+				"denied": "Der Zugriff auf deinen Standort wurde verweigert.",
+				"notFound": "Dein Standort konnte nicht gefunden werden.",
+				"remove": "Entfernen",
+				"cancel": "Abbrechen",
+				"save": "Speichern"
 			}
 		}
 	},

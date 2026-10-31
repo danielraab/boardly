@@ -19,6 +19,7 @@ import { useImageViewer } from "#/features/attachments/ImageViewer";
 import { $docToLexical, $lexicalToDoc, editorNodes } from "../document/lexical";
 import { attachmentIds, isLinkUrl, type NoteDoc } from "../document/types";
 import { AttachmentsPlugin, EditorAttachmentsContext } from "./attachments";
+import { EditorLocations } from "./locations";
 import {
 	EditablePlugin,
 	ListTabPlugin,
@@ -96,23 +97,25 @@ export function NoteEditor({
 				</div>
 			)}
 			<EditorAttachmentsContext value={context}>
-				<div className="relative">
-					<RichTextPlugin
-						contentEditable={
-							<ContentEditable
-								aria-label={t("notes.editor.content")}
-								aria-placeholder={placeholder}
-								placeholder={
-									<div className="pointer-events-none absolute top-0 left-0 text-muted select-none">
-										{placeholder}
-									</div>
-								}
-								className={`${toolbar ? "min-h-64" : "min-h-16 text-sm"} space-y-2 break-words outline-none`}
-							/>
-						}
-						ErrorBoundary={LexicalErrorBoundary}
-					/>
-				</div>
+				<EditorLocations>
+					<div className="relative">
+						<RichTextPlugin
+							contentEditable={
+								<ContentEditable
+									aria-label={t("notes.editor.content")}
+									aria-placeholder={placeholder}
+									placeholder={
+										<div className="pointer-events-none absolute top-0 left-0 text-muted select-none">
+											{placeholder}
+										</div>
+									}
+									className={`${toolbar ? "min-h-64" : "min-h-16 text-sm"} space-y-2 break-words outline-none`}
+								/>
+							}
+							ErrorBoundary={LexicalErrorBoundary}
+						/>
+					</div>
+				</EditorLocations>
 			</EditorAttachmentsContext>
 			<AttachmentsPlugin
 				onUploaded={(attachment) => {

@@ -33,10 +33,56 @@ export type Block =
 	| { type: "code"; text: string }
 	| { type: "divider" }
 	| ListBlock
-	| AttachmentBlock;
+	| AttachmentBlock
+	| LocationBlock;
 
 /** One of the owner's attachments, shown as its own block. */
 export type AttachmentBlock = { type: "attachment"; id: string };
+
+/** A point on a map, with an optional label, shown as its own block. */
+export type LocationBlock = {
+	type: "location";
+	lat: number;
+	lng: number;
+	label?: string;
+};
+
+/** A location's point and label; a missing label is undefined. */
+export type LocationValue = Omit<LocationBlock, "type">;
+
+/** The longest label of a location, in characters. */
+export const maxLocationLabel = 200;
+
+/** A latitude or longitude rounded to 6 decimals, as the server stores it. */
+export function roundCoordinate(x: number): number {
+	const r = Math.round(x * 1e6) / 1e6;
+	return r === 0 ? 0 : r; // no -0
+}
+
+/**
+ * A coordinate with up to 6 decimals and no trailing zeros, the same way the
+ * server writes it (see FormatCoordinate in backend/internal/notes/doc.go).
+ */
+export function formatCoordinate(x: number): string {
+	return String(roundCoordinate(x));
+}
+
+/** A point as "<lat>, <lng>". */
+export function formatPoint({ lat, lng }: { lat: number; lng: number }) {
+	return `${formatCoordinate(lat)}, ${formatCoordinate(lng)}`;
+}
+
+/** Whether lat and lng are a point on Earth. */
+export function isValidPoint(lat: number, lng: number): boolean {
+	return (
+		Number.isFinite(lat) &&
+		Number.isFinite(lng) &&
+		lat >= -90 &&
+		lat <= 90 &&
+		lng >= -180 &&
+		lng <= 180
+	);
+}
 
 export const emptyDoc = (): NoteDoc => ({ v: 1, blocks: [] });
 

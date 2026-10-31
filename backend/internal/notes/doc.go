@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // The note document format, version 1. Every block, item and inline type has
@@ -23,6 +26,8 @@ const (
 	MaxDocSize = 512 * 1024
 	// MaxListDepth bounds how deeply lists nest; a top-level list is depth 1.
 	MaxListDepth = 6
+	// MaxLocationLabel bounds the label of a location, in characters.
+	MaxLocationLabel = 200
 )
 
 // Block types.
@@ -35,6 +40,9 @@ const (
 	BlockList      = "list"
 	// BlockAttachment shows one of the owner's attachments. It has no text.
 	BlockAttachment = "attachment"
+	// BlockLocation is a point on a map with an optional label. It has no
+	// text.
+	BlockLocation = "location"
 )
 
 // List styles.
@@ -78,6 +86,11 @@ type Block struct {
 	Style   string    `json:"style,omitempty"`
 	Items   *[]Item   `json:"items,omitempty"`
 	ID      string    `json:"id,omitempty"`
+	// Lat, Lng and Label are only set in locations. The coordinates are
+	// pointers so that 0 isn't taken for a missing value.
+	Lat   *float64 `json:"lat,omitempty"`
+	Lng   *float64 `json:"lng,omitempty"`
+	Label *string  `json:"label,omitempty"`
 }
 
 // Item is a list item. ID and Checked are only set in task lists.
@@ -137,6 +150,9 @@ func checkBlock(b *Block, depth int) error {
 	if b.Type != BlockAttachment && b.ID != "" {
 		return fmt.Errorf("%s with an ID", b.Type)
 	}
+	if b.Type != BlockLocation && (b.Lat != nil || b.Lng != nil || b.Label != nil) {
+		return fmt.Errorf("%s with location fields", b.Type)
+	}
 	switch b.Type {
 	case BlockParagraph, BlockQuote, BlockHeading:
 		if b.Text != nil || b.Style != "" || b.Items != nil {
@@ -174,10 +190,55 @@ func checkBlock(b *Block, depth int) error {
 		if !attachmentIDRe.MatchString(b.ID) {
 			return fmt.Errorf("invalid attachment ID %q", b.ID)
 		}
+	case BlockLocation:
+		if b.Level != 0 || b.Content != nil || b.Text != nil || b.Style != "" || b.Items != nil {
+			return errors.New("location with other fields")
+		}
+		return checkLocation(b)
 	default:
 		return fmt.Errorf("unknown block type %q", b.Type)
 	}
 	return nil
+}
+
+// checkLocation validates the point and label of the location b and rounds
+// its coordinates to 6 decimals.
+func checkLocation(b *Block) error {
+	if b.Lat == nil || b.Lng == nil {
+		return errors.New("location without lat or lng")
+	}
+	if !ValidLatLng(*b.Lat, *b.Lng) {
+		return fmt.Errorf("location %v, %v out of range", *b.Lat, *b.Lng)
+	}
+	lat, lng := RoundCoordinate(*b.Lat), RoundCoordinate(*b.Lng)
+	b.Lat, b.Lng = &lat, &lng
+	if b.Label != nil {
+		label := *b.Label
+		if label == "" || utf8.RuneCountInString(label) > MaxLocationLabel || strings.ContainsAny(label, "\r\n") {
+			return errors.New("invalid location label")
+		}
+	}
+	return nil
+}
+
+// ValidLatLng reports whether lat and lng are a point on Earth.
+func ValidLatLng(lat, lng float64) bool {
+	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+}
+
+// RoundCoordinate rounds a latitude or longitude to 6 decimals.
+func RoundCoordinate(x float64) float64 {
+	r := math.Round(x*1e6) / 1e6
+	if r == 0 {
+		return 0 // no -0
+	}
+	return r
+}
+
+// FormatCoordinate writes a rounded coordinate with up to 6 decimals and no
+// trailing zeros, the same way the web app does.
+func FormatCoordinate(x float64) string {
+	return strconv.FormatFloat(RoundCoordinate(x), 'f', -1, 64)
 }
 
 // AttachmentIDs returns the IDs of the attachments in a document, each once,
@@ -194,23 +255,31 @@ func AttachmentIDs(d Doc) []string {
 	return ids
 }
 
-// SplitTrailingAttachments splits off the attachment blocks at the end of d,
-// after its last block of another type, for connected apps that keep
-// attachments next to the text. It returns the rest of d and the IDs of the
-// split-off attachments, each once, in the order they first appear.
-func SplitTrailingAttachments(d Doc) (Doc, []string) {
+// SplitMemoTail splits d into the parts that connected apps such as Memos
+// keep apart: the attachment blocks at the end of d (their IDs, each once,
+// in the order they first appear), the location block right before them,
+// if any, and the rest of d.
+func SplitMemoTail(d Doc) (body Doc, loc *Block, ids []string) {
 	end := len(d.Blocks)
 	for end > 0 && d.Blocks[end-1].Type == BlockAttachment {
 		end--
 	}
-	body := Doc{V: d.V, Blocks: d.Blocks[:end:end]}
-	return body, AttachmentIDs(Doc{Blocks: d.Blocks[end:]})
+	ids = AttachmentIDs(Doc{Blocks: d.Blocks[end:]})
+	if end > 0 && d.Blocks[end-1].Type == BlockLocation {
+		b := d.Blocks[end-1]
+		loc = &b
+		end--
+	}
+	return Doc{V: d.V, Blocks: d.Blocks[:end:end]}, loc, ids
 }
 
-// JoinTrailingAttachments is d followed by an attachment block for each of
-// ids, each once, the opposite of SplitTrailingAttachments.
-func JoinTrailingAttachments(d Doc, ids []string) Doc {
-	blocks := append([]Block{}, d.Blocks...)
+// JoinMemoTail is body followed by loc, if not nil, and an attachment block
+// for each of ids, each once, the opposite of SplitMemoTail.
+func JoinMemoTail(body Doc, loc *Block, ids []string) Doc {
+	blocks := append([]Block{}, body.Blocks...)
+	if loc != nil {
+		blocks = append(blocks, *loc)
+	}
 	seen := map[string]bool{}
 	for _, id := range ids {
 		if !seen[id] {
@@ -218,7 +287,22 @@ func JoinTrailingAttachments(d Doc, ids []string) Doc {
 			blocks = append(blocks, Block{Type: BlockAttachment, ID: id})
 		}
 	}
-	return Doc{V: d.V, Blocks: blocks}
+	return Doc{V: body.V, Blocks: blocks}
+}
+
+// SplitTrailingAttachments splits off the attachment blocks at the end of d,
+// after its last block of another type, for connected apps that keep
+// attachments next to the text. It returns the rest of d and the IDs of the
+// split-off attachments, each once, in the order they first appear.
+func SplitTrailingAttachments(d Doc) (Doc, []string) {
+	body, loc, ids := SplitMemoTail(d)
+	return JoinMemoTail(body, loc, nil), ids
+}
+
+// JoinTrailingAttachments is d followed by an attachment block for each of
+// ids, each once, the opposite of SplitTrailingAttachments.
+func JoinTrailingAttachments(d Doc, ids []string) Doc {
+	return JoinMemoTail(d, nil, ids)
 }
 
 // checkList validates a list at depth (1 for a top-level list).

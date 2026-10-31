@@ -220,3 +220,83 @@ func TestTrailingAttachments(t *testing.T) {
 		t.Fatalf("join = %+v, want %+v", got.Blocks, want)
 	}
 }
+
+func TestMemoTail(t *testing.T) {
+	para := func(s string) Block {
+		return Block{Type: BlockParagraph, Content: &[]Inline{{Type: InlineText, Text: &s}}}
+	}
+	att := func(id string) Block { return Block{Type: BlockAttachment, ID: id} }
+	loc := func(label string) Block {
+		lat, lng := 48.208176, 16.373819
+		return Block{Type: BlockLocation, Lat: &lat, Lng: &lng, Label: &label}
+	}
+	for _, tc := range []struct {
+		name     string
+		blocks   []Block
+		body     []Block
+		loc      *Block
+		trailing []string
+	}{
+		{"location at the end", []Block{para("meet"), loc("S"), att("a")}, []Block{para("meet")}, new(loc("S")), []string{"a"}},
+		{"location without attachments", []Block{para("meet"), loc("S")}, []Block{para("meet")}, new(loc("S")), []string{}},
+		{"location in the middle", []Block{loc("S"), para("meet")}, []Block{loc("S"), para("meet")}, nil, []string{}},
+		{"two locations at the end", []Block{loc("A"), loc("B")}, []Block{loc("A")}, new(loc("B")), []string{}},
+		{"only a location", []Block{loc("S")}, []Block{}, new(loc("S")), []string{}},
+		{"location after attachments", []Block{att("a"), loc("S")}, []Block{att("a")}, new(loc("S")), []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := Doc{V: 1, Blocks: tc.blocks}
+			body, l, ids := SplitMemoTail(d)
+			if !reflect.DeepEqual(body.Blocks, tc.body) || !reflect.DeepEqual(l, tc.loc) || !reflect.DeepEqual(ids, tc.trailing) {
+				t.Fatalf("split = %+v, %+v, %v", body.Blocks, l, ids)
+			}
+			if got := JoinMemoTail(body, l, ids); !reflect.DeepEqual(got, d) {
+				t.Fatalf("join = %+v, want %+v", got, d)
+			}
+		})
+	}
+	// The attachment split keeps a trailing location in the body.
+	d := Doc{V: 1, Blocks: []Block{para("x"), loc("S"), att("a")}}
+	if body, ids := SplitTrailingAttachments(d); !reflect.DeepEqual(body.Blocks, []Block{para("x"), loc("S")}) || !reflect.DeepEqual(ids, []string{"a"}) {
+		t.Fatalf("trailing attachments = %+v, %v", body.Blocks, ids)
+	}
+}
+
+func TestLocation(t *testing.T) {
+	d, err := ParseDoc([]byte(`{"v":1,"blocks":[{"type":"location","lat":48.20817634,"lng":16.3738189}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := d.Blocks[0]; *b.Lat != 48.208176 || *b.Lng != 16.373819 {
+		t.Errorf("not rounded: %v, %v", *b.Lat, *b.Lng)
+	}
+	label := strings.Repeat("ä", MaxLocationLabel)
+	raw := `{"v":1,"blocks":[{"type":"location","lat":1,"lng":2,"label":"` + label + `"}]}`
+	if _, err := ParseDoc([]byte(raw)); err != nil {
+		t.Errorf("label of %d characters: %v", MaxLocationLabel, err)
+	}
+	raw = `{"v":1,"blocks":[{"type":"location","lat":1,"lng":2,"label":"` + label + `x"}]}`
+	if _, err := ParseDoc([]byte(raw)); !errors.Is(err, ErrInvalidDocument) {
+		t.Errorf("label of %d characters: %v, want ErrInvalidDocument", MaxLocationLabel+1, err)
+	}
+}
+
+func TestLocationIsNotText(t *testing.T) {
+	label, text := "Stephansplatz", "Meet at 8"
+	lat, lng := 48.208176, 16.373819
+	d := Doc{V: 1, Blocks: []Block{
+		{Type: BlockLocation, Lat: &lat, Lng: &lng, Label: &label},
+		{Type: BlockParagraph, Content: &[]Inline{{Type: InlineText, Text: &text}}},
+	}}
+	if got := DisplayTitle(Note{Content: d}); got == nil || *got != "Meet at 8" {
+		t.Fatalf("DisplayTitle = %v, want Meet at 8", got)
+	}
+}
+
+func TestFormatCoordinate(t *testing.T) {
+	for in, want := range map[float64]string{48.2: "48.2", 16.3738189: "16.373819", 0: "0", -0.0000001: "0", -180: "-180"} {
+		if got := FormatCoordinate(in); got != want {
+			t.Errorf("FormatCoordinate(%v) = %q, want %q", in, got, want)
+		}
+	}
+}

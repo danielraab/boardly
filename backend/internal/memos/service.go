@@ -124,20 +124,24 @@ func matchesFilter(filter, userID string) bool {
 	return true
 }
 
-// CreateInput is the body of POST /api/v1/memos. Visibility and location are
-// ignored.
+// CreateInput is the body of POST /api/v1/memos. Visibility is ignored.
 type CreateInput struct {
 	Content     *string         `json:"content"`
 	Attachments []AttachmentRef `json:"attachments"`
 	CreateTime  *string         `json:"createTime"`
+	Location    json.RawMessage `json:"location"`
 }
 
 // Create adds a note in the scope's root category, or uncategorized for all
 // notes, with the title and content from the memo's content, followed by
-// its attachments.
+// its location and its attachments.
 func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (Memo, error) {
 	if in.Content == nil {
 		return Memo{}, errContent
+	}
+	loc, err := locationBlock(in.Location)
+	if err != nil {
+		return Memo{}, err
 	}
 	att, err := s.Notes.UserMarkdownAttachments(ctx, sc.UserID, s.Origin)
 	if err != nil {
@@ -148,7 +152,7 @@ func (s *Service) Create(ctx context.Context, sc notes.Scope, in CreateInput) (M
 		return Memo{}, err
 	}
 	title, doc := notes.TitleFromHeading(notes.FromMarkdown(*in.Content, att))
-	content, err := json.Marshal(notes.JoinTrailingAttachments(doc, ids))
+	content, err := json.Marshal(notes.JoinMemoTail(doc, loc, ids))
 	if err != nil {
 		return Memo{}, err
 	}
@@ -173,29 +177,40 @@ type UpdateInput struct {
 	Pinned      *bool
 	State       *string
 	Attachments *[]AttachmentRef
+	// SetLocation applies Location, where nil removes the location.
+	SetLocation bool
+	Location    *notes.Block
 }
 
 // UpdateFromBody reads the fields of a memo update from its body. With a
 // mask (comma-separated snake case names), only the listed fields are read;
-// without one, every field in the body. Visibility, times and location are
-// ignored.
+// without one, every field in the body. A null field is not read, except
+// location, which null (or a masked location missing from the body)
+// removes. Visibility and times are ignored.
 func UpdateFromBody(body map[string]json.RawMessage, mask string) (UpdateInput, error) {
-	use := func(name, masked string) (json.RawMessage, bool) {
+	masked := func(name string) bool {
+		for _, m := range strings.Split(mask, ",") {
+			if strings.TrimSpace(m) == name {
+				return true
+			}
+		}
+		return false
+	}
+	use := func(name, maskName string) (json.RawMessage, bool) {
 		raw, ok := body[name]
 		if !ok || string(raw) == "null" {
 			return nil, false
 		}
-		if mask == "" {
-			return raw, true
-		}
-		for _, m := range strings.Split(mask, ",") {
-			if strings.TrimSpace(m) == masked {
-				return raw, true
-			}
-		}
-		return nil, false
+		return raw, mask == "" || masked(maskName)
 	}
 	var in UpdateInput
+	if raw, ok := body["location"]; (mask == "" && ok) || (mask != "" && masked("location")) {
+		loc, err := locationBlock(raw)
+		if err != nil {
+			return UpdateInput{}, err
+		}
+		in.SetLocation, in.Location = true, loc
+	}
 	for _, f := range []struct {
 		name, masked string
 		dst          any
@@ -244,8 +259,9 @@ func (s *Service) Update(ctx context.Context, sc notes.Scope, id string, in Upda
 
 // patchOf is the change of the note n that in asks for; fields that are
 // already as asked are left out, so an unchanged memo isn't a change. The
-// content replaces the note's content before its trailing attachments, and
-// the attachments replace the trailing attachments.
+// content replaces the note's content before its trailing location and
+// attachments, the location replaces the trailing location, and the
+// attachments replace the trailing attachments.
 func (s *Service) patchOf(ctx context.Context, userID string, n notes.Note, in UpdateInput) (notes.NotePatch, error) {
 	var p notes.NotePatch
 	var att *notes.MarkdownAttachments
@@ -255,7 +271,7 @@ func (s *Service) patchOf(ctx context.Context, userID string, n notes.Note, in U
 			return p, err
 		}
 	}
-	body, trailing := notes.SplitTrailingAttachments(n.Content)
+	body, loc, trailing := notes.SplitMemoTail(n.Content)
 	changed := false
 	if in.Content != nil && *in.Content != Content(n, s.Origin) {
 		var title *string
@@ -271,8 +287,11 @@ func (s *Service) patchOf(ctx context.Context, userID string, n notes.Note, in U
 			trailing, changed = ids, true
 		}
 	}
+	if in.SetLocation && !sameLocation(in.Location, loc) {
+		loc, changed = in.Location, true
+	}
 	if changed {
-		content, err := json.Marshal(notes.JoinTrailingAttachments(body, trailing))
+		content, err := json.Marshal(notes.JoinMemoTail(body, loc, trailing))
 		if err != nil {
 			return p, err
 		}

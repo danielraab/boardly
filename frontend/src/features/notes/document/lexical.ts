@@ -42,6 +42,11 @@ import {
 	AttachmentNode,
 	UploadingNode,
 } from "../editor/attachments";
+import {
+	$createLocationNode,
+	$isLocationNode,
+	LocationNode,
+} from "../editor/locations";
 import type {
 	Block,
 	Inline,
@@ -67,6 +72,7 @@ export const editorNodes = [
 	HorizontalRuleNode,
 	AttachmentNode,
 	UploadingNode,
+	LocationNode,
 ];
 
 /** The stable ID of a task item, kept in the list item's node state. */
@@ -178,6 +184,7 @@ function block(node: LexicalNode): Block | null {
 	if ($isHorizontalRuleNode(node)) return { type: "divider" };
 	if ($isAttachmentNode(node))
 		return { type: "attachment", id: node.getAttachmentId() };
+	if ($isLocationNode(node)) return { type: "location", ...node.getLocation() };
 	if ($isListNode(node)) {
 		const list = listBlock(node);
 		return list.items.length ? list : null;
@@ -263,6 +270,8 @@ function $blockNode(b: Block): LexicalNode {
 			return $listNode(b);
 		case "attachment":
 			return $createAttachmentNode(b.id);
+		case "location":
+			return $createLocationNode(b);
 	}
 }
 

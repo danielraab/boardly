@@ -234,6 +234,8 @@ func TestLoadInvalid(t *testing.T) {
 		{"private fetch flag not a bool", "BOARDLY_FETCH_ALLOW_PRIVATE", "sometimes"},
 		{"RP ID of another host", "BOARDLY_WEBAUTHN_RP_ID", "example.org"},
 		{"AAGUID list URL relative", "BOARDLY_AAGUID_LIST_URL", "/aaguids.json"},
+		{"map style URL other scheme", "BOARDLY_MAP_STYLE_URL", "ftp://example.org/style"},
+		{"map style URL relative", "BOARDLY_MAP_STYLE_URL", "/style.json"},
 		{"preview size zero", "BOARDLY_PREVIEW_MAX_SIZE_MB", "0"},
 		{"preview size negative", "BOARDLY_PREVIEW_MAX_SIZE_MB", "-1"},
 		{"preview pixels not a number", "BOARDLY_PREVIEW_MAX_PIXELS", "many"},
@@ -297,6 +299,29 @@ func TestAAGUIDListURL(t *testing.T) {
 			}
 			if cfg.AAGUIDListURL != tt.want {
 				t.Fatalf("AAGUIDListURL = %q, want %q", cfg.AAGUIDListURL, tt.want)
+			}
+		})
+	}
+}
+
+func TestMapStyleURL(t *testing.T) {
+	tests := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"unset uses OpenFreeMap", nil, DefaultMapStyleURL},
+		{"blank uses OpenFreeMap", map[string]string{"BOARDLY_MAP_STYLE_URL": " "}, DefaultMapStyleURL},
+		{"own style", map[string]string{"BOARDLY_MAP_STYLE_URL": "https://maps.example.org/style.json"}, "https://maps.example.org/style.json"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(withBaseURL(tt.vars)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.MapStyleURL != tt.want {
+				t.Fatalf("MapStyleURL = %q, want %q", cfg.MapStyleURL, tt.want)
 			}
 		})
 	}
