@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,16 +38,36 @@ func TestLinkwardenFloccusFlow(t *testing.T) {
 		return names
 	}
 
-	// Tree load: links page by page, then collections; the server folder
-	// "Floccus" is created at the token's root.
-	page := lwDecode[lwLinks](t, c.do("GET", lwV1+"/search?searchQueryString=", ""), http.StatusOK)
-	if len(page.Links) != 0 || page.NextCursor != nil {
-		t.Fatalf("empty tree: %+v", page)
+	// Tree load: links page by page, then collections. Floccus looks for a
+	// top-level collection with its folder's name and creates it when
+	// there is none.
+	serverFolder := func() lwCollection {
+		t.Helper()
+		page := lwDecode[lwLinks](t, c.do("GET", lwV1+"/search?searchQueryString=", ""), http.StatusOK)
+		if page.NextCursor != nil {
+			t.Fatalf("one page expected: %+v", page)
+		}
+		for _, col := range lwDecode[[]lwCollection](t, c.do("GET", lwV1+"/collections", ""), http.StatusOK) {
+			if col.Name == "Floccus" && col.ParentID == nil {
+				return col
+			}
+		}
+		return lwDecode[lwCollection](t, c.do("POST", lwV1+"/collections", `{"name":"Floccus"}`), http.StatusOK)
 	}
 	root := collections()["Reading"]
-	floccus := lwDecode[lwCollection](t, c.do("POST", lwV1+"/collections", `{"name":"Floccus"}`), http.StatusOK)
-	if floccus.ParentID == nil || *floccus.ParentID != root.ID {
+	floccus := serverFolder()
+	if floccus.ParentID != nil {
 		t.Fatalf("floccus = %+v", floccus)
+	}
+	if got := s.children(t, c.rootID); !reflect.DeepEqual(got, []string{"Floccus"}) {
+		t.Fatalf("token folder = %v", got)
+	}
+	// The next sync finds it again instead of creating another one.
+	if again := serverFolder(); again.ID != floccus.ID {
+		t.Fatalf("second sync: %+v, want %+v", again, floccus)
+	}
+	if got := s.children(t, c.rootID); !reflect.DeepEqual(got, []string{"Floccus"}) {
+		t.Fatalf("token folder after second sync = %v", got)
 	}
 
 	// createFolder and createBookmark.
@@ -79,11 +100,11 @@ func TestLinkwardenFloccusFlow(t *testing.T) {
 	body["name"] = "Toolbar"
 	body["parentId"] = root.ID
 	moved := lwDecode[lwCollection](t, c.do("PUT", lwV1+"/collections/"+id(bar.ID), mustJSON(body)), http.StatusOK)
-	if moved.Name != "Toolbar" || moved.ParentID == nil || *moved.ParentID != root.ID {
+	if moved.Name != "Toolbar" || moved.ParentID != nil {
 		t.Fatalf("moved folder = %+v", moved)
 	}
-	if got := collections(); got["Toolbar"].ParentID == nil || *got["Toolbar"].ParentID != root.ID {
-		t.Errorf("collections after move = %+v", got)
+	if got := s.children(t, c.rootID); !reflect.DeepEqual(got, []string{"Floccus", "Toolbar"}) {
+		t.Errorf("token folder after move = %v", got)
 	}
 
 	// A folder into its own subfolder, and out of scope.

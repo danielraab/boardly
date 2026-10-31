@@ -329,8 +329,10 @@ password login answers with a message to use an access token, because Boardly ha
 Everything goes through the key's folder, as for Karakeep, with these differences:
 
 - **Collections** are the key's folder **and** the folders below it, because every Linkwarden link
-  is in a collection. The key's folder is the top collection; the user's top-level folder, which has
-  no name, is called "Unorganized". A link is in the collection of the folder it's directly in.
+  is in a collection. The key's folder and the folders directly in it are top-level collections,
+  side by side, like Linkwarden's "Unorganized" next to the other collections; deeper folders are
+  nested below them. The user's top-level folder, which has no name, is called "Unorganized". A
+  link is in the collection of the folder it's directly in.
 - A link saved from the extension or the app goes to the **top** of its collection. The extension's
   default collection "Unorganized" is the key's folder; another collection name that doesn't exist
   yet creates that folder in the key's folder. Saving a URL that's already there saves it again, as
@@ -371,8 +373,8 @@ through the [Linkwarden](#linkwarden-compatible-server) or the
    **Karakeep**, and choose the folder Floccus may use, for example a new folder "Browser".
 2. In Floccus, add a profile of type **Linkwarden** or **Karakeep**. Enter the server address
    shown for the key (`<BOARDLY_BASE_URL>/api/linkwarden` or `<BOARDLY_BASE_URL>/api/karakeep`)
-   and the key as the password or token. Choose a server folder name; Floccus creates it in the
-   key's folder.
+   and the key as the password or token, and test the connection. Choose a server folder name;
+   Floccus creates it in the key's folder on the first sync and finds it there again later.
 
 Folders become folders and bookmarks become links of the favourites tree, with their tags. Renaming,
 moving and deleting bookmarks and folders syncs both ways.

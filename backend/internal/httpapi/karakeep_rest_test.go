@@ -110,10 +110,18 @@ func TestKarakeepRESTAuthAndUnknownPaths(t *testing.T) {
 	if rec := s.req("GET", karakeepV1+"/lists", "", withBearer(lw.secret)); rec.Code != http.StatusUnauthorized {
 		t.Errorf("Linkwarden token: %d", rec.Code)
 	}
-	for _, r := range [][2]string{{"GET", "/highlights"}, {"GET", "/users/me"}, {"PUT", "/bookmarks/1"}, {"GET", "/lists/1/bookmarks/2"}} {
+	for _, r := range [][2]string{{"GET", "/highlights"}, {"PUT", "/bookmarks/1"}, {"GET", "/lists/1/bookmarks/2"}} {
 		if rec := c.do(r[0], r[1], ""); rec.Code != http.StatusNotFound {
 			t.Errorf("%s %s: %d %s", r[0], r[1], rec.Code, rec.Body)
 		}
+	}
+	// Floccus' connection test.
+	me := kkJSON[map[string]any](c, "GET", "/users/me", nil, http.StatusOK)
+	if me["email"] != "ann@example.org" || me["id"] == nil {
+		t.Errorf("users/me = %v", me)
+	}
+	if rec := s.req("GET", karakeepV1+"/users/me", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("users/me without token: %d", rec.Code)
 	}
 	if rec := c.do("POST", "/bookmarks", "{"); rec.Code != http.StatusBadRequest {
 		t.Errorf("invalid JSON: %d", rec.Code)

@@ -44,6 +44,16 @@ Floccus' `updateBookmark` sends `DELETE /lists/{old}/bookmarks/{id}` and `PUT /l
 
 Add `linkwarden.Service.Collection` (public wrapper of `collectionByID`) and `EditCollection`. `EditCollection` diffs `name` and `parentId` against the current folder, validates the echoed unsupported fields (non-empty `description`, `isPublic`, `members` → 400), and uses the favourites store's rename and move operations (move to end of parent, cycle check). The token root may be "edited" only as a no-op (403 otherwise). This mirrors `karakeep.Service.EditList`.
 
+### 4a. Top-level collections (found in manual testing)
+
+Floccus finds its server folder with `name === serverFolder && parentId == null` (Linkwarden adapter) and its root list with `parentId === null` (Karakeep adapter). Boardly's Karakeep lists already report folders directly in the token's folder with `parentId` `null`. The Linkwarden collections reported the token's folder as their parent, so the folder Floccus created was never found again and a new one was created on every sync. Linkwarden collections now report `parentId`/`parent` `null` for folders directly in the token's folder, as in Linkwarden, where "Unorganized" and the other top-level collections are siblings. Writes keep treating `parentId: null` as "the token's folder", so nothing changes for creating and moving.
+
+*Alternative:* hide the token's root collection and make its folders top-level. Rejected because links directly in the token's folder would then have no collection.
+
+### 4b. Connection test
+
+Floccus' server setup (browser and Android) checks a Karakeep server with `GET /api/v1/users/me` and needs only a 200 (`src/ui/store/actions.js`, `native/actions.js`). The REST layer answers it with the `users.whoami` result. The Linkwarden test calls `GET /api/v1/collections`, which already works.
+
 ### 5. Linkwarden delete deletes contents
 
 Switch `DeleteCollection` from `DeleteMoveChildren` to `DeleteWithChildren` (decided with the user). Karakeep's `lists.delete` keeps moving contents up, because Karakeep itself keeps bookmarks when a list is deleted, and the Floccus Karakeep adapter deletes children explicitly before the list.

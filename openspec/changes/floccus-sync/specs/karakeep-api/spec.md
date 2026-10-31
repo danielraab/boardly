@@ -3,11 +3,15 @@
 ## ADDED Requirements
 
 ### Requirement: Karakeep REST transport
-Besides the tRPC procedures, Boardly SHALL answer the Karakeep REST endpoints named in this spec under `/api/karakeep/api/v1/`, which sync clients such as Floccus call as `<server address>/api/v1/…`. They require an active Karakeep token (see "Bearer authentication for app endpoints" in the app-tokens spec) and see only the token's subtree and note scope, like the procedures. Request and response bodies are plain JSON (no superjson envelope); times are ISO 8601 strings in UTC with milliseconds. Bookmarks and lists SHALL have the same shape as in the procedures. An error SHALL respond with `{"error": "<message>"}` and the status 400 for invalid input, 401 for a missing or invalid token, 404 for an unknown or out-of-scope bookmark or list, and 500 for anything else, with the same messages as the matching procedure. Karakeep REST paths and methods that this spec doesn't name stay unimplemented and respond 404.
+Besides the tRPC procedures, Boardly SHALL answer the Karakeep REST endpoints named in this spec under `/api/karakeep/api/v1/`, which sync clients such as Floccus call as `<server address>/api/v1/…`. They require an active Karakeep token (see "Bearer authentication for app endpoints" in the app-tokens spec) and see only the token's subtree and note scope, like the procedures. Request and response bodies are plain JSON (no superjson envelope); times are ISO 8601 strings in UTC with milliseconds. Bookmarks and lists SHALL have the same shape as in the procedures. An error SHALL respond with `{"error": "<message>"}` and the status 400 for invalid input, 401 for a missing or invalid token, 404 for an unknown or out-of-scope bookmark or list, and 500 for anything else, with the same messages as the matching procedure. `GET /api/v1/users/me` SHALL respond 200 with the token's owner, as `users.whoami` returns it; Floccus calls it to test the connection when a Karakeep server is set up. Karakeep REST paths and methods that this spec doesn't name stay unimplemented and respond 404.
 
 #### Scenario: Without a token
 - **WHEN** a client calls `GET /api/karakeep/api/v1/lists` without an `Authorization` header
 - **THEN** the server responds 401 with `{"error": "Unauthorized"}`
+
+#### Scenario: Connection test
+- **WHEN** Floccus tests the server with `GET /api/karakeep/api/v1/users/me` and an active Karakeep token
+- **THEN** the server responds 200 with the user's `id`, `name` and `email`
 
 #### Scenario: Unnamed REST path
 - **WHEN** a client calls `GET /api/karakeep/api/v1/highlights` with an active Karakeep token

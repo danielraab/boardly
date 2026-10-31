@@ -273,13 +273,13 @@ func TestCollections(t *testing.T) {
 		}
 		got = append(got, c.Name+"<"+parent+":"+string(rune('0'+c.Count.Links)))
 	}
-	if want := []string{"Reading<:0", "Later<Reading:3", "Videos<Later:2", "Recipes<Reading:0"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"Reading<:0", "Later<:3", "Videos<Later:2", "Recipes<:0"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("collections = %v, want %v", got, want)
 	}
 
-	// Create at the end of the root or of a parent.
+	// Create at the end of the root (a top-level collection) or of a parent.
 	c, err := f.s.CreateCollection(f.ctx, f.sc, CreateCollectionInput{Name: "Books", Color: ptr("#f00"), Icon: ptr("book")})
-	if err != nil || c.ParentID == nil || *c.ParentID != f.num(f.sc.RootID) {
+	if err != nil || c.ParentID != nil || c.Parent != nil {
 		t.Fatalf("created = %+v, err %v", c, err)
 	}
 	if kids := f.children(f.sc.RootID); kids[len(kids)-1] != "Books" {
@@ -325,8 +325,11 @@ func TestGetAndEditCollection(t *testing.T) {
 	work := f.folder(f.topLevel, "Work")
 
 	c, err := f.s.Collection(f.ctx, f.sc, f.num(later))
-	if err != nil || c.Name != "Later" || c.Parent == nil || c.Parent.Name != "Reading" {
+	if err != nil || c.Name != "Later" || c.ParentID != nil || c.Parent != nil {
 		t.Fatalf("get = %+v, err %v", c, err)
+	}
+	if v, err := f.s.Collection(f.ctx, f.sc, f.num(videos)); err != nil || v.Parent == nil || v.Parent.Name != "Later" {
+		t.Fatalf("get nested = %+v, err %v", v, err)
 	}
 	if _, err := f.s.Collection(f.ctx, f.sc, f.num(work)); !errors.Is(err, ErrCollectionNotFound) {
 		t.Errorf("get outside: err = %v", err)

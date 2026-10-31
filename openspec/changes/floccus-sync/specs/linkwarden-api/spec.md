@@ -33,6 +33,28 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Collections are folders
+A Linkwarden collection SHALL be a folder in the subtree, including the token's root folder, because every Linkwarden link is in a collection. A link is in the collection of the folder it is directly in. A collection SHALL be returned as `{"id", "name", "description": "", "icon": null, "iconWeight": null, "color": "#0ea5e9", "parentId", "isPublic": false, "ownerId": 1, "createdById": 1, "createdAt", "updatedAt", "parent", "members": [], "_count": {"links"}}`. `parentId` and `parent` (`{"id", "name"}`) are the parent folder. They SHALL be `null` for the token's root collection and for the folders directly in it, so these are top-level collections side by side, as Linkwarden's "Unorganized" collection sits next to the other top-level collections. Sync clients such as Floccus look for their folder among the top-level collections only. `_count.links` counts the links directly in the folder. The name is the folder's name; the user's top-level folder has no name and SHALL be called "Unorganized".
+
+`GET /api/v1/collections` SHALL respond with `{"response": [<collections>]}`: every collection of the subtree, parents before their children and siblings in tree order.
+
+#### Scenario: Nested folders
+- **WHEN** a token is rooted at "Reading", which contains the folder "Later" with the subfolder "Videos"
+- **THEN** the list has "Reading" and "Later" with `parentId` `null`, and "Videos" with the parent "Later"
+
+#### Scenario: Floccus finds its folder again
+- **WHEN** Floccus created the collection "Floccus" without a parent on its first sync, and syncs again
+- **THEN** `GET /api/v1/collections` lists "Floccus" with `parentId` `null`, so Floccus uses it instead of creating another one
+
+#### Scenario: Whole tree
+- **WHEN** a token is rooted at the top-level folder
+- **THEN** the root collection is called "Unorganized"
+
+#### Scenario: Link count
+- **WHEN** "Later" contains 3 links and the folder "Videos" with 2 links
+- **THEN** "Later" has `_count.links` 3 and "Videos" 2
+
+
 ### Requirement: Delete collections
 `DELETE /api/v1/collections/{id}` SHALL delete the folder together with its contents (links and subfolders, at any depth), as Linkwarden does, and respond 200 with `{"response": <the deleted collection>}`. Sync clients such as Floccus rely on this: they delete a folder with one request and expect its links to be gone. Tags that are no longer on any link are removed, and app tokens rooted at the deleted folder or one of its subfolders are revoked, as for any folder delete. Deleting the token's root collection responds 403.
 

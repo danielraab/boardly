@@ -20,6 +20,11 @@
 - [x] 3.2 Add the same for the Karakeep REST adapter: create root list, create folder, create bookmark + add to list + attach tags, update (PATCH + tag diff + list move), remove bookmark (lists → remove from list → delete), remove folder (children first, then list); verify the tree after each step
 - [ ] 3.3 Manually sync a real Floccus extension (Linkwarden mode and Karakeep mode) against a local build; verify a folder rename, a bookmark move and a folder delete round-trip to the browser without duplicates
 
+## 3b. Fixes from manual testing
+
+- [x] 3.4 Report Linkwarden collections directly in the token's folder with `parentId`/`parent` `null` (design §4a); verify with service and httptest tests, including a Floccus replay that syncs twice and finds its folder again without creating a second one
+- [x] 3.5 Add `GET /api/v1/users/me` to the Karakeep REST layer (design §4b); verify 200 with the user for an active Karakeep token, 401 without one, and update the tests that expected 404
+
 ## 4. Copy and docs
 
 - [x] 4.1 Add Floccus to `features.apps.description` in `en.json` and `de.json` (design §6 copy rules); verify matching keys and that the landing test still passes
@@ -29,3 +34,5 @@
 ## 5. Wrap-up
 
 - [ ] 5.1 Run `make check` and `make test` and verify both pass
+
+- [x] 5.2 Update the README for top-level collections and the Karakeep connection test; verify the Linkwarden and Floccus sections match the behaviour

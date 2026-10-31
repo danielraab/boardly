@@ -30,6 +30,12 @@ func (a *api) karakeepRESTv1(mux *http.ServeMux) {
 	// unimplemented part of Karakeep's API.
 	mux.HandleFunc(karakeepV1+"/", http.NotFound)
 
+	// Floccus tests a Karakeep server with this when it is set up.
+	handle("GET "+karakeepV1+"/users/me", func(r *http.Request, _ karakeep.Scope) (int, any, error) {
+		me, err := a.karakeepWhoAmI(r.Context(), nil)
+		return http.StatusOK, me, err
+	})
+
 	handle("POST "+karakeepV1+"/bookmarks", func(r *http.Request, sc karakeep.Scope) (int, any, error) {
 		var in karakeep.CreateBookmarkInput
 		if err := decodeKarakeepREST(r, &in); err != nil {

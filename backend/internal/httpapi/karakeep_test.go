@@ -165,11 +165,12 @@ func TestKarakeepBearerAuth(t *testing.T) {
 		t.Errorf("version: %d %s", rec.Code, rec.Body)
 	}
 
-	// Anything else of Karakeep's API doesn't exist, the REST API included.
+	// Anything else of Karakeep's API doesn't exist, the REST API included
+	// beyond the endpoints that Floccus uses.
 	if rec := s.trpcQuery("bookmarks.summarizeBookmark", `{}`, withBearer(active.Secret)); rec.Code != http.StatusNotFound || trpcErrorCode(t, rec) != "NOT_FOUND" {
 		t.Errorf("unknown procedure: %d %s", rec.Code, rec.Body)
 	}
-	if rec := s.req("GET", karakeepPrefix+"/api/v1/users/me", "", withBearer(active.Secret)); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {
+	if rec := s.req("GET", karakeepPrefix+"/api/v1/highlights", "", withBearer(active.Secret)); rec.Code != http.StatusNotFound || errorCode(t, rec) != "not_found" {
 		t.Errorf("REST path: %d %s", rec.Code, rec.Body)
 	}
 
