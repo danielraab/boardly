@@ -55,12 +55,10 @@
 	},
 	"landing": {
 		"hero": {
-			"tagline": "Deine Favoriten und Dashboards, selbst gehostet und an einem Ort.",
+			"tagline": "Dein Helfer für jeden Tag: Startseite, Lesezeichen und Notizen, selbst gehostet.",
 			"cta": "Anmelden"
 		},
-		"screenshot": {
-			"placeholder": "Screenshot folgt"
-		},
+		"sketch": "Illustration eines Boardly-Dashboards mit Favoriten, Links, einer Notiz und einem Radio-Widget",
 		"featuresTitle": "Was {{appName}} kann",
 		"github": "GitHub",
 		"footer": {
@@ -76,9 +74,9 @@
 			"title": "Favoriten",
 			"description": "Alle Lesezeichen in einem Baum aus Ordnern und Links."
 		},
-		"karakeep": {
-			"title": "Karakeep- und Linkwarden-Apps",
-			"description": "Speichere Links aus den Browsererweiterungen und Mobil-Apps von Karakeep und Linkwarden."
+		"notes": {
+			"title": "Notizen",
+			"description": "Halte Ideen und Todo-Listen auf farbigen Notizen fest, direkt neben deinen Links."
 		}
 	},
 	"common": {

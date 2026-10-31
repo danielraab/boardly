@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The public page at `/` that introduces Boardly to visitors who are not signed in. For now it shows placeholders for a product screenshot and feature descriptions.
+The public page at `/` that introduces Boardly to signed-out visitors as an everyday helper: start page, bookmarks and notes in one self-hosted place, with a product sketch and a short feature overview.
 
 ## Requirements
 

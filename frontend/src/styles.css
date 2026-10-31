@@ -25,6 +25,27 @@
 	--color-note-purple: #e7cffd;
 	--color-note-pink: #facce2;
 	--color-note-grey: #d7d7da;
+
+	/* Landing sketch motion; used only with motion-safe: variants. */
+	--animate-sketch-in: sketch-in 0.5s ease-out both;
+	--animate-sketch-accent: sketch-accent 2.4s ease-in-out 0.9s 2;
+
+	@keyframes sketch-in {
+		from {
+			opacity: 0;
+			transform: translateY(0.5rem);
+		}
+	}
+
+	@keyframes sketch-accent {
+		0%,
+		100% {
+			box-shadow: 0 0 0 0 transparent;
+		}
+		50% {
+			box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
+		}
+	}
 }
 
 * {

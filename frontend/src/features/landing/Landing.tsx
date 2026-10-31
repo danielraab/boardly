@@ -6,21 +6,8 @@ import { GithubIcon } from "#/components/GithubIcon";
 import { widePage } from "#/components/pageWidths";
 import { appTitle } from "#/lib/appTitle";
 import { githubRepoUrl } from "#/lib/sourceCode";
+import { DashboardSketch } from "./DashboardSketch";
 import { features } from "./features";
-
-const tile = "rounded-md border border-line bg-paper/70";
-const accentTile = "rounded-md border border-accent/60 bg-accent/25";
-
-// Tiles on the 12-column grid, sketching a dashboard until a real screenshot exists.
-// Three rows on every width; from sm the first tile spans two rows.
-const sketchTiles = [
-	`${tile} col-span-12 sm:col-span-8 sm:row-span-2`,
-	`${tile} col-span-6 sm:col-span-4`,
-	`${tile} col-span-6 sm:col-span-4`,
-	`${tile} col-span-4 sm:col-span-3`,
-	`${tile} col-span-4 sm:col-span-3`,
-	`${accentTile} col-span-4 sm:col-span-6`,
-];
 
 export function Landing() {
 	const { t } = useTranslation();
@@ -52,21 +39,7 @@ export function Landing() {
 				</div>
 			</section>
 
-			<figure className="relative aspect-video overflow-hidden rounded-xl border border-dashed border-line bg-surface p-3 sm:p-5">
-				<div
-					aria-hidden
-					className="grid h-full grid-cols-12 grid-rows-3 gap-2 sm:gap-3"
-				>
-					{sketchTiles.map((className) => (
-						<div key={className} className={className} />
-					))}
-				</div>
-				<figcaption className="absolute inset-0 flex items-center justify-center">
-					<span className="rounded-full bg-surface px-4 py-1.5 text-sm text-muted shadow-sm">
-						{t("landing.screenshot.placeholder")}
-					</span>
-				</figcaption>
-			</figure>
+			<DashboardSketch />
 
 			<section className="mt-16" aria-labelledby="features-title">
 				<h2
