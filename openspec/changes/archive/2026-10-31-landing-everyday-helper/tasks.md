@@ -27,4 +27,4 @@
 
 ## 5. Wrap-up
 
-- [ ] 5.1 Run `make check` and `make test` and verify both pass
+- [x] 5.1 Run `make check` and `make test` and verify both pass

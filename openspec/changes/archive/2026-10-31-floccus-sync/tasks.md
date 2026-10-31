@@ -18,7 +18,7 @@
 
 - [x] 3.1 Add a Linkwarden integration test that replays the Floccus adapter: initial tree load (search pages + collections), create folder, create bookmark, update bookmark (GET parent collection + PUT link), rename and move folder (GET + PUT collection), remove bookmark, remove folder; verify the resulting favourites tree after each step
 - [x] 3.2 Add the same for the Karakeep REST adapter: create root list, create folder, create bookmark + add to list + attach tags, update (PATCH + tag diff + list move), remove bookmark (lists → remove from list → delete), remove folder (children first, then list); verify the tree after each step
-- [ ] 3.3 Manually sync a real Floccus extension (Linkwarden mode and Karakeep mode) against a local build; verify a folder rename, a bookmark move and a folder delete round-trip to the browser without duplicates
+- [x] 3.3 Manually sync a real Floccus extension (Linkwarden mode and Karakeep mode) against a local build; verify a folder rename, a bookmark move and a folder delete round-trip to the browser without duplicates
 
 ## 3b. Fixes from manual testing
 
@@ -33,6 +33,6 @@
 
 ## 5. Wrap-up
 
-- [ ] 5.1 Run `make check` and `make test` and verify both pass
+- [x] 5.1 Run `make check` and `make test` and verify both pass
 
 - [x] 5.2 Update the README for top-level collections and the Karakeep connection test; verify the Linkwarden and Floccus sections match the behaviour
