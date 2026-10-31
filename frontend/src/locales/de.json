@@ -8,6 +8,7 @@
 		"dashboards": "Dashboards",
 		"favourites": "Favoriten",
 		"notes": "Notizen",
+		"media": "Medien",
 		"attachments": "Anhänge",
 		"settings": "Einstellungen",
 		"signOut": "Abmelden",
@@ -592,7 +593,8 @@
 			"text": "Wähle, was das neue Widget zeigt.",
 			"groups": {
 				"favourites": "Favoriten",
-				"notes": "Notizen"
+				"notes": "Notizen",
+				"media": "Medien"
 			}
 		},
 		"discard": {
@@ -787,6 +789,33 @@
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
 				"missing": "Keine der ausgewählten Notizen existiert mehr"
+			},
+			"media": {
+				"name": "Medien",
+				"description": "Spielt Sender aus deiner Mediathek ab.",
+				"addTitle": "Medien hinzufügen",
+				"editTitle": "Medien bearbeiten",
+				"sourcesLabel": "Sender",
+				"addPlaceholder": "Sender hinzufügen…",
+				"noMatches": "Keine passenden Sender",
+				"full": "Es können höchstens {{max}} Sender ausgewählt werden.",
+				"drag": "{{name}} ziehen",
+				"moveUp": "{{name}} nach oben",
+				"moveDown": "{{name}} nach unten",
+				"remove": "{{name}} entfernen",
+				"gone": "Dieser Sender existiert nicht mehr",
+				"titleLabel": "Titel",
+				"titleHint": "Optional. Wird über den Sendern angezeigt.",
+				"layoutLabel": "Darstellung",
+				"layout": {
+					"list": "Liste",
+					"tiles": "Kacheln"
+				},
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards können diese Sender abspielen. Sonst siehst nur du das Widget.",
+				"missing": "Diese Sender existieren nicht mehr",
+				"emptyLibrary": "Deine Mediathek ist leer.",
+				"openLibrary": "Sender hinzufügen"
 			}
 		}
 	},
@@ -1077,6 +1106,70 @@
 				"text": "„{{name}}“ wird gelöscht. Das kann nicht rückgängig gemacht werden.",
 				"confirm": "Löschen",
 				"cancel": "Abbrechen"
+			}
+		}
+	},
+	"player": {
+		"label": "Mediaplayer",
+		"play": "Abspielen",
+		"pause": "Pause",
+		"volume": "Lautstärke",
+		"mute": "Stumm",
+		"unmute": "Ton an",
+		"close": "Player schließen",
+		"loading": "Verbinde…",
+		"paused": "Pausiert",
+		"live": "Live",
+		"error": "Dieser Sender kann gerade nicht abgespielt werden",
+		"retry": "Erneut versuchen"
+	},
+	"media": {
+		"title": "Medien",
+		"intro": "Deine Internetradio-Sender. Sie laufen im Player unten auf jeder Seite, und mit dem Medien-Widget kannst du sie auf Dashboards legen.",
+		"addStation": "Sender hinzufügen",
+		"empty": "Noch keine Sender",
+		"emptyHint": "Durchsuche das Senderverzeichnis oder gib eine Stream-URL ein, um deinen ersten Sender hinzuzufügen.",
+		"drag": "{{name}} ziehen",
+		"playNamed": "{{name}} abspielen",
+		"pauseNamed": "{{name}} pausieren",
+		"actions": "Aktionen für {{name}}",
+		"edit": "Bearbeiten",
+		"delete": "Löschen",
+		"editTitle": "Sender bearbeiten",
+		"iconLabel": "Symbol",
+		"save": "Speichern",
+		"cancel": "Abbrechen",
+		"deleteTitle": "Sender löschen?",
+		"deleteText": "„{{name}}“ wird aus deiner Mediathek und aus allen Medien-Widgets entfernt.",
+		"add": {
+			"title": "Sender hinzufügen",
+			"tabs": {
+				"search": "Suchen",
+				"url": "URL eingeben"
+			},
+			"searchLabel": "Sender suchen",
+			"searchPlaceholder": "Sendername, z. B. FM4",
+			"notice": {
+				"before": "Suche über ",
+				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden dorthin gesendet."
+			},
+			"searching": "Suche…",
+			"directoryDown": "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben.",
+			"noResults": "Keine Sender gefunden",
+			"notPlayable": "Nicht abspielbar (kein HTTPS-Stream)",
+			"added": "Hinzugefügt",
+			"add": "Hinzufügen",
+			"addNamed": "{{name}} hinzufügen",
+			"bitrate": "{{kbps}} kbit/s",
+			"nameLabel": "Name",
+			"urlLabel": "Stream-URL",
+			"urlHint": "Nur HTTPS-Streams können abgespielt werden. Playlist-Dateien (.pls, .m3u) gehen auch.",
+			"checking": "Prüfe…",
+			"errors": {
+				"invalidUrl": "Gib eine vollständige http- oder https-URL ein.",
+				"notHttps": "Dieser Sender bietet nur einen unverschlüsselten Stream an, den Boardly nicht abspielen kann.",
+				"unreachable": "Diese URL liefert keinen Audio-Stream.",
+				"invalidTitle": "Der Name muss 1 bis 200 Zeichen haben."
 			}
 		}
 	}

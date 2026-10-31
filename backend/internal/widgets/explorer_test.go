@@ -11,6 +11,7 @@ import (
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/users"
 )
@@ -21,6 +22,7 @@ type fixture struct {
 	dash      *dashboards.Store
 	fav       *favourites.Store
 	notes     *notes.Store
+	media     *media.Store
 	ann, bob  string
 	dashboard string
 }
@@ -47,7 +49,10 @@ func newFixture(t *testing.T) *fixture {
 	}
 	f := &fixture{t: t, ctx: ctx, dash: dashboards.NewStore(database), fav: favourites.NewStore(database), ann: ann.ID, bob: bob.ID}
 	f.notes = notes.NewStore(database)
-	Register(f.dash, f.fav, f.notes, images.NewFavicons(imageStore, false))
+	f.media = media.NewStore(database,
+		func(_ context.Context, rawURL string) (string, error) { return rawURL, nil },
+		func(context.Context, string, string) (string, error) { return "", errors.New("no logos in tests") })
+	Register(f.dash, f.fav, f.notes, f.media, images.NewFavicons(imageStore, false))
 	d, err := f.dash.Create(ctx, ann.ID, dashboards.Fields{Title: "Home", Slug: "home", IsPublic: true})
 	if err != nil {
 		t.Fatal(err)

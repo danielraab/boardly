@@ -8,6 +8,7 @@ import {
 	LogOut,
 	NotebookPen,
 	Paperclip,
+	Radio,
 	Settings,
 	Star,
 } from "lucide-react";
@@ -76,6 +77,14 @@ export function UserMenu() {
 								>
 									<NotebookPen className="size-4 text-muted" aria-hidden />
 									{t("shell.notes")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/media" />}
+								>
+									<Radio className="size-4 text-muted" aria-hidden />
+									{t("shell.media")}
 								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick

@@ -29,6 +29,7 @@ func TestSweep(t *testing.T) {
 	referenced := save(SourceUpload, ann)
 	noteIcon := save(SourceUpload, ann)
 	categoryIcon := save(SourceUpload, ann)
+	stationIcon := save(SourceUpload, ann)
 	favicon := save(SourceFavicon, "")
 
 	// A widget refers to an image by "imageId", nested in its config.
@@ -44,6 +45,9 @@ func TestSweep(t *testing.T) {
 		// Notes and note categories refer to their icon image.
 		{`INSERT INTO notes (id, user_id, icon_image_id, content, created_at, updated_at) VALUES ('n1', ?, ?, '{}', ?, ?)`, []any{ann, noteIcon, ts, ts}},
 		{`INSERT INTO note_categories (id, user_id, title, icon_image_id, created_at, updated_at) VALUES ('c1', ?, 'C', ?, ?, ?)`, []any{ann, categoryIcon, ts, ts}},
+		// A media source refers to its icon image.
+		{`INSERT INTO media_sources (id, user_id, kind, title, url, icon_image_id, position, created_at, updated_at)
+		  VALUES ('m1', ?, 'stream', 'FM4', 'https://fm4.example/', ?, 0, ?, ?)`, []any{ann, stationIcon, ts, ts}},
 	} {
 		if _, err := s.DB.Exec(q.query, q.args...); err != nil {
 			t.Fatal(err)
@@ -77,7 +81,7 @@ func TestSweep(t *testing.T) {
 	if _, _, err := s.Open(ctx, unused); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unused upload: %v", err)
 	}
-	for name, id := range map[string]string{"referenced": referenced, "note icon": noteIcon, "category icon": categoryIcon, "fresh": fresh, "favicon": favicon} {
+	for name, id := range map[string]string{"referenced": referenced, "note icon": noteIcon, "category icon": categoryIcon, "station icon": stationIcon, "fresh": fresh, "favicon": favicon} {
 		_, f, err := s.Open(ctx, id)
 		if err != nil {
 			t.Errorf("%s: %v", name, err)

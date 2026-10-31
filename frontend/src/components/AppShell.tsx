@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { useMe } from "#/features/auth/session";
 import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard";
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
+import { MiniPlayer } from "#/features/media/MiniPlayer";
+import { MediaPlayerProvider } from "#/features/media/player";
 import { appTitle } from "#/lib/appTitle";
 import { AppIcon } from "./AppIcon";
 import { headerButton } from "./buttonStyles";
@@ -18,29 +20,32 @@ const container = "mx-auto w-full max-w-screen-2xl px-4 sm:px-6";
 export function AppShell({ children }: { children: ReactNode }) {
 	return (
 		<CurrentDashboardProvider>
-			<div className="flex min-h-screen flex-col">
-				<header
-					className={`${container} flex items-center justify-between py-3`}
-				>
-					<div className="flex min-w-0 items-center gap-1.5">
-						<Link
-							to="/"
-							className="flex min-w-0 items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
-						>
-							<AppIcon className="size-6 shrink-0" />
-							<span className="truncate">{appTitle()}</span>
-						</Link>
-						<DashboardSwitcher />
-					</div>
-					<div className="flex items-center gap-1">
-						<AddLinkButton />
-						<ThemeSwitcher />
-						<LanguageSwitcher />
-						<UserMenu />
-					</div>
-				</header>
-				<main className={`${container} flex-1 pb-16`}>{children}</main>
-			</div>
+			<MediaPlayerProvider>
+				<div className="flex min-h-screen flex-col">
+					<header
+						className={`${container} flex items-center justify-between py-3`}
+					>
+						<div className="flex min-w-0 items-center gap-1.5">
+							<Link
+								to="/"
+								className="flex min-w-0 items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
+							>
+								<AppIcon className="size-6 shrink-0" />
+								<span className="truncate">{appTitle()}</span>
+							</Link>
+							<DashboardSwitcher />
+						</div>
+						<div className="flex items-center gap-1">
+							<AddLinkButton />
+							<ThemeSwitcher />
+							<LanguageSwitcher />
+							<UserMenu />
+						</div>
+					</header>
+					<main className={`${container} flex-1 pb-16`}>{children}</main>
+					<MiniPlayer />
+				</div>
+			</MediaPlayerProvider>
 		</CurrentDashboardProvider>
 	);
 }

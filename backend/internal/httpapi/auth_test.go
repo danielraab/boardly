@@ -22,6 +22,7 @@ import (
 	"boardly/internal/images"
 	"boardly/internal/jobs"
 	"boardly/internal/mail"
+	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/users"
 	"boardly/internal/widgets"
@@ -82,6 +83,7 @@ type server struct {
 	mail        *outbox
 	images      *images.Store
 	attachments *attachments.Store
+	media       *media.Store
 	favicons    *images.Favicons
 	previews    *images.Previews
 	jobs        *jobs.Queue
@@ -127,17 +129,18 @@ func newServer(t *testing.T) *server {
 		t.Fatal(err)
 	}
 	attachmentStore.Now = c.Now
-	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)
+	mediaStore := media.NewStore(database, fakeStreamCheck, favicons.FetchLogo)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, favicons)
 
 	appTokens := apptokens.NewStore(database)
 	appTokens.Now = c.Now
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore,
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

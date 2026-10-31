@@ -27,6 +27,7 @@ import (
 	"boardly/internal/images"
 	"boardly/internal/jobs"
 	"boardly/internal/mail"
+	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/users"
 	"boardly/internal/web"
@@ -109,7 +110,8 @@ func run() error {
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
 	noteStore := notes.NewStore(database)
-	widgets.Register(dashboardStore, favouriteStore, noteStore, favicons)
+	mediaStore := media.NewStore(database, media.NewChecker(cfg.FetchAllowPrivate).Check, favicons.FetchLogo)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, favicons)
 
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
@@ -121,6 +123,7 @@ func run() error {
 			Favourites:        favouriteStore,
 			Dashboards:        dashboardStore,
 			Notes:             noteStore,
+			Media:             mediaStore,
 			Images:            imageStore,
 			Attachments:       attachmentStore,
 			Favicons:          favicons,

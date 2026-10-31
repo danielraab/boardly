@@ -62,6 +62,15 @@ func checkIcon(ctx context.Context, q db.Querier, userID string, icon *Icon) (sy
 	}
 }
 
+// CheckIcon is checkIcon for other stores whose rows have icons of the same
+// kind, such as media sources.
+func CheckIcon(ctx context.Context, q db.Querier, userID string, icon *Icon) (symbol, imageID *string, err error) {
+	return checkIcon(ctx, q, userID, icon)
+}
+
+// IconOf is iconOf for other stores.
+func IconOf(symbol, imageID *string) *Icon { return iconOf(symbol, imageID) }
+
 // iconOf returns the icon stored in the columns, or nil.
 func iconOf(symbol, imageID *string) *Icon {
 	switch {
