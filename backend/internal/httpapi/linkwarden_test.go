@@ -293,7 +293,7 @@ func TestLinkwardenMobileFlow(t *testing.T) {
 	lwDecode[map[string]any](t, c.do("GET", lwV1+"/tags/"+strconv.FormatInt(tagID, 10), ""), http.StatusOK)
 	lwDecode[map[string]any](t, c.do("DELETE", lwV1+"/tags/"+strconv.FormatInt(tagID, 10), ""), http.StatusOK)
 
-	// Delete a collection: its links move to the parent.
+	// Delete a collection: its links go with it, as in Linkwarden.
 	var laterNum int64
 	for _, col := range collections {
 		if col.Name == "Later" {
@@ -302,7 +302,7 @@ func TestLinkwardenMobileFlow(t *testing.T) {
 	}
 	lwDecode[lwCollection](t, c.do("DELETE", lwV1+"/collections/"+strconv.FormatInt(laterNum, 10), ""), http.StatusOK)
 	all := lwDecode[lwLinks](t, c.do("GET", lwV1+"/search?collectionId="+strconv.FormatInt(root, 10), ""), http.StatusOK)
-	if len(all.Links) != 50 || all.NextCursor == nil {
+	if len(all.Links) != 1 || all.Links[0].Name != "Renamed" || all.NextCursor != nil {
 		t.Errorf("links in root after delete: %d", len(all.Links))
 	}
 	if rec := c.do("DELETE", lwV1+"/collections/"+strconv.FormatInt(root, 10), ""); rec.Code != http.StatusForbidden {
@@ -325,8 +325,8 @@ func TestLinkwardenMobileFlow(t *testing.T) {
 			t.Errorf("GET %s: %d %s", path, rec.Code, rec.Body)
 		}
 	}
-	if rec := c.do("PUT", lwV1+"/collections/1", `{}`); rec.Code != http.StatusNotFound {
-		t.Errorf("PUT collection: %d", rec.Code)
+	if rec := c.do("PATCH", lwV1+"/collections/"+strconv.FormatInt(root, 10), `{}`); rec.Code != http.StatusNotFound {
+		t.Errorf("PATCH collection: %d", rec.Code)
 	}
 }
 

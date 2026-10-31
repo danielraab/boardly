@@ -28,6 +28,9 @@ var (
 	// ErrRootCollection is returned when the token's root collection would be
 	// deleted.
 	ErrRootCollection = errors.New("The folder of this connected app can't be deleted.")
+	// ErrRootCollectionEdit is returned when the token's root collection would
+	// be renamed or moved.
+	ErrRootCollectionEdit = errors.New("The folder of this connected app can't be renamed or moved.")
 	// ErrTagCreate is returned by CreateTag: tags only exist on links.
 	ErrTagCreate = errors.New("Boardly creates tags when you add them to a link.")
 )
@@ -286,12 +289,20 @@ func linkName(n *favourites.ScopedNode) string {
 	return *n.URL
 }
 
+// nested reports whether a collection has a parent collection. The token's
+// root collection and the folders directly in it are top-level, side by
+// side, as Linkwarden's "Unorganized" is next to the other top-level
+// collections; Floccus looks for its folder among the top-level ones only.
+func (t *tree) nested(n *favourites.ScopedNode) bool {
+	return n.ID != t.scope.RootID && n.ParentID != t.scope.RootID
+}
+
 func (t *tree) shortCollection(n *favourites.ScopedNode) ShortCollection {
 	c := ShortCollection{
 		ID: n.Num, Name: folderName(n), Color: "#0ea5e9", OwnerID: userID, CreatedByID: userID,
 		CreatedAt: Time(n.CreatedAt), UpdatedAt: Time(n.UpdatedAt),
 	}
-	if p, ok := t.byID[n.ParentID]; ok && n.ID != t.scope.RootID {
+	if p, ok := t.byID[n.ParentID]; ok && t.nested(n) {
 		c.ParentID = &p.Num
 	}
 	return c
@@ -299,7 +310,7 @@ func (t *tree) shortCollection(n *favourites.ScopedNode) ShortCollection {
 
 func (t *tree) fullCollection(n *favourites.ScopedNode) Collection {
 	c := Collection{ShortCollection: t.shortCollection(n), Members: []struct{}{}}
-	if p, ok := t.byID[n.ParentID]; ok && n.ID != t.scope.RootID {
+	if p, ok := t.byID[n.ParentID]; ok && t.nested(n) {
 		c.Parent = &Parent{ID: p.Num, Name: folderName(p)}
 	}
 	for _, child := range t.children[n.ID] {

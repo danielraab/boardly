@@ -21,7 +21,8 @@ const karakeepPrefix = "/api/karakeep"
 
 // karakeepAPI serves what the Karakeep browser extension and mobile app call:
 // their tRPC procedures, two status endpoints, and uploading and loading the
-// files of asset bookmarks. Nothing else of Karakeep's API is implemented.
+// files of asset bookmarks; and the REST endpoints that sync clients such as
+// Floccus call. Nothing else of Karakeep's API is implemented.
 func (a *api) karakeepAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET "+karakeepPrefix+"/api/health", HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
@@ -34,6 +35,7 @@ func (a *api) karakeepAPI() *http.ServeMux {
 	}))
 	mux.Handle("POST "+karakeepPrefix+"/api/assets", karakeepREST(a.karakeepUploadAsset))
 	mux.Handle("GET "+karakeepPrefix+"/api/assets/{id}", karakeepREST(a.karakeepAsset))
+	a.karakeepRESTv1(mux)
 	mux.Handle(karakeepPrefix+"/api/trpc/", &trpc.Server{
 		Prefix:     karakeepPrefix + "/api/trpc/",
 		Procedures: a.karakeepProcedures(),
@@ -45,15 +47,21 @@ func (a *api) karakeepAPI() *http.ServeMux {
 	return mux
 }
 
-// karakeepProcedures returns the tRPC procedures: login and configuration,
-// and bookmarks, lists, tags and user data on the token's subtree.
-func (a *api) karakeepProcedures() map[string]trpc.Procedure {
+// karakeepService is the Karakeep service behind the procedures and the
+// REST endpoints.
+func (a *api) karakeepService() *karakeep.Service {
 	var icons karakeep.Favicons = noFavicons{}
 	if a.favicons != nil {
 		icons = a.favicons
 	}
-	k := &karakeep.Service{Favourites: a.favourites, Notes: a.notes, Favicons: icons, Origin: a.origin,
+	return &karakeep.Service{Favourites: a.favourites, Notes: a.notes, Favicons: icons, Origin: a.origin,
 		Now: func() time.Time { return a.favourites.Now() }}
+}
+
+// karakeepProcedures returns the tRPC procedures: login and configuration,
+// and bookmarks, lists, tags and user data on the token's subtree.
+func (a *api) karakeepProcedures() map[string]trpc.Procedure {
+	k := a.karakeepService()
 	query := func(h func(context.Context, json.RawMessage) (any, error)) trpc.Procedure {
 		return trpc.Procedure{Kind: trpc.Query, Handle: h}
 	}

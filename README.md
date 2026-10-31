@@ -8,7 +8,7 @@ real user accounts.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
 - **Notes** with todos, written with Markdown shortcuts and sorted into nested categories.
 - **Internet radio** in a player that keeps playing while you move around the app.
-- **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly.
+- **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly, and [Floccus](#floccus-bookmark-sync) can sync your browser bookmarks with it.
 - **Memos-compatible server**, so the MoeMemos Android app can write, tick off, pin and archive your notes.
 - **Passwordless login** with magic links and passkeys.
 
@@ -260,8 +260,9 @@ plays at a time.
 
 The Karakeep browser extension and the Karakeep mobile app (iOS/Android) can connect to Boardly as
 if it were a Karakeep server. These two clients talk Karakeep's internal tRPC API, and Boardly
-implements only the parts of it that they call. Karakeep's REST API (`/api/v1`) and other clients
-such as the CLI aren't supported.
+implements only the parts of it that they call. Of Karakeep's REST API (`/api/v1`), only the
+bookmark and list endpoints that [Floccus](#floccus-bookmark-sync) uses are implemented; other
+clients such as the CLI aren't supported.
 
 Apps are connected on **Settings → Connected apps** (`/settings?tab=apps`):
 
@@ -335,15 +336,18 @@ password login answers with a message to use an access token, because Boardly ha
 Everything goes through the key's folder, as for Karakeep, with these differences:
 
 - **Collections** are the key's folder **and** the folders below it, because every Linkwarden link
-  is in a collection. The key's folder is the top collection; the user's top-level folder, which has
-  no name, is called "Unorganized". A link is in the collection of the folder it's directly in.
+  is in a collection. The key's folder and the folders directly in it are top-level collections,
+  side by side, like Linkwarden's "Unorganized" next to the other collections; deeper folders are
+  nested below them. The user's top-level folder, which has no name, is called "Unorganized". A
+  link is in the collection of the folder it's directly in.
 - A link saved from the extension or the app goes to the **top** of its collection. The extension's
   default collection "Unorganized" is the key's folder; another collection name that doesn't exist
   yet creates that folder in the key's folder. Saving a URL that's already there saves it again, as
   in Linkwarden. The extension's "already saved" badge works.
-- Moving a link to another collection moves it to the top of that folder. Deleting a collection
-  keeps its links and subfolders by moving them to the parent folder (Linkwarden would delete the
-  links). The key's folder itself can't be deleted.
+- Moving a link to another collection moves it to the top of that folder. A collection can be
+  renamed and moved into another collection. Deleting a collection deletes its links and
+  subfolders too, as in Linkwarden (earlier Boardly versions moved them to the parent folder). The
+  key's folder itself can't be renamed, moved or deleted.
 - **Tags** work as for Karakeep: deleting a tag in the app removes it only from links in the folder,
   and tags are created by adding them to a link, not on their own.
 - A link's **description** is shown and can be edited in the app and the extension.
@@ -363,6 +367,30 @@ cross-origin calls, as for Karakeep. IDs are numbers, because the Linkwarden cli
 every folder, link and tag has a stable integer ID next to its internal one. The endpoints and data
 shapes follow Linkwarden v2.16.3 (commit `952ac45`, September 2026), and Boardly reports that
 version to the clients.
+
+### Floccus bookmark sync
+
+[Floccus](https://floccus.org) syncs the bookmarks of your browsers (as an extension for Chrome,
+Firefox, Edge and others) and phones (as an app for Android and iOS) through a server. Boardly can
+be that server, so your browser bookmarks live in your favourites tree. Floccus talks to Boardly
+through the [Linkwarden](#linkwarden-compatible-server) or the
+[Karakeep](#karakeep-compatible-server) API:
+
+1. On **Settings → Connected apps**, connect an app of type **Linkwarden** (recommended) or
+   **Karakeep**, and choose the folder Floccus may use, for example a new folder "Browser".
+2. In Floccus, add a profile of type **Linkwarden** or **Karakeep**. Enter the server address
+   shown for the key (`<BOARDLY_BASE_URL>/api/linkwarden` or `<BOARDLY_BASE_URL>/api/karakeep`)
+   and the key as the password or token, and test the connection. Choose a server folder name;
+   Floccus creates it in the key's folder on the first sync and finds it there again later.
+
+Folders become folders and bookmarks become links of the favourites tree, with their tags. Renaming,
+moving and deleting bookmarks and folders syncs both ways.
+
+Prefer the **Linkwarden** type: a Boardly link is in exactly one folder, and only Linkwarden keeps a
+separate link for each copy. With the **Karakeep** type, a URL that is bookmarked in two browser
+folders is one link in Boardly, which Floccus then moves back and forth between the two folders on
+every sync. The Karakeep type also reuses a link with the same URL that is already in the key's
+folder, and moves it into the synced folder.
 
 ### Memos-compatible server
 

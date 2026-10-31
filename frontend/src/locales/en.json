@@ -55,12 +55,10 @@
 	},
 	"landing": {
 		"hero": {
-			"tagline": "Your favourites and dashboards, self-hosted and in one place.",
+			"tagline": "Your everyday helper: start page, bookmarks and notes, self-hosted.",
 			"cta": "Sign in"
 		},
-		"screenshot": {
-			"placeholder": "Screenshot coming soon"
-		},
+		"sketch": "Illustration of a Boardly dashboard with favourites, links, a note and a radio widget",
 		"featuresTitle": "What {{appName}} does",
 		"github": "GitHub",
 		"footer": {
@@ -69,16 +67,24 @@
 	},
 	"features": {
 		"dashboards": {
-			"title": "Dashboards",
-			"description": "Build start pages with links, sections and navigation trees right in the browser."
+			"title": "Your start page, your way",
+			"description": "Put links, notes and radio stations on dashboards and arrange them right in the browser. Share one publicly if you like."
 		},
 		"favourites": {
-			"title": "Favourites",
-			"description": "Keep all your bookmarks in one tree of folders and links."
+			"title": "Every bookmark in one place",
+			"description": "Keep all your links in one tree of folders. Bring them over from your browser, Karakeep or Linkwarden in a single import."
 		},
-		"karakeep": {
-			"title": "Karakeep and Linkwarden apps",
-			"description": "Save links from the Karakeep and Linkwarden browser extensions and mobile apps."
+		"notes": {
+			"title": "Notes right next to your links",
+			"description": "Jot down ideas and todo lists on colourful notes and put them on any dashboard."
+		},
+		"apps": {
+			"title": "Works with the apps you already use",
+			"description": "Save links with the Karakeep or Linkwarden browser extension and mobile app, and write notes in a Memos app like MoeMemos. Floccus keeps your browser bookmarks in sync across every browser and phone. Everything lands in Boardly."
+		},
+		"radio": {
+			"title": "Your radio, one click away",
+			"description": "Collect your favourite stations and start one from any page or dashboard."
 		}
 	},
 	"common": {
@@ -119,7 +125,7 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app, or a Memos app like MoeMemos, to your favourites and notes. Each connection gets its own API key and only sees the folder you choose for it, and for Karakeep and Memos the notes of the category you choose.",
+			"intro": "Connect apps such as the Karakeep or Linkwarden browser extension or mobile app, or a Memos app like MoeMemos, to your favourites and notes. Each connection gets its own API key and only sees the folder you choose for it, and for Karakeep and Memos the notes of the category you choose. To sync your browser bookmarks with Floccus, connect a Linkwarden app.",
 			"connect": "Connect app",
 			"emptyTitle": "No connected apps yet",
 			"emptyText": "Connect a Karakeep or Linkwarden app to save links straight into a folder of your favourites, or a Memos app to write your notes on the go. The app only sees the folder or category you choose.",

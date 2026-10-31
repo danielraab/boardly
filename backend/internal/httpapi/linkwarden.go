@@ -141,6 +141,24 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		}
 		return lw.CreateCollection(r.Context(), sc, in)
 	})
+	respond("GET "+v1+"/collections/{id}", func(r *http.Request, sc favourites.Scope) (any, error) {
+		num, err := pathNum(r, linkwarden.ErrCollectionNotFound)
+		if err != nil {
+			return nil, err
+		}
+		return lw.Collection(r.Context(), sc, num)
+	})
+	respond("PUT "+v1+"/collections/{id}", func(r *http.Request, sc favourites.Scope) (any, error) {
+		num, err := pathNum(r, linkwarden.ErrCollectionNotFound)
+		if err != nil {
+			return nil, err
+		}
+		var in linkwarden.EditCollectionInput
+		if err := decodeLinkwarden(r, &in); err != nil {
+			return nil, err
+		}
+		return lw.EditCollection(r.Context(), sc, num, in)
+	})
 	respond("DELETE "+v1+"/collections/{id}", func(r *http.Request, sc favourites.Scope) (any, error) {
 		num, err := pathNum(r, linkwarden.ErrCollectionNotFound)
 		if err != nil {
@@ -335,7 +353,7 @@ func linkwardenErrorOf(err error) *linkwardenFailure {
 		return &linkwardenFailure{http.StatusNotFound, "Not found."}
 	case errors.As(err, &input):
 		return &linkwardenFailure{http.StatusBadRequest, input.Message}
-	case errors.Is(err, linkwarden.ErrRootCollection), errors.Is(err, linkwarden.ErrTagCreate):
+	case errors.Is(err, linkwarden.ErrRootCollection), errors.Is(err, linkwarden.ErrRootCollectionEdit), errors.Is(err, linkwarden.ErrTagCreate):
 		return &linkwardenFailure{http.StatusForbidden, err.Error()}
 	}
 	var apiErr *Error

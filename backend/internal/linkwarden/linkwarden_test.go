@@ -173,7 +173,7 @@ func TestShapes(t *testing.T) {
 	const tag = `{"id":1,"name":"dev","ownerId":1,"archiveAsScreenshot":null,"archiveAsMonolith":null,"archiveAsPDF":null,` +
 		`"archiveAsReadable":null,"archiveAsWaybackMachine":null,"aiTag":null,"aiGenerated":false,` +
 		`"createdAt":"2026-03-04T12:05:00.000Z","updatedAt":"2026-03-04T12:05:00.000Z"`
-	const short = `{"id":3,"name":"Later","description":"","icon":null,"iconWeight":null,"color":"#0ea5e9","parentId":2,` +
+	const short = `{"id":3,"name":"Later","description":"","icon":null,"iconWeight":null,"color":"#0ea5e9","parentId":null,` +
 		`"isPublic":false,"ownerId":1,"createdById":1,"createdAt":"2026-03-04T12:03:00.000Z","updatedAt":"2026-03-04T12:03:00.000Z"}`
 	want := `{"id":4,"name":"Go","type":"url","description":"","createdById":1,"collectionId":3,"icon":null,"iconWeight":null,` +
 		`"color":null,"url":"https://go.dev/tour","textContent":null,"preview":"archives/preview/3/4.jpeg","image":"unavailable",` +
@@ -189,7 +189,8 @@ func TestShapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantCollection := short[:len(short)-1] + `,"parent":{"id":2,"name":"Reading"},"members":[],"_count":{"links":1}}`
+	// Later is directly in the token's folder, so it is top-level too.
+	wantCollection := short[:len(short)-1] + `,"parent":null,"members":[],"_count":{"links":1}}`
 	if len(collections) != 2 || jsonOf(t, collections[1]) != wantCollection {
 		t.Errorf("collections = %s, want Reading and\n%s", jsonOf(t, collections), wantCollection)
 	}
@@ -235,8 +236,9 @@ func TestTopLevelIsUnorganized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Folders in the top-level folder are top-level collections next to it.
 	if len(collections) != 2 || collections[0].Name != "Unorganized" || collections[1].Name != "Reading" ||
-		collections[1].ParentID == nil || *collections[1].ParentID != collections[0].ID {
+		collections[1].ParentID != nil {
 		t.Errorf("collections = %s", jsonOf(t, collections))
 	}
 }

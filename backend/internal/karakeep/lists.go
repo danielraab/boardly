@@ -244,6 +244,10 @@ func (s *Service) AddToList(ctx context.Context, sc Scope, listID, bookmarkID st
 	return s.Favourites.Move(ctx, sc.UserID, bookmarkID, listID, 0)
 }
 
+// ErrNotInList is returned by RemoveFromList for a link that isn't directly
+// in the list.
+var ErrNotInList = &InputError{"The bookmark isn't in this list"}
+
 // RemoveFromList is lists.removeFromList: the link moves first into the
 // token's root folder.
 func (s *Service) RemoveFromList(ctx context.Context, sc Scope, listID, bookmarkID string) error {
@@ -262,7 +266,7 @@ func (s *Service) RemoveFromList(ctx context.Context, sc Scope, listID, bookmark
 		return errNoteInList
 	}
 	if link.ParentID != listID {
-		return &InputError{"The bookmark isn't in this list"}
+		return ErrNotInList
 	}
 	return s.Favourites.Move(ctx, sc.UserID, bookmarkID, sc.RootID, 0)
 }
