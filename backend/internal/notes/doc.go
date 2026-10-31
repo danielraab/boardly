@@ -255,23 +255,31 @@ func AttachmentIDs(d Doc) []string {
 	return ids
 }
 
-// SplitTrailingAttachments splits off the attachment blocks at the end of d,
-// after its last block of another type, for connected apps that keep
-// attachments next to the text. It returns the rest of d and the IDs of the
-// split-off attachments, each once, in the order they first appear.
-func SplitTrailingAttachments(d Doc) (Doc, []string) {
+// SplitMemoTail splits d into the parts that connected apps such as Memos
+// keep apart: the attachment blocks at the end of d (their IDs, each once,
+// in the order they first appear), the location block right before them,
+// if any, and the rest of d.
+func SplitMemoTail(d Doc) (body Doc, loc *Block, ids []string) {
 	end := len(d.Blocks)
 	for end > 0 && d.Blocks[end-1].Type == BlockAttachment {
 		end--
 	}
-	body := Doc{V: d.V, Blocks: d.Blocks[:end:end]}
-	return body, AttachmentIDs(Doc{Blocks: d.Blocks[end:]})
+	ids = AttachmentIDs(Doc{Blocks: d.Blocks[end:]})
+	if end > 0 && d.Blocks[end-1].Type == BlockLocation {
+		b := d.Blocks[end-1]
+		loc = &b
+		end--
+	}
+	return Doc{V: d.V, Blocks: d.Blocks[:end:end]}, loc, ids
 }
 
-// JoinTrailingAttachments is d followed by an attachment block for each of
-// ids, each once, the opposite of SplitTrailingAttachments.
-func JoinTrailingAttachments(d Doc, ids []string) Doc {
-	blocks := append([]Block{}, d.Blocks...)
+// JoinMemoTail is body followed by loc, if not nil, and an attachment block
+// for each of ids, each once, the opposite of SplitMemoTail.
+func JoinMemoTail(body Doc, loc *Block, ids []string) Doc {
+	blocks := append([]Block{}, body.Blocks...)
+	if loc != nil {
+		blocks = append(blocks, *loc)
+	}
 	seen := map[string]bool{}
 	for _, id := range ids {
 		if !seen[id] {
@@ -279,7 +287,22 @@ func JoinTrailingAttachments(d Doc, ids []string) Doc {
 			blocks = append(blocks, Block{Type: BlockAttachment, ID: id})
 		}
 	}
-	return Doc{V: d.V, Blocks: blocks}
+	return Doc{V: body.V, Blocks: blocks}
+}
+
+// SplitTrailingAttachments splits off the attachment blocks at the end of d,
+// after its last block of another type, for connected apps that keep
+// attachments next to the text. It returns the rest of d and the IDs of the
+// split-off attachments, each once, in the order they first appear.
+func SplitTrailingAttachments(d Doc) (Doc, []string) {
+	body, loc, ids := SplitMemoTail(d)
+	return JoinMemoTail(body, loc, nil), ids
+}
+
+// JoinTrailingAttachments is d followed by an attachment block for each of
+// ids, each once, the opposite of SplitTrailingAttachments.
+func JoinTrailingAttachments(d Doc, ids []string) Doc {
+	return JoinMemoTail(d, nil, ids)
 }
 
 // checkList validates a list at depth (1 for a top-level list).

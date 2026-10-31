@@ -2,19 +2,21 @@
 // API that the MoeMemos Android app uses: a memo is a note, its content is
 // the note as Markdown with the title as a leading level-1 heading, its
 // pinned flag is the note's, and its state ARCHIVED is the note's archived
-// flag, and the attachment blocks at the end of the note are its
-// attachments. Memos are always private. The shapes follow MoeMemos'
+// flag, the attachment blocks at the end of the note are its attachments,
+// and a location block right before them is its location. Memos are always private. The shapes follow MoeMemos'
 // MemosV1Api.kt (mudkipme/MoeMemosAndroid, October 2026), which talks to
 // Memos 0.27 to 0.31.
 package memos
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"boardly/internal/notes"
 	"boardly/internal/users"
@@ -53,6 +55,7 @@ var (
 	errState           = invalid("The state must be NORMAL or ARCHIVED.")
 	errContent         = invalid("A memo needs a content.")
 	errTooLarge        = invalid("The memo is too large.")
+	errLocation        = invalid("The location needs a latitude from -90 to 90 and a longitude from -180 to 180.")
 )
 
 // Time is a time as Memos writes it: RFC 3339 in UTC with milliseconds, so
@@ -151,6 +154,7 @@ type Memo struct {
 	Visibility  string       `json:"visibility"`
 	Pinned      bool         `json:"pinned"`
 	Attachments []Attachment `json:"attachments"`
+	Location    *Location    `json:"location,omitempty"`
 	Tags        []string     `json:"tags"`
 	Relations   []struct{}   `json:"relations"`
 }
@@ -164,16 +168,82 @@ const (
 // memoName is the Memos name of a note, "memos/<id>".
 func memoName(id string) string { return "memos/" + id }
 
+// Location is the location of a memo.
+type Location struct {
+	Placeholder string  `json:"placeholder"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+}
+
+// locationOf is the memo location of a location block, nil for nil.
+func locationOf(b *notes.Block) *Location {
+	if b == nil {
+		return nil
+	}
+	l := &Location{Latitude: *b.Lat, Longitude: *b.Lng}
+	if b.Label != nil {
+		l.Placeholder = *b.Label
+	}
+	return l
+}
+
+// locationBlock reads a memo location from JSON as a location block: null
+// is nil, coordinates are rounded to 6 decimals, and the placeholder becomes
+// the label, trimmed, on one line and cut to notes.MaxLocationLabel
+// characters; an empty one is no label. Missing or out-of-range
+// coordinates, or ones that aren't numbers, are errLocation.
+func locationBlock(raw json.RawMessage) (*notes.Block, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var in struct {
+		Placeholder *string  `json:"placeholder"`
+		Latitude    *float64 `json:"latitude"`
+		Longitude   *float64 `json:"longitude"`
+	}
+	if err := json.Unmarshal(raw, &in); err != nil || in.Latitude == nil || in.Longitude == nil ||
+		!notes.ValidLatLng(*in.Latitude, *in.Longitude) {
+		return nil, errLocation
+	}
+	lat, lng := notes.RoundCoordinate(*in.Latitude), notes.RoundCoordinate(*in.Longitude)
+	b := &notes.Block{Type: notes.BlockLocation, Lat: &lat, Lng: &lng}
+	if in.Placeholder != nil {
+		label := strings.TrimSpace(strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(*in.Placeholder))
+		if utf8.RuneCountInString(label) > notes.MaxLocationLabel {
+			label = strings.TrimSpace(string([]rune(label)[:notes.MaxLocationLabel]))
+		}
+		if label != "" {
+			b.Label = &label
+		}
+	}
+	return b, nil
+}
+
+// sameLocation reports whether a and b are the same location, or both nil.
+func sameLocation(a, b *notes.Block) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	label := func(b *notes.Block) string {
+		if b.Label == nil {
+			return ""
+		}
+		return *b.Label
+	}
+	return *a.Lat == *b.Lat && *a.Lng == *b.Lng && label(a) == label(b)
+}
+
 // Content is a note's memo content: its content without the trailing
-// attachments as Markdown, preceded by its title as a level-1 heading.
-// Attachment URLs start with origin.
+// location and attachments as Markdown, preceded by its title as a level-1
+// heading. Attachment URLs start with origin.
 func Content(n notes.Note, origin string) string {
-	body, _ := notes.SplitTrailingAttachments(n.Content)
+	body, _, _ := notes.SplitMemoTail(n.Content)
 	return notes.ToMarkdown(notes.WithTitleHeading(n.Title, body), notes.NoteMarkdownAttachments(origin, n))
 }
 
 // MemoOf is the memo of a note of the user with the given ID.
 func MemoOf(userID, origin string, n notes.Note) Memo {
+	_, loc, _ := notes.SplitMemoTail(n.Content)
 	state := StateNormal
 	if n.Archived {
 		state = StateArchived
@@ -182,7 +252,7 @@ func MemoOf(userID, origin string, n notes.Note) Memo {
 		Name: memoName(n.ID), State: state, Creator: UserName(userID),
 		CreateTime: Time(n.CreatedAt), UpdateTime: Time(n.UpdatedAt), DisplayTime: Time(n.CreatedAt),
 		Content: Content(n, origin), Visibility: "PRIVATE", Pinned: n.Pinned,
-		Attachments: memoAttachments(origin, n), Tags: []string{}, Relations: []struct{}{},
+		Attachments: memoAttachments(origin, n), Location: locationOf(loc), Tags: []string{}, Relations: []struct{}{},
 	}
 }
 
