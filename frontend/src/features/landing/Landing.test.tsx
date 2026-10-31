@@ -37,8 +37,15 @@ describe("landing page", () => {
 		expect(items).toHaveLength(features.length);
 		expect(
 			items.map((item) => within(item).getByRole("heading").textContent),
-		).toEqual(["Dashboards", "Favourites", "Notes"]);
-		expect(list).not.toHaveTextContent(/Karakeep|Linkwarden|Memos/);
+		).toEqual([
+			"Your start page, your way",
+			"Every bookmark in one place",
+			"Notes right next to your links",
+			"Works with the apps you already use",
+			"Your radio, one click away",
+		]);
+		expect(items[3]).toHaveTextContent(/Karakeep.*Linkwarden.*Memos/);
+		expect(items[4]).toHaveTextContent(/stations/);
 	});
 
 	it("links GitHub next to the call to action, in a new tab", async () => {

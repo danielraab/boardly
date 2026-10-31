@@ -67,16 +67,24 @@
 	},
 	"features": {
 		"dashboards": {
-			"title": "Dashboards",
-			"description": "Build start pages with links, sections and navigation trees right in the browser."
+			"title": "Your start page, your way",
+			"description": "Put links, notes and radio stations on dashboards and arrange them right in the browser. Share one publicly if you like."
 		},
 		"favourites": {
-			"title": "Favourites",
-			"description": "Keep all your bookmarks in one tree of folders and links."
+			"title": "Every bookmark in one place",
+			"description": "Keep all your links in one tree of folders. Bring them over from your browser, Karakeep or Linkwarden in a single import."
 		},
 		"notes": {
-			"title": "Notes",
-			"description": "Jot down ideas and todo lists on colourful notes, right next to your links."
+			"title": "Notes right next to your links",
+			"description": "Jot down ideas and todo lists on colourful notes and put them on any dashboard."
+		},
+		"apps": {
+			"title": "Works with the apps you already use",
+			"description": "Save links with the Karakeep or Linkwarden browser extension and mobile app, and write notes in a Memos app like MoeMemos. Everything lands in Boardly."
+		},
+		"radio": {
+			"title": "Your radio, one click away",
+			"description": "Collect your favourite stations and start one from any page or dashboard."
 		}
 	},
 	"common": {

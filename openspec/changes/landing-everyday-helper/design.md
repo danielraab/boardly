@@ -12,7 +12,7 @@ Real dashboard DNA to mirror (stylised, not pixel-perfect widgets): favourites e
 
 - One hero composition: brand, everyday-helper tagline, CTAs, then a dominant theme-aware dashboard sketch.
 - Sketch cues for favourites, links, notes; media only as a grid widget.
-- Feature list = Dashboards, Favourites, Notes; data-driven as today.
+- Feature list = Dashboards, Favourites, Notes, Connected apps, Radio; data-driven as today.
 - Sketch and copy work in all themes and from 320px width.
 - Light motion (about 2–3 cues) that supports hierarchy.
 
@@ -20,8 +20,8 @@ Real dashboard DNA to mirror (stylised, not pixel-perfect widgets): favourites e
 
 - Real screenshots or a seeded demo account.
 - Full-bleed marketing layout outside `AppShell` / `widePage`.
-- Competitor lineage strip or connected-apps as a landing headline.
-- Elevating radio/player or passkeys to equal pillars.
+- Competitor lineage strip or connected apps in the hero/tagline (they appear only as a feature card).
+- Passkeys as a feature card.
 - Interactive sketch (no live data, no clickable fake widgets beyond decorative).
 
 ## Decisions
@@ -50,8 +50,8 @@ Omit: mini-player strip, edit handles, tags, deep nesting, volume UI, third-part
 
 - EN tagline direction: everyday helper — start page, bookmarks and notes, self-hosted.
 - DE: equivalent meaning, natural German (not a calque).
-- Feature ids: `dashboards`, `favourites`, `notes`. Remove `karakeep` from `features.ts` and locale keys used only by the landing list (or leave unused keys only if shared elsewhere — prefer delete if landing-only).
-- Descriptions stay short (one sentence); no "compatible with …" wording.
+- Feature ids, in order: `dashboards`, `favourites`, `notes`, `apps`, `radio`. Remove `karakeep` (replaced by `apps`).
+- Copy rules for the cards: titles name the benefit for the visitor, not the module ("Every bookmark in one place", not "Favourites"); second person, active voice, concrete nouns; one idea per card; descriptions one or two short sentences; no jargon (API key, widget) and no "compatible with …" phrasing. Only claim what the app does today: Karakeep/Linkwarden browser extensions and mobile apps save links into a favourites folder, Memos apps such as MoeMemos write notes, stations play from any page and on dashboards.
 
 ### 4. Motion
 
@@ -59,7 +59,7 @@ Use CSS (or existing project patterns if any) for: (1) sketch panels fade/slide 
 
 ### 5. Tests
 
-Update `Landing.test.tsx`: assert new tagline, sketch accessible name / absence of placeholder string, feature headings Dashboards / Favourites / Notes, no Karakeep/Linkwarden feature card. Keep GitHub and footer tests.
+Update `Landing.test.tsx`: assert new tagline, sketch accessible name / absence of placeholder string, feature headings in order (five cards), apps card naming Karakeep, Linkwarden and Memos. Keep GitHub and footer tests.
 
 ## Risks / Trade-offs
 

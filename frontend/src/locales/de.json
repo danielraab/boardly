@@ -67,16 +67,24 @@
 	},
 	"features": {
 		"dashboards": {
-			"title": "Dashboards",
-			"description": "Gestalte Startseiten mit Links, Bereichen und Navigationsbäumen direkt im Browser."
+			"title": "Deine Startseite, wie du sie willst",
+			"description": "Stell Links, Notizen und Radiosender auf Dashboards zusammen und ordne sie direkt im Browser an. Wenn du willst, teilst du eines öffentlich."
 		},
 		"favourites": {
-			"title": "Favoriten",
-			"description": "Alle Lesezeichen in einem Baum aus Ordnern und Links."
+			"title": "Alle Lesezeichen an einem Ort",
+			"description": "Alle Links in einem Baum aus Ordnern. Hol sie mit einem einzigen Import aus deinem Browser, Karakeep oder Linkwarden."
 		},
 		"notes": {
-			"title": "Notizen",
-			"description": "Halte Ideen und Todo-Listen auf farbigen Notizen fest, direkt neben deinen Links."
+			"title": "Notizen direkt neben deinen Links",
+			"description": "Halte Ideen und Todo-Listen auf farbigen Notizen fest und stell sie auf jedes Dashboard."
+		},
+		"apps": {
+			"title": "Mit den Apps, die du schon nutzt",
+			"description": "Speichere Links mit der Browsererweiterung oder Mobil-App von Karakeep oder Linkwarden und schreib Notizen in einer Memos-App wie MoeMemos. Alles landet in Boardly."
+		},
+		"radio": {
+			"title": "Dein Radio, einen Klick entfernt",
+			"description": "Sammle deine Lieblingssender und starte sie von jeder Seite und jedem Dashboard aus."
 		}
 	},
 	"common": {

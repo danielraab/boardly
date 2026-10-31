@@ -15,10 +15,16 @@
 
 ## 3. Feature overview and tests
 
-- [x] 3.1 Confirm feature section still data-driven from `features.ts` with Dashboards, Favourites, Notes copy; verify no landing feature entry markets Karakeep/Linkwarden/Memos compatibility
+- [x] 3.1 Confirm feature section still data-driven from `features.ts` with Dashboards, Favourites, Notes copy
 - [x] 3.2 Update `Landing.test.tsx` for the new tagline, sketch (accessible name / no placeholder), and feature headings; verify the landing Vitest file passes
 - [x] 3.3 Keep GitHub hero link and open-source footer behaviour; verify existing GitHub/footer assertions still pass
 
-## 4. Wrap-up
+## 4. More feature cards and copy
 
-- [ ] 4.1 Run `make check` and `make test` and verify both pass
+- [x] 4.1 Add `apps` (Karakeep, Linkwarden, Memos apps and browser extensions) and `radio` feature cards to `features.ts` with icons; verify five entries in order `dashboards`, `favourites`, `notes`, `apps`, `radio`
+- [x] 4.2 Rewrite all five card titles and descriptions in EN/DE following the copy rules in design.md; verify matching keys and that claims match current app behaviour
+- [x] 4.3 Update `Landing.test.tsx` for the five headings and the apps/radio cards; verify the landing Vitest file passes
+
+## 5. Wrap-up
+
+- [ ] 5.1 Run `make check` and `make test` and verify both pass
