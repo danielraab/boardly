@@ -28,6 +28,9 @@ var (
 	// ErrRootCollection is returned when the token's root collection would be
 	// deleted.
 	ErrRootCollection = errors.New("The folder of this connected app can't be deleted.")
+	// ErrRootCollectionEdit is returned when the token's root collection would
+	// be renamed or moved.
+	ErrRootCollectionEdit = errors.New("The folder of this connected app can't be renamed or moved.")
 	// ErrTagCreate is returned by CreateTag: tags only exist on links.
 	ErrTagCreate = errors.New("Boardly creates tags when you add them to a link.")
 )

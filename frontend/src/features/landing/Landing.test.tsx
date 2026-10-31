@@ -44,7 +44,7 @@ describe("landing page", () => {
 			"Works with the apps you already use",
 			"Your radio, one click away",
 		]);
-		expect(items[3]).toHaveTextContent(/Karakeep.*Linkwarden.*Memos/);
+		expect(items[3]).toHaveTextContent(/Karakeep.*Linkwarden.*Memos.*Floccus/);
 		expect(items[4]).toHaveTextContent(/stations/);
 	});
 

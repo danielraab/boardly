@@ -299,16 +299,102 @@ func TestCollections(t *testing.T) {
 		}
 	}
 
-	// Delete: the contents move to the parent, in its place.
+	// Delete: the folder goes with its links and subfolders, as in Linkwarden.
+	before := len(f.nodes())
 	deleted, err := f.s.DeleteCollection(f.ctx, f.sc, f.num(later))
 	if err != nil || deleted.Name != "Later" || deleted.Count.Links != 3 {
 		t.Fatalf("deleted = %+v, err %v", deleted, err)
 	}
-	if kids := f.children(f.sc.RootID); !reflect.DeepEqual(kids, []string{"Videos", "A", "B", "C", "Recipes", "Books"}) {
+	if kids := f.children(f.sc.RootID); !reflect.DeepEqual(kids, []string{"Recipes", "Books"}) {
 		t.Errorf("root after delete = %v", kids)
+	}
+	// Later, Videos, Talks, A, B, C, V1 and V2 are gone.
+	if after := len(f.nodes()); after != before-8 {
+		t.Errorf("nodes after delete = %d, want %d", after, before-8)
 	}
 	if _, err := f.s.DeleteCollection(f.ctx, f.sc, f.num(f.sc.RootID)); !errors.Is(err, ErrRootCollection) {
 		t.Errorf("delete root: err = %v", err)
+	}
+}
+
+func TestGetAndEditCollection(t *testing.T) {
+	f := newFixture(t)
+	later := f.folder(f.sc.RootID, "Later")
+	videos := f.folder(later, "Videos")
+	recipes := f.folder(f.sc.RootID, "Recipes")
+	work := f.folder(f.topLevel, "Work")
+
+	c, err := f.s.Collection(f.ctx, f.sc, f.num(later))
+	if err != nil || c.Name != "Later" || c.Parent == nil || c.Parent.Name != "Reading" {
+		t.Fatalf("get = %+v, err %v", c, err)
+	}
+	if _, err := f.s.Collection(f.ctx, f.sc, f.num(work)); !errors.Is(err, ErrCollectionNotFound) {
+		t.Errorf("get outside: err = %v", err)
+	}
+
+	// Floccus sends back what GET returned, with a new name and parent.
+	echo := func(id string, change map[string]any) EditCollectionInput {
+		t.Helper()
+		got, err := f.s.Collection(f.ctx, f.sc, f.num(id))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(jsonOf(t, got)), &m); err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range change {
+			m[k] = v
+		}
+		var in EditCollectionInput
+		if err := json.Unmarshal([]byte(jsonOf(t, m)), &in); err != nil {
+			t.Fatal(err)
+		}
+		return in
+	}
+
+	renamed, err := f.s.EditCollection(f.ctx, f.sc, f.num(later), echo(later, map[string]any{"name": "Read later"}))
+	if err != nil || renamed.Name != "Read later" {
+		t.Fatalf("rename = %+v, err %v", renamed, err)
+	}
+	moved, err := f.s.EditCollection(f.ctx, f.sc, f.num(videos), echo(videos, map[string]any{"parentId": f.num(recipes)}))
+	if err != nil || moved.Parent == nil || moved.Parent.Name != "Recipes" {
+		t.Fatalf("move = %+v, err %v", moved, err)
+	}
+	if _, err := f.s.EditCollection(f.ctx, f.sc, f.num(videos), echo(videos, map[string]any{"parentId": nil})); err != nil {
+		t.Fatal(err)
+	}
+	if kids := f.children(f.sc.RootID); kids[len(kids)-1] != "Videos" {
+		t.Errorf("root after move to null = %v", kids)
+	}
+	// Unchanged root: no-op.
+	if _, err := f.s.EditCollection(f.ctx, f.sc, f.num(f.sc.RootID), echo(f.sc.RootID, nil)); err != nil {
+		t.Errorf("unchanged root: %v", err)
+	}
+
+	sub := f.folder(later, "Sub")
+	before := f.nodes()
+	for name, tc := range map[string]struct {
+		id     string
+		change map[string]any
+		want   error
+	}{
+		"into itself":    {later, map[string]any{"parentId": f.num(later)}, nil},
+		"into its child": {later, map[string]any{"parentId": f.num(sub)}, nil},
+		"outside parent": {later, map[string]any{"parentId": f.num(work)}, errNotAccessible},
+		"description":    {later, map[string]any{"description": "About"}, nil},
+		"public":         {later, map[string]any{"isPublic": true}, nil},
+		"members":        {later, map[string]any{"members": []any{map[string]any{"userId": 2}}}, nil},
+		"rename root":    {f.sc.RootID, map[string]any{"name": "Other"}, ErrRootCollectionEdit},
+		"move root":      {f.sc.RootID, map[string]any{"parentId": f.num(later)}, ErrRootCollectionEdit},
+	} {
+		_, err := f.s.EditCollection(f.ctx, f.sc, f.num(tc.id), echo(tc.id, tc.change))
+		if err == nil || (tc.want != nil && !errors.Is(err, tc.want)) {
+			t.Errorf("%s: err = %v", name, err)
+		}
+	}
+	if !reflect.DeepEqual(f.nodes(), before) {
+		t.Error("a rejected edit changed the tree")
 	}
 }
 

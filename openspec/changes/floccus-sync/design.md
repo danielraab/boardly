@@ -36,6 +36,10 @@ Add `httpapi/karakeep_rest.go`, which registers the named routes on the existing
 
 They follow Karakeep: 201 on create (200 with `alreadyExists: true` for a duplicate URL), 204 for delete/add/remove, 200 otherwise.
 
+### 3a. Removing a bookmark from a list it isn't in
+
+Floccus' `updateBookmark` sends `DELETE /lists/{old}/bookmarks/{id}` and `PUT /lists/{new}/bookmarks/{id}` together (`Promise.all`), and its requests fail on any status of 400 or above. In Karakeep a bookmark can be in both lists for a moment. In Boardly the `PUT` moves the link, so a `DELETE` that arrives later finds it no longer in the old list. Over REST that case is a no-op 204 (the service returns a named `ErrNotInList` that the REST handler swallows). The tRPC procedure keeps its `BAD_REQUEST`.
+
 ### 4. Linkwarden collection edit
 
 Add `linkwarden.Service.Collection` (public wrapper of `collectionByID`) and `EditCollection`. `EditCollection` diffs `name` and `parentId` against the current folder, validates the echoed unsupported fields (non-empty `description`, `isPublic`, `members` → 400), and uses the favourites store's rename and move operations (move to end of parent, cycle check). The token root may be "edited" only as a no-op (403 otherwise). This mirrors `karakeep.Service.EditList`.

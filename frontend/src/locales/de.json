@@ -80,7 +80,7 @@
 		},
 		"apps": {
 			"title": "Mit den Apps, die du schon nutzt",
-			"description": "Speichere Links mit der Browsererweiterung oder Mobil-App von Karakeep oder Linkwarden und schreib Notizen in einer Memos-App wie MoeMemos. Alles landet in Boardly."
+			"description": "Speichere Links mit der Browsererweiterung oder Mobil-App von Karakeep oder Linkwarden und schreib Notizen in einer Memos-App wie MoeMemos. Floccus hält deine Browser-Lesezeichen auf allen Browsern und Handys synchron. Alles landet in Boardly."
 		},
 		"radio": {
 			"title": "Dein Radio, einen Klick entfernt",
@@ -125,7 +125,7 @@
 			"data": "Import / Export"
 		},
 		"apps": {
-			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden, oder eine Memos-App wie MoeMemos, mit deinen Favoriten und Notizen. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst, und bei Karakeep und Memos die Notizen der gewählten Kategorie.",
+			"intro": "Verbinde Apps wie die Browsererweiterung oder die Mobil-App von Karakeep oder Linkwarden, oder eine Memos-App wie MoeMemos, mit deinen Favoriten und Notizen. Jede Verbindung bekommt einen eigenen API-Schlüssel und sieht nur den Ordner, den du dafür auswählst, und bei Karakeep und Memos die Notizen der gewählten Kategorie. Um deine Browser-Lesezeichen mit Floccus zu synchronisieren, verbinde eine Linkwarden-App.",
 			"connect": "App verbinden",
 			"emptyTitle": "Noch keine verbundenen Apps",
 			"emptyText": "Verbinde eine Karakeep- oder Linkwarden-App, um Links direkt in einem Ordner deiner Favoriten zu speichern, oder eine Memos-App, um unterwegs Notizen zu schreiben. Die App sieht nur den Ordner oder die Kategorie, die du auswählst.",

@@ -56,7 +56,7 @@ The list endpoints SHALL behave like the procedure named for each:
 - `PATCH /api/v1/lists/{id}` (`lists.edit`, with `listId` from the path): responds 200 with the list.
 - `DELETE /api/v1/lists/{id}` (`lists.delete`): responds 204.
 - `PUT /api/v1/lists/{id}/bookmarks/{bookmarkId}` (`lists.addToList`): responds 204.
-- `DELETE /api/v1/lists/{id}/bookmarks/{bookmarkId}` (`lists.removeFromList`): responds 204.
+- `DELETE /api/v1/lists/{id}/bookmarks/{bookmarkId}` (`lists.removeFromList`): responds 204. Unlike the procedure, when the link isn't directly in that list it SHALL change nothing and respond 204 too, because Floccus moves a bookmark by sending the add to the new list and the remove from the old list in parallel, and the add may arrive first. A note in scope still responds 400.
 - `GET /api/v1/lists/{id}/bookmarks` (`bookmarks.getBookmarks` with that `listId`): responds 200 with `{"bookmarks", "nextCursor"}`. `limit` (1 to 100, default 20) and `sortOrder` (`desc` or `asc`) are read from the query; `includeContent` is ignored. `nextCursor` SHALL be an opaque string of URL-safe characters (letters, digits, `-` and `_`) when more bookmarks follow, else `null`, and passing it as the `cursor` query parameter returns the next page. An invalid `cursor` responds 400.
 
 #### Scenario: Create a nested list
@@ -74,6 +74,10 @@ The list endpoints SHALL behave like the procedure named for each:
 #### Scenario: Remove a bookmark from a list
 - **WHEN** Floccus sends `DELETE /api/v1/lists/{id}/bookmarks/{bookmarkId}` for a link in that list
 - **THEN** the server responds 204 and the link is the first node of the token's root folder
+
+#### Scenario: Move with add and remove in parallel
+- **WHEN** a link is in the list "Old", and Floccus' `PUT /api/v1/lists/{New}/bookmarks/{bookmarkId}` arrives before its `DELETE /api/v1/lists/{Old}/bookmarks/{bookmarkId}`
+- **THEN** both respond 204 and the link is the first node of "New"
 
 #### Scenario: Rename and move a list
 - **WHEN** Floccus sends `PATCH /api/v1/lists/{id}` with `{"name": "Work", "parentId": "<id of Floccus>"}`

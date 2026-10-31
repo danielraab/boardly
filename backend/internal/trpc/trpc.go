@@ -77,6 +77,15 @@ var codes = map[string]struct{ rpc, status int }{
 	"NOT_IMPLEMENTED":       {-32603, 501},
 }
 
+// HTTPStatus is the HTTP status of a tRPC error code, or 500 for an unknown
+// code. REST endpoints that share the procedures' errors use it.
+func HTTPStatus(code string) int {
+	if c, ok := codes[code]; ok {
+		return c.status
+	}
+	return 500
+}
+
 // Decode unmarshals a procedure's input into T. A missing or invalid input is
 // a BAD_REQUEST error.
 func Decode[T any](input json.RawMessage) (T, error) {
