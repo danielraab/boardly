@@ -92,7 +92,7 @@ Favicons SHALL be stored once per origin (scheme, host and port) and shared by a
 - **THEN** the server responds 400 with `blocked_address` and makes no request to that address
 
 ### Requirement: Private address protection
-Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons. The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
+Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons, checks a media stream URL or fetches a station logo (see the `media-library` capability). The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
 
 #### Scenario: Name that resolves to a private address
 - **WHEN** private addresses are not allowed and a link's host name resolves to `10.0.0.5`
@@ -106,8 +106,12 @@ Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to 
 - **WHEN** `BOARDLY_FETCH_ALLOW_PRIVATE=true` and a link points to `http://192.168.1.10:8096`
 - **THEN** the server fetches that site's favicon
 
+#### Scenario: Station URL on a private address
+- **WHEN** private addresses are not allowed and a pasted stream URL's host resolves to `10.0.0.5`
+- **THEN** no connection is made and the station isn't saved
+
 ### Requirement: Cleanup of unused uploads
-An uploaded image that no favourite, no dashboard widget, no note and no note category refers to SHALL be deleted, file and record, once it is older than 24 hours. A preview image that no link refers to SHALL be deleted, file and record, once it is older than one hour. The server checks this on start and then once an hour. Favicons are not deleted by this cleanup.
+An uploaded image that no favourite, no dashboard widget, no note, no note category and no media source refers to SHALL be deleted, file and record, once it is older than 24 hours. A preview image that no link refers to SHALL be deleted, file and record, once it is older than one hour. The server checks this on start and then once an hour. Favicons are not deleted by this cleanup.
 
 #### Scenario: Unused upload
 - **WHEN** Ann uploaded an image 25 hours ago and never used it
@@ -123,6 +127,10 @@ An uploaded image that no favourite, no dashboard widget, no note and no note ca
 
 #### Scenario: Note icon
 - **WHEN** Ann uploaded an image 25 hours ago and uses it as the icon of a note or a note category
+- **THEN** the image is kept
+
+#### Scenario: Station icon
+- **WHEN** a station's logo was stored 25 hours ago and the station still uses it as its icon
 - **THEN** the image is kept
 
 ### Requirement: Background jobs survive restarts
