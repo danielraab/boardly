@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import { AttachmentView } from "#/features/attachments/AttachmentView";
 import type { NoteAttachment } from "#/features/attachments/api";
 import { useImageViewer } from "#/features/attachments/ImageViewer";
@@ -12,16 +12,20 @@ import {
 	type Block,
 	type Inline,
 	type ListBlock,
+	type LocationValue,
 	type Mark,
 	type NoteDoc,
 	type TextRun,
 } from "./document/types";
+import { LocationChip } from "./locations/LocationChip";
+import { LocationMapDialog } from "./locations/LocationDialogs";
 
-/** The attachments of the rendered note, and how they react. */
+/** The attachments and locations of the rendered note, and how they react. */
 const RenderedAttachments = createContext<{
 	byId: Record<string, NoteAttachment>;
 	interactive: boolean;
 	openImage?: (id: string) => void;
+	openLocation?: (location: LocationValue, chip: HTMLElement) => void;
 }>({ byId: {}, interactive: false });
 
 function Attachment({ id }: { id: string }) {
@@ -182,7 +186,21 @@ function BlockView({
 			return <List list={block} onToggleTask={onToggleTask} />;
 		case "attachment":
 			return <Attachment id={block.id} />;
+		case "location":
+			return <Location location={block} />;
 	}
+}
+
+function Location({ location }: { location: LocationValue }) {
+	const { openLocation } = useContext(RenderedAttachments);
+	return (
+		<div>
+			<LocationChip
+				location={location}
+				onOpen={(chip) => openLocation?.(location, chip)}
+			/>
+		</div>
+	);
 }
 
 /**
@@ -193,7 +211,7 @@ function BlockView({
  * attachments are the note's; images open in the image viewer. With
  * interactiveAttachments, as in widgets, files can be downloaded and audio and
  * video played, while on the cards activating them starts editing like the
- * rest.
+ * rest. Locations open their map, without editing.
  */
 export function NoteRenderer({
 	doc,
@@ -210,6 +228,10 @@ export function NoteRenderer({
 }) {
 	const text = size ? sizeStyles[size].text : "text-sm";
 	const images = useImageViewer();
+	const [map, setMap] = useState<{
+		location: LocationValue;
+		chip: HTMLElement;
+	} | null>(null);
 	const byId = Object.fromEntries(attachments.map((a) => [a.id, a]));
 	const openImage = (id: string) =>
 		images.open(
@@ -224,6 +246,7 @@ export function NoteRenderer({
 				byId,
 				interactive: interactiveAttachments,
 				openImage,
+				openLocation: (location, chip) => setMap({ location, chip }),
 			}}
 		>
 			<div className={`space-y-1.5 ${text} break-words`}>
@@ -233,6 +256,11 @@ export function NoteRenderer({
 				))}
 			</div>
 			{images.viewer}
+			<LocationMapDialog
+				location={map?.location ?? null}
+				returnFocus={map?.chip}
+				onClose={() => setMap(null)}
+			/>
 		</RenderedAttachments>
 	);
 }

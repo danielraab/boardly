@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -30,13 +31,20 @@ var markdown = goldmark.New(goldmark.WithExtensions(
 // hold is kept as text, and line breaks inside a paragraph stay line breaks.
 // Task items have no IDs yet; ParseDoc assigns them. Images, and links alone
 // in their paragraph, whose URL is that of one of att's attachments become
-// attachment blocks; att may be nil.
+// attachment blocks; att may be nil. A geo: link alone in its paragraph
+// becomes a location.
 func FromMarkdown(src string, att *MarkdownAttachments) Doc {
 	source := []byte(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(src))
 	root := markdown.Parser().Parse(text.NewReader(source))
 	c := converter{src: source, att: att}
 	d := EmptyDoc()
 	for n := root.FirstChild(); n != nil; n = n.NextSibling() {
+		if p, ok := n.(*ast.Paragraph); ok {
+			if loc, ok := c.location(p); ok {
+				d.Blocks = append(d.Blocks, loc)
+				continue
+			}
+		}
 		if p, ok := n.(*ast.Paragraph); ok && att != nil {
 			d.Blocks = append(d.Blocks, c.paragraph(p)...)
 		} else if b, ok := c.block(n); ok {
@@ -115,6 +123,57 @@ func (c converter) paragraph(p *ast.Paragraph) []Block {
 	}
 	flush()
 	return blocks
+}
+
+// geoURIRe matches a geo: URI (RFC 5870) with a latitude and longitude, and
+// optionally an altitude and parameters, which are ignored.
+var geoURIRe = regexp.MustCompile(`(?i)^geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,-?\d+(?:\.\d+)?)?(?:;.*)?$`)
+
+// location converts a paragraph that is only a link to a geo: URI with a
+// point on Earth into a location. The link's text is the label, unless it
+// is empty or the coordinates as ToMarkdown writes them.
+func (c converter) location(p *ast.Paragraph) (Block, bool) {
+	l, ok := p.FirstChild().(*ast.Link)
+	if !ok || l.NextSibling() != nil {
+		return Block{}, false
+	}
+	m := geoURIRe.FindStringSubmatch(c.destination(l.Destination))
+	if m == nil {
+		return Block{}, false
+	}
+	lat, err1 := strconv.ParseFloat(m[1], 64)
+	lng, err2 := strconv.ParseFloat(m[2], 64)
+	if err1 != nil || err2 != nil || !ValidLatLng(lat, lng) {
+		return Block{}, false
+	}
+	lat, lng = RoundCoordinate(lat), RoundCoordinate(lng)
+	b := Block{Type: BlockLocation, Lat: &lat, Lng: &lng}
+	label := strings.TrimSpace(strings.Join(strings.Fields(inlineText(c.inlines(l, nil))), " "))
+	if chars := []rune(label); len(chars) > MaxLocationLabel {
+		label = strings.TrimSpace(string(chars[:MaxLocationLabel]))
+	}
+	if label != "" && label != locationCoordinates(b) {
+		b.Label = &label
+	}
+	return b, true
+}
+
+// locationCoordinates is the text of a location without a label: its
+// coordinates as "<lat>, <lng>".
+func locationCoordinates(b Block) string {
+	return FormatCoordinate(*b.Lat) + ", " + FormatCoordinate(*b.Lng)
+}
+
+// locationMarkdown writes a location as a link to its geo: URI, with its
+// label or coordinates as the text.
+func locationMarkdown(b Block) string {
+	text := locationCoordinates(b)
+	if b.Label != nil {
+		text = *b.Label
+	}
+	// The text follows "[", so what would start a block needs no escape.
+	return "[" + escapeText(text, false) + "](geo:" +
+		FormatCoordinate(*b.Lat) + "," + FormatCoordinate(*b.Lng) + ")"
 }
 
 // destination returns a link or image address without Markdown escapes and
@@ -465,7 +524,8 @@ func linkify(line string) []Inline {
 // dropped, and a mark may be lost where CommonMark can't read it for sure:
 // when it starts or ends inside a word, between punctuation and a letter or
 // digit, or right where another mark ends. Attachments are written as images
-// or links to their URL, with their names from att, which may be nil.
+// or links to their URL, with their names from att, which may be nil, and
+// locations as links to their geo: URI.
 func ToMarkdown(d Doc, att *MarkdownAttachments) string {
 	var parts []string
 	// Lists directly after each other stay separate when their markers differ.
@@ -497,6 +557,8 @@ func ToMarkdown(d Doc, att *MarkdownAttachments) string {
 			md = writeList(b, marker)
 		case BlockAttachment:
 			md = att.markdown(b.ID)
+		case BlockLocation:
+			md = locationMarkdown(b)
 		}
 		prevMarker = marker
 		if md != "" {

@@ -115,7 +115,7 @@ func run() error {
 		Addr: ":" + strconv.Itoa(cfg.Port),
 		Handler: httpapi.New(httpapi.Deps{
 			DB:                database,
-			Web:               web.Handler(cfg.AppTitle, cfg.AnalyticsSnippet),
+			Web:               web.Handler(cfg.AppTitle, cfg.AnalyticsSnippet, cfg.MapStyleURL),
 			Auth:              authService,
 			Users:             userStore,
 			Favourites:        favouriteStore,

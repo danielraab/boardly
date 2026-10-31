@@ -190,6 +190,12 @@ click it to open the note.
   set by the server (see [Attachments](#attachments)). Attachments are **public**:
   anyone with a file's link can open it, as with images, so note widgets on public dashboards
   can show them.
+- **Locations**: add a place with **Add location** in the editor's toolbar; it goes where the
+  cursor is, or at the end, and a note can have several. Set the point by typing its latitude and
+  longitude, with **Use my location**, or by clicking the map, and give it an optional label. A
+  location is shown as a pin with its label or coordinates; click it to see it on a map, and use
+  **Edit** there to change or remove it. Maps are only loaded when you open one (see
+  [Maps](#maps)).
 - **Icon and colour**: a note can have a symbol or an uploaded image as its icon, and one of nine
   colours. The colours have a light and a dark shade, so they suit every theme.
 - **Categories**: each note can be in one category. Categories have a title, an optional icon and
@@ -213,7 +219,8 @@ click it to open the note.
   todo has a stable ID, so later features (todo widgets, link tagging, Markdown import and export,
   the [Memos-compatible server](#memos-compatible-server)) can refer to it. In connected apps, an
   attachment is an image or a link to its address, and stays an attachment when the app saves the
-  note.
+  note. A location is a `geo:` link, such as `[Stephansplatz](geo:48.208176,16.373819)`, which
+  most phones open in a maps app.
 
 The **Attachments** page (`/attachments`, linked from the user menu) lists all your files, newest
 first, with the notes that use them as links. Filters show the files in use, the unused ones, those
@@ -570,6 +577,7 @@ precedence over the file.
 | `BOARDLY_ATTACHMENT_MAX_SIZE_MB` | `5` | Largest note attachment, in megabytes |
 | `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
 | `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |
+| `BOARDLY_MAP_STYLE_URL` | OpenFreeMap's `https://tiles.openfreemap.org/styles/liberty` | [MapLibre style](https://maplibre.org/maplibre-style-spec/) that maps of note locations are drawn from. See [Maps](#maps) |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
@@ -685,6 +693,15 @@ Mailpit instead (http://localhost:8025).
 - **Unused files are cleaned up** on start and then hourly: a file at least a day old that no note
   uses is marked for deletion, and deleted `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` days (30) later
   if still no note uses it and it isn't kept. A marked file still opens until it is deleted.
+
+### Maps
+
+Maps of note locations are vector maps drawn with [MapLibre GL](https://maplibre.org/) from the
+style at `BOARDLY_MAP_STYLE_URL`, by default [OpenFreeMap](https://openfreemap.org/). Nothing is
+loaded from the map provider until someone opens a map, but then the provider sees the viewer's
+IP address and the area viewed, also for visitors of public dashboards. To keep this in your own
+network, host a style and its tiles yourself (for example with OpenFreeMap's self-hosting setup)
+and point `BOARDLY_MAP_STYLE_URL` at it.
 
 ### Passkeys
 

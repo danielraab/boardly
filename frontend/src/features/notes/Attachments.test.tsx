@@ -152,7 +152,8 @@ describe("adding attachments", () => {
 		const buttons = within(screen.getByRole("toolbar"))
 			.getAllByRole("button")
 			.map((b) => b.getAttribute("aria-label"));
-		expect(buttons.slice(-2)).toEqual(["Link", "Add attachment"]);
+		const link = buttons.indexOf("Link");
+		expect(buttons.slice(link, link + 2)).toEqual(["Link", "Add attachment"]);
 	});
 
 	it("opens the file picker with the allowed types", async () => {

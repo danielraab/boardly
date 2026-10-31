@@ -32,6 +32,7 @@ import {
 	List,
 	ListChecks,
 	ListOrdered,
+	MapPin,
 	Strikethrough,
 } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -42,6 +43,7 @@ import { menuPopup } from "#/components/menuStyles";
 import { attachmentsQueryOptions } from "#/features/attachments/api";
 import { isLinkUrl } from "../document/types";
 import { INSERT_ATTACHMENTS_COMMAND } from "./attachments";
+import { OPEN_LOCATION_FORM_COMMAND } from "./locations";
 
 type ListKind = "bullet" | "number" | "check";
 
@@ -190,6 +192,19 @@ export function Toolbar({ disabled }: { disabled: boolean }) {
 			))}
 			<LinkButton current={active.link} disabled={disabled} />
 			<AttachButton disabled={disabled} />
+			<button
+				type="button"
+				className={toolButton}
+				aria-label={t("notes.editor.toolbar.location")}
+				title={t("notes.editor.toolbar.location")}
+				disabled={disabled}
+				onMouseDown={keepSelection}
+				onClick={() =>
+					editor.dispatchCommand(OPEN_LOCATION_FORM_COMMAND, undefined)
+				}
+			>
+				<MapPin className="size-4" aria-hidden />
+			</button>
 		</div>
 	);
 }

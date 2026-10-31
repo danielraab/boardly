@@ -24,6 +24,7 @@ function blockLines(block: Block): string[] {
 			return block.text.split("\n");
 		case "divider":
 		case "attachment":
+		case "location":
 			return [];
 		case "list":
 			return block.items.flatMap((item) => [

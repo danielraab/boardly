@@ -24,25 +24,31 @@ const (
 	metaMarker  = `<meta name="application-name" content="Boardly" />`
 )
 
+// mapStyleMarker carries the map style; keep it in sync with
+// frontend/index.html.
+const mapStyleMarker = `<meta name="boardly-map-style" content="https://tiles.openfreemap.org/styles/liberty" />`
+
 // headEnd closes the head of index.html; the analytics snippet goes before it.
 const headEnd = "</head>"
 
 // Handler serves the embedded frontend build under the given app title, with
-// analyticsSnippet (may be empty) in the HTML document's head.
-func Handler(appTitle, analyticsSnippet string) http.Handler {
+// analyticsSnippet (may be empty) in the HTML document's head and maps drawn
+// from mapStyleURL (empty keeps the built-in default).
+func Handler(appTitle, analyticsSnippet, mapStyleURL string) http.Handler {
 	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
 		panic(err)
 	}
-	return NewHandler(sub, appTitle, analyticsSnippet)
+	return NewHandler(sub, appTitle, analyticsSnippet, mapStyleURL)
 }
 
 // NewHandler serves files from fsys and falls back to index.html for paths
 // that match no file, so client-side routes work on reload. index.html and the
 // web app manifests are served with appTitle as the product name, and
-// index.html carries analyticsSnippet unescaped right before </head>.
-func NewHandler(fsys fs.FS, appTitle, analyticsSnippet string) http.Handler {
-	titled, err := titledFiles(fsys, appTitle, analyticsSnippet)
+// index.html carries analyticsSnippet unescaped right before </head> and
+// mapStyleURL, unless it is empty, in its map style meta tag.
+func NewHandler(fsys fs.FS, appTitle, analyticsSnippet, mapStyleURL string) http.Handler {
+	titled, err := titledFiles(fsys, appTitle, analyticsSnippet, mapStyleURL)
 	if err != nil {
 		panic(err)
 	}
@@ -105,15 +111,19 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, titled map[st
 }
 
 // titledFiles returns index.html and the root *.webmanifest files of fsys with
-// appTitle filled in, and index.html with analyticsSnippet added, keyed by name.
-// Files that don't exist are left out.
-func titledFiles(fsys fs.FS, appTitle, analyticsSnippet string) (map[string][]byte, error) {
+// appTitle filled in, and index.html with analyticsSnippet added and
+// mapStyleURL set, keyed by name. Files that don't exist are left out.
+func titledFiles(fsys fs.FS, appTitle, analyticsSnippet, mapStyleURL string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 
 	if index, err := fs.ReadFile(fsys, "index.html"); err == nil {
 		escaped := html.EscapeString(appTitle)
 		index = bytes.Replace(index, []byte(titleMarker), []byte("<title>"+escaped+"</title>"), 1)
 		index = bytes.Replace(index, []byte(metaMarker), []byte(`<meta name="application-name" content="`+escaped+`" />`), 1)
+		if mapStyleURL != "" {
+			index = bytes.Replace(index, []byte(mapStyleMarker),
+				[]byte(`<meta name="boardly-map-style" content="`+html.EscapeString(mapStyleURL)+`" />`), 1)
+		}
 		if analyticsSnippet != "" {
 			// The operator's HTML goes in as written; escaping would break it.
 			index = bytes.Replace(index, []byte(headEnd), []byte(analyticsSnippet+headEnd), 1)

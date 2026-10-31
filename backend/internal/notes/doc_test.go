@@ -220,3 +220,42 @@ func TestTrailingAttachments(t *testing.T) {
 		t.Fatalf("join = %+v, want %+v", got.Blocks, want)
 	}
 }
+
+func TestLocation(t *testing.T) {
+	d, err := ParseDoc([]byte(`{"v":1,"blocks":[{"type":"location","lat":48.20817634,"lng":16.3738189}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := d.Blocks[0]; *b.Lat != 48.208176 || *b.Lng != 16.373819 {
+		t.Errorf("not rounded: %v, %v", *b.Lat, *b.Lng)
+	}
+	label := strings.Repeat("ä", MaxLocationLabel)
+	raw := `{"v":1,"blocks":[{"type":"location","lat":1,"lng":2,"label":"` + label + `"}]}`
+	if _, err := ParseDoc([]byte(raw)); err != nil {
+		t.Errorf("label of %d characters: %v", MaxLocationLabel, err)
+	}
+	raw = `{"v":1,"blocks":[{"type":"location","lat":1,"lng":2,"label":"` + label + `x"}]}`
+	if _, err := ParseDoc([]byte(raw)); !errors.Is(err, ErrInvalidDocument) {
+		t.Errorf("label of %d characters: %v, want ErrInvalidDocument", MaxLocationLabel+1, err)
+	}
+}
+
+func TestLocationIsNotText(t *testing.T) {
+	label, text := "Stephansplatz", "Meet at 8"
+	lat, lng := 48.208176, 16.373819
+	d := Doc{V: 1, Blocks: []Block{
+		{Type: BlockLocation, Lat: &lat, Lng: &lng, Label: &label},
+		{Type: BlockParagraph, Content: &[]Inline{{Type: InlineText, Text: &text}}},
+	}}
+	if got := DisplayTitle(Note{Content: d}); got == nil || *got != "Meet at 8" {
+		t.Fatalf("DisplayTitle = %v, want Meet at 8", got)
+	}
+}
+
+func TestFormatCoordinate(t *testing.T) {
+	for in, want := range map[float64]string{48.2: "48.2", 16.3738189: "16.373819", 0: "0", -0.0000001: "0", -180: "-180"} {
+		if got := FormatCoordinate(in); got != want {
+			t.Errorf("FormatCoordinate(%v) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -1017,13 +1017,39 @@
 				"strike": "Strikethrough",
 				"code": "Code",
 				"link": "Link",
-				"attach": "Add attachment"
+				"attach": "Add attachment",
+				"location": "Add location"
 			},
 			"link": {
 				"label": "Link address",
 				"apply": "Apply",
 				"remove": "Remove link",
 				"invalid": "Enter an http, https or mailto address."
+			}
+		},
+		"locations": {
+			"chip": "Location: {{name}}",
+			"map": "Map",
+			"loadingMap": "Loading map…",
+			"mapUnavailable": "The map couldn't be loaded.",
+			"edit": "Edit",
+			"form": {
+				"addTitle": "Add location",
+				"editTitle": "Edit location",
+				"latitude": "Latitude",
+				"longitude": "Longitude",
+				"label": "Label",
+				"optional": "optional",
+				"useMyLocation": "Use my location",
+				"locating": "Finding your location…",
+				"mapHint": "Click the map to set the point.",
+				"invalidLatitude": "Enter a latitude between -90 and 90.",
+				"invalidLongitude": "Enter a longitude between -180 and 180.",
+				"denied": "Access to your location was denied.",
+				"notFound": "Your location couldn't be found.",
+				"remove": "Remove",
+				"cancel": "Cancel",
+				"save": "Save"
 			}
 		}
 	},
