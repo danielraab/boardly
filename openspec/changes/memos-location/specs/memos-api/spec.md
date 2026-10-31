@@ -5,7 +5,7 @@
 ### Requirement: Trailing location is the memo's location
 A note's trailing location SHALL be a location block (see "Document format" in `note-document`) that is the last block of the content before its trailing attachments (see "Trailing attachments are the memo's attachments"), or the last block when there are none. A note has at most one trailing location. A memo SHALL return its note's trailing location in `location` as `{"placeholder": <label or "">, "latitude": <lat>, "longitude": <lng>}`, and its `content` SHALL leave the block out. A memo of a note without a trailing location has no `location`. Other location blocks stay in `content` as Markdown (see "Content as Markdown" in `note-document`).
 
-When a memo is written with a location (see "Create memos" and "Update memos"), the note's content SHALL be the blocks read from the content, followed by a location block for the location, followed by the trailing attachments. The location block gets `latitude` and `longitude`, rounded to 6 decimals, and the `placeholder` as its label: trimmed, with line breaks replaced by spaces and cut to 200 characters. An empty placeholder gives no label. A `latitude` outside -90 to 90, a `longitude` outside -180 to 180, or a coordinate that is missing or isn't a number SHALL respond 400 with code `3`, and nothing changes.
+When a memo is written with a location (see "Create memos" and "Update memos"), the note's content SHALL be the blocks read from the content, followed by a location block for the location, followed by the trailing attachments. The location block gets `latitude` and `longitude`, rounded to 6 decimals, and the `placeholder` as its label: trimmed, with line breaks replaced by spaces and cut to 200 characters. An empty or missing placeholder gives no label, and a missing `latitude` or `longitude` is `0`, as Memos clients leave out fields with their default value. A `latitude` outside -90 to 90, a `longitude` outside -180 to 180, a coordinate that isn't a number, or a location that isn't an object SHALL respond 400 with code `3`, and nothing changes.
 
 #### Scenario: Location at the end
 - **WHEN** a note "Trip" has the paragraph "Meet here" followed by the location "Stephansplatz" at 48.208176, 16.373819 and the attachment block of `square.jpg`
@@ -26,6 +26,10 @@ When a memo is written with a location (see "Create memos" and "Update memos"), 
 #### Scenario: Out of range
 - **WHEN** MoeMemos creates a memo with the location latitude 95
 - **THEN** the server responds 400 with code `3`, and no note is created
+
+#### Scenario: On the equator
+- **WHEN** MoeMemos creates a memo with the location `{"placeholder": "Quito", "longitude": -78.5}`, leaving out the latitude 0
+- **THEN** the note has the location "Quito" at 0, -78.5
 
 ## MODIFIED Requirements
 

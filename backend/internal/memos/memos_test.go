@@ -66,7 +66,7 @@ func TestUpdateLocationFromBody(t *testing.T) {
 			}
 		})
 	}
-	for _, bad := range []string{`{"latitude":95,"longitude":0}`, `{"latitude":0,"longitude":-181}`, `{"latitude":48}`, `{"latitude":"48","longitude":16}`, `"here"`} {
+	for _, bad := range []string{`{"latitude":95,"longitude":0}`, `{"latitude":0,"longitude":-181}`, `{"latitude":"48","longitude":16}`, `{"placeholder":1}`, `"here"`, `[]`} {
 		if _, err := UpdateFromBody(map[string]json.RawMessage{"location": json.RawMessage(bad)}, ""); err != errLocation {
 			t.Errorf("location %s: err = %v", bad, err)
 		}
@@ -82,6 +82,10 @@ func TestLocationBlock(t *testing.T) {
 		{`{"placeholder":"  Café\nCentral ","latitude":48.21043219,"longitude":-0.0000001}`, "Café Central", 48.210432, 0},
 		{`{"placeholder":"","latitude":48.2,"longitude":16.37}`, "", 48.2, 16.37},
 		{`{"latitude":-90,"longitude":180}`, "", -90, 180},
+		// Memos clients leave out fields with their default value.
+		{`{"placeholder":"Quito","longitude":-78.5}`, "Quito", 0, -78.5},
+		{`{"latitude":51.4779}`, "", 51.4779, 0},
+		{`{}`, "", 0, 0},
 		{`{"placeholder":"` + long + `","latitude":1,"longitude":2}`, long[:2*notes.MaxLocationLabel], 1, 2},
 	} {
 		b, err := locationBlock(json.RawMessage(tc.raw))

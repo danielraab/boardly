@@ -67,7 +67,10 @@ type MemoLocation struct {
 ```
 
 `Memo.Location *MemoLocation` with `json:",omitempty"`. The input is decoded from
-`json.RawMessage` with pointer fields, so that a missing coordinate isn't taken for `0`.
+`json.RawMessage`. A missing coordinate is `0`: MoeMemos serialises with kotlinx `encodeDefaults = false` and
+`MemoLocation` defaults to `0.0`, so a point on the equator or the prime meridian arrives without that
+field (protobuf JSON, which Memos itself uses, does the same). Only a coordinate that isn't a number,
+or is out of range, is rejected.
 
 ## Risks / Trade-offs
 

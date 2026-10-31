@@ -190,31 +190,25 @@ func locationOf(b *notes.Block) *Location {
 // locationBlock reads a memo location from JSON as a location block: null
 // is nil, coordinates are rounded to 6 decimals, and the placeholder becomes
 // the label, trimmed, on one line and cut to notes.MaxLocationLabel
-// characters; an empty one is no label. Missing or out-of-range
+// characters; an empty one is no label. A missing coordinate is 0, as
+// Memos clients leave out fields with their default value. Out-of-range
 // coordinates, or ones that aren't numbers, are errLocation.
 func locationBlock(raw json.RawMessage) (*notes.Block, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil, nil
 	}
-	var in struct {
-		Placeholder *string  `json:"placeholder"`
-		Latitude    *float64 `json:"latitude"`
-		Longitude   *float64 `json:"longitude"`
-	}
-	if err := json.Unmarshal(raw, &in); err != nil || in.Latitude == nil || in.Longitude == nil ||
-		!notes.ValidLatLng(*in.Latitude, *in.Longitude) {
+	var in Location
+	if err := json.Unmarshal(raw, &in); err != nil || !notes.ValidLatLng(in.Latitude, in.Longitude) {
 		return nil, errLocation
 	}
-	lat, lng := notes.RoundCoordinate(*in.Latitude), notes.RoundCoordinate(*in.Longitude)
+	lat, lng := notes.RoundCoordinate(in.Latitude), notes.RoundCoordinate(in.Longitude)
 	b := &notes.Block{Type: notes.BlockLocation, Lat: &lat, Lng: &lng}
-	if in.Placeholder != nil {
-		label := strings.TrimSpace(strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(*in.Placeholder))
-		if utf8.RuneCountInString(label) > notes.MaxLocationLabel {
-			label = strings.TrimSpace(string([]rune(label)[:notes.MaxLocationLabel]))
-		}
-		if label != "" {
-			b.Label = &label
-		}
+	label := strings.TrimSpace(strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(in.Placeholder))
+	if utf8.RuneCountInString(label) > notes.MaxLocationLabel {
+		label = strings.TrimSpace(string([]rune(label)[:notes.MaxLocationLabel]))
+	}
+	if label != "" {
+		b.Label = &label
 	}
 	return b, nil
 }

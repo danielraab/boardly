@@ -557,9 +557,16 @@ func TestMemosLocation(t *testing.T) {
 		t.Errorf("middle location memo at %d in %q", i, memoContents(c.list(t, "")))
 	}
 
+	// On the equator: MoeMemos leaves out the latitude 0.
+	quito := c.create(t, map[string]any{"content": "Quito", "location": map[string]any{"placeholder": "Quito", "longitude": -78.5}})
+	if q := c.note(t, quito).Content.Blocks; quito.Location == nil || *quito.Location != (memos.Location{Placeholder: "Quito", Longitude: -78.5}) ||
+		len(q) != 2 || *q[1].Lat != 0 || *q[1].Lng != -78.5 {
+		t.Errorf("equator memo = %+v", quito.Location)
+	}
+
 	// Invalid locations change nothing.
 	count := len(c.list(t, "").Memos)
-	for _, bad := range []string{`{"latitude":95,"longitude":16}`, `{"latitude":48}`, `{"latitude":"48","longitude":16}`} {
+	for _, bad := range []string{`{"latitude":95,"longitude":16}`, `{"latitude":"48","longitude":16}`, `"here"`} {
 		wantMemosError(t, c.do("POST", memosV1+"/memos", `{"content":"x","location":`+bad+`}`), http.StatusBadRequest, memos.CodeInvalidArgument)
 		wantMemosError(t, c.do("PATCH", memosV1+"/"+m.Name, `{"content":"changed","location":`+bad+`}`), http.StatusBadRequest, memos.CodeInvalidArgument)
 	}

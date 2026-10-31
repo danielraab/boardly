@@ -14,6 +14,8 @@
 - [x] 3.2 Read `location` in `CreateInput` (null is none; validate ranges and number type, normalise the placeholder) and write it with `JoinMemoTail`; verify with httptest cases "Memo with a location" and "Out of range" (400, code `3`, no note)
 - [x] 3.3 Read `location` as a three-state field in `UpdateFromBody` (set, remove via `null` or mask without a value, not applied) and apply it in the update, keeping the location when only `content` changes; verify with httptest cases "Set a location", "Remove the location", "Edit text keeps the location", "Unchanged memo" (version unchanged) and an unmasked body with `location: null`
 
+- [x] 3.4 Read a missing `latitude`/`longitude` as `0`, as MoeMemos leaves out default values; verify with a unit case and the httptest case "On the equator"
+
 ## 4. Verification
 
 - [x] 4.1 Run `make check` and `make test`; verify both pass
