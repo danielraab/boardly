@@ -6,6 +6,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A Media page (`/media`, linked from the user menu) with a library of internet radio stations.
+  Stations are found through a search of radio-browser.info, which the browser calls directly, or
+  added by stream URL. Only https streams can be played; the server checks a station's URL when it
+  is saved, resolves `.pls` and `.m3u` playlists, and tries `https://` for an `http://` URL. Audio
+  never goes through the server.
+- A player bar at the bottom of every page that keeps playing while you move around the app, with
+  play/pause, volume and mute, and support for the device's media controls.
+- A "Media" dashboard widget, in a new "Media" group of the widget picker, that plays stations of the
+  library. It can be shown on public dashboards, where visitors can play the stations.
+
 ## [0.3.0] - 2026-10-29
 
 ### Added

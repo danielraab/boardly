@@ -5,6 +5,7 @@ import { type ContentWidget, isSection, type Widget } from "../api";
 import { favouriteExplorerKind } from "./favouriteExplorer";
 import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
+import { mediaKind } from "./media";
 import { noteKind } from "./note";
 import { noteListKind } from "./noteList";
 import { recentFavouritesKind } from "./recentFavourites";
@@ -29,7 +30,7 @@ export type WidgetSettingsProps = {
 };
 
 /** The groups of the widget picker, in the order it shows them. */
-export const widgetGroups = ["favourites", "notes"] as const;
+export const widgetGroups = ["favourites", "notes", "media"] as const;
 
 export type WidgetGroup = (typeof widgetGroups)[number];
 
@@ -57,6 +58,7 @@ export const widgetKinds: WidgetKind[] = [
 	recentNotesKind,
 	noteListKind,
 	selectedNotesKind,
+	mediaKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

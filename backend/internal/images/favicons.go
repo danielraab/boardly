@@ -54,16 +54,8 @@ type Favicons struct {
 // NewFavicons returns a fetcher whose connections are guarded unless
 // allowPrivate is set.
 func NewFavicons(store *Store, allowPrivate bool) *Favicons {
-	transport := &http.Transport{
-		Proxy:                 nil, // a proxy would hide the real target from the guard
-		DialContext:           guardedDialer(allowPrivate).DialContext,
-		TLSHandshakeTimeout:   FetchTimeout,
-		ResponseHeaderTimeout: FetchTimeout,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       30 * time.Second,
-	}
 	client := &http.Client{
-		Transport: transport,
+		Transport: GuardedTransport(allowPrivate),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// via holds the requests so far, so len(via) redirects were followed.
 			if len(via) > MaxRedirects {
@@ -360,6 +352,27 @@ func (f *Favicons) pageIcons(ctx context.Context, pageURL string) ([]string, err
 		icons = icons[:maxCandidates]
 	}
 	return icons, nil
+}
+
+// FetchLogo loads the image at rawURL with the favicon rules (types, size,
+// time limit, guarded connections) and stores it as an upload of the user,
+// such as a radio station's logo. It returns the new image's ID.
+func (f *Favicons) FetchLogo(ctx context.Context, userID, rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", ErrInvalidURL
+	}
+	ctx, cancel := context.WithTimeout(ctx, FetchTimeout)
+	defer cancel()
+	data, err := f.download(ctx, u.String())
+	if err != nil {
+		return "", err
+	}
+	img, err := f.Images.Save(ctx, SourceUpload, userID, data)
+	if err != nil {
+		return "", err
+	}
+	return img.ID, nil
 }
 
 // download loads one icon and checks its type and size.

@@ -11,12 +11,13 @@ import (
 	"boardly/internal/dashboards"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/media"
 	"boardly/internal/notes"
 )
 
 // Register adds every content widget kind to the dashboard store. icons may
 // be nil, and then links have no favicons.
-func Register(d *dashboards.Store, fav *favourites.Store, noteStore *notes.Store, icons *images.Favicons) {
+func Register(d *dashboards.Store, fav *favourites.Store, noteStore *notes.Store, mediaStore *media.Store, icons *images.Favicons) {
 	d.Kinds[KindFavouriteExplorer] = FavouriteExplorer(fav, icons)
 	d.Kinds[KindLink] = Link(fav, icons)
 	d.Kinds[KindLinkList] = LinkList(fav, icons)
@@ -25,6 +26,7 @@ func Register(d *dashboards.Store, fav *favourites.Store, noteStore *notes.Store
 	d.Kinds[KindRecentNotes] = RecentNotes(noteStore)
 	d.Kinds[KindNoteList] = NoteList(noteStore)
 	d.Kinds[KindSelectedNotes] = SelectedNotes(noteStore)
+	d.Kinds[KindMedia] = Media(mediaStore)
 }
 
 // Limits shared by the kinds' configs.

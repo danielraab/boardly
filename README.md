@@ -7,6 +7,7 @@ real user accounts.
 - **Dashboards** like Homepage, but built and edited visually in the browser (WYSIWYG) instead of YAML files.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
 - **Notes** with todos, written with Markdown shortcuts and sorted into nested categories.
+- **Internet radio** in a player that keeps playing while you move around the app.
 - **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly.
 - **Memos-compatible server**, so the MoeMemos Android app can write, tick off, pin and archive your notes.
 - **Passwordless login** with magic links and passkeys.
@@ -164,6 +165,7 @@ A new dashboard is empty. Sections can only be added in edit mode.
 | **Section** | A container for other widgets, including nested sections (at most 5 levels). It has a width in columns, an optional title, a border that can be turned off, and a height: fitting its content, or a fixed number of rows (4rem each) with a scrollbar when the content is taller. Inside, it has a grid as many columns wide as the section. Widgets other than sections take the full width of their section; use a borderless section to place them side by side. |
 | **Navigation tree** | Shows part of the user's favourites tree. When you add one, you choose a node of the tree as its root, and the widget shows that node and everything below it. A dashboard can have several navigation trees, each with a different root. Changes to the favourites tree show up in the widget right away. On your own dashboard, the + button next to "Expand all" adds a link to the shown folder or another one. |
 | **Link list** | Shows the links of one folder of the favourites tree as a flat list, optionally including the links of all its subfolders. The links are shown as a list (title and URL), a compact list (title only) or tiles, in three sizes. Links open in a new tab. Like the navigation tree, it is hidden from visitors of a public dashboard unless "Show on public dashboard" is on. |
+| **Media** | Stations you pick from your [media library](#media), as a list or tiles, in three sizes. Clicking one plays it in the player, or pauses it. With "Show on public dashboard" on, visitors can play them too. |
 
 Sections are available now. Link and navigation-tree widgets will follow. More widget types can be
 added later. The widget model is meant to be extended.
@@ -221,6 +223,31 @@ marked for deletion and those you keep. A file that no note uses is marked for d
 day old and deleted after `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` days (30), unless a note uses it
 again or you choose **Keep**. A file can only be deleted by hand when no note uses it, archived
 notes included.
+
+### Media
+
+The **Media** page (`/media`, linked from the user menu) is your library of internet radio
+stations. Play one there or from a **Media** widget on a dashboard, and it plays in the **player
+bar** at the bottom of every page. It keeps playing while you move between pages, until you close
+it, sign out or reload. The bar has play/pause, volume and mute (remembered in the browser), and
+works with the media keys, headset buttons and the lock screen of your device. Only one station
+plays at a time.
+
+- **Adding stations**: **Add station** searches [radio-browser.info](https://www.radio-browser.info),
+  a free community directory of internet radio stations. Your browser sends the search there
+  directly, not through Boardly's server, and the dialog says so. You can also enter a station's
+  name and stream URL by hand. Playlist files (`.pls`, `.m3u`) are resolved to the stream inside
+  them, and HLS streams (`.m3u8`) work as well.
+- **HTTPS only**: browsers don't play unencrypted streams on an https page, and Boardly doesn't relay
+  audio through its server. When a station is saved, the server checks that its URL answers with an
+  audio stream over https, and tries the `https://` version of an `http://` URL once. Stations that
+  only offer `http://` can't be added; the search shows them as not playable. Audio always goes
+  straight from the station to your browser.
+- **Managing**: rename a station, change its URL or its icon (a symbol or an uploaded image), drag
+  stations into another order, or delete them. A station found in the search gets its logo as its
+  icon; the server fetches it once and stores it with your images. The URL check and the logo
+  fetch follow `BOARDLY_FETCH_ALLOW_PRIVATE` like favicons (see [Favicons and images](#favicons-and-images)),
+  so stations on your local network need it set to `true`.
 
 ### Karakeep-compatible server
 

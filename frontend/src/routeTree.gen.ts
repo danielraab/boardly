@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
+import { Route as MediaRouteImport } from './routes/media'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShareRouteImport } from './routes/share'
@@ -41,6 +42,11 @@ const DashboardsRoute = DashboardsRouteImport.update({
 const FavouritesRoute = FavouritesRouteImport.update({
   id: '/favourites',
   path: '/favourites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotesRoute = NotesRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/media': typeof MediaRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/media'
     | '/notes'
     | '/settings'
     | '/share'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/media'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/media'
     | '/notes'
     | '/settings'
     | '/share'
@@ -186,6 +198,7 @@ export interface RootRouteChildren {
   AttachmentsRoute: typeof AttachmentsRoute
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
+  MediaRoute: typeof MediaRoute
   NotesRoute: typeof NotesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   ShareRoute: typeof ShareRoute
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/favourites'
       fullPath: '/favourites'
       preLoaderRoute: typeof FavouritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notes': {
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   AttachmentsRoute: AttachmentsRoute,
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
+  MediaRoute: MediaRoute,
   NotesRoute: NotesRouteWithChildren,
   SettingsRoute: SettingsRoute,
   ShareRoute: ShareRoute,

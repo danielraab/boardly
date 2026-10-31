@@ -133,6 +133,7 @@ describe("adding, editing and deleting widgets", () => {
 		expect(groups.map((g) => g.getAttribute("aria-labelledby"))).toEqual([
 			"widget-group-favourites",
 			"widget-group-notes",
+			"widget-group-media",
 		]);
 		const names = (group: HTMLElement) =>
 			within(group)
@@ -150,6 +151,9 @@ describe("adding, editing and deleting widgets", () => {
 		expect(
 			names(within(picker).getByRole("region", { name: "Notes" })),
 		).toEqual(["Note", "Recent notes", "Note list", "Selected notes"]);
+		expect(
+			names(within(picker).getByRole("region", { name: "Media" })),
+		).toEqual(["Media"]);
 	});
 
 	it("shows the picker's group headings in German", async () => {
@@ -163,7 +167,7 @@ describe("adding, editing and deleting widgets", () => {
 			within(picker)
 				.getAllByRole("heading", { level: 3 })
 				.map((h) => h.textContent),
-		).toEqual(["Favoriten", "Notizen"]);
+		).toEqual(["Favoriten", "Notizen", "Medien"]);
 	});
 
 	it("adds nothing when the settings are cancelled", async () => {

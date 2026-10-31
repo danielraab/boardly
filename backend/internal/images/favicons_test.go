@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"boardly/internal/users"
 )
 
 func TestIsBlocked(t *testing.T) {
@@ -378,5 +380,42 @@ func TestLookupImages(t *testing.T) {
 	}
 	if len(got) != len(want) || got[pngSite.URL] != want[pngSite.URL] || got[icoSite.URL] != want[icoSite.URL] {
 		t.Fatalf("LookupImages = %v, want %v", got, want)
+	}
+}
+
+func TestFetchLogo(t *testing.T) {
+	ctx := context.Background()
+	f, _ := newFavicons(t, true)
+	s := newSite(t, map[string]func(http.ResponseWriter, *http.Request){
+		"/logo.png": file(pngData),
+		"/page":     htmlPage("<html></html>"),
+	})
+	ann, err := users.NewStore(f.Images.DB).GetByEmail(ctx, f.Images.DB, "ann@example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := f.FetchLogo(ctx, ann.ID, s.URL+"/logo.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.mustRead(t, id); !bytes.Equal(got, pngData) {
+		t.Fatal("stored logo differs")
+	}
+	var source string
+	var user string
+	if err := f.Images.DB.QueryRowContext(ctx, `SELECT source, user_id FROM images WHERE id = ?`, id).Scan(&source, &user); err != nil {
+		t.Fatal(err)
+	}
+	if source != SourceUpload || user != ann.ID {
+		t.Fatalf("source = %q, user = %q", source, user)
+	}
+	for _, bad := range []string{s.URL + "/missing.png", s.URL + "/page", "ftp://example.org/logo.png"} {
+		if _, err := f.FetchLogo(ctx, ann.ID, bad); err == nil {
+			t.Errorf("%s: no error", bad)
+		}
+	}
+	blocked, _ := newFavicons(t, false)
+	if _, err := blocked.FetchLogo(ctx, ann.ID, s.URL+"/logo.png"); !errors.Is(err, ErrBlocked) {
+		t.Fatalf("private address: err = %v, want ErrBlocked", err)
 	}
 }

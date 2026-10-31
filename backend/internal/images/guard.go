@@ -3,8 +3,10 @@ package images
 import (
 	"errors"
 	"net"
+	"net/http"
 	"net/netip"
 	"syscall"
+	"time"
 )
 
 // ErrBlocked is returned when a fetch would connect to a non-public address.
@@ -58,4 +60,18 @@ func guardedDialer(allowPrivate bool) *net.Dialer {
 		return nil
 	}
 	return d
+}
+
+// GuardedTransport returns an HTTP transport for fetching user-supplied URLs:
+// its connections are guarded unless allowPrivate is set, and it uses no
+// proxy, which would hide the real target from the guard.
+func GuardedTransport(allowPrivate bool) *http.Transport {
+	return &http.Transport{
+		Proxy:                 nil,
+		DialContext:           guardedDialer(allowPrivate).DialContext,
+		TLSHandshakeTimeout:   FetchTimeout,
+		ResponseHeaderTimeout: FetchTimeout,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       30 * time.Second,
+	}
 }
