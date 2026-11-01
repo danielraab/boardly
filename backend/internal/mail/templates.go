@@ -85,3 +85,22 @@ func render(name, locale, to string, data any) (Message, error) {
 		HTML:    body.String(),
 	}, nil
 }
+
+// AccountDeletionData fills the account deletion reminder templates.
+type AccountDeletionData struct {
+	// AppName is the product name the email shows, DefaultAppName if empty.
+	AppName string
+	// Date is the deletion time, already formatted for the locale.
+	Date string
+	// Link opens the web app, where the deletion can be cancelled.
+	Link string
+}
+
+// RenderAccountDeletion renders the reminder that an account is about to be
+// deleted, for the locale, falling back to English.
+func RenderAccountDeletion(locale, to string, data AccountDeletionData) (Message, error) {
+	if data.AppName == "" {
+		data.AppName = DefaultAppName
+	}
+	return render("account_deletion", locale, to, data)
+}

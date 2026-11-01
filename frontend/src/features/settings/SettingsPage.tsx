@@ -16,6 +16,7 @@ import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError, api } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { ConnectedAppsTab } from "./ConnectedAppsTab";
+import { DeleteAccountSection } from "./DeleteAccountSection";
 import { ImportExportTab } from "./ImportExportTab";
 import { PasskeysTab } from "./PasskeysTab";
 
@@ -174,6 +175,7 @@ function ProfileTab({ user }: { user: User }) {
 				<ShareFolderForm user={user} />
 				<NoteCategoryForm user={user} />
 			</div>
+			<DeleteAccountSection user={user} />
 		</section>
 	);
 }

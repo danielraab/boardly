@@ -27,6 +27,9 @@ users have accounts (see [Sign-in](#sign-in)).
 
 All data (dashboards, favourites, API tokens) belongs to a single user.
 
+Users can delete their own account on **Settings → Profile**, after a waiting period in which they
+can change their mind (see [Deleting an account](#deleting-an-account)).
+
 ### Favourites tree
 
 Each user has exactly **one favourites tree**. It is the single source of truth for all bookmarks:
@@ -643,6 +646,7 @@ precedence over the file.
 | `BOARDLY_ATTACHMENT_MAX_SIZE_MB` | `5` | Largest note attachment, in megabytes |
 | `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
 | `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |
+| `BOARDLY_ACCOUNT_DELETION_DAYS` | `7` | Days between a user scheduling the deletion of their account and the deletion. `0` deletes the account within the hour. See [Deleting an account](#deleting-an-account) |
 | `BOARDLY_MAP_STYLE_URL` | OpenFreeMap's `https://tiles.openfreemap.org/styles/liberty` | [MapLibre style](https://maplibre.org/maplibre-style-spec/) that maps of note locations are drawn from. See [Maps](#maps) |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 
@@ -792,6 +796,30 @@ address needs to be typed.
   For servers without internet access, download `combined_aaguid.json` yourself, serve it from
   a URL the server can reach and set `BOARDLY_AAGUID_LIST_URL` to it. The list isn't shipped
   with Boardly because upstream declares no license.
+
+### Deleting an account
+
+Users delete their account in the **Delete account** section at the end of **Settings → Profile**.
+
+- **It needs a fresh email sign-in.** The deletion can only be scheduled within **3 minutes**
+  after signing in with a magic link or one-time code. Outside that window, the section asks the
+  user to sign out and sign in again by email. The user also has to type their email address to
+  confirm.
+- **Scheduling it takes effect right away for other devices and apps.** All other sessions of the
+  user are signed out, all active app tokens are revoked, and their public dashboards are hidden
+  from everyone else. The account otherwise stays fully usable, and every page shows a banner
+  with the deletion date and **Cancel deletion**.
+- **Cancelling** keeps the account. Revoked app tokens stay revoked and have to be created again;
+  public dashboards are visible again.
+- **One reminder email** is sent a day before the deletion, in the language the user had when
+  scheduling it. No other emails are sent, not even after the deletion.
+- **The deletion** happens `BOARDLY_ACCOUNT_DELETION_DAYS` days (7) after scheduling, checked every
+  hour. It removes the account with all its dashboards, favourites, tags, notes, categories,
+  attachments, media sources, uploaded images and their files, passkeys, app tokens, sessions,
+  pending sign-in links and background jobs. Shared favicons are kept. The email address can sign
+  up again afterwards (if registration is open), and the user's address `/<user-slug>/…` can be
+  taken by another user. Old links to public dashboards then show that user's dashboards of the
+  same name, if any.
 
 ### Translations
 

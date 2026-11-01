@@ -1,0 +1,13 @@
+{{define "subject"}}Dein {{.AppName}}-Konto wird am {{.Date}} gelöscht{{end}}
+{{define "body"}}
+Hallo,
+
+wie von dir gewünscht, wird dein {{.AppName}}-Konto am {{.Date}} gelöscht. Dabei werden alle deine Dashboards, Favoriten, Notizen und Dateien entfernt, und das lässt sich nicht rückgängig machen.
+
+Wenn du dein Konto behalten möchtest, melde dich vorher an und wähle „Löschung abbrechen“:
+{{.Link}}
+
+Dies ist die letzte E-Mail, die du von {{.AppName}} erhältst. Es werden keine weiteren E-Mails gesendet, auch nicht nach der Löschung.
+
+– {{.AppName}}
+{{end}}

@@ -406,3 +406,41 @@ func TestMemosTokens(t *testing.T) {
 		t.Errorf("after deleting its category: err = %v, want ErrInvalidToken", err)
 	}
 }
+
+func TestRevokeAll(t *testing.T) {
+	f := newFixture(t)
+	active, _ := f.create(nil)
+	earlier, _ := f.create(nil)
+	revokedEarlier, err := f.s.Revoke(f.ctx, f.user, earlier.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expires := f.now.Add(time.Minute)
+	expired, _ := f.create(&expires)
+	bobs, _, err := f.s.Create(f.ctx, f.other, NewToken{Name: "Bob", App: AppMemos})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.now = f.now.Add(time.Hour)
+	if err := RevokeAll(f.ctx, f.s.DB, f.user, f.now); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]Token{}
+	list, _ := f.s.List(f.ctx, f.user)
+	for _, tok := range list {
+		byID[tok.ID] = tok
+	}
+	if got := byID[active.ID]; got.Status != StatusRevoked || !got.RevokedAt.Equal(f.now) {
+		t.Errorf("active token = %+v, want revoked now", got)
+	}
+	if got := byID[earlier.ID]; !got.RevokedAt.Equal(revokedEarlier.RevokedAt.UTC()) {
+		t.Errorf("already revoked token changed to %v", got.RevokedAt)
+	}
+	if got := byID[expired.ID]; got.Status != StatusExpired || got.RevokedAt != nil {
+		t.Errorf("expired token = %+v, want untouched", got)
+	}
+	if list, _ := f.s.List(f.ctx, f.other); list[0].ID != bobs.ID || list[0].Status != StatusActive {
+		t.Errorf("other user's token = %+v, want active", list[0])
+	}
+}

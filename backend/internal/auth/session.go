@@ -27,6 +27,10 @@ const (
 // EnrollmentWindow is how long after a magic-link sign-in the session may add passkeys.
 const EnrollmentWindow = 5 * time.Minute
 
+// DeletionWindow is how long after a sign-in by email the session may
+// schedule the deletion of its account.
+const DeletionWindow = 3 * time.Minute
+
 // ErrNoSession is returned for unknown and expired sessions.
 var ErrNoSession = errors.New("no session")
 
@@ -42,6 +46,8 @@ type Session struct {
 	// EnrollmentUntil is the end of the passkey enrollment window, or nil if
 	// the session never had one.
 	EnrollmentUntil *time.Time
+	// CreatedAt is when the session was started.
+	CreatedAt time.Time
 	// Renewed reports that a lookup extended the expiry, so the cookie should be renewed.
 	Renewed bool
 }
@@ -49,6 +55,29 @@ type Session struct {
 // EnrollmentOpen reports whether the session may start adding a passkey at now.
 func (s Session) EnrollmentOpen(now time.Time) bool {
 	return s.EnrollmentUntil != nil && now.Before(*s.EnrollmentUntil)
+}
+
+// DeletionUntil returns the end of the session's account deletion window, or
+// nil for a session that never had one (a passkey session).
+func (s Session) DeletionUntil() *time.Time {
+	if s.Method != MethodMagicLink {
+		return nil
+	}
+	t := s.CreatedAt.Add(DeletionWindow)
+	return &t
+}
+
+// DeletionOpen reports whether the session may schedule its account's deletion at now.
+func (s Session) DeletionOpen(now time.Time) bool {
+	until := s.DeletionUntil()
+	return until != nil && now.Before(*until)
+}
+
+// DeleteOtherSessions deletes every session of the user except the one with
+// the cookie secret keep. q may be a transaction.
+func DeleteOtherSessions(ctx context.Context, q db.Querier, userID, keep string) error {
+	_, err := q.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND id_hash <> ?`, userID, hash(keep))
+	return err
 }
 
 func (s *Service) createSession(ctx context.Context, q db.Querier, userID, method, userAgent string, now time.Time) (Session, error) {
@@ -75,7 +104,7 @@ func (s *Service) createSession(ctx context.Context, q db.Querier, userID, metho
 	); err != nil {
 		return Session{}, err
 	}
-	return Session{Secret: secret, UserID: userID, ExpiresAt: expires, Method: method, EnrollmentUntil: enrollUntil}, nil
+	return Session{Secret: secret, UserID: userID, ExpiresAt: expires, Method: method, EnrollmentUntil: enrollUntil, CreatedAt: now}, nil
 }
 
 // LookupSession returns the valid session for the cookie secret and extends
@@ -87,13 +116,13 @@ func (s *Service) LookupSession(ctx context.Context, secret string) (Session, er
 	now := s.Now()
 	idHash := hash(secret)
 
-	var userID, lastUsed, expires, method string
+	var userID, lastUsed, expires, method, created string
 	var enrollUntil sql.NullString
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT user_id, last_used_at, expires_at, auth_method, passkey_enrollment_until
+		`SELECT user_id, last_used_at, expires_at, auth_method, passkey_enrollment_until, created_at
 		 FROM sessions WHERE id_hash = ? AND expires_at > ?`,
 		idHash, db.FormatTime(now),
-	).Scan(&userID, &lastUsed, &expires, &method, &enrollUntil)
+	).Scan(&userID, &lastUsed, &expires, &method, &enrollUntil, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, ErrNoSession
 	}
@@ -102,6 +131,9 @@ func (s *Service) LookupSession(ctx context.Context, secret string) (Session, er
 	}
 	sess := Session{Secret: secret, UserID: userID, Method: method}
 	if sess.ExpiresAt, err = db.ParseTime(expires); err != nil {
+		return Session{}, err
+	}
+	if sess.CreatedAt, err = db.ParseTime(created); err != nil {
 		return Session{}, err
 	}
 	if enrollUntil.Valid {

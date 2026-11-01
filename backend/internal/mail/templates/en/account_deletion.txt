@@ -1,0 +1,13 @@
+{{define "subject"}}Your {{.AppName}} account will be deleted on {{.Date}}{{end}}
+{{define "body"}}
+Hello,
+
+your {{.AppName}} account will be deleted on {{.Date}}, as you requested. All of your dashboards, favourites, notes and files will be removed then, and this can't be undone.
+
+If you want to keep your account, sign in before then and choose "Cancel deletion":
+{{.Link}}
+
+This is the last email you will receive from {{.AppName}}. No further emails will be sent, not even when the account has been deleted.
+
+– {{.AppName}}
+{{end}}

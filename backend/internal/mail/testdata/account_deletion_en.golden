@@ -1,0 +1,31 @@
+To: ann@example.org
+Subject: Your Boardly account will be deleted on 8 November 2026, 10:00 UTC
+
+Hello,
+
+your Boardly account will be deleted on 8 November 2026, 10:00 UTC, as you requested. All of your dashboards, favourites, notes and files will be removed then, and this can't be undone.
+
+If you want to keep your account, sign in before then and choose "Cancel deletion":
+https://dash.example.org/
+
+This is the last email you will receive from Boardly. No further emails will be sent, not even when the account has been deleted.
+
+– Boardly
+
+--- html ---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Your Boardly account will be deleted on 8 November 2026, 10:00 UTC</title></head>
+<body style="margin:0;padding:24px;background:#eef1f4;color:#1d2733;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #cbd3dc;border-radius:8px;">
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:20px;font-weight:600;">Boardly</p>
+<p style="margin:0 0 24px;">Your Boardly account will be deleted on <strong>8 November 2026, 10:00 UTC</strong>, as you requested. All of your dashboards, favourites, notes and files will be removed then, and this can't be undone.</p>
+<p style="margin:0 0 24px;">If you want to keep your account, sign in before then and choose “Cancel deletion”.</p>
+<p style="margin:0 0 24px;"><a href="https://dash.example.org/" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#1d2733;color:#eef1f4;text-decoration:none;font-weight:500;">Open Boardly</a></p>
+<p style="margin:0 0 24px;font-size:14px;color:#5a6878;word-break:break-all;">https://dash.example.org/</p>
+<p style="margin:0;font-size:14px;color:#5a6878;">This is the last email you will receive from Boardly. No further emails will be sent, not even when the account has been deleted.</p>
+</td></tr>
+</table>
+</body>
+</html>
