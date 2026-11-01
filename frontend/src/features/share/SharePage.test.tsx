@@ -132,6 +132,33 @@ describe("save link page", () => {
 		expect(await folderRadio("Favourites")).toBeChecked();
 	});
 
+	it("shows how many links are on the shared URL's domain", async () => {
+		const api = mockShareApi();
+		const onGithub = (id: string): FavouriteNode => ({
+			id,
+			kind: "link",
+			title: id,
+			url: `https://github.com/${id}`,
+		});
+		api.set({
+			"GET /api/favourites": {
+				body: {
+					...tree,
+					children: [
+						{ ...tree.children?.[0], children: [onGithub("a")] },
+						onGithub("b"),
+					],
+				},
+			},
+		});
+		renderApp(share({ url: "https://github.com/x" }));
+		const hint = await screen.findByRole("link", {
+			name: "2 favourites on github.com",
+		});
+		expect(hint).toHaveAttribute("href", "/favourites?domain=github.com");
+		expect(hint).toHaveAttribute("target", "_blank");
+	});
+
 	it("rejects an invalid URL", async () => {
 		const api = mockShareApi();
 		const { user } = renderApp("/share");

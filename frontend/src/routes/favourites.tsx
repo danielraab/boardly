@@ -4,6 +4,7 @@ import {
 	FavouritesPage,
 	type FavouritesSearch,
 } from "#/features/favourites/FavouritesPage";
+import { normaliseDomain } from "#/features/favourites/tree";
 
 // Search params are parsed as JSON, so a search for "123" arrives as a number.
 const text = (value: unknown) =>
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/favourites")({
 		return {
 			q: text(search.q),
 			tags: tags.length > 0 ? tags : undefined,
+			domain: normaliseDomain(text(search.domain)),
 			folder: text(search.folder),
 		};
 	},

@@ -332,6 +332,16 @@
 			"add": "Filter by tag {{tag}}",
 			"remove": "Remove tag filter {{tag}}"
 		},
+		"domainFilter": {
+			"chip": "Domain: {{domain}}",
+			"remove": "Remove domain filter {{domain}}"
+		},
+		"domainHint": {
+			"count_one": "{{count}} favourite on {{domain}}",
+			"count_other": "{{count}} favourites on {{domain}}",
+			"others_one": "{{count}} other favourite on {{domain}}",
+			"others_other": "{{count}} other favourites on {{domain}}"
+		},
 		"manageTags": {
 			"button": "Manage tags",
 			"title": "Manage tags",

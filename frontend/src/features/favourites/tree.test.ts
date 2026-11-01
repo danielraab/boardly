@@ -4,6 +4,8 @@ import {
 	applyMove,
 	checkState,
 	currentSlot,
+	domainCount,
+	domainOf,
 	filterTree,
 	flatten,
 	folderPath,
@@ -12,6 +14,7 @@ import {
 	keyboardSlots,
 	linkCounts,
 	moveRoots,
+	normaliseDomain,
 	pointerSlot,
 	pruneSelection,
 	ROOT_END,
@@ -312,6 +315,85 @@ describe("filterTree", () => {
 
 	it("returns null when nothing matches", () => {
 		expect(search("nothing")).toBeNull();
+	});
+});
+
+describe("domainOf", () => {
+	it("is the host name in lower case without www. and port", () => {
+		expect(domainOf("https://WWW.GitHub.com/foo?x=1#y")).toBe("github.com");
+		expect(domainOf("http://example.org:8080/a")).toBe("example.org");
+		expect(domainOf("  https://example.org  ")).toBe("example.org");
+	});
+
+	it("keeps subdomains", () => {
+		expect(domainOf("https://gist.github.com/b")).toBe("gist.github.com");
+		expect(domainOf("https://www.www.example.org")).toBe("www.example.org");
+	});
+
+	it("is null for invalid and non-web URLs", () => {
+		expect(domainOf(undefined)).toBeNull();
+		expect(domainOf("")).toBeNull();
+		expect(domainOf("github.com")).toBeNull();
+		expect(domainOf("ftp://example.org")).toBeNull();
+		expect(domainOf("javascript:alert(1)")).toBeNull();
+	});
+});
+
+describe("normaliseDomain", () => {
+	it("lower-cases and strips www.", () => {
+		expect(normaliseDomain(" WWW.GitHub.com ")).toBe("github.com");
+		expect(normaliseDomain("")).toBeUndefined();
+		expect(normaliseDomain(undefined)).toBeUndefined();
+	});
+});
+
+describe("domainCount", () => {
+	const onDomain = (id: string, url: string): FavouriteNode => ({
+		id,
+		kind: "link",
+		title: id,
+		url,
+	});
+	const sites: FavouriteNode = folder(
+		"root",
+		onDomain("a", "https://github.com/a"),
+		folder(
+			"Dev",
+			onDomain("b", "https://www.github.com/b"),
+			folder("Deep", onDomain("c", "http://GITHUB.com:8080/c")),
+		),
+		onDomain("gist", "https://gist.github.com/x"),
+		onDomain("other", "https://notgithub.com"),
+	);
+
+	it("counts links on the domain at all levels", () => {
+		expect(domainCount(sites, "github.com")).toBe(3);
+		expect(domainCount(sites, "gist.github.com")).toBe(1);
+		expect(domainCount(sites, "example.org")).toBe(0);
+	});
+
+	it("leaves out the excluded node", () => {
+		expect(domainCount(sites, "github.com", "b")).toBe(2);
+	});
+});
+
+describe("filterTree by domain", () => {
+	const byDomain = (domain: string, text = "", tags: string[] = []) =>
+		ids(filterTree(tagged, { terms: searchTerms(text), tags, domain }));
+
+	it("shows only links on the domain with their folders", () => {
+		expect(byDomain("grafana.example.com")).toEqual(["Work", "Tools", "graf"]);
+		expect(byDomain("example.org")).toEqual(["Work", "Mail", "Long read"]);
+	});
+
+	it("applies together with search terms and tags", () => {
+		expect(byDomain("example.org", "long")).toEqual(["Long read"]);
+		expect(byDomain("example.org", "", ["later"])).toEqual(["Long read"]);
+		expect(byDomain("other.example.org", "", ["reading"])).toBeNull();
+	});
+
+	it("doesn't keep whole folders by name", () => {
+		expect(byDomain("example.org", "tools")).toBeNull();
 	});
 });
 

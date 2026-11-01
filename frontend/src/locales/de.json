@@ -332,6 +332,16 @@
 			"add": "Nach Tag {{tag}} filtern",
 			"remove": "Tag-Filter {{tag}} entfernen"
 		},
+		"domainFilter": {
+			"chip": "Domain: {{domain}}",
+			"remove": "Domain-Filter {{domain}} entfernen"
+		},
+		"domainHint": {
+			"count_one": "{{count}} Favorit auf {{domain}}",
+			"count_other": "{{count}} Favoriten auf {{domain}}",
+			"others_one": "{{count}} weiterer Favorit auf {{domain}}",
+			"others_other": "{{count}} weitere Favoriten auf {{domain}}"
+		},
 		"manageTags": {
 			"button": "Tags verwalten",
 			"title": "Tags verwalten",
