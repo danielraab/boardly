@@ -140,7 +140,7 @@ Deleting a dashboard SHALL ask for confirmation with the dashboard's title, and 
 - **THEN** "Work" disappears from the list and its address shows not found
 
 ### Requirement: Dashboard address
-A dashboard SHALL be shown at `/<user-slug>/<dashboard-slug>`. Both parts are matched ignoring case. The page shows the dashboard's title and its sections, or a translated placeholder that says the dashboard is empty when it has none. The owner can always see their dashboards. Anyone else, signed in or not, can see a dashboard only if it is public. In every other case (unknown user, unknown dashboard, a private dashboard of another user) the page shows the not-found page. Fixed routes of the app, such as `/login/verify`, always take precedence over this route.
+A dashboard SHALL be shown at `/<user-slug>/<dashboard-slug>`. Both parts are matched ignoring case. The page shows the dashboard's title and its sections, or a translated placeholder that says the dashboard is empty when it has none. The owner can always see their dashboards. Anyone else, signed in or not, can see a dashboard only if it is public and the owner's account isn't scheduled for deletion. In every other case (unknown user, unknown dashboard, a private dashboard of another user, any dashboard of another user whose account is scheduled for deletion) the page shows the not-found page. Fixed routes of the app, such as `/login/verify`, always take precedence over this route.
 
 The web app loads it with `GET /api/u/{userSlug}/{dashboardSlug}`. This works with or without a session and responds 404 `not_found` in exactly the cases above. The response contains the dashboard (`slug`, `title`), its column settings and layout, whether the viewer is the owner, the owner's slug, and the switcher entries (`slug`, `title`): all of the owner's dashboards for the owner, only public ones for everyone else. For the owner, the response also contains the dashboard's `id`, `isDefault` and `isPublic`. For anyone else, these three fields are left out.
 
@@ -155,6 +155,14 @@ The web app loads it with `GET /api/u/{userSlug}/{dashboardSlug}`. This works wi
 #### Scenario: Visitor opens private dashboard
 - **WHEN** Bob opens `/ann/work`, which isn't public
 - **THEN** the not-found page is shown, the same as for `/ann/no-such-dashboard`
+
+#### Scenario: Owner scheduled for deletion
+- **WHEN** Ann's account is scheduled for deletion and a signed-out visitor opens her public dashboard `/ann/home`
+- **THEN** the not-found page is shown, while Ann herself still sees the dashboard
+
+#### Scenario: Deletion cancelled
+- **WHEN** Ann cancels her scheduled deletion and a signed-out visitor opens `/ann/home`
+- **THEN** they see the dashboard again
 
 #### Scenario: Case-insensitive address
 - **WHEN** Ann opens `/Ann/Work`
