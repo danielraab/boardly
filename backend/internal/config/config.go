@@ -61,6 +61,10 @@ type Config struct {
 
 	// MapStyleURL is the MapLibre style that maps in notes are drawn from.
 	MapStyleURL string
+
+	// AccountDeletionDays is the grace period, in days, between scheduling an
+	// account's deletion and carrying it out. 0 deletes at the next sweep.
+	AccountDeletionDays int
 }
 
 // Attachments holds the limits of note attachments.
@@ -123,9 +127,10 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			From: "Boardly <noreply@localhost>",
 			TLS:  "starttls",
 		},
-		AllowRegistration: true,
-		Previews:          Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
-		Attachments:       Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
+		AllowRegistration:   true,
+		Previews:            Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
+		Attachments:         Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
+		AccountDeletionDays: 7,
 	}
 
 	port, err := LoadPort(lookupEnv)
@@ -233,6 +238,14 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			}
 			p.set(n)
 		}
+	}
+
+	if v := getenv("BOARDLY_ACCOUNT_DELETION_DAYS"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil || n < 0 {
+			return Config{}, fmt.Errorf("BOARDLY_ACCOUNT_DELETION_DAYS: %q must be a whole number of 0 or more", v)
+		}
+		cfg.AccountDeletionDays = int(n)
 	}
 
 	types, err := attachments.ParseAllowed(getenv("BOARDLY_ATTACHMENT_TYPES"))

@@ -18,6 +18,12 @@ export type User = {
 	noteCategoryId: string | null;
 	/** End of the passkey enrollment window (RFC 3339), or null when none is open. */
 	passkeyEnrollmentUntil: string | null;
+	/** When the account will be deleted (RFC 3339), or null when no deletion is scheduled. */
+	deletionScheduledAt: string | null;
+	/** End of the window for scheduling the account's deletion (RFC 3339), or null when none is open. */
+	deletionWindowUntil: string | null;
+	/** Days between scheduling the account's deletion and carrying it out. */
+	accountDeletionDays: number;
 };
 
 export const meQueryKey = ["me"] as const;

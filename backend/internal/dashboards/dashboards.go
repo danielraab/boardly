@@ -286,18 +286,19 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 // Lookup resolves /<userSlug>/<dashboardSlug> for viewerID ("" when signed
 // out), ignoring case. An unknown user, an unknown dashboard and another
 // user's private dashboard all return ErrNotFound, so the response never
-// reveals that a private dashboard exists.
+// reveals that a private dashboard exists. So do the public dashboards of
+// another user whose account is scheduled for deletion.
 func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID string) (View, error) {
 	var ownerID, dashboardID string
 	var v View
-	var public, isDefault bool
+	var public, isDefault, deleting bool
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT u.id, u.slug, d.id, d.slug, d.title, d.is_public, d.is_default,
+		`SELECT u.id, u.slug, u.delete_after IS NOT NULL, d.id, d.slug, d.title, d.is_public, d.is_default,
 		   d.desktop_columns, d.mobile_columns, d.mobile_breakpoint, d.layout_version
 		 FROM users u JOIN dashboards d ON d.user_id = u.id
 		 WHERE u.slug = ? AND d.slug = ?`,
 		strings.ToLower(userSlug), strings.ToLower(dashboardSlug),
-	).Scan(&ownerID, &v.OwnerSlug, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public, &isDefault,
+	).Scan(&ownerID, &v.OwnerSlug, &deleting, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public, &isDefault,
 		&v.Columns.DesktopColumns, &v.Columns.MobileColumns, &v.Columns.MobileBreakpoint, &v.LayoutVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return View{}, ErrNotFound
@@ -306,7 +307,7 @@ func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID st
 		return View{}, err
 	}
 	v.IsOwner = viewerID != "" && viewerID == ownerID
-	if !v.IsOwner && !public {
+	if !v.IsOwner && (!public || deleting) {
 		return View{}, ErrNotFound
 	}
 	if v.IsOwner {

@@ -316,6 +316,16 @@ func (s *Store) Revoke(ctx context.Context, userID, id string) (Token, error) {
 	return t, tx.Commit()
 }
 
+// RevokeAll revokes every active token of the user at now. Revoked and
+// expired tokens are left as they are. q may be a transaction.
+func RevokeAll(ctx context.Context, q db.Querier, userID string, now time.Time) error {
+	_, err := q.ExecContext(ctx,
+		`UPDATE app_tokens SET revoked_at = ?1
+		 WHERE user_id = ?2 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?1)`,
+		db.FormatTime(now), userID)
+	return err
+}
+
 // Delete removes the user's revoked or expired token.
 func (s *Store) Delete(ctx context.Context, userID, id string) error {
 	tx, err := s.DB.BeginTx(ctx, nil)

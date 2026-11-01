@@ -26,6 +26,9 @@ type User struct {
 	ShareFolderID *string `json:"shareFolderId"`
 	// NoteCategoryID is the default category for new notes; nil means none.
 	NoteCategoryID *string `json:"noteCategoryId"`
+	// DeletionScheduledAt is when the account will be deleted; nil when no
+	// deletion is scheduled.
+	DeletionScheduledAt *time.Time `json:"deletionScheduledAt"`
 	// CreatedAt and UpdatedAt are for connected apps; the web API leaves them out.
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
@@ -66,7 +69,7 @@ func NewStore(database *sql.DB) *Store {
 	return &Store{DB: database, Now: time.Now, GenerateSlug: slugs.Generate}
 }
 
-const columns = `id, email, name, slug, share_folder_id, note_category_id, created_at, updated_at`
+const columns = `id, email, name, slug, share_folder_id, note_category_id, created_at, updated_at, delete_after`
 
 // EnsureByEmail returns the user with the (already normalized) email,
 // creating the account first if none exists. q may be a transaction.
@@ -249,9 +252,9 @@ func NormalizeName(name *string) (*string, error) {
 
 func scan(row *sql.Row) (User, error) {
 	var u User
-	var name, slug, shareFolder, noteCategory sql.NullString
+	var name, slug, shareFolder, noteCategory, deleteAfter sql.NullString
 	var created, updated string
-	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &shareFolder, &noteCategory, &created, &updated); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &name, &slug, &shareFolder, &noteCategory, &created, &updated, &deleteAfter); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, ErrNotFound
 		}
@@ -273,6 +276,13 @@ func scan(row *sql.Row) (User, error) {
 	}
 	if noteCategory.Valid {
 		u.NoteCategoryID = &noteCategory.String
+	}
+	if deleteAfter.Valid {
+		t, err := db.ParseTime(deleteAfter.String)
+		if err != nil {
+			return User{}, err
+		}
+		u.DeletionScheduledAt = &t
 	}
 	return u, nil
 }

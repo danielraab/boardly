@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"boardly/internal/accounts"
 	"boardly/internal/apptokens"
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
@@ -77,6 +78,7 @@ func (o *outbox) last(t *testing.T) mail.Message {
 
 type server struct {
 	h           http.Handler
+	accounts    *accounts.Service
 	db          *sql.DB
 	auth        *auth.Service
 	clock       *clock
@@ -134,13 +136,14 @@ func newServer(t *testing.T) *server {
 
 	appTokens := apptokens.NewStore(database)
 	appTokens.Now = c.Now
+	accountService := &accounts.Service{DB: database, Users: store, Now: c.Now, Days: 7, Mailer: box, Link: testOrigin + "/"}
 
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
-		Origin: testOrigin, SecureCookies: true,
+		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.
@@ -602,7 +605,7 @@ func TestMe(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if slug, _ := body["slug"].(string); len(body) != 7 || body["shareFolderId"] != nil || body["noteCategoryId"] != nil || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
+	if slug, _ := body["slug"].(string); len(body) != 10 || body["accountDeletionDays"] != float64(7) || body["deletionScheduledAt"] != nil || body["deletionWindowUntil"] == nil || body["shareFolderId"] != nil || body["noteCategoryId"] != nil || body["email"] != "ann@example.org" || body["name"] != nil || body["id"] == "" || len(slug) != 10 {
 		t.Fatalf("body = %v", body)
 	}
 }

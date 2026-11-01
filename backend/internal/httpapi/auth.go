@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"boardly/internal/accounts"
 	"boardly/internal/apptokens"
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
@@ -48,6 +49,7 @@ type api struct {
 	// refreshLimiter limits favicon refreshes per user.
 	refreshLimiter *ratelimit.Limiter
 	appTokens      *apptokens.Store
+	accounts       *accounts.Service
 	origin         string
 	secureCookies  bool
 	trustProxy     bool
@@ -142,10 +144,13 @@ func (a *api) logout(w http.ResponseWriter, r *http.Request) error {
 }
 
 // me is the response of GET /api/me: the user plus the session's passkey
-// enrollment window (nil when none is open).
+// enrollment and account deletion windows (nil when not open).
 type me struct {
 	users.User
 	PasskeyEnrollmentUntil *time.Time `json:"passkeyEnrollmentUntil"`
+	DeletionWindowUntil    *time.Time `json:"deletionWindowUntil"`
+	// AccountDeletionDays is the grace period of a scheduled deletion.
+	AccountDeletionDays int `json:"accountDeletionDays"`
 }
 
 func (a *api) getMe(w http.ResponseWriter, r *http.Request) error {
@@ -157,8 +162,15 @@ func (a *api) getMe(w http.ResponseWriter, r *http.Request) error {
 func (a *api) writeMe(w http.ResponseWriter, r *http.Request, user users.User) {
 	sess, _ := CurrentSession(r.Context())
 	body := me{User: user}
-	if sess.EnrollmentOpen(a.auth.Now()) {
+	if a.accounts != nil {
+		body.AccountDeletionDays = a.accounts.Days
+	}
+	now := a.auth.Now()
+	if sess.EnrollmentOpen(now) {
 		body.PasskeyEnrollmentUntil = sess.EnrollmentUntil
+	}
+	if sess.DeletionOpen(now) {
+		body.DeletionWindowUntil = sess.DeletionUntil()
 	}
 	WriteJSON(w, http.StatusOK, body)
 }

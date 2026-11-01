@@ -251,3 +251,50 @@ func TestRenderRegistrationClosedUsesAppName(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderAccountDeletionGolden(t *testing.T) {
+	for _, tt := range []struct{ locale, golden, date string }{
+		{"en", "en", "8 November 2026, 10:00 UTC"},
+		{"de", "de", "8. November 2026, 10:00 UTC"},
+		{"fr", "en", "8 November 2026, 10:00 UTC"},
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			m, err := RenderAccountDeletion(tt.locale, "ann@example.org",
+				AccountDeletionData{Date: tt.date, Link: "https://dash.example.org/"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := "To: " + m.To + "\nSubject: " + m.Subject + "\n\n" + m.Text + "\n--- html ---\n" + m.HTML
+			path := filepath.Join("testdata", "account_deletion_"+tt.golden+".golden")
+			if *update && tt.locale == tt.golden {
+				if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("%v (run with -update to create it)", err)
+			}
+			if got != string(want) {
+				t.Fatalf("output differs from %s:\n%s", path, got)
+			}
+			for _, part := range []string{m.Text, m.HTML} {
+				if !strings.Contains(part, tt.date) || !strings.Contains(part, "https://dash.example.org/") {
+					t.Fatalf("part lacks date or link:\n%s", part)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderAccountDeletionUsesAppName(t *testing.T) {
+	for _, locale := range []string{"en", "de"} {
+		m, err := RenderAccountDeletion(locale, "a@example.org", AccountDeletionData{AppName: "Boardly Staging", Date: "x", Link: "https://x/"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if all := m.Subject + m.Text + m.HTML; strings.Count(all, "Boardly") != strings.Count(all, "Boardly Staging") || !strings.Contains(m.Subject, "Boardly Staging") {
+			t.Fatalf("%s: email doesn't consistently name the app", locale)
+		}
+	}
+}

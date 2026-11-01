@@ -41,6 +41,9 @@ export function signedIn(user: Partial<User> = {}): MockResponse {
 			shareFolderId: null,
 			noteCategoryId: null,
 			passkeyEnrollmentUntil: null,
+			deletionScheduledAt: null,
+			deletionWindowUntil: null,
+			accountDeletionDays: 7,
 			...user,
 		},
 	};

@@ -16,9 +16,11 @@ import (
 	"time"
 
 	"boardly/internal/aaguid"
+	"boardly/internal/accounts"
 	"boardly/internal/apptokens"
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
+	"boardly/internal/blobs"
 	"boardly/internal/config"
 	"boardly/internal/dashboards"
 	"boardly/internal/db"
@@ -69,7 +71,8 @@ func run() error {
 	}
 
 	userStore := users.NewStore(database)
-	authService := auth.NewService(database, userStore, mail.New(cfg.SMTP), cfg.BaseURL)
+	mailer := mail.New(cfg.SMTP)
+	authService := auth.NewService(database, userStore, mailer, cfg.BaseURL)
 	authService.AppTitle = cfg.AppTitle
 	authService.RegistrationClosed = !cfg.AllowRegistration
 	if authService.WebAuthn, err = auth.NewWebAuthn(cfg.WebAuthnRPID, cfg.Origin()); err != nil {
@@ -106,6 +109,13 @@ func run() error {
 	}
 	go attachmentStore.RunCleanup(ctx, time.Hour)
 
+	accountService := &accounts.Service{
+		DB: database, Users: userStore, Now: time.Now, Days: cfg.AccountDeletionDays,
+		Mailer: mailer, AppTitle: cfg.AppTitle, Link: cfg.BaseURL.String() + "/",
+		ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files,
+	}
+	go accountService.RunSweep(ctx, time.Hour)
+
 	favouriteStore := favourites.NewStore(database)
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
@@ -129,6 +139,7 @@ func run() error {
 			Favicons:          favicons,
 			Previews:          previews,
 			AppTokens:         apptokens.NewStore(database),
+			Accounts:          accountService,
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,

@@ -131,3 +131,49 @@ func TestSessionEnrollmentWindow(t *testing.T) {
 		t.Fatalf("passkey session = %+v, %v", got, err)
 	}
 }
+
+func TestSessionDeletionWindow(t *testing.T) {
+	svc, now := newTestService(t)
+	ctx := context.Background()
+	u, _ := svc.Users.EnsureByEmail(ctx, svc.DB, "ann@example.org")
+	start := *now
+
+	link, _ := svc.createSession(ctx, svc.DB, u.ID, MethodMagicLink, "", start)
+	passkey, _ := svc.createSession(ctx, svc.DB, u.ID, MethodPasskey, "", start)
+
+	got, err := svc.LookupSession(ctx, link.Secret)
+	if err != nil || got.DeletionUntil() == nil || !got.DeletionUntil().Equal(start.Add(DeletionWindow)) {
+		t.Fatalf("magic-link session = %+v, %v", got, err)
+	}
+	if !got.DeletionOpen(start.Add(DeletionWindow-time.Second)) || got.DeletionOpen(start.Add(DeletionWindow)) {
+		t.Fatal("window must be open for exactly 3 minutes")
+	}
+
+	got, err = svc.LookupSession(ctx, passkey.Secret)
+	if err != nil || got.DeletionUntil() != nil || got.DeletionOpen(start) {
+		t.Fatalf("passkey session = %+v, %v", got, err)
+	}
+}
+
+func TestDeleteOtherSessions(t *testing.T) {
+	svc, now := newTestService(t)
+	ctx := context.Background()
+	ann, _ := svc.Users.EnsureByEmail(ctx, svc.DB, "ann@example.org")
+	bob, _ := svc.Users.EnsureByEmail(ctx, svc.DB, "bob@example.org")
+	mine, _ := svc.createSession(ctx, svc.DB, ann.ID, MethodMagicLink, "", *now)
+	phone, _ := svc.createSession(ctx, svc.DB, ann.ID, MethodPasskey, "", *now)
+	bobs, _ := svc.createSession(ctx, svc.DB, bob.ID, MethodPasskey, "", *now)
+
+	if err := DeleteOtherSessions(ctx, svc.DB, ann.ID, mine.Secret); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.LookupSession(ctx, mine.Secret); err != nil {
+		t.Fatalf("current session: %v", err)
+	}
+	if _, err := svc.LookupSession(ctx, phone.Secret); !errors.Is(err, ErrNoSession) {
+		t.Fatalf("other session: err = %v", err)
+	}
+	if _, err := svc.LookupSession(ctx, bobs.Secret); err != nil {
+		t.Fatalf("other user's session: %v", err)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"boardly/internal/accounts"
 	"boardly/internal/apptokens"
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
@@ -41,6 +42,8 @@ type Deps struct {
 	// Previews takes preview images that connected apps send.
 	Previews  *images.Previews
 	AppTokens *apptokens.Store
+	// Accounts schedules and cancels account deletions.
+	Accounts *accounts.Service
 	// Origin is the web app's origin (scheme://host[:port]); state-changing
 	// requests with another Origin header are rejected.
 	Origin string
@@ -54,7 +57,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -64,6 +67,8 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/auth/logout", HandlerFunc(a.logout))
 	mux.Handle("GET /api/me", a.requireUser(a.getMe))
 	mux.Handle("PATCH /api/me", a.requireUser(a.patchMe))
+	mux.Handle("DELETE /api/me", a.requireUser(a.deleteMe))
+	mux.Handle("POST /api/me/restore", a.requireUser(a.restoreMe))
 	mux.Handle("POST /api/auth/passkey/login/options", HandlerFunc(a.passkeyLoginOptions))
 	mux.Handle("POST /api/auth/passkey/login/verify", HandlerFunc(a.passkeyLoginVerify))
 	mux.Handle("GET /api/passkeys", a.requireUser(a.listPasskeys))

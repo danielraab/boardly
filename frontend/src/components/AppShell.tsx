@@ -7,6 +7,7 @@ import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
 import { MiniPlayer } from "#/features/media/MiniPlayer";
 import { MediaPlayerProvider } from "#/features/media/player";
+import { DeletionBanner } from "#/features/settings/DeletionBanner";
 import { appTitle } from "#/lib/appTitle";
 import { AppIcon } from "./AppIcon";
 import { headerButton } from "./buttonStyles";
@@ -42,7 +43,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 							<UserMenu />
 						</div>
 					</header>
-					<main className={`${container} flex-1 pb-16`}>{children}</main>
+					<main className={`${container} flex-1 pb-16`}>
+						<DeletionBanner />
+						{children}
+					</main>
 					<MiniPlayer />
 				</div>
 			</MediaPlayerProvider>

@@ -89,6 +89,18 @@ func TestLoadAttachments(t *testing.T) {
 	}
 }
 
+func TestAccountDeletionDays(t *testing.T) {
+	for value, want := range map[string]int{"": 7, "0": 0, "14": 14} {
+		cfg, err := Load(env(withBaseURL(map[string]string{"BOARDLY_ACCOUNT_DELETION_DAYS": value})))
+		if err != nil {
+			t.Fatalf("%q: %v", value, err)
+		}
+		if cfg.AccountDeletionDays != want {
+			t.Errorf("%q: AccountDeletionDays = %d, want %d", value, cfg.AccountDeletionDays, want)
+		}
+	}
+}
+
 func TestLoadOverrides(t *testing.T) {
 	cfg, err := Load(env(map[string]string{
 		"BOARDLY_PORT":                "9000",
@@ -241,6 +253,8 @@ func TestLoadInvalid(t *testing.T) {
 		{"preview pixels not a number", "BOARDLY_PREVIEW_MAX_PIXELS", "many"},
 		{"preview width not a number", "BOARDLY_PREVIEW_WIDTH", "wide"},
 		{"preview width fraction", "BOARDLY_PREVIEW_WIDTH", "800.5"},
+		{"deletion days negative", "BOARDLY_ACCOUNT_DELETION_DAYS", "-1"},
+		{"deletion days not a number", "BOARDLY_ACCOUNT_DELETION_DAYS", "week"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
