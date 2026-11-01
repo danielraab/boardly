@@ -6,6 +6,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A domain hint under the URL field when adding or editing a link, on Save link and in the link
+  widget settings: it shows how many favourites are already on that domain (e.g. "3 favourites
+  on github.com") and opens them on `/favourites` in a new tab.
+- A domain filter on `/favourites` (`?domain=github.com`), shown as a removable chip and cleared
+  with the other filters.
+
 ## [1.0.0] - 2026-11-01
 
 ### Added

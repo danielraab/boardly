@@ -1003,6 +1003,120 @@ describe("search and filter", () => {
 	});
 });
 
+function domainTree() {
+	return fakeServer([
+		folder(
+			"Dev",
+			link("Repo", { url: "https://github.com/a/repo" }),
+			link("Issues", { url: "https://www.github.com/a/repo/issues" }),
+		),
+		link("Profile", { url: "https://GitHub.com/a" }),
+		link("Gist", { url: "https://gist.github.com/a/1" }),
+		link("Other", { url: "https://notgithub.com" }),
+	]);
+}
+
+describe("domain filter", () => {
+	it("shows only links on the domain and a chip", async () => {
+		domainTree();
+		renderApp("/favourites?domain=WWW.GitHub.com");
+		await waitFor(() =>
+			expect(rows()).toEqual(["Dev", "Repo", "Issues", "Profile"]),
+		);
+		expect(screen.getByText("Domain: github.com")).toBeVisible();
+		expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+		expect(screen.getByText("Clear the filters to reorder.")).toBeVisible();
+	});
+
+	it("applies together with the search", async () => {
+		domainTree();
+		const { user } = renderApp("/favourites?domain=github.com");
+		await user.type(await searchBox(), "issues");
+		await waitFor(() => expect(rows()).toEqual(["Dev", "Issues"]));
+	});
+
+	it("is removed with its chip", async () => {
+		domainTree();
+		const { user, router } = renderApp("/favourites?domain=github.com");
+		await user.click(
+			await screen.findByRole("button", {
+				name: "Remove domain filter github.com",
+			}),
+		);
+		await waitFor(() => expect(rows()).toHaveLength(6));
+		expect(router.state.location.search).toEqual({});
+	});
+
+	it("is cleared with the other filters", async () => {
+		domainTree();
+		const { user, router } = renderApp("/favourites?domain=github.com");
+		await user.type(await searchBox(), "nothing");
+		await user.click(screen.getByRole("button", { name: "Clear filters" }));
+		await waitFor(() => expect(rows()).toHaveLength(6));
+		expect(screen.queryByText("Domain: github.com")).toBeNull();
+		expect(router.state.location.search).toEqual({});
+	});
+});
+
+describe("domain hint", () => {
+	it("counts links on the domain when adding a link", async () => {
+		domainTree();
+		const { user } = renderApp("/favourites");
+		await user.click(await screen.findByRole("button", { name: "Add link" }));
+		const dialog = await screen.findByRole("dialog");
+		const url = within(dialog).getByLabelText("URL");
+		await user.type(url, "https://www.github.com/new");
+		const hint = await within(dialog).findByRole("link", {
+			name: "3 favourites on github.com",
+		});
+		expect(hint).toHaveAttribute("href", "/favourites?domain=github.com");
+		expect(hint).toHaveAttribute("target", "_blank");
+		expect(url).toHaveAccessibleDescription("3 favourites on github.com");
+
+		await user.clear(url);
+		await user.type(url, "https://gist.github.com/x");
+		expect(
+			await within(dialog).findByRole("link", {
+				name: "1 favourite on gist.github.com",
+			}),
+		).toBeVisible();
+	});
+
+	it("shows nothing for an unknown domain or an invalid URL", async () => {
+		domainTree();
+		const { user } = renderApp("/favourites");
+		await user.click(await screen.findByRole("button", { name: "Add link" }));
+		const dialog = await screen.findByRole("dialog");
+		const url = within(dialog).getByLabelText("URL");
+		await user.type(url, "https://github.com/x");
+		await within(dialog).findByRole("link", { name: /on github\.com/ });
+		await user.clear(url);
+		await user.type(url, "github.com");
+		await waitFor(() => expect(within(dialog).queryByRole("link")).toBeNull());
+		await user.clear(url);
+		await user.type(url, "https://example.org/new");
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		expect(within(dialog).queryByRole("link")).toBeNull();
+	});
+
+	it("doesn't count the edited link", async () => {
+		domainTree();
+		const { user } = renderApp("/favourites");
+		let dialog = await openEdit(user, "Repo");
+		expect(
+			await within(dialog).findByRole("link", {
+				name: "2 other favourites on github.com",
+			}),
+		).toBeVisible();
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		dialog = await openEdit(user, "Other");
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		expect(within(dialog).queryByRole("link")).toBeNull();
+	});
+});
+
 describe("expand and collapse", () => {
 	it("collapses and expands all folders", async () => {
 		searchTree();

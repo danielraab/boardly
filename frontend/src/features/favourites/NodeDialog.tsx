@@ -216,6 +216,7 @@ function NodeForm({
 								: undefined
 						}
 						hint={!editing}
+						excludeId={editing?.id}
 					/>
 				)}
 				{editing && kind === "link" && (

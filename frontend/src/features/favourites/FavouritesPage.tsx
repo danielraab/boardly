@@ -115,6 +115,8 @@ type Actions = {
 export type FavouritesSearch = {
 	q?: string;
 	tags?: string[];
+	/** Only links on this domain, normalised with normaliseDomain. */
+	domain?: string;
 	folder?: string;
 };
 
@@ -169,9 +171,10 @@ export function FavouritesPage({
 		[tree.data, pendingIds],
 	);
 	const tags = useMemo(() => search.tags ?? [], [search.tags]);
+	const domain = search.domain;
 	const filter = useMemo(
-		() => ({ terms: searchTerms(text), tags }),
-		[text, tags],
+		() => ({ terms: searchTerms(text), tags, domain }),
+		[text, tags, domain],
 	);
 	const filtering = isFiltering(filter);
 	const shown = useMemo(
@@ -347,7 +350,7 @@ export function FavouritesPage({
 	};
 	const clearFilters = () => {
 		setText("");
-		onSearchChange({ q: undefined, tags: undefined });
+		onSearchChange({ q: undefined, tags: undefined, domain: undefined });
 	};
 
 	const isEmpty = root && (root.children ?? []).length === 0;
@@ -522,6 +525,19 @@ export function FavouritesPage({
 								</button>
 							</span>
 						))}
+						{domain && (
+							<span className="inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-1 pl-2.5 text-muted">
+								{t("favourites.domainFilter.chip", { domain })}
+								<button
+									type="button"
+									className="inline-flex size-5 items-center justify-center rounded-full hover:bg-surface hover:text-ink"
+									aria-label={t("favourites.domainFilter.remove", { domain })}
+									onClick={() => onSearchChange({ domain: undefined })}
+								>
+									<X className="size-3" aria-hidden />
+								</button>
+							</span>
+						)}
 						<div className="ml-auto flex items-center gap-4">
 							{filtering && shown && (
 								<button

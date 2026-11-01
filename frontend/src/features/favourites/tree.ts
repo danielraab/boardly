@@ -1,6 +1,7 @@
 // Pure functions over the favourites tree: flattening for rendering, drop
 // slots for drag and drop, and the optimistic move.
 import type { DeleteMode, FavouriteNode } from "./api";
+import { checkUrl } from "./validate";
 
 /** A visible row of the tree. Children of the root have depth 0. */
 export type FlatItem = {
@@ -277,8 +278,49 @@ export function applyMove(
 	return insert(without(root));
 }
 
-/** What the favourites page filters by: search terms and tags a link must all have. */
-export type TreeFilter = { terms: string[]; tags: string[] };
+/**
+ * A domain in the form links are compared by: lower case, without one leading
+ * "www.". Undefined for an empty value.
+ */
+export function normaliseDomain(value: string | undefined): string | undefined {
+	const domain = value
+		?.trim()
+		.toLowerCase()
+		.replace(/^www\./, "");
+	return domain || undefined;
+}
+
+/**
+ * The domain of a URL: its host name (no port) in lower case without one
+ * leading "www.", or null when it isn't an absolute http or https URL.
+ * Subdomains are domains of their own.
+ */
+export function domainOf(url: string | undefined): string | null {
+	if (!url || checkUrl(url) !== null) return null;
+	return normaliseDomain(new URL(url.trim()).hostname) ?? null;
+}
+
+/** How many links of the tree are on domain, not counting the node excludeId. */
+export function domainCount(
+	root: FavouriteNode,
+	domain: string,
+	excludeId?: string,
+): number {
+	const visit = (node: FavouriteNode): number => {
+		if (node.kind === "link")
+			return node.id !== excludeId && domainOf(node.url) === domain ? 1 : 0;
+		let count = 0;
+		for (const child of node.children ?? []) count += visit(child);
+		return count;
+	};
+	return visit(root);
+}
+
+/**
+ * What the favourites page filters by: search terms and tags a link must all
+ * have, and the domain it must be on.
+ */
+export type TreeFilter = { terms: string[]; tags: string[]; domain?: string };
 
 /** The search terms of a search text: split at whitespace, lower case. */
 export function searchTerms(text: string): string[] {
@@ -286,7 +328,11 @@ export function searchTerms(text: string): string[] {
 }
 
 export function isFiltering(filter: TreeFilter) {
-	return filter.terms.length > 0 || filter.tags.length > 0;
+	return (
+		filter.terms.length > 0 ||
+		filter.tags.length > 0 ||
+		filter.domain !== undefined
+	);
 }
 
 const containsAll = (texts: string[], terms: string[]) =>
@@ -321,6 +367,8 @@ export function filterTree(
 				];
 				if (
 					tags.every((tag) => own.includes(tag)) &&
+					(filter.domain === undefined ||
+						domainOf(child.url) === filter.domain) &&
 					containsAll(texts, filter.terms)
 				) {
 					children.push(child);
@@ -330,6 +378,7 @@ export function filterTree(
 			const name = label(child).toLowerCase();
 			if (
 				tags.length === 0 &&
+				filter.domain === undefined &&
 				filter.terms.length > 0 &&
 				containsAll([name], filter.terms)
 			) {

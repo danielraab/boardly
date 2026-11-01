@@ -13,6 +13,7 @@ import {
 	type FavouriteNode,
 	favouritesQueryOptions,
 } from "#/features/favourites/api";
+import { DomainHint } from "#/features/favourites/DomainHint";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
 import { NodeDialog } from "#/features/favourites/NodeDialog";
 import { findNode } from "#/features/favourites/tree";
@@ -295,8 +296,10 @@ function UrlField({
 				onChange={(e) => onChange(e.target.value)}
 				placeholder="https://"
 				aria-invalid={error !== null || undefined}
+				aria-describedby={`${id}-domain`}
 				className={textInput}
 			/>
+			<DomainHint id={`${id}-domain`} url={value} />
 			{error && (
 				<p role="alert" className="mt-1 text-sm text-red-700">
 					{t(`favourites.errors.${error}`)}

@@ -686,6 +686,27 @@ describe("the link settings", () => {
 	});
 });
 
+describe("the link settings domain hint", () => {
+	it("counts favourites on a plain URL's domain", async () => {
+		const { user, dialog } = await renderSettings(newLink(), {
+			routes: { "GET /api/favourites": { body: withNas } },
+		});
+		await user.click(within(dialog).getByLabelText("URL"));
+		const url = within(dialog).getByRole("textbox", { name: "URL" });
+		await user.click(url);
+		await user.paste("https://nas.example.org/files");
+		const hint = await within(dialog).findByRole("link", {
+			name: "1 favourite on nas.example.org",
+		});
+		expect(hint).toHaveAttribute("href", "/favourites?domain=nas.example.org");
+		expect(hint).toHaveAttribute("target", "_blank");
+
+		await user.clear(url);
+		await user.paste("https://example.org");
+		await waitFor(() => expect(within(dialog).queryByRole("link")).toBeNull());
+	});
+});
+
 describe("link widget details", () => {
 	const mailWidget = (favouriteId = "mail") =>
 		linkWidget(

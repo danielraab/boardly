@@ -51,6 +51,11 @@ The tree is managed on the **Favourites** page (`/favourites`, linked from the u
   folder's parent.
 - Tags are created as you type them on a link, and existing tags are suggested. A tag that is no
   longer on any link is removed.
+- While you enter a link's URL, when adding or editing it, on **Save link** or in a link widget,
+  a hint shows how many of your favourites are already on that domain, for example "3
+  favourites on github.com". The domain is the host without a leading `www.`; subdomains count
+  as their own domain. The hint opens `/favourites?domain=github.com` in a new tab, which shows
+  only the links on that domain, until you remove the "Domain" chip or clear the filters.
 
 Dashboards (through navigation trees) and the Karakeep and Linkwarden APIs all read from and write to
 this tree. None of them keeps its own separate copy of the bookmarks.

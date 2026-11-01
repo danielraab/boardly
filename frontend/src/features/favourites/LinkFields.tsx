@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
+import { DomainHint } from "./DomainHint";
 import { FavouritePicker } from "./FavouritePicker";
 import { TagInput } from "./TagInput";
 import { MAX_LINK_TITLE, MAX_URL } from "./validate";
@@ -7,8 +8,9 @@ import { MAX_LINK_TITLE, MAX_URL } from "./validate";
 /**
  * The fields of a link: title, URL, tags and, when folder is given, the folder
  * to save it in. With hint, a note that the page's description and preview are
- * loaded in the background, for new links. Used by the favourites dialog and
- * the "Save link" page.
+ * loaded in the background, for new links. Under the URL, a hint with how many
+ * links are on its domain, not counting excludeId (the link being edited).
+ * Used by the favourites dialog and the "Save link" page.
  */
 export function LinkFields({
 	url,
@@ -19,6 +21,7 @@ export function LinkFields({
 	onTagsChange,
 	folder,
 	hint = false,
+	excludeId,
 }: {
 	url: string;
 	onUrlChange: (url: string) => void;
@@ -28,6 +31,7 @@ export function LinkFields({
 	onTagsChange: (tags: string[]) => void;
 	folder?: { value: string; onChange: (id: string) => void };
 	hint?: boolean;
+	excludeId?: string;
 }) {
 	const { t } = useTranslation();
 	return (
@@ -58,8 +62,10 @@ export function LinkFields({
 					placeholder={t("favourites.dialog.urlPlaceholder")}
 					value={url}
 					onChange={(e) => onUrlChange(e.target.value)}
+					aria-describedby="favourite-url-domain"
 					className={textInput}
 				/>
+				<DomainHint id="favourite-url-domain" url={url} excludeId={excludeId} />
 			</div>
 			<TagInput value={tags} onChange={onTagsChange} />
 			{folder && (
