@@ -421,8 +421,10 @@ MoeMemos supports.
   at the end of a note are the memo's attachments in the app; files with text after them stay in
   the memo's text as images or links. Removing a file in the app removes it from the note, and the
   file itself is deleted later like any unused file (see the Attachments page).
-- Every memo is private, so MoeMemos' explore list stays empty. Tags aren't counted, and locations
-  are ignored.
+- **Location**: a location set in the app is added at the end of the note, before its files, and
+  the location at that place is the memo's location in the app. Other locations stay in the memo's
+  text as `geo:` links. Removing the location in the app removes it from the note.
+- Every memo is private, so MoeMemos' explore list stays empty. Tags aren't counted.
 
 Requests under `/api/memos/` are authenticated only by `Authorization: Bearer <key>` and allow
 cross-origin calls, as for Karakeep. Errors use Memos' format (`{"code", "message", "details"}`).
@@ -532,9 +534,12 @@ when the server on `BOARDLY_PORT` is healthy and 1 otherwise.
 
 ### Running with Docker
 
+Released images are published to `ghcr.io/danielraab/boardly` for `linux/amd64` and
+`linux/arm64`, tagged with the version (`1.0.0`, `1.0`, `1`) and `latest`.
+
 The [Dockerfile](Dockerfile) builds the frontend and the server in separate stages and produces a
-small image that contains only the `boardly` binary. Build it from the repository root; nothing
-but Docker is needed on the host:
+small image that contains only the `boardly` binary. To build it yourself, run this from the
+repository root; nothing but Docker is needed on the host:
 
 ```bash
 make docker                      # or: docker build -t boardly:dev .
@@ -556,14 +561,15 @@ docker run -d --name boardly \
   -p 8080:8080 \
   -e BOARDLY_BASE_URL=http://localhost:8080 \
   -v boardly-data:/data \
-  boardly:dev
+  ghcr.io/danielraab/boardly:latest
 ```
 
 To try the image locally, the repository's [compose.yaml](compose.yaml) has a `boardly` service
-that builds it and runs it on http://localhost:8080 with a named volume and no mail delivery:
+that runs it on http://localhost:8080 with a named volume and no mail delivery. Without `--build`
+it pulls the released image; with `--build` it builds the image from your checkout:
 
 ```bash
-docker compose up -d --build
+docker compose up -d            # or: docker compose up -d --build
 docker compose logs boardly     # sign-in links are written here
 ```
 
@@ -576,7 +582,7 @@ For a server, use your own Compose file, for example:
 ```yaml
 services:
   boardly:
-    image: boardly:dev
+    image: ghcr.io/danielraab/boardly:1
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -805,4 +811,6 @@ web app manifests are `frontend/public/manifest.en.webmanifest` and `manifest.de
 
 ## Status
 
-Early development. Sign-in with magic links and passkeys, the settings page and the landing page work; the other features described above are the target scope and are not implemented yet.
+Version 1.0.0. All features described above are implemented. Changes between versions are listed
+in [CHANGELOG.md](CHANGELOG.md), and released images are published to
+`ghcr.io/danielraab/boardly` (tags `latest`, `1`, `1.0` and `1.0.0`).

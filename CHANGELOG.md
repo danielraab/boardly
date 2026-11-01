@@ -6,8 +6,36 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-01
+
 ### Added
 
+- Attachments in notes: files can be added with the "Add attachment" button in the editor toolbar,
+  or pasted or dropped into the content. Images, audio and video are shown inline, other files as a
+  file card, and the paperclip button lists the note's files. Clicking an image opens an image
+  viewer, also on the note cards of `/notes`.
+- An Attachments page (`/attachments`, linked from the user menu) with every attachment and the
+  notes that use them, filters, Keep and Delete. Attachments that no note uses are marked for
+  deletion after 24 hours and deleted after `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` (default 30)
+  days, unless they are kept or used again.
+- `BOARDLY_ATTACHMENT_MAX_SIZE_MB` (default 5), `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` and
+  `BOARDLY_ATTACHMENT_TYPES` (default: images except SVG, and PDF) configure attachments.
+  `.env.example` lists every known type.
+- Locations in notes: the "Add location" button in the editor toolbar adds a place, set by
+  coordinates, the device's position or a click on the map, with an optional label. It is shown as
+  a chip that opens a map. Maps load only when one is opened, from the style at the new
+  `BOARDLY_MAP_STYLE_URL` (default: OpenFreeMap).
+- Attachments in the Memos API: photos and files added in MoeMemos are uploaded as attachments and
+  added at the end of the note.
+- Locations in the Memos API: a memo's location is the location at the end of the note, before its
+  attachments.
+- Attachments in the Karakeep API: the Karakeep apps can upload images and PDFs, which become notes
+  with the file as their content, and a note that holds only one image or PDF is shown in the apps
+  as that file.
+- Floccus bookmark sync, in Linkwarden or Karakeep mode. The Linkwarden API gets
+  `GET` and `PUT /api/v1/collections/{id}` (rename and move a collection), and the Karakeep API gets
+  the REST endpoints under `/api/karakeep/api/v1/` that Floccus uses. See "Floccus bookmark sync"
+  in the README.
 - A Media page (`/media`, linked from the user menu) with a library of internet radio stations.
   Stations are found through a search of radio-browser.info, which the browser calls directly, or
   added by stream URL. Only https streams can be played; the server checks a station's URL when it
@@ -17,6 +45,24 @@ and the project uses [Semantic Versioning](https://semver.org/).
   play/pause, volume and mute, and support for the device's media controls.
 - A "Media" dashboard widget, in a new "Media" group of the widget picker, that plays stations of the
   library. It can be shown on public dashboards, where visitors can play the stations.
+- A link can be deleted from its edit dialog, with the trash button next to Cancel and Save.
+- The note pickers of the note and selected notes widgets show each note's category path, and mark
+  archived notes. The note widget's settings search notes by title or category.
+
+### Changed
+
+- **Breaking:** deleting a collection through the Linkwarden API (`DELETE /api/v1/collections/{id}`,
+  also used by the Linkwarden extension and app) now deletes its links and subfolders too, as
+  Linkwarden does. Before, they were moved to the parent folder. Deleted bookmarks can't be
+  restored, except from a backup.
+- **Breaking:** the Linkwarden API lists the folders directly in the key's folder as top-level
+  collections (`parentId` `null`), next to the key's own collection, as Linkwarden lists
+  "Unorganized". The Linkwarden apps show them at the top level instead of inside the key's
+  collection.
+- **Breaking:** files at the end of a note are the memo's attachments in the Memos API and are no
+  longer part of the memo's `content`. The same applies to a location at the end of a note.
+- The landing page describes Boardly as an everyday helper, with a sketch of a dashboard and
+  feature cards for dashboards, favourites, notes, connected apps and radio.
 
 ## [0.3.0] - 2026-10-29
 
@@ -159,7 +205,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/danielraab/boardly/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/danielraab/boardly/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielraab/boardly/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielraab/boardly/compare/v0.0.1...v0.1.0
