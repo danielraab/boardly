@@ -266,7 +266,7 @@ function ResultRow({
 						onClick={onAdd}
 						disabled={disabled}
 						aria-label={t("media.add.addNamed", { name: station.name })}
-						className={`${secondaryButton} shrink-0 px-3 py-1.5`}
+						className={`${secondaryButton} shrink-0 px-3 py-1.5 max-sm:px-2`}
 					>
 						{busy ? (
 							<LoaderCircle
@@ -276,7 +276,7 @@ function ResultRow({
 						) : (
 							<Plus className="size-4" aria-hidden />
 						)}
-						{t("media.add.add")}
+						<span className="max-sm:hidden">{t("media.add.add")}</span>
 					</button>
 				)
 			)}

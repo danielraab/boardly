@@ -105,7 +105,7 @@ When a stream is created with a `logoUrl` and without an `icon`, the server SHAL
 - **THEN** the station is saved without an icon
 
 ### Requirement: Station search
-The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "Enter URL" / "URL eingeben". The search tab has a search field. After the user stops typing for a moment, at least 2 characters are sent **from the browser directly** to the public radio-browser.info API, without going through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." Nothing is sent to radio-browser.info until the user types in the search field.
+The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "Enter URL" / "URL eingeben". The search tab has a search field. After the user stops typing for a moment, at least 2 characters are sent **from the browser directly** to the public radio-browser.info API, without going through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." Nothing is sent to radio-browser.info until the user types in the search field. Below the `sm` breakpoint, the add button of a result SHALL show only its icon; its accessible name still says "Add <station>" / "<station> hinzufügen".
 
 #### Scenario: Search and add
 - **WHEN** Ann types "fm4" and chooses the result "FM4" with an `https` stream
@@ -126,6 +126,10 @@ The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "
 #### Scenario: No request before typing
 - **WHEN** Ann opens the dialog and doesn't type
 - **THEN** the browser sends no request to radio-browser.info
+
+#### Scenario: Add button on a phone
+- **WHEN** Ann searches "fm4" on a screen narrower than the `sm` breakpoint
+- **THEN** the add button of "FM4" shows only a plus icon and is announced as "Add FM4"
 
 ### Requirement: External directory notice
 The search tab SHALL always show a notice that the search is sent to radio-browser.info, a free, community-run station directory that isn't part of Boardly: "Search by radio-browser.info, a free community directory. Your search terms are sent to it." / "Suche über radio-browser.info, ein freies Community-Verzeichnis. Deine Suchbegriffe werden dorthin gesendet." The name SHALL link to `https://www.radio-browser.info` in a new tab, without giving the new page access to the opener, and with an accessible name that says it opens in a new tab.
