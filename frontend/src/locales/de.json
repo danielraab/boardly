@@ -250,6 +250,15 @@
 			"category": "Notizen importieren in",
 			"categoryTopLevel": "Oberste Ebene",
 			"categoryHint": "Text-Lesezeichen aus Karakeep werden zu Notizen. Listen mit Notizen werden als Kategorien in dieser Kategorie angelegt. Gleichnamige Kategorien, die es dort schon gibt, werden verwendet."
+		},
+		"export": {
+			"title": "Export",
+			"intro": "Lade alle deine Daten herunter: Dashboards, Favoriten mit Tags, Notizen mit Kategorien und Medienquellen. Passkeys und verbundene Apps sind nicht enthalten.",
+			"withFiles": "Dateien einschließen (Bilder und Anhänge)",
+			"withFilesHint": "Der Download ist dann eine ZIP-Datei, die groß sein kann. Ohne Dateien ist es eine JSON-Datei.",
+			"submit": "Alles exportieren",
+			"exporting": "Wird exportiert…",
+			"rateLimited": "Du hast das Export-Limit erreicht. Du kannst um {{time}} wieder exportieren."
 		}
 	},
 	"profile": {

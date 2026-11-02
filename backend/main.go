@@ -24,6 +24,7 @@ import (
 	"boardly/internal/config"
 	"boardly/internal/dashboards"
 	"boardly/internal/db"
+	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/httpapi"
 	"boardly/internal/images"
@@ -126,21 +127,26 @@ func run() error {
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
 		Handler: httpapi.New(httpapi.Deps{
-			DB:                database,
-			Web:               web.Handler(cfg.AppTitle, cfg.AnalyticsSnippet, cfg.MapStyleURL),
-			Auth:              authService,
-			Users:             userStore,
-			Favourites:        favouriteStore,
-			Dashboards:        dashboardStore,
-			Notes:             noteStore,
-			Media:             mediaStore,
-			Images:            imageStore,
-			Attachments:       attachmentStore,
-			Favicons:          favicons,
-			Directory:         media.NewDirectory(cfg.FetchAllowPrivate),
-			Previews:          previews,
-			AppTokens:         apptokens.NewStore(database),
-			Accounts:          accountService,
+			DB:          database,
+			Web:         web.Handler(cfg.AppTitle, cfg.AnalyticsSnippet, cfg.MapStyleURL),
+			Auth:        authService,
+			Users:       userStore,
+			Favourites:  favouriteStore,
+			Dashboards:  dashboardStore,
+			Notes:       noteStore,
+			Media:       mediaStore,
+			Images:      imageStore,
+			Attachments: attachmentStore,
+			Favicons:    favicons,
+			Directory:   media.NewDirectory(cfg.FetchAllowPrivate),
+			Previews:    previews,
+			AppTokens:   apptokens.NewStore(database),
+			Accounts:    accountService,
+			Export: &export.Service{
+				DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: time.Now,
+			},
+			ExportsPerHour:    cfg.Exports.PerHour,
+			ExportsPerDay:     cfg.Exports.PerDay,
 			Origin:            cfg.Origin(),
 			SecureCookies:     cfg.SecureCookies(),
 			TrustProxyHeaders: cfg.TrustProxyHeaders,

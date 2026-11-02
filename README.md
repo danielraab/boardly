@@ -27,8 +27,10 @@ users have accounts (see [Sign-in](#sign-in)).
 
 All data (dashboards, favourites, API tokens) belongs to a single user.
 
-Users can delete their own account on **Settings → Profile**, after a waiting period in which they
-can change their mind (see [Deleting an account](#deleting-an-account)).
+Users can download all their data on **Settings → Import / Export** (see
+[Exporting your data](#exporting-your-data)), and delete their own account on **Settings → Profile**,
+after a waiting period in which they can change their mind (see
+[Deleting an account](#deleting-an-account)).
 
 ### Favourites tree
 
@@ -102,6 +104,32 @@ You choose the folder to import into. The top-level folder is allowed. The impor
   many links, folders, notes and categories were added and what was skipped.
 - Favicons, descriptions and preview images of the imported links are fetched in the background, as
   for any new link. A description from the file is kept.
+
+#### Exporting your data
+
+**Settings → Import / Export** also has an **Export** section that downloads all data of the
+signed-in user, as a backup or to take it elsewhere. It works while a deletion of the account is
+scheduled, too.
+
+- **Without files** (the default), the download is one JSON file,
+  `boardly-export-<slug>-<date>.json`.
+- **With "Include files (images and attachments)"**, it's a ZIP file,
+  `boardly-export-<slug>-<date>.zip`, that holds the same JSON as `boardly.json`, the uploaded
+  images and link preview images as `images/<id>.<ext>`, and the note attachments as
+  `attachments/<id>/<file name>`.
+- **The JSON** has `"format": "boardly"` and `"version": 1`, and contains the profile (email address,
+  name, slug, default folder and note category), the favourites tree with tags, all tags,
+  dashboards with their widgets, note categories, notes (archived ones too, with their content
+  document as stored), media sources, and the records of images and attachments. IDs are the ones
+  the API uses, so references between items (a widget's folder, a note's attachments, an icon's
+  image) stay intact. `file` is the path of a file in the ZIP, or `null` when the export has no
+  files or the file couldn't be read.
+- **Not exported:** passkeys, app tokens, sessions, sign-in links, favicons and background jobs.
+- **Exports are limited per user**: by default 3 within an hour and 10 within 24 hours, counted with
+  and without files (see `BOARDLY_EXPORTS_PER_HOUR` and `BOARDLY_EXPORTS_PER_DAY` in
+  [Configuration](#configuration)). Over the limit, the section shows when the next export is
+  possible. The counts start over when the server restarts.
+- Importing an export into Boardly is not supported yet.
 
 ### Dashboards
 
@@ -650,6 +678,8 @@ precedence over the file.
 | `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
 | `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |
 | `BOARDLY_ACCOUNT_DELETION_DAYS` | `7` | Days between a user scheduling the deletion of their account and the deletion. `0` deletes the account within the hour. See [Deleting an account](#deleting-an-account) |
+| `BOARDLY_EXPORTS_PER_HOUR` | `3` | Most data exports per user within 60 minutes. `0` turns this limit off. See [Exporting your data](#exporting-your-data) |
+| `BOARDLY_EXPORTS_PER_DAY` | `10` | Most data exports per user within 24 hours. `0` turns this limit off |
 | `BOARDLY_MAP_STYLE_URL` | OpenFreeMap's `https://tiles.openfreemap.org/styles/liberty` | [MapLibre style](https://maplibre.org/maplibre-style-spec/) that maps of note locations are drawn from. See [Maps](#maps) |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
 

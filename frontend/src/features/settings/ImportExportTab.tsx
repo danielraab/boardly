@@ -10,6 +10,7 @@ import { noteCategoriesQueryKey, notesQueryKey } from "#/features/notes/api";
 import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { ApiError } from "#/lib/api";
 import { AppLogo } from "./appTokens/AppLogo";
+import { ExportSection } from "./ExportSection";
 import {
 	formatsWithNotes,
 	type ImportErrorCode,
@@ -26,8 +27,18 @@ const errorKeys = {
 	invalid_category: "settings.import.errors.invalidCategory",
 } as const satisfies Record<ImportErrorCode, string>;
 
-/** "Import / Export": the import form. Export comes later. */
+/** "Import / Export": the import form and the export of all data. */
 export function ImportExportTab() {
+	return (
+		<div className="space-y-6">
+			<ImportSection />
+			<ExportSection />
+		</div>
+	);
+}
+
+/** "Import bookmarks": imports a Karakeep, Linkwarden or Netscape file. */
+function ImportSection() {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
 	const [format, setFormat] = useState<ImportFormat>("karakeep");

@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { apiError, mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
@@ -233,5 +233,114 @@ describe("import / export tab", () => {
 			"This file isn't a valid Karakeep (JSON) export.",
 		);
 		expect(within(panel).queryByRole("status")).toBeNull();
+	});
+});
+
+describe("export section", () => {
+	const createObjectURL = vi.fn(() => "blob:export");
+	const clicks: string[] = [];
+
+	beforeEach(() => {
+		clicks.length = 0;
+		// jsdom has no object URLs.
+		URL.createObjectURL = createObjectURL;
+		URL.revokeObjectURL = vi.fn();
+		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+			this: HTMLAnchorElement,
+		) {
+			clicks.push(this.download);
+		});
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	function exportRoute(fileName: string) {
+		return {
+			body: { format: "boardly" },
+			headers: { "Content-Disposition": `attachment; filename=${fileName}` },
+		};
+	}
+
+	it("exports without files by default and saves the JSON file", async () => {
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": exportRoute("boardly-export-ann-2026-11-02.json"),
+		});
+		expect(
+			within(panel).getByRole("checkbox", {
+				name: "Include files (images and attachments)",
+			}),
+		).not.toBeChecked();
+
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		await waitFor(() =>
+			expect(clicks).toEqual(["boardly-export-ann-2026-11-02.json"]),
+		);
+		expect(api.callsTo("GET", "/api/me/export")[0].search).toBe("?files=false");
+	});
+
+	it("exports with files when checked", async () => {
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": exportRoute("boardly-export-ann-2026-11-02.zip"),
+		});
+		await user.click(
+			within(panel).getByRole("checkbox", {
+				name: "Include files (images and attachments)",
+			}),
+		);
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		await waitFor(() =>
+			expect(clicks).toEqual(["boardly-export-ann-2026-11-02.zip"]),
+		);
+		expect(api.callsTo("GET", "/api/me/export")[0].search).toBe("?files=true");
+	});
+
+	it("disables the button while the export runs", async () => {
+		const { api, panel, user } = await openTab();
+		let finish: (r: ReturnType<typeof exportRoute>) => void = () => {};
+		api.set({
+			"GET /api/me/export": () =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		});
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		expect(
+			await within(panel).findByRole("button", { name: "Exporting…" }),
+		).toBeDisabled();
+		finish(exportRoute("x.json"));
+		expect(
+			await within(panel).findByRole("button", { name: "Export everything" }),
+		).toBeEnabled();
+	});
+
+	it("shows when the next export is possible after the limit", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date(2026, 10, 2, 14, 0));
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": apiError(429, "rate_limited", {
+				"Retry-After": "1200",
+			}),
+		});
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		const time = new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(
+			new Date(2026, 10, 2, 14, 20),
+		);
+		expect(await within(panel).findByRole("alert")).toHaveTextContent(
+			`You've reached the export limit. You can export again at ${time}.`,
+		);
+		expect(clicks).toEqual([]);
 	});
 });

@@ -250,6 +250,15 @@
 			"category": "Import notes into",
 			"categoryTopLevel": "Top level",
 			"categoryHint": "Karakeep text bookmarks become notes. Lists with notes are created as categories in this category. Categories that already exist there with the same name are used."
+		},
+		"export": {
+			"title": "Export",
+			"intro": "Download all your data: dashboards, favourites with tags, notes with categories and media sources. Passkeys and connected apps aren't included.",
+			"withFiles": "Include files (images and attachments)",
+			"withFilesHint": "The download is then a ZIP file, which can be large. Without files, it's a JSON file.",
+			"submit": "Export everything",
+			"exporting": "Exporting…",
+			"rateLimited": "You've reached the export limit. You can export again at {{time}}."
 		}
 	},
 	"profile": {
