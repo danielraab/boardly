@@ -14,6 +14,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - A domain filter on `/favourites` (`?domain=github.com`), shown as a removable chip and cleared
   with the other filters.
 
+### Changed
+
+- Maps of note locations ask before they load: the map provider (by default
+  `tiles.openfreemap.org`) sees the viewer's IP address, so nothing is loaded from it until the
+  viewer chooses "Load map", for this page or, with "Always load maps in this browser", for good.
+  A link below the map withdraws that choice. Maps from Boardly's own host load without asking.
+
 ## [1.0.0] - 2026-11-01
 
 ### Added

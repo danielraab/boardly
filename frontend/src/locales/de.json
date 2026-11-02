@@ -1105,6 +1105,13 @@
 			"map": "Karte",
 			"loadingMap": "Karte wird geladen…",
 			"mapUnavailable": "Die Karte konnte nicht geladen werden.",
+			"consent": {
+				"text": "Die Karte wird von <host>{{host}}</host> geladen, das deine IP-Adresse und den gezeigten Ausschnitt sieht.",
+				"load": "Karte laden",
+				"always": "Karten in diesem Browser immer laden",
+				"withdraw": "Karten nicht automatisch laden",
+				"withdrawn": "Karten werden wieder nachfragen."
+			},
 			"edit": "Bearbeiten",
 			"form": {
 				"addTitle": "Ort hinzufügen",

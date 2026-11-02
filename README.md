@@ -767,11 +767,19 @@ Mailpit instead (http://localhost:8025).
 ### Maps
 
 Maps of note locations are vector maps drawn with [MapLibre GL](https://maplibre.org/) from the
-style at `BOARDLY_MAP_STYLE_URL`, by default [OpenFreeMap](https://openfreemap.org/). Nothing is
-loaded from the map provider until someone opens a map, but then the provider sees the viewer's
-IP address and the area viewed, also for visitors of public dashboards. To keep this in your own
-network, host a style and its tiles yourself (for example with OpenFreeMap's self-hosting setup)
-and point `BOARDLY_MAP_STYLE_URL` at it.
+style at `BOARDLY_MAP_STYLE_URL`, by default [OpenFreeMap](https://openfreemap.org/). The map
+provider sees the viewer's IP address and the area viewed, so Boardly asks first: until the viewer
+chooses **Load map**, nothing is loaded from the provider, also for visitors of public dashboards.
+The location form works with its latitude and longitude fields alone.
+
+- **Load map** allows maps until the page is reloaded. With **Always load maps in this browser**,
+  the choice is stored in the browser for that provider's host, so changing the provider asks
+  again. A **Don't load maps automatically** link below the map withdraws it.
+- **No prompt for your own host.** When the style is on the same host name as Boardly, maps load
+  without asking. Host a style and its tiles yourself (for example with OpenFreeMap's
+  self-hosting setup), serve them under Boardly's host name and point `BOARDLY_MAP_STYLE_URL` at
+  it. Make sure the style doesn't reference tiles, fonts or sprites on other hosts, which would
+  then load without asking.
 
 ### Passkeys
 

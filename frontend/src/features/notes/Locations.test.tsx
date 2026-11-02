@@ -12,6 +12,7 @@ import { editorOf } from "#/test/lexical";
 import { fakeNotesServer, note } from "#/test/notes";
 import { renderApp } from "#/test/renderApp";
 import type { Block, LocationBlock } from "./document/types";
+import { resetMapConsent } from "./locations/mapConsent";
 
 // jsdom has no WebGL, so the map is a stub: it shows its point and, when it
 // can pick, offers a button that picks a fixed point.
@@ -50,6 +51,12 @@ vi.mock("./locations/LocationMap", () => {
 
 beforeEach(() => {
 	map.fail = false;
+	// These tests are about the map itself; MapConsent.test.tsx asks first.
+	resetMapConsent();
+	localStorage.setItem(
+		"boardly.maps.allowedHosts",
+		JSON.stringify(["tiles.openfreemap.org"]),
+	);
 });
 
 const text = (t: string): Block => ({

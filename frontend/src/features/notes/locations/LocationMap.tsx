@@ -6,18 +6,10 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { roundCoordinate } from "../document/types";
+import { mapStyleUrl } from "./mapConsent";
 
 // MapLibre looks for its worker next to its own module, which bundling moves.
 setWorkerUrl(workerUrl);
-
-/** The style maps are drawn from; the server sets it in index.html. */
-function mapStyleUrl(): string {
-	return (
-		document
-			.querySelector<HTMLMetaElement>('meta[name="boardly-map-style"]')
-			?.content.trim() || "https://tiles.openfreemap.org/styles/liberty"
-	);
-}
 
 type Point = { lat: number; lng: number };
 
