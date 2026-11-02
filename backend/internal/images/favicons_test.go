@@ -419,3 +419,32 @@ func TestFetchLogo(t *testing.T) {
 		t.Fatalf("private address: err = %v, want ErrBlocked", err)
 	}
 }
+
+func TestFetchImage(t *testing.T) {
+	ctx := context.Background()
+	f, _ := newFavicons(t, true)
+	s := newSite(t, map[string]func(http.ResponseWriter, *http.Request){
+		"/logo.png": file(pngData),
+		"/page":     htmlPage("<html></html>"),
+		"/logo.svg": file([]byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)),
+	})
+	data, contentType, err := f.FetchImage(ctx, s.URL+"/logo.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, pngData) || contentType != "image/png" {
+		t.Fatalf("content type = %q", contentType)
+	}
+	var count int
+	if err := f.Images.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM images`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("%d images stored", count)
+	}
+	for _, bad := range []string{s.URL + "/page", s.URL + "/logo.svg", s.URL + "/missing.png", "ftp://example.org/logo.png"} {
+		if _, _, err := f.FetchImage(ctx, bad); err == nil {
+			t.Errorf("%s: no error", bad)
+		}
+	}
+}

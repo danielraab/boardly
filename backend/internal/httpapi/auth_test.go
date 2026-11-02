@@ -86,6 +86,7 @@ type server struct {
 	images      *images.Store
 	attachments *attachments.Store
 	media       *media.Store
+	directory   *media.Directory
 	favicons    *images.Favicons
 	previews    *images.Previews
 	jobs        *jobs.Queue
@@ -136,14 +137,15 @@ func newServer(t *testing.T) *server {
 
 	appTokens := apptokens.NewStore(database)
 	appTokens.Now = c.Now
+	directory := media.NewDirectory(true)
 	accountService := &accounts.Service{DB: database, Users: store, Now: c.Now, Days: 7, Mailer: box, Link: testOrigin + "/"}
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore,
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Directory: directory,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
 	})
-	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

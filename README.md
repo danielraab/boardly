@@ -249,15 +249,18 @@ works with the media keys, headset buttons and the lock screen of your device. O
 plays at a time.
 
 - **Adding stations**: **Add station** searches [radio-browser.info](https://www.radio-browser.info),
-  a free community directory of internet radio stations. Your browser sends the search there
-  directly, not through Boardly's server, and the dialog says so. You can also enter a station's
+  a free community directory of internet radio stations. Boardly's server sends the search there
+  and loads the stations' logos, so your browser contacts neither the directory nor the logos'
+  hosts, and the directory never sees your IP address; the dialog says so. This needs outbound
+  HTTPS from the server to `*.api.radio-browser.info` and to the logos' hosts, and each user can
+  search about 30 times a minute. You can also enter a station's
   name and stream URL by hand. Playlist files (`.pls`, `.m3u`) are resolved to the stream inside
   them, and HLS streams (`.m3u8`) work as well.
 - **HTTPS only**: browsers don't play unencrypted streams on an https page, and Boardly doesn't relay
   audio through its server. When a station is saved, the server checks that its URL answers with an
   audio stream over https, and tries the `https://` version of an `http://` URL once. Stations that
   only offer `http://` can't be added; the search shows them as not playable. Audio always goes
-  straight from the station to your browser.
+  straight from the station to your browser, so a station sees the IP address of whoever plays it.
 - **Managing**: rename a station, change its URL or its icon (a symbol or an uploaded image), drag
   stations into another order, or delete them. A station found in the search gets its logo as its
   icon; the server fetches it once and stores it with your images. The URL check and the logo
@@ -767,11 +770,19 @@ Mailpit instead (http://localhost:8025).
 ### Maps
 
 Maps of note locations are vector maps drawn with [MapLibre GL](https://maplibre.org/) from the
-style at `BOARDLY_MAP_STYLE_URL`, by default [OpenFreeMap](https://openfreemap.org/). Nothing is
-loaded from the map provider until someone opens a map, but then the provider sees the viewer's
-IP address and the area viewed, also for visitors of public dashboards. To keep this in your own
-network, host a style and its tiles yourself (for example with OpenFreeMap's self-hosting setup)
-and point `BOARDLY_MAP_STYLE_URL` at it.
+style at `BOARDLY_MAP_STYLE_URL`, by default [OpenFreeMap](https://openfreemap.org/). The map
+provider sees the viewer's IP address and the area viewed, so Boardly asks first: until the viewer
+chooses **Load map**, nothing is loaded from the provider, also for visitors of public dashboards.
+The location form works with its latitude and longitude fields alone.
+
+- **Load map** allows maps until the page is reloaded. With **Always load maps in this browser**,
+  the choice is stored in the browser for that provider's host, so changing the provider asks
+  again. A **Don't load maps automatically** link below the map withdraws it.
+- **No prompt for your own host.** When the style is on the same host name as Boardly, maps load
+  without asking. Host a style and its tiles yourself (for example with OpenFreeMap's
+  self-hosting setup), serve them under Boardly's host name and point `BOARDLY_MAP_STYLE_URL` at
+  it. Make sure the style doesn't reference tiles, fonts or sprites on other hosts, which would
+  then load without asking.
 
 ### Passkeys
 

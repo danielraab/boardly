@@ -36,12 +36,17 @@ const (
 const maxBodyBytes = 64 << 10
 
 type api struct {
-	auth        *auth.Service
-	users       *users.Store
-	favourites  *favourites.Store
-	dashboards  *dashboards.Store
-	notes       *notes.Store
-	media       *media.Store
+	auth       *auth.Service
+	users      *users.Store
+	favourites *favourites.Store
+	dashboards *dashboards.Store
+	notes      *notes.Store
+	media      *media.Store
+	// directory searches radio-browser.info; searchLimiter limits it per user.
+	directory     *media.Directory
+	searchLimiter *ratelimit.Limiter
+	// logoKey signs the logo links of station searches.
+	logoKey     []byte
 	images      *images.Store
 	attachments *attachments.Store
 	favicons    *images.Favicons

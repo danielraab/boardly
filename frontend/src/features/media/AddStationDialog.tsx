@@ -1,7 +1,14 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Tabs } from "@base-ui/react/tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Check, LoaderCircle, Plus, Radio } from "lucide-react";
+import {
+	ArrowUpRight,
+	Check,
+	LoaderCircle,
+	Plus,
+	Radio,
+	Search,
+} from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
@@ -11,7 +18,6 @@ import {
 	textInput,
 } from "#/components/dialogStyles";
 import { ApiError } from "#/lib/api";
-import { useDebounced } from "#/lib/useDebounced";
 import {
 	createStation,
 	type MediaSource,
@@ -25,8 +31,6 @@ import {
 	searchStations,
 } from "./radioBrowser";
 
-/** Typing pauses this long before a search is sent. */
-const searchDelay = 300;
 const minQuery = 2;
 
 const tab =
@@ -118,7 +122,8 @@ function StationSearch({
 }) {
 	const { t } = useTranslation();
 	const [input, setInput] = useState("");
-	const query = useDebounced(input.trim(), searchDelay);
+	// The last submitted search; typing alone sends nothing.
+	const [query, setQuery] = useState("");
 	const search = useQuery({
 		queryKey: ["radio-browser", query],
 		queryFn: ({ signal }) => searchStations(query, signal),
@@ -127,21 +132,41 @@ function StationSearch({
 	});
 	const create = useCreateStation(onClose);
 	const added = new Set(library.map((s) => normalizeStreamUrl(s.url)));
+	const term = input.trim();
+
+	function onSubmit(event: FormEvent) {
+		event.preventDefault();
+		if (term.length < minQuery) return;
+		// The same search again tries again, for example after an error.
+		if (term === query) void search.refetch();
+		else setQuery(term);
+	}
 
 	return (
 		<>
-			<label htmlFor="station-search" className="sr-only">
-				{t("media.add.searchLabel")}
-			</label>
-			<input
-				id="station-search"
-				type="search"
-				value={input}
-				onChange={(e) => setInput(e.target.value)}
-				placeholder={t("media.add.searchPlaceholder")}
-				autoComplete="off"
-				className={`${textInput} mt-0`}
-			/>
+			<form onSubmit={onSubmit} className="flex items-stretch gap-2">
+				<label htmlFor="station-search" className="sr-only">
+					{t("media.add.searchLabel")}
+				</label>
+				<input
+					id="station-search"
+					type="search"
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					placeholder={t("media.add.searchPlaceholder")}
+					autoComplete="off"
+					className={`${textInput.replace("mt-2 ", "")} min-w-0 flex-1`}
+				/>
+				<button
+					type="submit"
+					aria-label={t("media.add.searchButton")}
+					className={`${secondaryButton} shrink-0 max-sm:px-3`}
+					disabled={term.length < minQuery}
+				>
+					<Search className="size-4" aria-hidden />
+					<span className="max-sm:hidden">{t("media.add.searchButton")}</span>
+				</button>
+			</form>
 			<p className="mt-2 text-xs text-muted">
 				{t("media.add.notice.before")}
 				<a
@@ -177,7 +202,12 @@ function StationSearch({
 				)}
 				{query.length >= minQuery && search.isError && (
 					<p role="alert" className="py-6 text-sm text-danger">
-						{t("media.add.directoryDown")}
+						{t(
+							search.error instanceof ApiError &&
+								search.error.code === "rate_limited"
+								? "media.add.rateLimited"
+								: "media.add.directoryDown",
+						)}
 					</p>
 				)}
 				{query.length >= minQuery && search.data?.length === 0 && (
@@ -234,10 +264,10 @@ function ResultRow({
 			className={`flex items-center gap-3 py-2 ${station.playable ? "" : "opacity-60"}`}
 		>
 			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-paper">
-				{/* The browser only loads https logos on an https page. */}
-				{station.logoUrl?.startsWith("https://") && !logoFailed ? (
+				{/* Through Boardly's server, so the logo's host doesn't see the user. */}
+				{station.logo && !logoFailed ? (
 					<img
-						src={station.logoUrl}
+						src={station.logo}
 						alt=""
 						loading="lazy"
 						referrerPolicy="no-referrer"

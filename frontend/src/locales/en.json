@@ -1105,6 +1105,13 @@
 			"map": "Map",
 			"loadingMap": "Loading map…",
 			"mapUnavailable": "The map couldn't be loaded.",
+			"consent": {
+				"text": "The map is loaded from <host>{{host}}</host>, which sees your IP address and the area shown.",
+				"load": "Load map",
+				"always": "Always load maps in this browser",
+				"withdraw": "Don't load maps automatically",
+				"withdrawn": "Maps will ask again."
+			},
 			"edit": "Edit",
 			"form": {
 				"addTitle": "Add location",
@@ -1219,12 +1226,14 @@
 			},
 			"searchLabel": "Search stations",
 			"searchPlaceholder": "Station name, e.g. FM4",
+			"searchButton": "Search",
 			"notice": {
 				"before": "Search by ",
-				"after": ", a free community directory. Your search terms are sent to it."
+				"after": ", a free community directory. Your search terms are sent to it through this server, without your IP address."
 			},
 			"searching": "Searching…",
 			"directoryDown": "The station directory isn't reachable right now. You can still enter a URL.",
+			"rateLimited": "Too many searches. Try again in a moment.",
 			"noResults": "No stations found",
 			"notPlayable": "Not playable (no HTTPS stream)",
 			"added": "Added",

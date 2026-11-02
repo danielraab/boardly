@@ -16,11 +16,9 @@ import {
 import { station, stubAudio } from "#/test/media";
 import { renderApp } from "#/test/renderApp";
 import type { MediaSource } from "./api";
-import { resetRadioBrowser } from "./radioBrowser";
 
 afterEach(() => {
 	vi.restoreAllMocks();
-	resetRadioBrowser();
 });
 
 const fm4 = station("fm4", "FM4", 0, {
@@ -29,37 +27,40 @@ const fm4 = station("fm4", "FM4", 0, {
 });
 const jazz = station("jazz", "Jazz Radio", 1);
 
+const result = {
+	country: "Austria",
+	tags: [],
+	logoUrl: null,
+	logo: null,
+	bitrate: null,
+	playable: true,
+};
 const directory = {
-	"GET /json/servers": { body: [{ name: "de1.api.radio-browser.info" }] },
-	"GET /json/stations/search": {
+	"GET /api/media/search": {
 		body: [
 			{
-				stationuuid: "r1",
+				...result,
+				id: "r1",
 				name: "FM4",
 				url: "https://orf-live.example/fm4-q2a/",
-				favicon: "https://fm4.example/logo.png",
-				country: "Austria",
-				tags: "alternative",
+				logoUrl: "https://fm4.example/logo.png",
+				logo: "/api/media/search/logo?u=https%3A%2F%2Ffm4.example%2Flogo.png&s=sig",
+				tags: ["alternative"],
 				bitrate: 128,
 			},
 			{
-				stationuuid: "r2",
+				...result,
+				id: "r2",
 				name: "FM4 Unlimited",
 				url: "https://fm4.example/unlimited.mp3",
-				url_resolved: "https://fm4.example/unlimited.mp3",
-				favicon: "",
-				country: "Austria",
-				tags: "",
-				bitrate: 0,
 			},
 			{
-				stationuuid: "r3",
+				...result,
+				id: "r3",
 				name: "FM4 Old",
 				url: "http://old.example:8000/fm4",
-				favicon: "",
-				country: "Austria",
-				tags: "",
 				bitrate: 64,
+				playable: false,
 			},
 		],
 	},
@@ -236,7 +237,7 @@ describe("adding a station", () => {
 		const dialog = await openAdd(user);
 		expect(
 			within(dialog).getByText(
-				/a free community directory\. Your search terms are sent to it\./,
+				/a free community directory\. Your search terms are sent to it through this server, without your IP address\./,
 			),
 		).toBeVisible();
 		const link = within(dialog).getByRole("link", {
@@ -246,17 +247,60 @@ describe("adding a station", () => {
 		expect(link).toHaveAttribute("target", "_blank");
 		expect(link).toHaveAttribute("rel", "noopener noreferrer");
 		await new Promise((r) => setTimeout(r, 400));
-		expect(api.calls.filter((c) => c.path.startsWith("/json/"))).toEqual([]);
+		expect(api.callsTo("GET", "/api/media/search")).toEqual([]);
+	});
+
+	it("searches only with Enter or the Search button", async () => {
+		const { api } = fakeServer([]);
+		const { user } = renderApp("/media");
+		const dialog = await openAdd(user);
+		const field = within(dialog).getByLabelText("Search stations");
+		const button = within(dialog).getByRole("button", { name: "Search" });
+		// Only the icon below the sm breakpoint; the name stays "Search".
+		expect(within(button).getByText("Search")).toHaveClass("max-sm:hidden");
+		await user.type(field, "f");
+		expect(button).toBeDisabled();
+		await user.keyboard("{Enter}");
+		await user.type(field, "m4");
+		await new Promise((r) => setTimeout(r, 400));
+		expect(api.callsTo("GET", "/api/media/search")).toEqual([]);
+
+		await user.keyboard("{Enter}");
+		expect(
+			await within(dialog).findByRole("button", { name: "Add FM4" }),
+		).toBeVisible();
+		await user.clear(field);
+		await user.type(field, "oe1");
+		expect(api.callsTo("GET", "/api/media/search")).toHaveLength(1);
+		await user.click(button);
+		await waitFor(() =>
+			expect(
+				api
+					.callsTo("GET", "/api/media/search")
+					.map((c) => new URLSearchParams(c.search).get("q")),
+			).toEqual(["fm4", "oe1"]),
+		);
 	});
 
 	it("adds a playable search result with its logo", async () => {
 		const server = fakeServer([jazz]);
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
-		await user.click(
-			await within(dialog).findByRole("button", { name: "Add FM4" }),
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
 		);
+		const add = await within(dialog).findByRole("button", { name: "Add FM4" });
+		// The logo comes through Boardly's server, never from its own host.
+		const logo = (add.closest("li") as HTMLElement).querySelector("img");
+		expect(logo).toHaveAttribute(
+			"src",
+			"/api/media/search/logo?u=https%3A%2F%2Ffm4.example%2Flogo.png&s=sig",
+		);
+		for (const [input] of vi.mocked(fetch).mock.calls) {
+			expect(String(input)).toMatch(/^\/api\//);
+		}
+		await user.click(add);
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 		expect(server.api.callsTo("POST", "/api/media")[0].body).toEqual({
 			kind: "stream",
@@ -271,7 +315,10 @@ describe("adding a station", () => {
 		fakeServer([fm4]);
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		const old = (await within(dialog).findByText("FM4 Old")).closest("li");
 		expect(old).toHaveClass("opacity-60");
 		expect(
@@ -289,10 +336,15 @@ describe("adding a station", () => {
 	});
 
 	it("says when the directory can't be reached", async () => {
-		fakeServer([], { "GET /json/stations/search": { status: 502 } });
+		fakeServer([], {
+			"GET /api/media/search": apiError(502, "directory_unreachable"),
+		});
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		expect(
 			await within(dialog).findByText(
 				"The station directory isn't reachable right now. You can still enter a URL.",
@@ -300,6 +352,21 @@ describe("adding a station", () => {
 		).toBeVisible();
 		await user.click(within(dialog).getByRole("tab", { name: "Enter URL" }));
 		expect(within(dialog).getByLabelText("Stream URL")).toBeVisible();
+	});
+
+	it("says when there were too many searches", async () => {
+		fakeServer([], { "GET /api/media/search": apiError(429, "rate_limited") });
+		const { user } = renderApp("/media");
+		const dialog = await openAdd(user);
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
+		expect(
+			await within(dialog).findByText(
+				"Too many searches. Try again in a moment.",
+			),
+		).toBeVisible();
 	});
 
 	it("adds a station by URL", async () => {

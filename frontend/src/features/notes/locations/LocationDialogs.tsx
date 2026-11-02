@@ -1,15 +1,22 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { LoaderCircle, LocateFixed, Pencil, X } from "lucide-react";
+import {
+	LoaderCircle,
+	LocateFixed,
+	Map as MapIcon,
+	Pencil,
+	X,
+} from "lucide-react";
 import {
 	type ComponentProps,
 	type ComponentType,
 	type FormEvent,
 	useEffect,
+	useId,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import {
 	dangerButton,
 	iconButton,
@@ -31,14 +38,132 @@ import {
 } from "../document/types";
 import { locationName } from "./LocationChip";
 import type LocationMapComponent from "./LocationMap";
+import {
+	allowMaps,
+	mapHost,
+	useConsentStored,
+	useMapsAllowed,
+	withdrawMaps,
+} from "./mapConsent";
 
 type MapProps = Omit<ComponentProps<typeof LocationMapComponent>, "onError">;
 
 /**
- * The map of a location, loaded on first use. While it loads it shows "Loading
- * map…", and when it can't be shown, a message instead.
+ * The map of a location. Until the viewer agrees to load maps from the map
+ * provider (unless it is on the page's own host), it shows what loading it
+ * means instead; nothing is requested from the provider before.
  */
-function LazyMap({ className, ...props }: MapProps) {
+function LazyMap(props: MapProps) {
+	const host = mapHost();
+	const allowed = useMapsAllowed(host);
+	return allowed ? (
+		<LoadedLazyMap {...props} host={host} />
+	) : (
+		<MapConsent host={host} className={props.className} />
+	);
+}
+
+/** Asks to load maps from host, for the page or always. */
+function MapConsent({
+	host,
+	className = "",
+}: {
+	host: string;
+	className?: string;
+}) {
+	const { t } = useTranslation();
+	const id = useId();
+	const [always, setAlways] = useState(false);
+	return (
+		<div
+			className={`flex flex-col items-center justify-center gap-3 overflow-y-auto rounded-lg border border-line p-4 text-center text-sm text-muted ${className}`}
+		>
+			<MapIcon className="size-6 shrink-0" aria-hidden />
+			<p className="max-w-sm">
+				<Trans
+					i18nKey="notes.locations.consent.text"
+					values={{ host }}
+					components={{ host: <strong className="font-medium text-ink" /> }}
+				/>
+			</p>
+			<button
+				type="button"
+				className={secondaryButton}
+				onClick={() => allowMaps(host, always)}
+			>
+				{t("notes.locations.consent.load")}
+			</button>
+			<div className="flex items-center gap-2">
+				<input
+					id={id}
+					type="checkbox"
+					checked={always}
+					onChange={(e) => setAlways(e.target.checked)}
+					className="size-4 accent-ink"
+				/>
+				<label htmlFor={id}>{t("notes.locations.consent.always")}</label>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * The map, loaded on first use. While it loads it shows "Loading map…", and
+ * when it can't be shown, a message instead. With consent stored for host, a
+ * link below it withdraws that consent.
+ */
+function LoadedLazyMap({
+	className,
+	host,
+	...props
+}: MapProps & { host: string }) {
+	const stored = useConsentStored(host);
+	const [withdrawn, setWithdrawn] = useState(false);
+	const map = <MapView {...props} className={className} />;
+	if (!stored && !withdrawn) return map;
+	return (
+		<div>
+			{map}
+			<WithdrawLink
+				host={host}
+				withdrawn={withdrawn}
+				onWithdraw={() => setWithdrawn(true)}
+			/>
+		</div>
+	);
+}
+
+function WithdrawLink({
+	host,
+	withdrawn,
+	onWithdraw,
+}: {
+	host: string;
+	withdrawn: boolean;
+	onWithdraw: () => void;
+}) {
+	const { t } = useTranslation();
+	if (withdrawn)
+		return (
+			<p role="status" className="mt-1.5 text-xs text-muted">
+				{t("notes.locations.consent.withdrawn")}
+			</p>
+		);
+	return (
+		<button
+			type="button"
+			className="mt-1.5 text-xs text-muted underline underline-offset-2 hover:text-ink"
+			onClick={() => {
+				withdrawMaps(host);
+				onWithdraw();
+			}}
+		>
+			{t("notes.locations.consent.withdraw")}
+		</button>
+	);
+}
+
+function MapView({ className, ...props }: MapProps) {
 	const { t } = useTranslation();
 	const [LoadedMap, setLoadedMap] = useState<ComponentType<
 		ComponentProps<typeof LocationMapComponent>

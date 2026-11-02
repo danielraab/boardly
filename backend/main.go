@@ -137,6 +137,7 @@ func run() error {
 			Images:            imageStore,
 			Attachments:       attachmentStore,
 			Favicons:          favicons,
+			Directory:         media.NewDirectory(cfg.FetchAllowPrivate),
 			Previews:          previews,
 			AppTokens:         apptokens.NewStore(database),
 			Accounts:          accountService,

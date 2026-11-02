@@ -1105,6 +1105,13 @@
 			"map": "Karte",
 			"loadingMap": "Karte wird geladen…",
 			"mapUnavailable": "Die Karte konnte nicht geladen werden.",
+			"consent": {
+				"text": "Die Karte wird von <host>{{host}}</host> geladen, das deine IP-Adresse und den gezeigten Ausschnitt sieht.",
+				"load": "Karte laden",
+				"always": "Karten in diesem Browser immer laden",
+				"withdraw": "Karten nicht automatisch laden",
+				"withdrawn": "Karten werden wieder nachfragen."
+			},
 			"edit": "Bearbeiten",
 			"form": {
 				"addTitle": "Ort hinzufügen",
@@ -1219,12 +1226,14 @@
 			},
 			"searchLabel": "Sender suchen",
 			"searchPlaceholder": "Sendername, z. B. FM4",
+			"searchButton": "Suchen",
 			"notice": {
 				"before": "Suche über ",
-				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden dorthin gesendet."
+				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden über diesen Server dorthin gesendet, ohne deine IP-Adresse."
 			},
 			"searching": "Suche…",
 			"directoryDown": "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben.",
+			"rateLimited": "Zu viele Suchen. Versuch es gleich noch einmal.",
 			"noResults": "Keine Sender gefunden",
 			"notPlayable": "Nicht abspielbar (kein HTTPS-Stream)",
 			"added": "Hinzugefügt",
