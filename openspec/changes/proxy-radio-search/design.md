@@ -28,7 +28,7 @@ The server then fetches the logo with `Favicons.FetchLogo`, which uses `images.G
   hour, pick at random per search, and fall back to `de1.api.radio-browser.info` when the list
   fails. This is the same behaviour as the frontend today, moved to the server.
 - Request: `GET https://<mirror>/json/stations/search?name=<q>&limit=30&order=clickcount&reverse=true&hidebroken=true`
-  with `User-Agent: Boardly/<version>` (radio-browser asks for a descriptive agent), a 10 s timeout
+  with `User-Agent: Boardly (+https://github.com/danielraab/boardly)` (radio-browser asks for a descriptive agent; Boardly has no version string at runtime), a 10 s timeout
   and a 1 MB body limit. Nothing about the user is forwarded: no headers from the incoming request,
   and in particular no `X-Forwarded-For`.
 - Transport: `images.GuardedTransport(cfg.FetchAllowPrivate)`. The directory is public anyway, and

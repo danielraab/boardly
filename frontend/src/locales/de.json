@@ -1228,10 +1228,11 @@
 			"searchPlaceholder": "Sendername, z. B. FM4",
 			"notice": {
 				"before": "Suche über ",
-				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden dorthin gesendet."
+				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden über diesen Server dorthin gesendet, ohne deine IP-Adresse."
 			},
 			"searching": "Suche…",
 			"directoryDown": "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben.",
+			"rateLimited": "Zu viele Suchen. Versuch es gleich noch einmal.",
 			"noResults": "Keine Sender gefunden",
 			"notPlayable": "Nicht abspielbar (kein HTTPS-Stream)",
 			"added": "Hinzugefügt",

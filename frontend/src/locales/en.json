@@ -1228,10 +1228,11 @@
 			"searchPlaceholder": "Station name, e.g. FM4",
 			"notice": {
 				"before": "Search by ",
-				"after": ", a free community directory. Your search terms are sent to it."
+				"after": ", a free community directory. Your search terms are sent to it through this server, without your IP address."
 			},
 			"searching": "Searching…",
 			"directoryDown": "The station directory isn't reachable right now. You can still enter a URL.",
+			"rateLimited": "Too many searches. Try again in a moment.",
 			"noResults": "No stations found",
 			"notPlayable": "Not playable (no HTTPS stream)",
 			"added": "Added",

@@ -358,13 +358,7 @@ func (f *Favicons) pageIcons(ctx context.Context, pageURL string) ([]string, err
 // time limit, guarded connections) and stores it as an upload of the user,
 // such as a radio station's logo. It returns the new image's ID.
 func (f *Favicons) FetchLogo(ctx context.Context, userID, rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return "", ErrInvalidURL
-	}
-	ctx, cancel := context.WithTimeout(ctx, FetchTimeout)
-	defer cancel()
-	data, err := f.download(ctx, u.String())
+	data, _, err := f.FetchImage(ctx, rawURL)
 	if err != nil {
 		return "", err
 	}
@@ -373,6 +367,27 @@ func (f *Favicons) FetchLogo(ctx context.Context, userID, rawURL string) (string
 		return "", err
 	}
 	return img.ID, nil
+}
+
+// FetchImage loads the image at rawURL with the favicon rules (types, size,
+// time limit, guarded connections) without storing it, and returns it with
+// its content type.
+func (f *Favicons) FetchImage(ctx context.Context, rawURL string) ([]byte, string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, "", ErrInvalidURL
+	}
+	ctx, cancel := context.WithTimeout(ctx, FetchTimeout)
+	defer cancel()
+	data, err := f.download(ctx, u.String())
+	if err != nil {
+		return nil, "", err
+	}
+	contentType, err := Sniff(data)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, contentType, nil
 }
 
 // download loads one icon and checks its type and size.

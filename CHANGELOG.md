@@ -20,6 +20,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `tiles.openfreemap.org`) sees the viewer's IP address, so nothing is loaded from it until the
   viewer chooses "Load map", for this page or, with "Always load maps in this browser", for good.
   A link below the map withdraws that choice. Maps from Boardly's own host load without asking.
+- The station search of "Add station" goes through Boardly's server: the server searches
+  radio-browser.info and loads the results' logos, so the browser no longer sends the user's IP
+  address to the directory or to logo hosts. Searches are limited to about 30 a minute per user.
 
 ## [1.0.0] - 2026-11-01
 

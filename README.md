@@ -249,15 +249,18 @@ works with the media keys, headset buttons and the lock screen of your device. O
 plays at a time.
 
 - **Adding stations**: **Add station** searches [radio-browser.info](https://www.radio-browser.info),
-  a free community directory of internet radio stations. Your browser sends the search there
-  directly, not through Boardly's server, and the dialog says so. You can also enter a station's
+  a free community directory of internet radio stations. Boardly's server sends the search there
+  and loads the stations' logos, so your browser contacts neither the directory nor the logos'
+  hosts, and the directory never sees your IP address; the dialog says so. This needs outbound
+  HTTPS from the server to `*.api.radio-browser.info` and to the logos' hosts, and each user can
+  search about 30 times a minute. You can also enter a station's
   name and stream URL by hand. Playlist files (`.pls`, `.m3u`) are resolved to the stream inside
   them, and HLS streams (`.m3u8`) work as well.
 - **HTTPS only**: browsers don't play unencrypted streams on an https page, and Boardly doesn't relay
   audio through its server. When a station is saved, the server checks that its URL answers with an
   audio stream over https, and tries the `https://` version of an `http://` URL once. Stations that
   only offer `http://` can't be added; the search shows them as not playable. Audio always goes
-  straight from the station to your browser.
+  straight from the station to your browser, so a station sees the IP address of whoever plays it.
 - **Managing**: rename a station, change its URL or its icon (a symbol or an uploaded image), drag
   stations into another order, or delete them. A station found in the search gets its logo as its
   icon; the server fetches it once and stores it with your images. The URL check and the logo

@@ -177,7 +177,12 @@ function StationSearch({
 				)}
 				{query.length >= minQuery && search.isError && (
 					<p role="alert" className="py-6 text-sm text-danger">
-						{t("media.add.directoryDown")}
+						{t(
+							search.error instanceof ApiError &&
+								search.error.code === "rate_limited"
+								? "media.add.rateLimited"
+								: "media.add.directoryDown",
+						)}
 					</p>
 				)}
 				{query.length >= minQuery && search.data?.length === 0 && (
@@ -234,10 +239,10 @@ function ResultRow({
 			className={`flex items-center gap-3 py-2 ${station.playable ? "" : "opacity-60"}`}
 		>
 			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-paper">
-				{/* The browser only loads https logos on an https page. */}
-				{station.logoUrl?.startsWith("https://") && !logoFailed ? (
+				{/* Through Boardly's server, so the logo's host doesn't see the user. */}
+				{station.logo && !logoFailed ? (
 					<img
-						src={station.logoUrl}
+						src={station.logo}
 						alt=""
 						loading="lazy"
 						referrerPolicy="no-referrer"

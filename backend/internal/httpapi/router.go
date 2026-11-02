@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/rand"
 	"net/http"
 	"strings"
 
@@ -35,7 +36,9 @@ type Deps struct {
 	Dashboards *dashboards.Store
 	Notes      *notes.Store
 	Media      *media.Store
-	Images     *images.Store
+	// Directory searches radio-browser.info for the "Add station" dialog.
+	Directory *media.Directory
+	Images    *images.Store
 	// Attachments stores the files attached to notes.
 	Attachments *attachments.Store
 	Favicons    *images.Favicons
@@ -57,7 +60,13 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	// Logo links of station searches are signed with a key that lives as long
+	// as the process; they are only used while the dialog is open.
+	a.logoKey = make([]byte, 32)
+	if _, err := rand.Read(a.logoKey); err != nil {
+		panic(err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/health", health(d.DB))
@@ -102,6 +111,8 @@ func New(d Deps) http.Handler {
 	mux.Handle("GET /api/media", a.requireUser(a.listMedia))
 	mux.Handle("POST /api/media", a.requireUser(a.createMedia))
 	mux.Handle("PUT /api/media/order", a.requireUser(a.reorderMedia))
+	mux.Handle("GET /api/media/search", a.requireUser(a.searchStations))
+	mux.Handle("GET /api/media/search/logo", a.requireUser(a.searchLogo))
 	mux.Handle("PATCH /api/media/{id}", a.requireUser(a.updateMedia))
 	mux.Handle("DELETE /api/media/{id}", a.requireUser(a.deleteMedia))
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
