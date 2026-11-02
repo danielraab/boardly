@@ -30,4 +30,4 @@
 ## 7. Documentation and checks
 
 - [x] 7.1 Update README: export feature in the features list, the two environment variables in the configuration table, and a short description of the export format (JSON vs. ZIP, contents, what is left out, version). Verify by reading the rendered sections.
-- [ ] 7.2 Run `make check` and `make test` and confirm both pass; run `openspec validate export-all-data --strict`.
+- [x] 7.2 Run `make check` and `make test` and confirm both pass; run `openspec validate export-all-data --strict`.
