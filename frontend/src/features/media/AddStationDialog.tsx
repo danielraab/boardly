@@ -144,7 +144,7 @@ function StationSearch({
 
 	return (
 		<>
-			<form onSubmit={onSubmit} className="flex gap-2">
+			<form onSubmit={onSubmit} className="flex items-stretch gap-2">
 				<label htmlFor="station-search" className="sr-only">
 					{t("media.add.searchLabel")}
 				</label>
@@ -155,15 +155,16 @@ function StationSearch({
 					onChange={(e) => setInput(e.target.value)}
 					placeholder={t("media.add.searchPlaceholder")}
 					autoComplete="off"
-					className={`${textInput} mt-0 min-w-0 flex-1`}
+					className={`${textInput.replace("mt-2 ", "")} min-w-0 flex-1`}
 				/>
 				<button
 					type="submit"
-					className={`${secondaryButton} shrink-0`}
+					aria-label={t("media.add.searchButton")}
+					className={`${secondaryButton} shrink-0 max-sm:px-3`}
 					disabled={term.length < minQuery}
 				>
 					<Search className="size-4" aria-hidden />
-					{t("media.add.searchButton")}
+					<span className="max-sm:hidden">{t("media.add.searchButton")}</span>
 				</button>
 			</form>
 			<p className="mt-2 text-xs text-muted">

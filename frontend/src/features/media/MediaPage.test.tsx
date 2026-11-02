@@ -256,6 +256,8 @@ describe("adding a station", () => {
 		const dialog = await openAdd(user);
 		const field = within(dialog).getByLabelText("Search stations");
 		const button = within(dialog).getByRole("button", { name: "Search" });
+		// Only the icon below the sm breakpoint; the name stays "Search".
+		expect(within(button).getByText("Search")).toHaveClass("max-sm:hidden");
 		await user.type(field, "f");
 		expect(button).toBeDisabled();
 		await user.keyboard("{Enter}");
