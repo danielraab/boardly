@@ -53,7 +53,7 @@ The web app SHALL manage media sources through these endpoints, all of which req
 - **THEN** the `logo` link responds 404
 
 ### Requirement: Station search
-The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "Enter URL" / "URL eingeben". The search tab has a search field. After the user stops typing for a moment, at least 2 characters are sent to Boardly's server (`GET /api/media/search`), which searches the public radio-browser.info directory. While searching, the browser SHALL contact neither radio-browser.info nor the hosts of station logos: logos are loaded through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon, also when the logo can't be loaded), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." When searches are limited, it shows "Too many searches. Try again in a moment." / "Zu viele Suchen. Versuch es gleich noch einmal." Nothing is sent until the user types in the search field. Below the `sm` breakpoint, the add button of a result SHALL show only its icon; its accessible name still says "Add <station>" / "<station> hinzufügen".
+The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "Enter URL" / "URL eingeben". The search tab has a search field with a "Search" / "Suchen" button next to it. Typing SHALL NOT search: only pressing Enter in the field or activating the button sends the search, and only with at least 2 characters after trimming (with fewer, the button is disabled and Enter does nothing). The search goes to Boardly's server (`GET /api/media/search`), which searches the public radio-browser.info directory. While searching, the browser SHALL contact neither radio-browser.info nor the hosts of station logos: logos are loaded through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon, also when the logo can't be loaded), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." When searches are limited, it shows "Too many searches. Try again in a moment." / "Zu viele Suchen. Versuch es gleich noch einmal." Nothing is sent before the user submits a search. Results stay shown for the last submitted search while the user edits the field. Below the `sm` breakpoint, the add button of a result SHALL show only its icon; its accessible name still says "Add <station>" / "<station> hinzufügen".
 
 #### Scenario: Search and add
 - **WHEN** Ann types "fm4" and chooses the result "FM4" with an `https` stream
@@ -74,6 +74,18 @@ The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "
 #### Scenario: No request before typing
 - **WHEN** Ann opens the dialog and doesn't type
 - **THEN** the browser sends no search request
+
+#### Scenario: No request while typing
+- **WHEN** Ann opens the dialog and types "fm4" without pressing Enter or the button
+- **THEN** the browser sends no search request
+
+#### Scenario: Search with Enter or the button
+- **WHEN** Ann types "fm4" and presses Enter, then changes it to "oe1" and activates "Search"
+- **THEN** one search is sent for "fm4" and one for "oe1", and the results of "oe1" are shown
+
+#### Scenario: Too short to search
+- **WHEN** the search field contains only "f"
+- **THEN** the "Search" button is disabled and pressing Enter sends nothing
 
 #### Scenario: No third party from the browser
 - **WHEN** Ann searches "fm4" and the results with logos are shown

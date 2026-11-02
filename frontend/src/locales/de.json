@@ -1226,6 +1226,7 @@
 			},
 			"searchLabel": "Sender suchen",
 			"searchPlaceholder": "Sendername, z. B. FM4",
+			"searchButton": "Suchen",
 			"notice": {
 				"before": "Suche über ",
 				"after": ", ein freies Community-Verzeichnis. Deine Suchbegriffe werden über diesen Server dorthin gesendet, ohne deine IP-Adresse."

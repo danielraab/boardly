@@ -20,6 +20,7 @@ it already makes guarded outbound fetches for station logos and stream checks.
   or logo hosts while searching.
 - **BREAKING (spec)**: the requirement that the search goes "from the browser directly … without
   going through Boardly's server" is reversed.
+- The search no longer runs while typing: it is sent with Enter or a "Search" button.
 - The notice under the search says that search terms reach radio-browser.info through this server,
   without the user's IP address.
 - Playing streams is unchanged and out of scope.

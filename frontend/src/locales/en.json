@@ -1226,6 +1226,7 @@
 			},
 			"searchLabel": "Search stations",
 			"searchPlaceholder": "Station name, e.g. FM4",
+			"searchButton": "Search",
 			"notice": {
 				"before": "Search by ",
 				"after": ", a free community directory. Your search terms are sent to it through this server, without your IP address."

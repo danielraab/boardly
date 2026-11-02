@@ -250,11 +250,44 @@ describe("adding a station", () => {
 		expect(api.callsTo("GET", "/api/media/search")).toEqual([]);
 	});
 
+	it("searches only with Enter or the Search button", async () => {
+		const { api } = fakeServer([]);
+		const { user } = renderApp("/media");
+		const dialog = await openAdd(user);
+		const field = within(dialog).getByLabelText("Search stations");
+		const button = within(dialog).getByRole("button", { name: "Search" });
+		await user.type(field, "f");
+		expect(button).toBeDisabled();
+		await user.keyboard("{Enter}");
+		await user.type(field, "m4");
+		await new Promise((r) => setTimeout(r, 400));
+		expect(api.callsTo("GET", "/api/media/search")).toEqual([]);
+
+		await user.keyboard("{Enter}");
+		expect(
+			await within(dialog).findByRole("button", { name: "Add FM4" }),
+		).toBeVisible();
+		await user.clear(field);
+		await user.type(field, "oe1");
+		expect(api.callsTo("GET", "/api/media/search")).toHaveLength(1);
+		await user.click(button);
+		await waitFor(() =>
+			expect(
+				api
+					.callsTo("GET", "/api/media/search")
+					.map((c) => new URLSearchParams(c.search).get("q")),
+			).toEqual(["fm4", "oe1"]),
+		);
+	});
+
 	it("adds a playable search result with its logo", async () => {
 		const server = fakeServer([jazz]);
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		const add = await within(dialog).findByRole("button", { name: "Add FM4" });
 		// The logo comes through Boardly's server, never from its own host.
 		const logo = (add.closest("li") as HTMLElement).querySelector("img");
@@ -280,7 +313,10 @@ describe("adding a station", () => {
 		fakeServer([fm4]);
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		const old = (await within(dialog).findByText("FM4 Old")).closest("li");
 		expect(old).toHaveClass("opacity-60");
 		expect(
@@ -303,7 +339,10 @@ describe("adding a station", () => {
 		});
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		expect(
 			await within(dialog).findByText(
 				"The station directory isn't reachable right now. You can still enter a URL.",
@@ -317,7 +356,10 @@ describe("adding a station", () => {
 		fakeServer([], { "GET /api/media/search": apiError(429, "rate_limited") });
 		const { user } = renderApp("/media");
 		const dialog = await openAdd(user);
-		await user.type(within(dialog).getByLabelText("Search stations"), "fm4");
+		await user.type(
+			within(dialog).getByLabelText("Search stations"),
+			"fm4{Enter}",
+		);
 		expect(
 			await within(dialog).findByText(
 				"Too many searches. Try again in a moment.",
