@@ -21,4 +21,4 @@
 ## 4. Docs and verification
 
 - [x] 4.1 Update the README (adding stations: the search goes through the server, which needs outbound HTTPS to radio-browser.info; streams still play directly from the station) and the CHANGELOG. Verify by reading the rendered sections.
-- [ ] 4.2 Run `make check` and `make test` and make sure both pass. In the running app, check in the network tab that a search for "fm4" with logos makes requests only to Boardly's origin.
+- [x] 4.2 Run `make check` and `make test` and make sure both pass. In the running app, check in the network tab that a search for "fm4" with logos makes requests only to Boardly's origin.

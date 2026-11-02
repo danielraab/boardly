@@ -18,4 +18,4 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Run `make check` and `make test` and make sure both pass. In the running app, check in the network tab that opening a map modal makes no request to `tiles.openfreemap.org` until "Load map" is pressed, also as a visitor of a public dashboard.
+- [x] 4.1 Run `make check` and `make test` and make sure both pass. In the running app, check in the network tab that opening a map modal makes no request to `tiles.openfreemap.org` until "Load map" is pressed, also as a visitor of a public dashboard.
