@@ -200,13 +200,14 @@
 			}
 		},
 		"import": {
-			"title": "Import bookmarks",
-			"intro": "Bring your bookmarks over from Karakeep, Linkwarden or a browser, once. Folders, tags and dates are kept, and Karakeep text bookmarks become notes. Links and notes that are already saved are skipped.",
+			"title": "Import",
+			"intro": "Bring your bookmarks over from Karakeep, Linkwarden or a browser, or restore a Boardly export. Folders, tags and dates are kept, and Karakeep text bookmarks become notes. Links and notes that are already saved are skipped.",
 			"format": "Export file",
 			"formats": {
 				"karakeep": "Karakeep (JSON)",
 				"linkwarden": "Linkwarden (JSON)",
-				"netscape": "Bookmarks file (HTML)"
+				"netscape": "Bookmarks file (HTML)",
+				"boardly": "Boardly export (JSON or ZIP)"
 			},
 			"karakeepHint": "From Karakeep, use the JSON export: it keeps your lists, the HTML export doesn't.",
 			"file": "File",
@@ -219,7 +220,8 @@
 				"invalidFile": "This file isn't a valid {{format}} export.",
 				"tooLarge": "The file is too large. It can have at most 10 MB.",
 				"invalidFolder": "Choose one of your folders to import into.",
-				"invalidCategory": "Choose one of your categories to import notes into."
+				"invalidCategory": "Choose one of your categories to import notes into.",
+				"tooLargeHint": "Export without files to get a smaller JSON file."
 			},
 			"report": {
 				"imported": "Imported {{links}} and created {{folders}}.",
@@ -249,7 +251,61 @@
 			},
 			"category": "Import notes into",
 			"categoryTopLevel": "Top level",
-			"categoryHint": "Karakeep text bookmarks become notes. Lists with notes are created as categories in this category. Categories that already exist there with the same name are used."
+			"categoryHint": "Karakeep text bookmarks become notes. Lists with notes are created as categories in this category. Categories that already exist there with the same name are used.",
+			"categoryHintBoardly": "Notes without a category go into this category, and the categories of the export are created in it. Categories that already exist there with the same name are used.",
+			"parts": {
+				"label": "Import",
+				"favourites": "Favourites",
+				"dashboards": "Dashboards",
+				"notes": "Notes",
+				"media": "Media sources"
+			},
+			"dataReport": {
+				"imported": "Imported {{items}}.",
+				"nothing": "Nothing new was imported.",
+				"dashboardsPrivate": "Imported dashboards are private and not your default dashboard.",
+				"links_one": "{{count}} link",
+				"links_other": "{{count}} links",
+				"folders_one": "{{count}} folder",
+				"folders_other": "{{count}} folders",
+				"tags_one": "{{count}} tag",
+				"tags_other": "{{count}} tags",
+				"dashboards_one": "{{count}} dashboard",
+				"dashboards_other": "{{count}} dashboards",
+				"notes_one": "{{count}} note",
+				"notes_other": "{{count}} notes",
+				"categories_one": "{{count}} category",
+				"categories_other": "{{count}} categories",
+				"sources_one": "{{count}} media source",
+				"sources_other": "{{count}} media sources",
+				"images_one": "{{count}} image",
+				"images_other": "{{count}} images",
+				"attachments_one": "{{count}} attachment",
+				"attachments_other": "{{count}} attachments",
+				"duplicates_one": "{{count}} link was already in your favourites",
+				"duplicates_other": "{{count}} links were already in your favourites",
+				"invalidUrls_one": "{{count}} link had an invalid address",
+				"invalidUrls_other": "{{count}} links had an invalid address",
+				"duplicateNotes_one": "{{count}} note was already saved",
+				"duplicateNotes_other": "{{count}} notes were already saved",
+				"duplicateSources_one": "{{count}} media source was already saved",
+				"duplicateSources_other": "{{count}} media sources were already saved",
+				"invalidSources_one": "{{count}} media source wasn't valid",
+				"invalidSources_other": "{{count}} media sources weren't valid",
+				"skippedWidgets_one": "{{count}} widget isn't supported here and was left out",
+				"skippedWidgets_other": "{{count}} widgets aren't supported here and were left out",
+				"skippedFiles_one": "{{count}} file was missing or isn't allowed here and was left out",
+				"skippedFiles_other": "{{count}} files were missing or aren't allowed here and were left out"
+			}
+		},
+		"export": {
+			"title": "Export",
+			"intro": "Download all your data: dashboards, favourites with tags, notes with categories and media sources. Passkeys and connected apps aren't included.",
+			"withFiles": "Include files (images and attachments)",
+			"withFilesHint": "The download is then a ZIP file, which can be large. Without files, it's a JSON file.",
+			"submit": "Export everything",
+			"exporting": "Exporting…",
+			"rateLimited": "You've reached the export limit. You can export again at {{time}}."
 		}
 	},
 	"profile": {

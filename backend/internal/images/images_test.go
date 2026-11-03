@@ -150,3 +150,43 @@ func TestLimits(t *testing.T) {
 		t.Fatalf("ReadLimit at the limit: %d bytes, %v", len(data), err)
 	}
 }
+
+func TestWriteThenInsertInTransaction(t *testing.T) {
+	s, ann := newStore(t)
+	ctx := context.Background()
+	if _, err := s.Write(SourceUpload, svgData); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("svg: %v", err)
+	}
+	img, err := s.Write(SourceUpload, pngData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(s.Dir, img.ID)); err != nil {
+		t.Fatalf("file: %v", err)
+	}
+
+	// A rolled-back insert leaves the file without a record.
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Insert(ctx, tx, img, ann); err != nil {
+		t.Fatal(err)
+	}
+	_ = tx.Rollback()
+	if _, _, err := s.Open(ctx, img.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("after rollback: %v", err)
+	}
+
+	if err := s.Insert(ctx, s.DB, img, ann); err != nil {
+		t.Fatal(err)
+	}
+	got, f, err := s.Open(ctx, img.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	if got.Source != SourceUpload || got.ContentType != "image/png" {
+		t.Errorf("opened %+v", got)
+	}
+}

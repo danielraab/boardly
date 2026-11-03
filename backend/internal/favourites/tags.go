@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
+
+	"github.com/google/uuid"
 
 	"boardly/internal/db"
 )
@@ -130,4 +133,43 @@ func deleteTag(ctx context.Context, q db.Querier, tagID string) error {
 	}
 	_, err := q.ExecContext(ctx, `DELETE FROM tags WHERE id = ?`, tagID)
 	return err
+}
+
+// EnsureTagsTx makes sure the user has a tag for each name in q, matching
+// existing tags regardless of case. It returns the tag ID of each name, by
+// TagKey of the name, and how many tags it created. Names are normalized like
+// a link's tags.
+func (s *Store) EnsureTagsTx(ctx context.Context, q db.Querier, userID string, names []string) (map[string]string, int, error) {
+	names, err := NormalizeTags(names)
+	if err != nil {
+		return nil, 0, err
+	}
+	ids := map[string]string{}
+	created := 0
+	now := db.FormatTime(s.Now())
+	for _, name := range names {
+		key := tagKey(name)
+		res, err := q.ExecContext(ctx,
+			`INSERT INTO tags (id, user_id, name, name_key, created_at) VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT (user_id, name_key) DO NOTHING`,
+			uuid.NewString(), userID, name, key, now)
+		if err != nil {
+			return nil, 0, err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			created++
+		}
+		var id string
+		if err := q.QueryRowContext(ctx,
+			`SELECT id FROM tags WHERE user_id = ? AND name_key = ?`, userID, key).Scan(&id); err != nil {
+			return nil, 0, err
+		}
+		ids[key] = id
+	}
+	return ids, created, nil
+}
+
+// TagKey is the case-insensitive key of a tag name, as EnsureTagsTx uses it.
+func TagKey(name string) string {
+	return tagKey(strings.TrimSpace(name))
 }

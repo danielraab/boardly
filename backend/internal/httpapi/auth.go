@@ -15,6 +15,8 @@ import (
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
+	"boardly/internal/dataimport"
+	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
 	"boardly/internal/media"
@@ -55,9 +57,13 @@ type api struct {
 	refreshLimiter *ratelimit.Limiter
 	appTokens      *apptokens.Store
 	accounts       *accounts.Service
-	origin         string
-	secureCookies  bool
-	trustProxy     bool
+	export         *export.Service
+	dataImport     *dataimport.Service
+	// exportLimiter limits data exports per user.
+	exportLimiter *ratelimit.Window
+	origin        string
+	secureCookies bool
+	trustProxy    bool
 }
 
 func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {

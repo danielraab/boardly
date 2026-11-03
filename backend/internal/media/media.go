@@ -294,3 +294,42 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 	}
 	return nil
 }
+
+// Imported is a media source of an import, already resolved when it was
+// first saved, so its URL isn't fetched again.
+type Imported struct {
+	Kind  string
+	Title string
+	URL   string
+	Icon  *notes.Icon
+}
+
+// InsertTx adds an imported source at the end of the user's list in q and
+// returns its ID. The kind, title, icon (an image of the user) and URL (an
+// absolute http or https URL) are checked like for Create, without fetching.
+func (s *Store) InsertTx(ctx context.Context, q db.Querier, userID string, n Imported) (string, error) {
+	if n.Kind != KindStream {
+		return "", ErrInvalidKind
+	}
+	title, err := normalizeTitle(n.Title)
+	if err != nil {
+		return "", err
+	}
+	if _, err := parseURL(n.URL, nil); err != nil {
+		return "", err
+	}
+	symbol, imageID, err := checkIcon(ctx, q, userID, n.Icon)
+	if err != nil {
+		return "", err
+	}
+	id := uuid.NewString()
+	now := db.FormatTime(s.Now())
+	if _, err := q.ExecContext(ctx,
+		`INSERT INTO media_sources (id, user_id, kind, title, url, icon_symbol, icon_image_id, position, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM media_sources WHERE user_id = ?), ?, ?)`,
+		id, userID, n.Kind, title, n.URL, symbol, imageID, userID, now, now,
+	); err != nil {
+		return "", err
+	}
+	return id, nil
+}

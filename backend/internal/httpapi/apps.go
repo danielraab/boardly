@@ -23,7 +23,7 @@ func appToken(ctx context.Context) (apptokens.Token, bool) {
 // origin may call them (CORS without credentials). A valid token is put into
 // the context; requests without one are passed on too, because some of the
 // app's endpoints are public, and the others reject them.
-func (a *api) appAPI(app apptokens.App, mux *http.ServeMux) http.Handler {
+func (a *api) appAPI(app apptokens.App, mux *routeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Access-Control-Allow-Origin", "*")

@@ -204,3 +204,69 @@ func TestImportArchivedNotes(t *testing.T) {
 		}
 	}
 }
+
+func TestImportSourceIDsAndFields(t *testing.T) {
+	f := newFixture(t)
+	work := f.category("Work", nil)
+	existing := f.note("Plan", &work)
+	img := "5b0e8c55-2a7e-4f0b-9f0b-6a8d3e2f1c11"
+	f.image(f.user, img)
+	updated := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+
+	ids := map[string]string{}
+	tree := ImportTree{IDs: ids, Root: ImportCategory{Categories: []ImportCategory{
+		{Name: "work", SourceID: "old-work", Color: ptr("red"), Notes: []ImportNote{
+			// Same title and empty content as the existing note.
+			{Title: ptr("Plan"), Content: EmptyDoc(), SourceID: "old-plan"},
+		}},
+		{Name: "Ideas", SourceID: "old-ideas", Icon: &Icon{Type: IconImage, ImageID: img}, Color: ptr("blue"), Notes: []ImportNote{
+			{Title: ptr("Pinned"), Content: FromText("x"), SourceID: "old-pinned", Pinned: true, Archived: true,
+				Icon: &Icon{Type: IconSymbol, Name: "star"}, Color: ptr("green"), UpdatedAt: updated},
+		}},
+	}}}
+	if _, err := f.s.ImportTx(f.ctx, f.db, f.user, nil, tree, true); err != nil {
+		t.Fatal(err)
+	}
+	if ids["old-work"] != work {
+		t.Errorf("reused category maps to %q, want %q", ids["old-work"], work)
+	}
+	if ids["old-plan"] != existing.ID {
+		t.Errorf("skipped duplicate maps to %q, want %q", ids["old-plan"], existing.ID)
+	}
+
+	categories, err := f.s.Categories(f.ctx, f.user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range categories {
+		switch c.ID {
+		case work:
+			if c.Color != nil {
+				t.Errorf("reused category got colour %v", *c.Color)
+			}
+		case ids["old-ideas"]:
+			if c.Icon == nil || c.Icon.ImageID != img || c.Color == nil || *c.Color != "blue" {
+				t.Errorf("Ideas = %+v", c)
+			}
+		}
+	}
+	n, err := f.s.Note(f.ctx, f.user, ids["old-pinned"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !n.Pinned || !n.Archived || n.Icon == nil || n.Icon.Name != "star" || n.Color == nil || *n.Color != "green" || !n.UpdatedAt.Equal(updated) {
+		t.Errorf("note = %+v", n)
+	}
+}
+
+func TestImportRejectsForeignIcon(t *testing.T) {
+	f := newFixture(t)
+	img := "9c6f1f0d-6b1e-4d43-9a87-0f5e2b7c3d21"
+	f.image(f.other, img)
+	tree := ImportTree{Root: ImportCategory{Notes: []ImportNote{
+		{Title: ptr("x"), Content: FromText("x"), Icon: &Icon{Type: IconImage, ImageID: img}},
+	}}}
+	if _, err := f.s.ImportTx(f.ctx, f.db, f.user, nil, tree, true); !errors.Is(err, ErrInvalidIcon) {
+		t.Fatalf("err = %v, want ErrInvalidIcon", err)
+	}
+}

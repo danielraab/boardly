@@ -15,3 +15,11 @@ If a request asks for a code change and no matching OpenSpec change exists, prop
 If the work turns out to differ from the change, update the change's artifacts before changing the code.
 
 Exceptions that don't need a change: typo fixes, formatting or lint-only fixes, dependency bumps, and documentation-only edits.
+
+## Keep export and import in step
+
+Every change must check whether the data export (`data-export` spec, `backend/internal/export`) and the import of Boardly exports (`data-import` spec) have to be adapted. This applies whenever a change adds, removes, renames or reshapes user data: tables, columns, fields, widget kinds or their configs, files, or references between items. The proposal states the result, even when it is "export and import are unaffected", and the tasks include the adaptation and its tests. Raise the export format version when older imports couldn't read the new document.
+
+## Keep the OpenAPI documents in step
+
+The API is described in `backend/internal/httpapi/openapi/`: `boardly.yaml` for `/api`, and `karakeep.yaml`, `linkwarden.yaml` and `memos.yaml` for the connected apps (`api-docs` spec). Every change that adds, removes or renames a route, or changes a request or response shape, updates the matching document in the same change, and its tasks say so. `TestOpenAPIDocumentsMatchRoutes` fails for missing or stale routes, but it doesn't check schemas, so keep those in step by hand.
