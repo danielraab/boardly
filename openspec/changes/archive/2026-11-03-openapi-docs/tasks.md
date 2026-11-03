@@ -41,7 +41,7 @@
 ## 6. Wrap-up
 
 - [x] 6.1 Run the drift test until it passes with no alias entries beyond the documented ones
-- [ ] 6.2 Validate all four documents once with an OpenAPI linter, run locally and not added to the project
+- [x] 6.2 Validate all four documents once with an OpenAPI linter, run locally and not added to the project
 - [x] 6.3 Mention the documents and their URLs in `README.md` and add a `CHANGELOG.md` entry
 - [x] 6.4 Add a note to `CLAUDE.md` that route changes have to update the matching OpenAPI document
 - [x] 6.5 `make check` and `make test` pass
