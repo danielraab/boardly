@@ -200,13 +200,14 @@
 			}
 		},
 		"import": {
-			"title": "Lesezeichen importieren",
-			"intro": "Übernimm deine Lesezeichen einmalig aus Karakeep, Linkwarden oder einem Browser. Ordner, Tags und Daten bleiben erhalten, und Text-Lesezeichen aus Karakeep werden zu Notizen. Links und Notizen, die schon gespeichert sind, werden übersprungen.",
+			"title": "Importieren",
+			"intro": "Übernimm deine Lesezeichen aus Karakeep, Linkwarden oder einem Browser, oder stelle einen Boardly-Export wieder her. Ordner, Tags und Daten bleiben erhalten, und Karakeep-Textlesezeichen werden zu Notizen. Bereits gespeicherte Links und Notizen werden übersprungen.",
 			"format": "Exportdatei",
 			"formats": {
 				"karakeep": "Karakeep (JSON)",
 				"linkwarden": "Linkwarden (JSON)",
-				"netscape": "Lesezeichen-Datei (HTML)"
+				"netscape": "Lesezeichen-Datei (HTML)",
+				"boardly": "Boardly-Export (JSON oder ZIP)"
 			},
 			"karakeepHint": "Verwende aus Karakeep den JSON-Export: Er enthält deine Listen, der HTML-Export nicht.",
 			"file": "Datei",
@@ -219,7 +220,8 @@
 				"invalidFile": "Diese Datei ist kein gültiger Export von {{format}}.",
 				"tooLarge": "Die Datei ist zu groß. Sie darf höchstens 10 MB haben.",
 				"invalidFolder": "Wähle einen deiner Ordner als Ziel.",
-				"invalidCategory": "Wähle eine deiner Kategorien als Ziel für Notizen."
+				"invalidCategory": "Wähle eine deiner Kategorien als Ziel für Notizen.",
+				"tooLargeHint": "Exportiere ohne Dateien, um eine kleinere JSON-Datei zu erhalten."
 			},
 			"report": {
 				"imported": "{{links}} importiert und {{folders}} angelegt.",
@@ -249,7 +251,61 @@
 			},
 			"category": "Notizen importieren in",
 			"categoryTopLevel": "Oberste Ebene",
-			"categoryHint": "Text-Lesezeichen aus Karakeep werden zu Notizen. Listen mit Notizen werden als Kategorien in dieser Kategorie angelegt. Gleichnamige Kategorien, die es dort schon gibt, werden verwendet."
+			"categoryHint": "Text-Lesezeichen aus Karakeep werden zu Notizen. Listen mit Notizen werden als Kategorien in dieser Kategorie angelegt. Gleichnamige Kategorien, die es dort schon gibt, werden verwendet.",
+			"categoryHintBoardly": "Notizen ohne Kategorie kommen in diese Kategorie, und die Kategorien des Exports werden darin angelegt. Kategorien, die dort mit gleichem Namen schon existieren, werden verwendet.",
+			"parts": {
+				"label": "Importieren",
+				"favourites": "Favoriten",
+				"dashboards": "Dashboards",
+				"notes": "Notizen",
+				"media": "Medienquellen"
+			},
+			"dataReport": {
+				"imported": "Importiert: {{items}}.",
+				"nothing": "Es wurde nichts Neues importiert.",
+				"dashboardsPrivate": "Importierte Dashboards sind privat und nicht dein Standard-Dashboard.",
+				"links_one": "{{count}} Link",
+				"links_other": "{{count}} Links",
+				"folders_one": "{{count}} Ordner",
+				"folders_other": "{{count}} Ordner",
+				"tags_one": "{{count}} Tag",
+				"tags_other": "{{count}} Tags",
+				"dashboards_one": "{{count}} Dashboard",
+				"dashboards_other": "{{count}} Dashboards",
+				"notes_one": "{{count}} Notiz",
+				"notes_other": "{{count}} Notizen",
+				"categories_one": "{{count}} Kategorie",
+				"categories_other": "{{count}} Kategorien",
+				"sources_one": "{{count}} Medienquelle",
+				"sources_other": "{{count}} Medienquellen",
+				"images_one": "{{count}} Bild",
+				"images_other": "{{count}} Bilder",
+				"attachments_one": "{{count}} Anhang",
+				"attachments_other": "{{count}} Anhänge",
+				"duplicates_one": "{{count}} Link war schon in deinen Favoriten",
+				"duplicates_other": "{{count}} Links waren schon in deinen Favoriten",
+				"invalidUrls_one": "{{count}} Link hatte eine ungültige Adresse",
+				"invalidUrls_other": "{{count}} Links hatten eine ungültige Adresse",
+				"duplicateNotes_one": "{{count}} Notiz war schon gespeichert",
+				"duplicateNotes_other": "{{count}} Notizen waren schon gespeichert",
+				"duplicateSources_one": "{{count}} Medienquelle war schon gespeichert",
+				"duplicateSources_other": "{{count}} Medienquellen waren schon gespeichert",
+				"invalidSources_one": "{{count}} Medienquelle war ungültig",
+				"invalidSources_other": "{{count}} Medienquellen waren ungültig",
+				"skippedWidgets_one": "{{count}} Widget wird hier nicht unterstützt und wurde weggelassen",
+				"skippedWidgets_other": "{{count}} Widgets werden hier nicht unterstützt und wurden weggelassen",
+				"skippedFiles_one": "{{count}} Datei fehlte oder ist hier nicht erlaubt und wurde weggelassen",
+				"skippedFiles_other": "{{count}} Dateien fehlten oder sind hier nicht erlaubt und wurden weggelassen"
+			}
+		},
+		"export": {
+			"title": "Export",
+			"intro": "Lade alle deine Daten herunter: Dashboards, Favoriten mit Tags, Notizen mit Kategorien und Medienquellen. Passkeys und verbundene Apps sind nicht enthalten.",
+			"withFiles": "Dateien einschließen (Bilder und Anhänge)",
+			"withFilesHint": "Der Download ist dann eine ZIP-Datei, die groß sein kann. Ohne Dateien ist es eine JSON-Datei.",
+			"submit": "Alles exportieren",
+			"exporting": "Wird exportiert…",
+			"rateLimited": "Du hast das Export-Limit erreicht. Du kannst um {{time}} wieder exportieren."
 		}
 	},
 	"profile": {

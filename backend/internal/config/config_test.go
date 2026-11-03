@@ -101,6 +101,23 @@ func TestAccountDeletionDays(t *testing.T) {
 	}
 }
 
+func TestExportLimits(t *testing.T) {
+	cfg, err := Load(env(withBaseURL(nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Exports != (Exports{PerHour: 3, PerDay: 10}) {
+		t.Errorf("default Exports = %+v, want 3 per hour, 10 per day", cfg.Exports)
+	}
+	cfg, err = Load(env(withBaseURL(map[string]string{"BOARDLY_EXPORTS_PER_HOUR": "0", "BOARDLY_EXPORTS_PER_DAY": "5"})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Exports != (Exports{PerHour: 0, PerDay: 5}) {
+		t.Errorf("Exports = %+v, want 0 per hour, 5 per day", cfg.Exports)
+	}
+}
+
 func TestLoadOverrides(t *testing.T) {
 	cfg, err := Load(env(map[string]string{
 		"BOARDLY_PORT":                "9000",
@@ -255,6 +272,9 @@ func TestLoadInvalid(t *testing.T) {
 		{"preview width fraction", "BOARDLY_PREVIEW_WIDTH", "800.5"},
 		{"deletion days negative", "BOARDLY_ACCOUNT_DELETION_DAYS", "-1"},
 		{"deletion days not a number", "BOARDLY_ACCOUNT_DELETION_DAYS", "week"},
+		{"exports per hour negative", "BOARDLY_EXPORTS_PER_HOUR", "-1"},
+		{"exports per day negative", "BOARDLY_EXPORTS_PER_DAY", "-1"},
+		{"exports per day not a number", "BOARDLY_EXPORTS_PER_DAY", "many"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

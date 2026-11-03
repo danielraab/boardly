@@ -60,6 +60,34 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
 	return (text ? JSON.parse(text) : undefined) as T;
 }
 
+/**
+ * Downloads a file from the API (a GET), returning its body as a Blob and the
+ * file name from `Content-Disposition`, if any. Errors are thrown like `api`'s.
+ */
+export async function apiDownload(
+	path: string,
+): Promise<{ blob: Blob; fileName: string | null }> {
+	const res = await fetch(path, { credentials: "same-origin" });
+	if (!res.ok) {
+		const error = await parseError(res);
+		if (res.status === 401) onUnauthorized();
+		throw error;
+	}
+	return {
+		blob: await res.blob(),
+		fileName: fileNameOf(res.headers.get("Content-Disposition")),
+	};
+}
+
+/** The `filename` parameter of a Content-Disposition header, quoted or not. */
+export function fileNameOf(disposition: string | null): string | null {
+	const match = disposition?.match(
+		/filename=(?:"((?:[^"\\]|\\.)*)"|([^;\s]+))/i,
+	);
+	if (!match) return null;
+	return match[1] !== undefined ? match[1].replace(/\\(.)/g, "$1") : match[2];
+}
+
 async function parseError(res: Response): Promise<ApiError> {
 	let code = "error";
 	let message = res.statusText || `HTTP ${res.status}`;

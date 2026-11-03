@@ -22,3 +22,16 @@ context: |
     (e.g. shell.userMenu, landing.hero.title).
   - Tests live with the work that needs them: Go tests with httptest, frontend tests with
     Vitest + Testing Library. `make check` and `make test` must pass.
+
+rules:
+  proposal:
+    - >-
+      Check whether the change adds, removes, renames or reshapes user data (tables, columns,
+      fields, widget kinds or their configs, files, references between items). If it does, say in
+      Impact how the Boardly export (`data-export`) and import (`data-import`) are adapted;
+      if it doesn't, say in one line that export and import are unaffected.
+  tasks:
+    - >-
+      If the change touches user data, add tasks to adapt the export and the import with their
+      tests (including the table coverage test in backend/internal/export), and to raise the
+      export format version when the document changes in a way older imports can't read.

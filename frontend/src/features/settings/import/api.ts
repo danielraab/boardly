@@ -1,11 +1,15 @@
 import { api } from "#/lib/api";
 
-export type ImportFormat = "karakeep" | "linkwarden" | "netscape";
+export type ImportFormat = "karakeep" | "linkwarden" | "netscape" | "boardly";
+
+/** The formats of other apps, imported as bookmarks (and Karakeep notes). */
+export type BookmarkFormat = Exclude<ImportFormat, "boardly">;
 
 export const importFormats: readonly ImportFormat[] = [
 	"karakeep",
 	"linkwarden",
 	"netscape",
+	"boardly",
 ];
 
 /** What an import added and left out, as the server reports it. */
@@ -42,7 +46,7 @@ export const formatsWithNotes: readonly ImportFormat[] = ["karakeep"];
  * links and notes that are already saved are imported again.
  */
 export function importBookmarks(
-	format: ImportFormat,
+	format: BookmarkFormat,
 	folderId: string,
 	categoryId: string | null,
 	file: Blob,
@@ -55,6 +59,55 @@ export function importBookmarks(
 	});
 	if (categoryId) query.set("categoryId", categoryId);
 	return api<ImportReport>(`/api/favourites/import?${query}`, {
+		method: "POST",
+		file,
+	});
+}
+
+/** The parts of a Boardly export that can be imported. */
+export type ImportPart = "favourites" | "dashboards" | "notes" | "media";
+
+export const importParts: readonly ImportPart[] = [
+	"favourites",
+	"dashboards",
+	"notes",
+	"media",
+];
+
+/** What the import of a Boardly export added and left out, per part. */
+export type DataImportReport = {
+	favourites: {
+		links: number;
+		folders: number;
+		tags: number;
+		skipped: { duplicates: number; invalidUrls: number };
+		shortenedDescriptions: number;
+	} | null;
+	dashboards: { dashboards: number; skippedWidgets: number } | null;
+	notes: { notes: number; categories: number; duplicateNotes: number } | null;
+	media: { sources: number; duplicates: number; invalid: number } | null;
+	files: { images: number; attachments: number; skipped: number };
+};
+
+/**
+ * Imports the chosen parts of a Boardly export (its JSON file or its ZIP
+ * file) into the account: favourites into the folder (required with
+ * "favourites"), notes into the category (null for the top level).
+ */
+export function importData(
+	parts: readonly ImportPart[],
+	folderId: string | null,
+	categoryId: string | null,
+	file: Blob,
+	skipDuplicates: boolean,
+) {
+	const query = new URLSearchParams({
+		parts: parts.join(","),
+		skipDuplicates: String(skipDuplicates),
+	});
+	if (folderId) query.set("folderId", folderId);
+	if (categoryId) query.set("categoryId", categoryId);
+	return api<DataImportReport>(`/api/import?${query}`, {
 		method: "POST",
 		file,
 	});

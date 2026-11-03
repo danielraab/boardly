@@ -17,8 +17,11 @@ import (
 	"boardly/internal/apptokens"
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
+	"boardly/internal/blobs"
 	"boardly/internal/dashboards"
+	"boardly/internal/dataimport"
 	"boardly/internal/dbtest"
+	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
 	"boardly/internal/jobs"
@@ -144,6 +147,14 @@ func newServer(t *testing.T) *server {
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Directory: directory,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
+		Export: &export.Service{
+			DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: c.Now,
+		},
+		DataImport: &dataimport.Service{
+			DB: database, Favourites: favouriteStore, Notes: noteStore, Dashboards: dashboardStore,
+			Media: mediaStore, Images: imageStore, Attachments: attachmentStore,
+		},
+		ExportsPerHour: 3, ExportsPerDay: 10,
 	})
 	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, jobs: queue}
 }

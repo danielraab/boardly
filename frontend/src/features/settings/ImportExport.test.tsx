@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FavouriteNode } from "#/features/favourites/api";
 import { apiError, mockApi, signedIn } from "#/test/api";
 import { renderApp } from "#/test/renderApp";
@@ -233,5 +233,229 @@ describe("import / export tab", () => {
 			"This file isn't a valid Karakeep (JSON) export.",
 		);
 		expect(within(panel).queryByRole("status")).toBeNull();
+	});
+});
+
+describe("boardly import", () => {
+	const zip = () =>
+		new File(["PK\x03\x04"], "boardly-export-ann.zip", {
+			type: "application/zip",
+		});
+	const dataReport = {
+		favourites: {
+			links: 3,
+			folders: 1,
+			tags: 2,
+			skipped: { duplicates: 1, invalidUrls: 0 },
+			shortenedDescriptions: 0,
+		},
+		dashboards: { dashboards: 1, skippedWidgets: 0 },
+		notes: null,
+		media: null,
+		files: { images: 0, attachments: 0, skipped: 2 },
+	};
+
+	async function chooseBoardly() {
+		const tab = await openTab();
+		await tab.user.click(
+			within(tab.panel).getByRole("radio", {
+				name: "Boardly export (JSON or ZIP)",
+			}),
+		);
+		return tab;
+	}
+
+	it("is titled Import and offers the Boardly format with ZIP files", async () => {
+		const { panel } = await openTab();
+		expect(
+			within(panel).getByRole("heading", { name: "Import" }),
+		).toBeInTheDocument();
+		expect(
+			within(panel).getByRole("radio", {
+				name: "Boardly export (JSON or ZIP)",
+			}),
+		).toBeInTheDocument();
+		expect(within(panel).getByLabelText("File")).toHaveAttribute(
+			"accept",
+			expect.stringContaining(".zip"),
+		);
+	});
+
+	it("checks all parts at first and shows both pickers", async () => {
+		const { panel } = await chooseBoardly();
+		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+			expect(within(panel).getByRole("checkbox", { name })).toBeChecked();
+		}
+		expect(within(panel).getByText("Import into")).toBeInTheDocument();
+		expect(within(panel).getByText("Import notes into")).toBeInTheDocument();
+	});
+
+	it("needs no folder without favourites and sends the checked parts", async () => {
+		const { panel, user, api } = await chooseBoardly();
+		let search: URLSearchParams | null = null;
+		api.set({
+			"POST /api/import": ({ url }) => {
+				search = url.searchParams;
+				return { body: dataReport };
+			},
+		});
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		const submit = within(panel).getByRole("button", { name: "Import" });
+		expect(submit).toBeDisabled();
+
+		await user.click(
+			within(panel).getByRole("checkbox", { name: "Favourites" }),
+		);
+		await user.click(within(panel).getByRole("checkbox", { name: "Notes" }));
+		expect(within(panel).queryByText("Import into")).toBeNull();
+		expect(within(panel).queryByText("Import notes into")).toBeNull();
+		expect(submit).toBeEnabled();
+
+		await user.click(submit);
+		const result = await within(panel).findByRole("status");
+		expect(result).toHaveTextContent(
+			"Imported 3 links, 1 folder, 2 tags, 1 dashboard.",
+		);
+		expect(result).toHaveTextContent("Imported dashboards are private");
+		expect(result).toHaveTextContent("1 link was already in your favourites");
+		expect(result).toHaveTextContent("2 files were missing or aren't allowed");
+
+		const sent = search as unknown as URLSearchParams;
+		expect(sent.get("parts")).toBe("dashboards,media");
+		expect(sent.has("folderId")).toBe(false);
+		expect(sent.has("categoryId")).toBe(false);
+	});
+
+	it("disables the button without any part", async () => {
+		const { panel, user } = await chooseBoardly();
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+			await user.click(within(panel).getByRole("checkbox", { name }));
+		}
+		expect(
+			within(panel).getByRole("button", { name: "Import" }),
+		).toBeDisabled();
+	});
+
+	it("shows the size limit with the hint to export without files", async () => {
+		const { panel, user, api } = await chooseBoardly();
+		api.set({ "POST /api/import": apiError(413, "file_too_large") });
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		await user.click(
+			within(panel).getByRole("checkbox", { name: "Favourites" }),
+		);
+		await user.click(within(panel).getByRole("button", { name: "Import" }));
+		expect(await within(panel).findByRole("alert")).toHaveTextContent(
+			"The file is too large. It can have at most 10 MB. Export without files to get a smaller JSON file.",
+		);
+	});
+});
+
+describe("export section", () => {
+	const createObjectURL = vi.fn(() => "blob:export");
+	const clicks: string[] = [];
+
+	beforeEach(() => {
+		clicks.length = 0;
+		// jsdom has no object URLs.
+		URL.createObjectURL = createObjectURL;
+		URL.revokeObjectURL = vi.fn();
+		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+			this: HTMLAnchorElement,
+		) {
+			clicks.push(this.download);
+		});
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	function exportRoute(fileName: string) {
+		return {
+			body: { format: "boardly" },
+			headers: { "Content-Disposition": `attachment; filename=${fileName}` },
+		};
+	}
+
+	it("exports without files by default and saves the JSON file", async () => {
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": exportRoute("boardly-export-ann-2026-11-02.json"),
+		});
+		expect(
+			within(panel).getByRole("checkbox", {
+				name: "Include files (images and attachments)",
+			}),
+		).not.toBeChecked();
+
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		await waitFor(() =>
+			expect(clicks).toEqual(["boardly-export-ann-2026-11-02.json"]),
+		);
+		expect(api.callsTo("GET", "/api/me/export")[0].search).toBe("?files=false");
+	});
+
+	it("exports with files when checked", async () => {
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": exportRoute("boardly-export-ann-2026-11-02.zip"),
+		});
+		await user.click(
+			within(panel).getByRole("checkbox", {
+				name: "Include files (images and attachments)",
+			}),
+		);
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		await waitFor(() =>
+			expect(clicks).toEqual(["boardly-export-ann-2026-11-02.zip"]),
+		);
+		expect(api.callsTo("GET", "/api/me/export")[0].search).toBe("?files=true");
+	});
+
+	it("disables the button while the export runs", async () => {
+		const { api, panel, user } = await openTab();
+		let finish: (r: ReturnType<typeof exportRoute>) => void = () => {};
+		api.set({
+			"GET /api/me/export": () =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		});
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		expect(
+			await within(panel).findByRole("button", { name: "Exporting…" }),
+		).toBeDisabled();
+		finish(exportRoute("x.json"));
+		expect(
+			await within(panel).findByRole("button", { name: "Export everything" }),
+		).toBeEnabled();
+	});
+
+	it("shows when the next export is possible after the limit", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date(2026, 10, 2, 14, 0));
+		const { api, panel, user } = await openTab();
+		api.set({
+			"GET /api/me/export": apiError(429, "rate_limited", {
+				"Retry-After": "1200",
+			}),
+		});
+		await user.click(
+			within(panel).getByRole("button", { name: "Export everything" }),
+		);
+		const time = new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(
+			new Date(2026, 10, 2, 14, 20),
+		);
+		expect(await within(panel).findByRole("alert")).toHaveTextContent(
+			`You've reached the export limit. You can export again at ${time}.`,
+		);
+		expect(clicks).toEqual([]);
 	});
 });

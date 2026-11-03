@@ -65,6 +65,16 @@ type Config struct {
 	// AccountDeletionDays is the grace period, in days, between scheduling an
 	// account's deletion and carrying it out. 0 deletes at the next sweep.
 	AccountDeletionDays int
+
+	Exports Exports
+}
+
+// Exports holds the per-user limits of data exports. 0 turns a limit off.
+type Exports struct {
+	// PerHour is the most exports in the last 60 minutes.
+	PerHour int
+	// PerDay is the most exports in the last 24 hours.
+	PerDay int
 }
 
 // Attachments holds the limits of note attachments.
@@ -131,6 +141,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		Previews:            Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
 		Attachments:         Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
 		AccountDeletionDays: 7,
+		Exports:             Exports{PerHour: 3, PerDay: 10},
 	}
 
 	port, err := LoadPort(lookupEnv)
@@ -246,6 +257,22 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("BOARDLY_ACCOUNT_DELETION_DAYS: %q must be a whole number of 0 or more", v)
 		}
 		cfg.AccountDeletionDays = int(n)
+	}
+
+	for _, p := range []struct {
+		name string
+		dst  *int
+	}{
+		{"BOARDLY_EXPORTS_PER_HOUR", &cfg.Exports.PerHour},
+		{"BOARDLY_EXPORTS_PER_DAY", &cfg.Exports.PerDay},
+	} {
+		if v := getenv(p.name); v != "" {
+			n, err := strconv.ParseInt(v, 10, 32)
+			if err != nil || n < 0 {
+				return Config{}, fmt.Errorf("%s: %q must be a whole number of 0 or more", p.name, v)
+			}
+			*p.dst = int(n)
+		}
 	}
 
 	types, err := attachments.ParseAllowed(getenv("BOARDLY_ATTACHMENT_TYPES"))

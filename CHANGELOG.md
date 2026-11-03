@@ -8,6 +8,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Import of a Boardly export (JSON or ZIP) on **Settings → Import / Export**, into the same or
+  another account: pick favourites, dashboards, notes and media sources. The import only adds,
+  keeps references between imported items, makes imported dashboards private, and skips links,
+  notes and stations that are already saved. The import section is now called "Import".
+- Export of all your data on **Settings → Import / Export**: a JSON file with your profile,
+  favourites and tags, dashboards, notes and categories, and media sources, or with "Include
+  files" a ZIP file that also holds your images and attachments. Passkeys and app tokens are left
+  out. Exports are limited per user, by default 3 an hour and 10 a day
+  (`BOARDLY_EXPORTS_PER_HOUR`, `BOARDLY_EXPORTS_PER_DAY`).
 - A domain hint under the URL field when adding or editing a link, on Save link and in the link
   widget settings: it shows how many favourites are already on that domain (e.g. "3 favourites
   on github.com") and opens them on `/favourites` in a new tab.
