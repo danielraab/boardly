@@ -33,4 +33,4 @@
 ## 7. Documentation and checks
 
 - [x] 7.1 Update README (import of a Boardly export under "Exporting your data" or its own section; remove "not supported yet") and CHANGELOG. Verify by reading the sections.
-- [ ] 7.2 Run `make check` and `make test` and confirm both pass; run `openspec validate import-boardly-export --strict`.
+- [x] 7.2 Run `make check` and `make test` and confirm both pass; run `openspec validate import-boardly-export --strict`.
