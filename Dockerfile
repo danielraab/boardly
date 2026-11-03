@@ -19,7 +19,7 @@ COPY frontend/ ./
 RUN pnpm build
 
 # --- 2. Server binary with the web app embedded ------------------------------
-FROM --platform=$BUILDPLATFORM golang:1.26 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27 AS build
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN --mount=type=cache,id=boardly-gomod,target=/go/pkg/mod \
