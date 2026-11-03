@@ -1,0 +1,400 @@
+openapi: 3.1.0
+info:
+  title: Boardly – Karakeep API
+  version: "1"
+  summary: The part of Karakeep's API that Boardly implements.
+  description: |
+    Boardly answers the Karakeep browser extension, the Karakeep mobile app
+    and sync clients such as Floccus. Give them `<Boardly address>/api/karakeep`
+    as the server address. They then call the paths below, as they would on a
+    Karakeep server.
+
+    **Authentication.** Every operation not marked public needs an active
+    Karakeep app token from Boardly's Settings → Connected apps, sent as
+    `Authorization: Bearer <token>`. The token limits what the app sees to one
+    favourites folder (bookmarks are links, lists are folders) and to the
+    token's notes (text bookmarks are notes).
+
+    **CORS.** Any origin may call these endpoints without credentials; the
+    `OPTIONS` preflight is answered for every path.
+
+    **Errors.** The REST endpoints answer `{"error": "<message>"}` with 400,
+    401, 404 or 500. tRPC calls answer tRPC errors (see the tRPC path).
+    Paths that aren't listed here respond 404.
+
+    Shapes follow Karakeep's own API; see its documentation for details.
+    [Boardly API](../openapi.yaml)
+servers:
+  - url: /api/karakeep
+security:
+  - appToken: []
+externalDocs:
+  description: Karakeep API documentation
+  url: https://docs.karakeep.app/
+tags:
+  - name: Status
+  - name: Bookmarks
+  - name: Lists
+  - name: Assets
+  - name: tRPC
+
+paths:
+  /openapi.yaml:
+    get:
+      tags: [Status]
+      summary: This document
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document.
+          content:
+            application/yaml: {}
+
+  /api/health:
+    get:
+      tags: [Status]
+      summary: Health check for the mobile app's connection indicator
+      security: []
+      responses:
+        "200":
+          description: "`{\"status\": \"ok\", \"message\": …}`"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { const: ok }
+                  message: { type: string }
+
+  /api/version:
+    get:
+      tags: [Status]
+      summary: Server version
+      security: []
+      responses:
+        "200":
+          description: "`{\"version\": \"Boardly\"}`"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+
+  /api/assets:
+    post:
+      tags: [Assets]
+      summary: Upload a file for an asset bookmark
+      description: Stores the multipart part `file` as an attachment of the token's owner.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: The stored asset.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assetId: { type: string }
+                  contentType: { type: string }
+                  size: { type: integer }
+                  fileName: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/assets/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Assets]
+      summary: Download an asset
+      responses:
+        "200":
+          description: The file.
+          content:
+            "*/*": {}
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/users/me:
+    get:
+      tags: [Status]
+      summary: The token's owner (Floccus' connection test)
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/bookmarks:
+    post:
+      tags: [Bookmarks]
+      summary: Create a bookmark
+      description: |
+        Answers 201 with the new bookmark, or 200 with the existing one and
+        `alreadyExists: true` when the URL is already saved.
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "201": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/bookmarks/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Bookmarks]
+      summary: A bookmark
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Bookmarks]
+      summary: Change a bookmark
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Bookmarks]
+      summary: Delete a bookmark
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/bookmarks/{id}/lists:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Bookmarks]
+      summary: The lists a bookmark is in
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/bookmarks/{id}/tags:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Bookmarks]
+      summary: Attach tags
+      description: "Body `{\"tags\": [{\"tagId\"} | {\"tagName\"}]}`; answers `{\"attached\": [<tag IDs>]}`."
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Bookmarks]
+      summary: Detach tags
+      description: "Same body as attaching; answers `{\"detached\": [<tag IDs>]}`."
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/lists:
+    get:
+      tags: [Lists]
+      summary: All lists (folders) in the token's subtree
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Lists]
+      summary: Create a list
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "201": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/lists/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Lists]
+      summary: Rename or move a list
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Lists]
+      summary: Delete a list
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/lists/{id}/bookmarks:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Lists]
+      summary: The bookmarks of a list, paged
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [desc, asc] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: includeContent, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/lists/{id}/bookmarks/{bookmarkId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - { name: bookmarkId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Lists]
+      summary: Move a bookmark into a list
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Lists]
+      summary: Take a bookmark out of a list
+      description: Changes nothing when the bookmark isn't directly in that list.
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/trpc/{procedure}:
+    parameters:
+      - name: procedure
+        in: path
+        required: true
+        description: |
+          A procedure name. With `batch=1`, several names separated by commas
+          are called in one request.
+        schema:
+          type: string
+          enum:
+            - apiKeys.exchange
+            - apiKeys.validate
+            - bookmarks.checkUrl
+            - bookmarks.createBookmark
+            - bookmarks.deleteBookmark
+            - bookmarks.getBookmark
+            - bookmarks.getBookmarks
+            - bookmarks.searchBookmarks
+            - bookmarks.updateBookmark
+            - bookmarks.updateTags
+            - config.clientConfig
+            - lists.addToList
+            - lists.create
+            - lists.delete
+            - lists.edit
+            - lists.get
+            - lists.getListsOfBookmark
+            - lists.getPendingInvitations
+            - lists.list
+            - lists.removeFromList
+            - lists.stats
+            - tags.create
+            - tags.delete
+            - tags.get
+            - tags.list
+            - tags.update
+            - users.settings
+            - users.stats
+            - users.whoami
+      - name: batch
+        in: query
+        required: true
+        schema: { const: "1" }
+    get:
+      tags: [tRPC]
+      summary: Call tRPC queries
+      description: |
+        tRPC 11 with `httpBatchLink` and the `superjson` transformer, as the
+        Karakeep browser extension and mobile app send it. The `input` query
+        parameter is a JSON object keyed by the call's index in the batch,
+        each value `{"json": <input>}`. The answer is an array with one
+        `{"result": {"data": {"json": …}}}` or `{"error": {"json": {"message", "code", "data": {"code", "httpStatus"}}}}`
+        per call. The status is the one all calls share (an error's is its
+        `httpStatus`), or 207 when they differ. Mutations sent as `GET`, and
+        queries sent as `POST`, fail with `METHOD_NOT_SUPPORTED`.
+      parameters:
+        - name: input
+          in: query
+          schema: { type: string, example: '{"0":{"json":null}}' }
+      responses:
+        "200": { $ref: "#/components/responses/Trpc" }
+        "207": { $ref: "#/components/responses/Trpc" }
+        default: { $ref: "#/components/responses/Trpc" }
+    post:
+      tags: [tRPC]
+      summary: Call tRPC mutations
+      description: The same as queries, with the inputs as the JSON body instead of `input`.
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Trpc" }
+        "207": { $ref: "#/components/responses/Trpc" }
+        default: { $ref: "#/components/responses/Trpc" }
+
+components:
+  securitySchemes:
+    appToken:
+      type: http
+      scheme: bearer
+      description: A Karakeep app token from Boardly (`bdly_…`).
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+
+  requestBodies:
+    Json:
+      required: true
+      description: As in Karakeep's API.
+      content:
+        application/json:
+          schema: { type: object }
+
+  responses:
+    Json:
+      description: As in Karakeep's API.
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: An error.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+    Trpc:
+      description: One result or error per call.
+      content:
+        application/json:
+          schema:
+            type: array
+            items: { type: object }
