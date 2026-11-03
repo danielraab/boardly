@@ -33,7 +33,7 @@ type linkwardenHandler func(w http.ResponseWriter, r *http.Request, sc favourite
 
 // linkwardenAPI serves what the Linkwarden mobile app and browser extension
 // call. Every path that isn't listed answers 404 in Linkwarden's format.
-func (a *api) linkwardenAPI() *http.ServeMux {
+func (a *api) linkwardenAPI() *routeMux {
 	var icons linkwarden.Favicons = noFavicons{}
 	if a.favicons != nil {
 		icons = a.favicons
@@ -43,7 +43,8 @@ func (a *api) linkwardenAPI() *http.ServeMux {
 		lw.Previews = a.previews
 	}
 	v1 := linkwardenPrefix + "/api/v1"
-	mux := http.NewServeMux()
+	mux := newRouteMux()
+	mux.Handle("GET "+linkwardenPrefix+"/openapi.yaml", openAPIDoc("linkwarden.yaml"))
 	// respond registers a handler whose result is written as {"response": v},
 	// or as {"data": v, …} when it is wrapped by data.
 	respond := func(pattern string, h func(r *http.Request, sc favourites.Scope) (any, error)) {

@@ -23,8 +23,9 @@ const karakeepPrefix = "/api/karakeep"
 // their tRPC procedures, two status endpoints, and uploading and loading the
 // files of asset bookmarks; and the REST endpoints that sync clients such as
 // Floccus call. Nothing else of Karakeep's API is implemented.
-func (a *api) karakeepAPI() *http.ServeMux {
-	mux := http.NewServeMux()
+func (a *api) karakeepAPI() *routeMux {
+	mux := newRouteMux()
+	mux.Handle("GET "+karakeepPrefix+"/openapi.yaml", openAPIDoc("karakeep.yaml"))
 	mux.Handle("GET "+karakeepPrefix+"/api/health", HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Boardly is working"})
 		return nil

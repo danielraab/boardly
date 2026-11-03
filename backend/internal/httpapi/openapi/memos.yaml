@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: Boardly – Memos API
+  version: "1"
+  summary: The part of the Memos v1 API that Boardly implements.
+  description: |
+    Boardly answers the MoeMemos app. Give it `<Boardly address>/api/memos`
+    as the server address. It then calls the paths below, as it would on a
+    Memos server (0.31.0).
+
+    **Authentication.** Every operation not marked public needs an active
+    Memos app token from Boardly's Settings → Connected apps, sent as
+    `Authorization: Bearer <token>`. Memos are Boardly notes in the token's
+    note scope (all notes, or one category and its subcategories).
+
+    **CORS.** Any origin may call these endpoints without credentials; the
+    `OPTIONS` preflight is answered for every path.
+
+    **Errors.** Errors are `{"code": <gRPC code>, "message": "…", "details": []}`:
+    `3` with 400, `5` with 404, `16` with 401. Paths that aren't listed here
+    respond 404 with code `5`.
+
+    Shapes follow Memos' own API; see its documentation for details.
+    [Boardly API](../openapi.yaml)
+servers:
+  - url: /api/memos
+security:
+  - appToken: []
+externalDocs:
+  description: Memos documentation
+  url: https://usememos.com/docs
+tags:
+  - name: Instance
+  - name: Users
+  - name: Memos
+  - name: Attachments
+
+paths:
+  /openapi.yaml:
+    get:
+      tags: [Instance]
+      summary: This document
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document.
+          content:
+            application/yaml: {}
+
+  /api/v1/instance/profile:
+    get:
+      tags: [Instance]
+      summary: Instance profile
+      security: []
+      responses:
+        "200":
+          description: "`{\"version\": \"0.31.0\", \"mode\": \"prod\", \"instanceUrl\": …}`"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  mode: { type: string }
+                  instanceUrl: { type: string }
+
+  /api/v1/auth/me:
+    get:
+      tags: [Users]
+      summary: The token's owner
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Users]
+      summary: A user (only the token's owner)
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/users/{id}:getStats:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Users]
+      summary: A user's statistics (only the token's owner)
+      description: "`{\"name\": \"users/<id>/stats\", \"tagCount\": {}}`"
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/users/{id}/settings/{setting}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - { name: setting, in: path, required: true, schema: { const: GENERAL } }
+    get:
+      tags: [Users]
+      summary: A user setting (only `GENERAL` of the token's owner)
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/memos:
+    get:
+      tags: [Memos]
+      summary: List memos, newest first
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [NORMAL, ARCHIVED], default: NORMAL } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 0, maximum: 1000, default: 50 } }
+        - { name: pageToken, in: query, schema: { type: string } }
+        - { name: filter, in: query, schema: { type: string }, description: "A Memos filter; see the `memos-api` spec for the supported conditions." }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Memos]
+      summary: Create a memo
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/memos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Memos]
+      summary: Change a memo
+      description: With `updateMask` (snake-case field names, comma-separated), only those fields of the body apply.
+      parameters:
+        - { name: updateMask, in: query, schema: { type: string } }
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Memos]
+      summary: Delete a memo
+      responses:
+        "200": { $ref: "#/components/responses/Empty" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/attachments:
+    get:
+      tags: [Attachments]
+      summary: The attachments of the memos in scope
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Attachments]
+      summary: Upload an attachment
+      description: Body with `filename`, `content` (base64) and optional `type` and `memo`.
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/attachments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    delete:
+      tags: [Attachments]
+      summary: Delete an attachment
+      description: Files that notes still refer to are kept; the answer is `{}` either way.
+      responses:
+        "200": { $ref: "#/components/responses/Empty" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    appToken:
+      type: http
+      scheme: bearer
+      description: A Memos app token from Boardly (`bdly_…`).
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+
+  requestBodies:
+    Json:
+      required: true
+      description: As in Memos' API (camelCase fields).
+      content:
+        application/json:
+          schema: { type: object }
+
+  responses:
+    Json:
+      description: As in Memos' API (camelCase fields, RFC 3339 times).
+      content:
+        application/json:
+          schema: { type: object }
+    Empty:
+      description: "`{}`"
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: A Memos error.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, details]
+            properties:
+              code: { type: integer }
+              message: { type: string }
+              details: { type: array, items: {} }

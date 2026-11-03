@@ -499,6 +499,19 @@ Requests under `/api/memos/` are authenticated only by `Authorization: Bearer <k
 cross-origin calls, as for Karakeep. Errors use Memos' format (`{"code", "message", "details"}`).
 The endpoints and data shapes follow MoeMemos' `MemosV1Api.kt` (October 2026).
 
+### API documentation
+
+Every endpoint is described in OpenAPI 3.1 documents that the server serves without sign-in:
+
+- `/api/openapi.yaml`: Boardly's own API, which the web app uses (session cookie)
+- `/api/karakeep/openapi.yaml`, `/api/linkwarden/openapi.yaml`, `/api/memos/openapi.yaml`: the
+  parts of the Karakeep, Linkwarden and Memos APIs that Boardly implements (app tokens). Their
+  paths are relative to the app's server address, as the clients see them.
+
+Open them in any OpenAPI viewer; Boardly doesn't ship one. The documents live in
+`backend/internal/httpapi/openapi/`, and a test fails when a route is added or removed without
+updating them.
+
 ### Themes
 
 The palette button in the header switches between 7 color themes: **White**, **Black**, **Sand**,

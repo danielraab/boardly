@@ -77,8 +77,22 @@ func New(d Deps) http.Handler {
 		panic(err)
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /api/health", health(d.DB))
+	mux := a.mainAPI(d.DB)
+
+	root := http.NewServeMux()
+	root.Handle("/api/", jsonMuxErrors(mux.ServeMux, d.Origin))
+	root.Handle(karakeepPrefix+"/", a.appAPI(apptokens.AppKarakeep, a.karakeepAPI()))
+	root.Handle(linkwardenPrefix+"/", a.appAPI(apptokens.AppLinkwarden, a.linkwardenAPI()))
+	root.Handle(memosPrefix+"/", a.appAPI(apptokens.AppMemos, a.memosAPI()))
+	root.Handle("/", d.Web)
+	return logRequests(d.LogRequests, root)
+}
+
+// mainAPI registers the routes of Boardly's own API under /api.
+func (a *api) mainAPI(db Pinger) *routeMux {
+	mux := newRouteMux()
+	mux.Handle("GET /api/health", health(db))
+	mux.Handle("GET /api/openapi.yaml", openAPIDoc("boardly.yaml"))
 	mux.Handle("POST /api/auth/magic-link", HandlerFunc(a.requestLink))
 	mux.Handle("POST /api/auth/magic-link/verify", HandlerFunc(a.verifyLink))
 	mux.Handle("POST /api/auth/magic-link/code", HandlerFunc(a.redeemCode))
@@ -143,13 +157,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("POST /api/app-tokens/{id}/revoke", a.requireUser(a.revokeAppToken))
 	mux.Handle("DELETE /api/app-tokens/{id}", a.requireUser(a.deleteAppToken))
 
-	root := http.NewServeMux()
-	root.Handle("/api/", jsonMuxErrors(mux, d.Origin))
-	root.Handle(karakeepPrefix+"/", a.appAPI(apptokens.AppKarakeep, a.karakeepAPI()))
-	root.Handle(linkwardenPrefix+"/", a.appAPI(apptokens.AppLinkwarden, a.linkwardenAPI()))
-	root.Handle(memosPrefix+"/", a.appAPI(apptokens.AppMemos, a.memosAPI()))
-	root.Handle("/", d.Web)
-	return logRequests(d.LogRequests, root)
+	return mux
 }
 
 func health(db Pinger) HandlerFunc {

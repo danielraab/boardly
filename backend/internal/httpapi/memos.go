@@ -22,10 +22,11 @@ const memosPrefix = "/api/memos"
 // memosAPI serves the Memos v1 endpoints MoeMemos calls. Every path that
 // isn't listed, among them the legacy api/v1/status, answers 404 in Memos'
 // error format, so MoeMemos uses the v1 API.
-func (a *api) memosAPI() *http.ServeMux {
+func (a *api) memosAPI() *routeMux {
 	svc := &memos.Service{Notes: a.notes, Attachments: a.attachments, Origin: a.origin}
 	v1 := memosPrefix + "/api/v1"
-	mux := http.NewServeMux()
+	mux := newRouteMux()
+	mux.Handle("GET "+memosPrefix+"/openapi.yaml", openAPIDoc("memos.yaml"))
 	// respond registers a handler that needs a token; its result is written
 	// as JSON.
 	respond := func(pattern string, h func(r *http.Request, token apptokens.Token, sc notes.Scope) (any, error)) {

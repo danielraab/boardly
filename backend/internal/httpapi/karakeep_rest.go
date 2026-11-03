@@ -20,7 +20,7 @@ const karakeepV1 = karakeepPrefix + "/api/v1"
 // karakeepRESTv1 registers the Karakeep REST endpoints that Floccus' Karakeep
 // adapter calls. Each behaves like the matching tRPC procedure on the token's
 // subtree; other REST paths stay unimplemented.
-func (a *api) karakeepRESTv1(mux *http.ServeMux) {
+func (a *api) karakeepRESTv1(mux *routeMux) {
 	k := a.karakeepService()
 	handle := func(pattern string, h karakeepRESTHandler) {
 		mux.Handle(pattern, karakeepREST(h.serve))

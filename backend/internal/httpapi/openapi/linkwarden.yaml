@@ -1,0 +1,326 @@
+openapi: 3.1.0
+info:
+  title: Boardly – Linkwarden API
+  version: "1"
+  summary: The part of Linkwarden's API that Boardly implements.
+  description: |
+    Boardly answers the Linkwarden mobile app and browser extension, and sync
+    clients such as Floccus. Give them `<Boardly address>/api/linkwarden` as
+    the server address. They then call the paths below, as they would on a
+    Linkwarden server (v2.16.3).
+
+    **Authentication.** Every operation not marked public needs an active
+    Linkwarden app token from Boardly's Settings → Connected apps, sent as
+    `Authorization: Bearer <token>`. The token limits what the app sees to one
+    favourites folder: links are links, collections are folders. The token's
+    owner appears as the user `1`.
+
+    **CORS.** Any origin may call these endpoints without credentials; the
+    `OPTIONS` preflight is answered for every path.
+
+    **Envelopes and errors.** Single objects, plain lists and errors are
+    `{"response": …}`. Search, the tag list and the dashboard are
+    `{"data": …, "message": "Success", "success": true}`. Errors respond 400,
+    401, 403 or 404 with `{"response": "<message>"}`. Paths that aren't listed
+    here respond 404 with `{"response": "Not found."}`.
+
+    Shapes follow Linkwarden's own API; see its documentation for details.
+    [Boardly API](../openapi.yaml)
+servers:
+  - url: /api/linkwarden
+security:
+  - appToken: []
+externalDocs:
+  description: Linkwarden documentation
+  url: https://docs.linkwarden.app/
+tags:
+  - name: Instance
+  - name: Links
+  - name: Collections
+  - name: Tags
+
+paths:
+  /openapi.yaml:
+    get:
+      tags: [Instance]
+      summary: This document
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document.
+          content:
+            application/yaml: {}
+
+  /api/v1/config:
+    get:
+      tags: [Instance]
+      summary: Instance configuration
+      description: Registration is disabled and `INSTANCE_VERSION` is `v2.16.3`; everything else is null.
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+
+  /api/v1/logins:
+    get:
+      tags: [Instance]
+      summary: Sign-in methods
+      description: "`{\"buttonAuths\": []}`, because there's no SSO."
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+
+  /api/v1/session:
+    post:
+      tags: [Instance]
+      summary: Password login (not supported)
+      description: Always 401, with a message to use an access token instead.
+      security: []
+      responses:
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/users/me:
+    get:
+      tags: [Instance]
+      summary: The token's owner
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v2/dashboard:
+    get:
+      tags: [Links]
+      summary: The dashboard (recent links and statistics)
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/search:
+    get:
+      tags: [Links]
+      summary: Search and list links, 50 per page
+      parameters:
+        - { name: searchQueryString, in: query, schema: { type: string } }
+        - { name: collectionId, in: query, schema: { type: integer } }
+        - { name: tagId, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: integer, enum: [0, 1, 2, 3] } }
+        - { name: pinnedOnly, in: query, schema: { type: boolean }, description: "`true` returns no links; nothing is pinned in Boardly." }
+        - { name: cursor, in: query, schema: { type: integer }, description: "ID of the last link of the previous page." }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/links:
+    post:
+      tags: [Links]
+      summary: Create a link
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/links/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Links]
+      summary: A link
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Links]
+      summary: Change a link
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Links]
+      summary: Delete a link
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/archives/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Links]
+      summary: A link's preview image
+      description: |
+        With `preview=true` and `format` `0` or `1`: the link's preview image,
+        or else the favicon of its site. Everything else responds 404.
+      parameters:
+        - { name: format, in: query, schema: { type: integer, enum: [0, 1] } }
+        - { name: preview, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: The image.
+          content:
+            image/*: {}
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Links]
+      summary: Upload a screenshot as the link's preview
+      parameters:
+        - { name: format, in: query, required: true, schema: { type: integer, enum: [0, 1] } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/collections:
+    get:
+      tags: [Collections]
+      summary: All collections (folders) in the token's subtree
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Collections]
+      summary: Create a collection
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/collections/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Collections]
+      summary: A collection
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Collections]
+      summary: Rename or move a collection
+      requestBody: { $ref: "#/components/requestBodies/Json" }
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Collections]
+      summary: Delete a collection with its contents
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/tags:
+    get:
+      tags: [Tags]
+      summary: Tags in the token's subtree, 50 per page
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: integer, enum: [0, 1, 2, 3, 4, 5] } }
+        - { name: cursor, in: query, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Tags]
+      summary: Create tags (not supported)
+      description: Always 403. Tags are created by adding them to a link.
+      responses:
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/v1/tags/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Tags]
+      summary: A tag
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Tags]
+      summary: Remove a tag from the links in the subtree
+      responses:
+        "200": { $ref: "#/components/responses/Response" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    appToken:
+      type: http
+      scheme: bearer
+      description: A Linkwarden app token from Boardly (`bdly_…`).
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: The integer ID of a link, collection or tag.
+      schema: { type: integer }
+
+  requestBodies:
+    Json:
+      required: true
+      description: As in Linkwarden's API.
+      content:
+        application/json:
+          schema: { type: object }
+
+  responses:
+    Json:
+      description: As in Linkwarden's API.
+      content:
+        application/json:
+          schema: { type: object }
+    Response:
+      description: "`{\"response\": …}`, as in Linkwarden's API."
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [response]
+            properties:
+              response: {}
+    Data:
+      description: "`{\"data\": …, \"message\": \"Success\", \"success\": true}`, as in Linkwarden's API."
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, success]
+            properties:
+              data: {}
+              message: { type: string }
+              success: { type: boolean }
+    Error:
+      description: An error; `response` is the message the clients show.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [response]
+            properties:
+              response: { type: string }

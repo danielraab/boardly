@@ -1,0 +1,1800 @@
+openapi: 3.1.0
+info:
+  title: Boardly API
+  version: "1"
+  summary: The API of the Boardly web app.
+  description: |
+    The REST/JSON API that the Boardly web app uses. Paths are relative to `/api`.
+
+    **Authentication.** Signing in (magic link, code or passkey) sets the
+    `boardly_session` cookie, which every other request sends. Operations
+    marked with an empty security list are public.
+
+    **Cross-site requests.** `POST`, `PUT`, `PATCH` and `DELETE` requests must
+    have the content type `application/json`, or `application/octet-stream` for
+    uploads, and an `Origin` header, if any, equal to Boardly's origin.
+    Otherwise they are rejected with 403 `forbidden_origin`.
+
+    **Errors.** Errors are `{"error": {"code": "<snake_case>", "message": "…"}}`.
+    Rate-limited requests answer 429 with a `Retry-After` header.
+
+    **Connected apps.** The APIs that Karakeep, Linkwarden and Memos clients
+    talk to have their own documents:
+    [Karakeep](karakeep/openapi.yaml),
+    [Linkwarden](linkwarden/openapi.yaml),
+    [Memos](memos/openapi.yaml).
+servers:
+  - url: /api
+security:
+  - session: []
+tags:
+  - name: Auth
+  - name: Account
+  - name: Passkeys
+  - name: Favourites
+  - name: Tags
+  - name: Dashboards
+  - name: Notes
+  - name: Media
+  - name: Files
+  - name: App tokens
+  - name: Meta
+  - name: Connected apps
+    description: |
+      The APIs for Karakeep, Linkwarden and Memos clients are described in
+      their own documents: `karakeep/openapi.yaml`, `linkwarden/openapi.yaml`
+      and `memos/openapi.yaml`, next to this one.
+    externalDocs:
+      description: Karakeep API (the Linkwarden and Memos documents are next to it)
+      url: karakeep/openapi.yaml
+
+paths:
+  /health:
+    get:
+      tags: [Meta]
+      summary: Check that the server and its database are up
+      security: []
+      responses:
+        "200":
+          description: The database is reachable.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { const: ok }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /openapi.yaml:
+    get:
+      tags: [Meta]
+      summary: This document
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document.
+          content:
+            application/yaml: {}
+
+  # --- Auth -----------------------------------------------------------------
+
+  /auth/magic-link:
+    post:
+      tags: [Auth]
+      summary: Email a sign-in link and code
+      description: |
+        Sends an email with a sign-in link and a code, and sets the
+        `boardly_login_request` cookie that ties the link to this browser.
+        The answer is the same whether or not an account exists (one is
+        created on the first sign-in, unless registration is closed).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                locale: { type: string, description: "Language of the email, e.g. `en` or `de`." }
+      responses:
+        "202":
+          description: The email is on its way.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { const: accepted }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /auth/magic-link/verify:
+    post:
+      tags: [Auth]
+      summary: Sign in with the token from a sign-in link
+      description: |
+        Starts a session. When the link is opened in another browser than the
+        one that requested it, the first call answers 403
+        `confirmation_required`, and a second call with `confirm: true`
+        signs in.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+                confirm: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /auth/magic-link/code:
+    post:
+      tags: [Auth]
+      summary: Sign in with the code from the sign-in email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "400": { $ref: "#/components/responses/Error" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: End the session
+      security: []
+      responses:
+        "204": { description: Signed out; the session cookie is cleared. }
+
+  /auth/passkey/login/options:
+    post:
+      tags: [Auth]
+      summary: Start a passkey sign-in
+      description: Returns WebAuthn request options and sets a challenge cookie.
+      security: []
+      responses:
+        "200":
+          description: WebAuthn `PublicKeyCredentialRequestOptions` (as JSON).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebAuthnOptions" }
+
+  /auth/passkey/login/verify:
+    post:
+      tags: [Auth]
+      summary: Finish a passkey sign-in
+      security: []
+      requestBody:
+        required: true
+        description: The WebAuthn assertion as returned by `navigator.credentials.get`, serialised to JSON.
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  # --- Account --------------------------------------------------------------
+
+  /me:
+    get:
+      tags: [Account]
+      summary: The signed-in user
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    patch:
+      tags: [Account]
+      summary: Change the profile
+      description: Only the fields that are present change; at least one must be.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: [string, "null"], maxLength: 100 }
+                slug: { type: string, pattern: "^[a-z0-9-]{1,32}$", description: "The user's part of public dashboard addresses." }
+                shareFolderId: { type: [string, "null"], description: "Default folder of the Save link page; null for the root." }
+                noteCategoryId: { type: [string, "null"], description: "Default category of new notes; null for none." }
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Account]
+      summary: Schedule the deletion of the account
+      description: |
+        Only possible shortly after signing in with an email link
+        (`deletionWindowUntil` in the user). The account is deleted after
+        `accountDeletionDays` days unless the deletion is cancelled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, description: "The account's email address, as confirmation." }
+                locale: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /me/restore:
+    post:
+      tags: [Account]
+      summary: Cancel a scheduled account deletion
+      responses:
+        "200": { $ref: "#/components/responses/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /me/export:
+    get:
+      tags: [Account]
+      summary: Download all of the user's data
+      description: |
+        A Boardly export as a JSON document, or with `files=true` as a ZIP
+        archive with the document and the uploaded files. Exports are rate
+        limited per user.
+      parameters:
+        - name: files
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: The export, as an attachment.
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/json: {}
+            application/zip: {}
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /import:
+    post:
+      tags: [Account]
+      summary: Import a Boardly export
+      description: The body is the export file (JSON or ZIP, at most 10 MB).
+      parameters:
+        - name: parts
+          in: query
+          description: Comma-separated parts to import; all when missing.
+          schema: { type: string, example: "favourites,dashboards,notes,media" }
+        - name: folderId
+          in: query
+          description: Folder for the favourites; required when favourites are imported.
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          description: Category for the notes; the top level when missing.
+          schema: { type: string }
+        - $ref: "#/components/parameters/skipDuplicates"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: What was imported, per part; parts that weren't imported are null.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataImportReport" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "413": { $ref: "#/components/responses/Error" }
+
+  # --- Passkeys -------------------------------------------------------------
+
+  /passkeys:
+    get:
+      tags: [Passkeys]
+      summary: List the user's passkeys
+      responses:
+        "200":
+          description: The passkeys.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Passkey" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /passkeys/registration/options:
+    post:
+      tags: [Passkeys]
+      summary: Start adding a passkey
+      description: Only possible shortly after signing in with an email link (`passkeyEnrollmentUntil`).
+      responses:
+        "200":
+          description: WebAuthn `PublicKeyCredentialCreationOptions` (as JSON).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebAuthnOptions" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /passkeys/registration/verify:
+    post:
+      tags: [Passkeys]
+      summary: Finish adding a passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential: { type: object, description: "The result of `navigator.credentials.create`, serialised to JSON." }
+                label: { type: [string, "null"], maxLength: 64 }
+      responses:
+        "201":
+          description: The new passkey.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Passkey" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /passkeys/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    delete:
+      tags: [Passkeys]
+      summary: Remove a passkey
+      responses:
+        "204": { description: Removed. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- Favourites -----------------------------------------------------------
+
+  /favourites:
+    get:
+      tags: [Favourites]
+      summary: The user's favourites tree
+      description: The root folder with all folders and links below it.
+      responses:
+        "200":
+          description: The root folder (it has no title).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FavouriteNode" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Favourites]
+      summary: Add a folder or link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parentId, kind]
+              properties:
+                parentId: { type: string }
+                kind: { $ref: "#/components/schemas/FavouriteKind" }
+                title: { type: [string, "null"], description: "1–100 characters for folders, at most 1000 for links." }
+                url: { type: [string, "null"], format: uri, maxLength: 2048, description: "Links only." }
+                tags: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, description: "Links only." }
+      responses:
+        "201":
+          description: The new node.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FavouriteNode" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favourites/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Favourites]
+      summary: Change a folder or link
+      description: Only the fields that are present change. Folders only take a title.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: [string, "null"] }
+                url: { type: string, format: uri, maxLength: 2048 }
+                tags: { type: array, items: { type: string } }
+                description: { type: [string, "null"], maxLength: 2048 }
+                removePreview: { type: boolean, description: "Removes the link's preview image." }
+      responses:
+        "200":
+          description: The changed node.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FavouriteNode" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Favourites]
+      summary: Delete a folder or link
+      parameters:
+        - name: children
+          in: query
+          description: |
+            What happens to a non-empty folder's contents: `delete` deletes
+            them, `move` moves them to the folder's parent. Required for
+            non-empty folders (`folder_not_empty` otherwise).
+          schema: { type: string, enum: [delete, move] }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favourites/{id}/move:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Favourites]
+      summary: Move a folder or link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parentId, position]
+              properties:
+                parentId: { type: string }
+                position: { type: integer, minimum: 0, description: "Index among the new parent's children." }
+      responses:
+        "204": { description: Moved. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favourites/bulk:
+    post:
+      tags: [Favourites]
+      summary: Change many favourites at once
+      description: |
+        Applies one action to 1 to 1000 different nodes. Tag actions and
+        `delete` only take links; `move` takes folders and links.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, action]
+              properties:
+                ids: { type: array, minItems: 1, maxItems: 1000, items: { type: string } }
+                action: { type: string, enum: [delete, addTags, removeTags, setTags, move] }
+                tags: { type: array, items: { type: string }, description: "Required for the tag actions." }
+                parentId: { type: string, description: "Target folder of `move`." }
+      responses:
+        "204": { description: Done. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favourites/import:
+    post:
+      tags: [Favourites]
+      summary: Import a bookmark file
+      description: |
+        Imports a Karakeep, Linkwarden or Netscape bookmark export (at most
+        10 MB) into a folder, and its notes into a note category.
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [karakeep, linkwarden, netscape] }
+        - name: folderId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          description: Category for imported notes; the top level when missing.
+          schema: { type: string }
+        - $ref: "#/components/parameters/skipDuplicates"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: What was imported and left out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  links: { type: integer }
+                  folders: { type: integer }
+                  notes: { type: integer }
+                  categories: { type: integer }
+                  skipped:
+                    type: object
+                    properties:
+                      duplicates: { type: integer }
+                      duplicateNotes: { type: integer }
+                      invalidUrls: { type: integer }
+                      notLinks: { type: integer }
+                      smartLists: { type: integer }
+                      tooLargeNotes: { type: integer }
+                  shortenedDescriptions: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "413": { $ref: "#/components/responses/Error" }
+
+  # --- Tags -----------------------------------------------------------------
+
+  /tags:
+    get:
+      tags: [Tags]
+      summary: Suggest or list tags
+      description: |
+        With `all=true`, all tags with their link counts. Otherwise the tags
+        whose name starts with `q`, for autocompletion.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: all
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: The tags. `linkCount` is only set with `all=true`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    linkCount: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /tags/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Tags]
+      summary: Rename a tag
+      description: "With `merge: true`, renaming to the name of another tag merges the two."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+                merge: { type: boolean }
+      responses:
+        "200":
+          description: The renamed (or merged-into) tag.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Tags]
+      summary: Delete a tag from all links
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favicons:
+    post:
+      tags: [Favourites]
+      summary: The favicon of a URL's site
+      description: Returns the image ID of the favicon, fetching it first if Boardly doesn't know it yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UrlBody" }
+      responses:
+        "200": { $ref: "#/components/responses/ImageId" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /favicons/refresh:
+    post:
+      tags: [Favourites]
+      summary: Fetch a site's favicon again
+      description: Rate limited per user (30 at once, then one every 2 minutes).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UrlBody" }
+      responses:
+        "200": { $ref: "#/components/responses/ImageId" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  # --- Dashboards -----------------------------------------------------------
+
+  /dashboards:
+    get:
+      tags: [Dashboards]
+      summary: List the user's dashboards
+      responses:
+        "200":
+          description: The dashboards.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Dashboard" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Dashboards]
+      summary: Create a dashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/DashboardSettings"
+                - required: [title, slug]
+      responses:
+        "201":
+          description: The new dashboard.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /dashboards/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Dashboards]
+      summary: Change a dashboard's settings
+      description: Only the fields that are present change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DashboardSettings" }
+      responses:
+        "200":
+          description: The changed dashboard.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Dashboards]
+      summary: Delete a dashboard
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /dashboards/{id}/layout:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    put:
+      tags: [Dashboards]
+      summary: Save a dashboard's layout
+      description: |
+        Replaces the whole layout. `version` is the layout version the client
+        loaded (`layoutVersion`); when the layout was saved elsewhere since,
+        the answer is 409 `layout_conflict`. Widgets without a known `id` are
+        created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, sections]
+              properties:
+                version: { type: integer }
+                sections:
+                  type: array
+                  items: { $ref: "#/components/schemas/Widget" }
+      responses:
+        "200":
+          description: The saved layout with its new version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, sections]
+                properties:
+                  version: { type: integer }
+                  sections:
+                    type: array
+                    items: { $ref: "#/components/schemas/Widget" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /u/{userSlug}/{dashboardSlug}:
+    parameters:
+      - { name: userSlug, in: path, required: true, schema: { type: string } }
+      - { name: dashboardSlug, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Dashboards]
+      summary: View a dashboard by its address
+      description: |
+        Public for public dashboards; the owner sees their private ones too.
+        Widgets carry the `data` they show, resolved for the viewer, and
+        widgets that show nothing to the viewer are left out.
+      security: [{}, { session: [] }]
+      responses:
+        "200":
+          description: The dashboard with its layout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- Notes ----------------------------------------------------------------
+
+  /notes:
+    get:
+      tags: [Notes]
+      summary: List the user's notes
+      responses:
+        "200":
+          description: All notes with their content.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Note" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Notes]
+      summary: Create a note
+      description: |
+        Send either `content` or `text` (plain text that becomes the
+        content), not both. Unknown fields are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/NoteFields"
+                - type: object
+                  properties:
+                    text: { type: string }
+      responses:
+        "201":
+          description: The new note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /notes/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Notes]
+      summary: A note
+      responses:
+        "200":
+          description: The note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Notes]
+      summary: Change a note
+      description: |
+        Only the fields that are present change. `version` is the note's
+        version the change is based on; when the note was changed elsewhere
+        since, the answer is 409 `version_conflict`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/NoteFields"
+                - type: object
+                  required: [version]
+                  properties:
+                    version: { type: integer }
+      responses:
+        "200":
+          description: The changed note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Notes]
+      summary: Delete a note
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /note-categories:
+    get:
+      tags: [Notes]
+      summary: List the note categories
+      responses:
+        "200":
+          description: All categories; the tree is given by `parentId`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/NoteCategory" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Notes]
+      summary: Create a note category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/NoteCategoryFields"
+                - required: [title]
+      responses:
+        "201":
+          description: The new category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteCategory" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /note-categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Notes]
+      summary: Change a note category
+      description: Only the fields that are present change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteCategoryFields" }
+      responses:
+        "200":
+          description: The changed category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteCategory" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Notes]
+      summary: Delete a note category
+      description: Its subcategories move to its parent, and its notes become uncategorized.
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- Media ----------------------------------------------------------------
+
+  /media:
+    get:
+      tags: [Media]
+      summary: List the user's media sources
+      responses:
+        "200":
+          description: The sources in their order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MediaSource" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Media]
+      summary: Add a media source
+      description: |
+        The URL is checked to answer with an audio stream over https. With
+        `logoUrl` (from a station search) and no `icon`, the logo becomes the
+        source's icon. Unknown fields are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, title, url]
+              properties:
+                kind: { const: stream }
+                title: { type: string, minLength: 1, maxLength: 200 }
+                url: { type: string, format: uri }
+                icon: { $ref: "#/components/schemas/Icon" }
+                logoUrl: { type: string, format: uri }
+      responses:
+        "201":
+          description: The new source.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaSource" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /media/order:
+    put:
+      tags: [Media]
+      summary: Reorder the media sources
+      requestBody:
+        required: true
+        description: Every source ID of the user, once each, in the new order.
+        content:
+          application/json:
+            schema: { type: array, items: { type: string } }
+      responses:
+        "204": { description: Reordered. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /media/search:
+    get:
+      tags: [Media]
+      summary: Search radio stations
+      description: |
+        Searches the radio-browser.info directory on the user's behalf, so
+        the browser doesn't contact it. Rate limited per user (10 at once,
+        then one every 2 seconds).
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        "200":
+          description: Matching stations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Station" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "502": { $ref: "#/components/responses/Error" }
+
+  /media/search/logo:
+    get:
+      tags: [Media]
+      summary: A station logo from a search result
+      description: Only takes the signed `logo` links that a search returned to the same user.
+      parameters:
+        - { name: u, in: query, required: true, schema: { type: string, format: uri } }
+        - { name: s, in: query, required: true, schema: { type: string }, description: "Signature." }
+      responses:
+        "200":
+          description: The logo image.
+          content:
+            image/*: {}
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /media/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Media]
+      summary: Change a media source
+      description: Only the fields that are present change; a null icon removes it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                url: { type: string, format: uri }
+                icon: { $ref: "#/components/schemas/Icon" }
+      responses:
+        "200":
+          description: The changed source.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaSource" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Media]
+      summary: Delete a media source
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- Files ----------------------------------------------------------------
+
+  /images:
+    post:
+      tags: [Files]
+      summary: Upload an image
+      description: PNG, JPEG, WebP, GIF or ICO, at most 1 MB, as the raw request body.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { $ref: "#/components/responses/ImageId" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "413": { $ref: "#/components/responses/Error" }
+
+  /images/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Files]
+      summary: An image
+      description: Uploads, link previews and favicons. Public; the ID is the only access check.
+      security: []
+      responses:
+        "200":
+          description: The image.
+          content:
+            image/*: {}
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /attachments:
+    get:
+      tags: [Files]
+      summary: List the user's attachments and the upload limits
+      responses:
+        "200":
+          description: The attachments, including deleted ones that are not yet removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attachments, maxSize, allowedTypes]
+                properties:
+                  attachments:
+                    type: array
+                    items: { $ref: "#/components/schemas/Attachment" }
+                  maxSize: { type: integer, description: "Bytes." }
+                  allowedTypes: { type: array, items: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Files]
+      summary: Upload an attachment
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: The file name.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The new attachment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "413": { $ref: "#/components/responses/Error" }
+
+  /attachments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Files]
+      summary: Download an attachment
+      description: Public; the ID is the only access check. Shown inline or as a download depending on its type.
+      security: []
+      responses:
+        "200":
+          description: The file.
+          content:
+            "*/*": {}
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Files]
+      summary: Keep an unused attachment, or stop keeping it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keep]
+              properties:
+                keep: { type: boolean }
+      responses:
+        "200":
+          description: The changed attachment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Files]
+      summary: Delete an attachment that no note uses
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /attachments/{id}/{name}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - name: name
+        in: path
+        required: true
+        description: Only for the browser's file name; the ID identifies the file.
+        schema: { type: string }
+    get:
+      tags: [Files]
+      summary: Download an attachment under its name
+      security: []
+      responses:
+        "200":
+          description: The file.
+          content:
+            "*/*": {}
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- App tokens -----------------------------------------------------------
+
+  /app-tokens:
+    get:
+      tags: [App tokens]
+      summary: List the tokens of connected apps
+      responses:
+        "200":
+          description: The tokens.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AppToken" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [App tokens]
+      summary: Create a token for a connected app
+      description: |
+        The answer contains the secret, which is shown only this once.
+        Karakeep and Linkwarden tokens need a root folder; Karakeep and Memos
+        tokens can have a root category (null: all notes).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, app]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+                app: { $ref: "#/components/schemas/AppName" }
+                rootId: { type: string }
+                rootCategoryId: { type: [string, "null"] }
+                expiresAt: { type: [string, "null"], format: date-time }
+      responses:
+        "201":
+          description: The new token with its secret.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/AppToken"
+                  - type: object
+                    required: [secret]
+                    properties:
+                      secret: { type: string, example: bdly_… }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /app-tokens/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [App tokens]
+      summary: Change an active token's root folder or root category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rootId: { type: [string, "null"] }
+                rootCategoryId: { type: [string, "null"] }
+      responses:
+        "200":
+          description: The changed token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppToken" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [App tokens]
+      summary: Delete a revoked or expired token
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /app-tokens/{id}/revoke:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [App tokens]
+      summary: Revoke an active token
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppToken" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: boardly_session
+      description: Set by the sign-in endpoints.
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    skipDuplicates:
+      name: skipDuplicates
+      in: query
+      description: "`false` also imports entries that are already saved."
+      schema: { type: boolean, default: true }
+
+  responses:
+    Error:
+      description: An error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthenticated:
+      description: Not signed in (`unauthenticated`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Doesn't exist or belongs to someone else (`not_found`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Too many requests (`rate_limited`).
+      headers:
+        Retry-After:
+          description: Seconds until the next try.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ImageId:
+      description: The image's ID (see `/images/{id}`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Id" }
+    Me:
+      description: The signed-in user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Me" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: invalid_request }
+            message: { type: string }
+
+    Me:
+      type: object
+      required: [id, email, name, slug, shareFolderId, noteCategoryId, deletionScheduledAt]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: [string, "null"] }
+        slug: { type: string }
+        shareFolderId: { type: [string, "null"] }
+        noteCategoryId: { type: [string, "null"] }
+        deletionScheduledAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the account will be deleted; null when no deletion is scheduled.
+        passkeyEnrollmentUntil:
+          type: [string, "null"]
+          format: date-time
+          description: Until when passkeys can be added in this session.
+        deletionWindowUntil:
+          type: [string, "null"]
+          format: date-time
+          description: Until when the account can be deleted in this session.
+        accountDeletionDays:
+          type: integer
+          description: Days between scheduling a deletion and the deletion.
+
+    WebAuthnOptions:
+      type: object
+      description: WebAuthn options, as defined by the Web Authentication specification.
+      properties:
+        publicKey: { type: object }
+
+    Passkey:
+      type: object
+      required: [id, label, provider, createdAt, lastUsedAt]
+      properties:
+        id: { type: string }
+        label: { type: [string, "null"] }
+        provider:
+          description: The password manager or device the passkey belongs to, when known.
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                iconLight: { type: [string, "null"], description: "Data URL." }
+                iconDark: { type: [string, "null"], description: "Data URL." }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+
+    DataImportReport:
+      type: object
+      required: [favourites, dashboards, notes, media, files]
+      properties:
+        favourites:
+          oneOf:
+            - type: "null"
+            - allOf:
+                - { $ref: "#/components/schemas/BookmarkImportCounts" }
+                - type: object
+                  properties:
+                    tags: { type: integer }
+        dashboards:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                dashboards: { type: integer }
+                skippedWidgets: { type: integer }
+        notes:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                notes: { type: integer }
+                categories: { type: integer }
+                duplicateNotes: { type: integer }
+        media:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                sources: { type: integer }
+                duplicates: { type: integer }
+                invalid: { type: integer }
+        files:
+          type: object
+          properties:
+            images: { type: integer }
+            attachments: { type: integer }
+            skipped: { type: integer }
+
+    BookmarkImportCounts:
+      type: object
+      properties:
+        links: { type: integer }
+        folders: { type: integer }
+        skipped:
+          type: object
+          properties:
+            duplicates: { type: integer }
+            invalidUrls: { type: integer }
+            notLinks: { type: integer }
+            smartLists: { type: integer }
+        shortenedDescriptions: { type: integer }
+
+    FavouriteKind:
+      type: string
+      enum: [folder, link]
+
+    FavouriteNode:
+      type: object
+      required: [id, kind, title]
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/FavouriteKind" }
+        title: { type: [string, "null"], description: "Null for the root folder and for links without a title." }
+        url: { type: string, format: uri }
+        tags: { type: array, items: { type: string } }
+        children:
+          type: array
+          items: { $ref: "#/components/schemas/FavouriteNode" }
+        iconImageId: { type: string, description: "Favicon of the link's site, when known (see `/images/{id}`)." }
+        description: { type: string }
+        previewImageId: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    Tag:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+
+    UrlBody:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+
+    Id:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+
+    DashboardColumns:
+      type: object
+      properties:
+        desktopColumns: { type: integer, minimum: 1, maximum: 12, default: 6 }
+        mobileColumns: { type: integer, minimum: 1, maximum: 12, default: 2 }
+        mobileBreakpoint: { type: integer, enum: [640, 768, 1024], default: 768, description: "Viewport width in pixels below which `mobileColumns` applies." }
+
+    DashboardSettings:
+      allOf:
+        - $ref: "#/components/schemas/DashboardColumns"
+        - type: object
+          properties:
+            title: { type: string, minLength: 1, maxLength: 100 }
+            slug: { type: string, pattern: "^[a-z0-9-]{1,32}$" }
+            isDefault: { type: boolean }
+            isPublic: { type: boolean }
+
+    Dashboard:
+      allOf:
+        - $ref: "#/components/schemas/DashboardColumns"
+        - type: object
+          required: [id, slug, title, isDefault, isPublic]
+          properties:
+            id: { type: string }
+            slug: { type: string }
+            title: { type: string }
+            isDefault: { type: boolean }
+            isPublic: { type: boolean }
+
+    DashboardEntry:
+      type: object
+      required: [slug, title]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+
+    DashboardView:
+      type: object
+      required: [dashboard, ownerSlug, isOwner, dashboards, columns, layoutVersion, sections]
+      properties:
+        id: { type: string, description: "Owner only." }
+        isDefault: { type: boolean, description: "Owner only." }
+        isPublic: { type: boolean, description: "Owner only." }
+        dashboard: { $ref: "#/components/schemas/DashboardEntry" }
+        ownerSlug: { type: string }
+        isOwner: { type: boolean }
+        dashboards:
+          type: array
+          description: The switcher entries; only the public dashboards for visitors.
+          items: { $ref: "#/components/schemas/DashboardEntry" }
+        columns: { $ref: "#/components/schemas/DashboardColumns" }
+        layoutVersion: { type: integer }
+        sections:
+          type: array
+          items: { $ref: "#/components/schemas/Widget" }
+
+    WidgetHeight:
+      description: Rows (1–50), or `auto` to fit the content.
+      oneOf:
+        - { const: auto }
+        - { type: integer, minimum: 1, maximum: 50 }
+
+    Widget:
+      description: |
+        A node of a layout. Sections are the only kind at the top level and
+        the only one with children (at most 5 levels, 500 widgets in all).
+        Content widgets have a kind-specific `config` and, when viewed, the
+        resolved `data`; see the widget specs for each kind's shape.
+      oneOf:
+        - type: object
+          title: Section
+          required: [kind, width, height, children]
+          properties:
+            id: { type: string }
+            kind: { const: section }
+            width: { type: integer, minimum: 1 }
+            height: { $ref: "#/components/schemas/WidgetHeight" }
+            title: { type: [string, "null"], maxLength: 100 }
+            border: { type: boolean }
+            children:
+              type: array
+              items: { $ref: "#/components/schemas/Widget" }
+        - type: object
+          title: Content widget
+          required: [kind, width, height, config]
+          properties:
+            id: { type: string }
+            kind:
+              type: string
+              enum: [link, link_list, favourite_explorer, recent_favourites, media, note, note_list, recent_notes, selected_notes]
+            width: { type: integer, minimum: 1 }
+            height: { $ref: "#/components/schemas/WidgetHeight" }
+            config: { type: object }
+            data: { description: "What the widget shows, resolved for the viewer. Only in responses." }
+
+    Icon:
+      description: A symbol by name, or an image the user uploaded.
+      oneOf:
+        - type: "null"
+        - type: object
+          required: [type, name]
+          properties:
+            type: { const: symbol }
+            name: { type: string }
+        - type: object
+          required: [type, imageId]
+          properties:
+            type: { const: image }
+            imageId: { type: string }
+
+    Colour:
+      type: [string, "null"]
+      enum: [red, orange, yellow, green, teal, blue, purple, pink, grey, null]
+
+    NoteFields:
+      type: object
+      properties:
+        title: { type: [string, "null"], maxLength: 200 }
+        icon: { $ref: "#/components/schemas/Icon" }
+        color: { $ref: "#/components/schemas/Colour" }
+        categoryId: { type: [string, "null"] }
+        pinned: { type: boolean }
+        archived: { type: boolean }
+        content: { $ref: "#/components/schemas/NoteDocument" }
+
+    Note:
+      type: object
+      required: [id, title, icon, color, categoryId, content, pinned, archived, version, createdAt, updatedAt, attachments]
+      properties:
+        id: { type: string }
+        title: { type: [string, "null"] }
+        icon: { $ref: "#/components/schemas/Icon" }
+        color: { $ref: "#/components/schemas/Colour" }
+        categoryId: { type: [string, "null"] }
+        content: { $ref: "#/components/schemas/NoteDocument" }
+        pinned: { type: boolean }
+        archived: { type: boolean }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          description: The attachments the content shows, each once, in order of appearance.
+          items:
+            type: object
+            required: [id, name, contentType, size, url]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              contentType: { type: string }
+              size: { type: integer }
+              url: { type: string }
+
+    NoteDocument:
+      type: object
+      description: A note's content (at most 512 KB). See the `note-document` spec for every field.
+      required: [v, blocks]
+      properties:
+        v: { const: 1 }
+        blocks:
+          type: array
+          items:
+            type: object
+            required: [type]
+            properties:
+              type: { type: string, enum: [paragraph, heading, quote, code, divider, list, attachment, location] }
+              level: { type: integer, description: "Headings." }
+              content:
+                type: array
+                items: { $ref: "#/components/schemas/NoteInline" }
+              text: { type: string, description: "Code blocks." }
+              style: { type: string, enum: [bullet, ordered, task], description: "Lists." }
+              items: { type: array, items: { type: object }, description: "Lists: `{id?, checked?, content, children?}`." }
+              id: { type: string, description: "Attachments: the attachment's ID." }
+              lat: { type: number }
+              lng: { type: number }
+              label: { type: string }
+
+    NoteInline:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [text, link, break] }
+        text: { type: string }
+        marks: { type: array, items: { type: string, enum: [bold, italic, strike, code] } }
+        url: { type: string, description: "Links: an http, https or mailto URL." }
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/NoteInline" }
+
+    NoteCategoryFields:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        icon: { $ref: "#/components/schemas/Icon" }
+        color: { $ref: "#/components/schemas/Colour" }
+        parentId: { type: [string, "null"] }
+
+    NoteCategory:
+      type: object
+      required: [id, title, icon, color, parentId]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        icon: { $ref: "#/components/schemas/Icon" }
+        color: { $ref: "#/components/schemas/Colour" }
+        parentId: { type: [string, "null"] }
+
+    MediaSource:
+      type: object
+      required: [id, kind, title, url, icon, position]
+      properties:
+        id: { type: string }
+        kind: { const: stream }
+        title: { type: string }
+        url: { type: string, format: uri }
+        icon: { $ref: "#/components/schemas/Icon" }
+        position: { type: integer }
+
+    Station:
+      type: object
+      required: [id, name, url, logoUrl, country, tags, bitrate, playable, logo]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string, format: uri, description: "Stream URL." }
+        logoUrl: { type: [string, "null"], description: "The directory's logo URL; pass it as `logoUrl` when adding the station." }
+        country: { type: [string, "null"] }
+        tags: { type: array, maxItems: 3, items: { type: string } }
+        bitrate: { type: [integer, "null"], description: "kbit/s." }
+        playable: { type: boolean, description: "Whether the stream is https." }
+        logo: { type: [string, "null"], description: "Link to the logo through Boardly (`/media/search/logo`)." }
+
+    Attachment:
+      type: object
+      required: [id, name, contentType, size, url, createdAt, deletedAt, deleteAt, keep, noteIds]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        contentType: { type: string }
+        size: { type: integer }
+        url: { type: string }
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: [string, "null"], format: date-time }
+        deleteAt: { type: [string, "null"], format: date-time, description: "When an unused attachment is removed, unless kept." }
+        keep: { type: boolean }
+        noteIds: { type: array, items: { type: string } }
+
+    AppName:
+      type: string
+      enum: [karakeep, linkwarden, memos]
+
+    AppToken:
+      type: object
+      required: [id, name, app, prefix, rootId, noteScope, rootCategoryId, createdAt, lastUsedAt, expiresAt, revokedAt, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        app: { $ref: "#/components/schemas/AppName" }
+        prefix: { type: string, description: "The start of the secret, to recognise it." }
+        rootId: { type: [string, "null"], description: "Root folder of the favourites the app sees." }
+        noteScope: { type: string, enum: [all, category, none] }
+        rootCategoryId: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+        expiresAt: { type: [string, "null"], format: date-time }
+        revokedAt: { type: [string, "null"], format: date-time }
+        status: { type: string, enum: [active, expired, revoked] }

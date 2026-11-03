@@ -8,6 +8,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- OpenAPI documents for every endpoint: `/api/openapi.yaml` for Boardly's API, which links to
+  `/api/karakeep/openapi.yaml`, `/api/linkwarden/openapi.yaml` and `/api/memos/openapi.yaml` for
+  the connected apps. A test keeps them in step with the registered routes.
 - Import of a Boardly export (JSON or ZIP) on **Settings → Import / Export**, into the same or
   another account: pick favourites, dashboards, notes and media sources. The import only adds,
   keeps references between imported items, makes imported dashboards private, and skips links,
