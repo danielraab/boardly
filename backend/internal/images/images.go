@@ -94,6 +94,21 @@ func SniffLimit(data []byte, limit int64) (string, error) {
 // for favicons. Previews are converted before they are saved, so MaxSize
 // doesn't apply to them.
 func (s *Store) Save(ctx context.Context, source, userID string, data []byte) (Image, error) {
+	img, err := s.Write(source, data)
+	if err != nil {
+		return Image{}, err
+	}
+	if err := s.Insert(ctx, s.DB, img, userID); err != nil {
+		_ = s.files().Remove(img.ID)
+		return Image{}, err
+	}
+	return img, nil
+}
+
+// Write checks data like Save does for the source and writes it as the file
+// of a new image, without a record. Insert stores the record; a file whose
+// record is never stored is removed by the cleanup of orphaned files.
+func (s *Store) Write(source string, data []byte) (Image, error) {
 	limit := int64(MaxSize)
 	if source == SourcePreview {
 		limit = int64(len(data))
@@ -106,18 +121,21 @@ func (s *Store) Save(ctx context.Context, source, userID string, data []byte) (I
 	if err := s.files().Write(img.ID, data); err != nil {
 		return Image{}, err
 	}
+	return img, nil
+}
+
+// Insert stores the record of an image written with Write, owned by userID
+// ("" for none), in q.
+func (s *Store) Insert(ctx context.Context, q db.Querier, img Image, userID string) error {
 	var owner any
 	if userID != "" {
 		owner = userID
 	}
-	if _, err := s.DB.ExecContext(ctx,
+	_, err := q.ExecContext(ctx,
 		`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		img.ID, source, owner, contentType, img.Size, db.FormatTime(s.Now()),
-	); err != nil {
-		_ = s.files().Remove(img.ID)
-		return Image{}, err
-	}
-	return img, nil
+		img.ID, img.Source, owner, img.ContentType, img.Size, db.FormatTime(s.Now()),
+	)
+	return err
 }
 
 // Replace writes new bytes for an existing image under the same ID.

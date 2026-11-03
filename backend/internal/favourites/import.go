@@ -15,6 +15,9 @@ import (
 type ImportTree struct {
 	Root   ImportFolder
 	Report ImportReport
+	// IDs, if not nil, is filled with the SourceID of each folder and link
+	// mapped to its ID in the user's tree.
+	IDs map[string]string
 }
 
 // ImportFolder is a folder of an import file. The name of the tree's root is
@@ -22,6 +25,9 @@ type ImportTree struct {
 type ImportFolder struct {
 	Name  string
 	Items []ImportItem
+	// SourceID, if set, is the folder's ID in the file; the report maps it
+	// to the created or reused folder.
+	SourceID string
 }
 
 // ImportItem is either a folder or a link, in the order of the file.
@@ -37,6 +43,11 @@ type ImportLink struct {
 	Tags        []string
 	Description *string
 	CreatedAt   time.Time
+	// SourceID, if set, is the link's ID in the file; the report maps it to
+	// the created link, or to the existing link a duplicate was skipped for.
+	SourceID string
+	// PreviewImageID is an image of the user to show as the link's preview.
+	PreviewImageID *string
 }
 
 // ImportReport counts what an import added and left out.
@@ -61,10 +72,12 @@ type importer struct {
 	q      db.Querier
 	userID string
 	now    time.Time
-	// urls holds the comparable URLs of the user's links, including those
-	// imported so far, or is nil when duplicates are imported.
-	urls   map[string]bool
+	// urls maps the comparable URLs of the user's links, including those
+	// imported so far, to their IDs, or is nil when duplicates are imported.
+	urls   map[string]string
 	report ImportReport
+	// ids receives the SourceIDs of the imported, reused and skipped items.
+	ids map[string]string
 }
 
 // Import adds the tree's folders and links below the user's folder folderID
@@ -105,7 +118,10 @@ func (s *Store) ImportTx(ctx context.Context, q db.Querier, userID, folderID str
 		return ImportReport{}, ErrInvalidParent
 	}
 
-	im := &importer{s: s, q: q, userID: userID, now: s.Now(), report: tree.Report}
+	im := &importer{s: s, q: q, userID: userID, now: s.Now(), report: tree.Report, ids: tree.IDs}
+	if im.ids == nil {
+		im.ids = map[string]string{}
+	}
 	if skipDuplicates {
 		if im.urls, err = linkURLs(ctx, q, userID); err != nil {
 			return ImportReport{}, err
@@ -122,20 +138,23 @@ func (s *Store) AfterImport(report ImportReport) {
 	s.notifyFetches(report.Links > 0)
 }
 
-// linkURLs returns the comparable URLs of the user's links.
-func linkURLs(ctx context.Context, q db.Querier, userID string) (map[string]bool, error) {
-	rows, err := q.QueryContext(ctx, `SELECT url FROM favourite_nodes WHERE user_id = ? AND kind = 'link'`, userID)
+// linkURLs maps the comparable URLs of the user's links to their IDs. Of
+// links with the same URL, the first by position wins.
+func linkURLs(ctx context.Context, q db.Querier, userID string) (map[string]string, error) {
+	rows, err := q.QueryContext(ctx, `SELECT id, url FROM favourite_nodes WHERE user_id = ? AND kind = 'link' ORDER BY created_at, id`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	urls := map[string]bool{}
+	urls := map[string]string{}
 	for rows.Next() {
-		var u string
-		if err := rows.Scan(&u); err != nil {
+		var id, u string
+		if err := rows.Scan(&id, &u); err != nil {
 			return nil, err
 		}
-		urls[comparableURL(u)] = true
+		if _, ok := urls[comparableURL(u)]; !ok {
+			urls[comparableURL(u)] = id
+		}
 	}
 	return urls, rows.Err()
 }
@@ -191,6 +210,9 @@ func (im *importer) add(ctx context.Context, parentID string, items []ImportItem
 				folders[folderKey(name)] = id
 				im.report.Folders++
 			}
+			if item.Folder.SourceID != "" {
+				im.ids[item.Folder.SourceID] = id
+			}
 			if err := im.add(ctx, id, item.Folder.Items); err != nil {
 				return err
 			}
@@ -216,8 +238,11 @@ func (im *importer) addLink(ctx context.Context, parentID string, position int, 
 		return false, nil
 	}
 	key := comparableURL(link)
-	if im.urls[key] {
+	if existing, ok := im.urls[key]; ok {
 		im.report.Skipped.Duplicates++
+		if l.SourceID != "" {
+			im.ids[l.SourceID] = existing
+		}
 		return false, nil
 	}
 	title, err := NormalizeLinkTitle(l.Title)
@@ -239,9 +264,9 @@ func (im *importer) addLink(ctx context.Context, parentID string, position int, 
 
 	id := uuid.NewString()
 	if _, err := im.q.ExecContext(ctx,
-		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, description, created_at, updated_at)
-		 VALUES (?, ?, ?, 'link', ?, ?, ?, ?, ?, ?)`,
-		id, im.userID, parentID, position, title, link, description, db.FormatTime(created), db.FormatTime(im.now),
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, title, url, description, preview_image_id, created_at, updated_at)
+		 VALUES (?, ?, ?, 'link', ?, ?, ?, ?, ?, ?, ?)`,
+		id, im.userID, parentID, position, title, link, description, l.PreviewImageID, db.FormatTime(created), db.FormatTime(im.now),
 	); err != nil {
 		return false, err
 	}
@@ -252,7 +277,10 @@ func (im *importer) addLink(ctx context.Context, parentID string, position int, 
 		return false, err
 	}
 	if im.urls != nil {
-		im.urls[key] = true
+		im.urls[key] = id
+	}
+	if l.SourceID != "" {
+		im.ids[l.SourceID] = id
 	}
 	im.report.Links++
 	return true, nil

@@ -17,6 +17,9 @@ import (
 type ImportTree struct {
 	Root     ImportCategory
 	TooLarge int
+	// IDs, if not nil, is filled with the SourceID of each category and note
+	// mapped to its ID in the user's notes.
+	IDs map[string]string
 }
 
 // ImportCategory is a category of an import file. The name of the tree's
@@ -25,6 +28,12 @@ type ImportCategory struct {
 	Name       string
 	Categories []ImportCategory
 	Notes      []ImportNote
+	// SourceID, if set, is the category's ID in the file; IDs maps it to
+	// the created or reused category.
+	SourceID string
+	// Icon and Color are set on a created category; a reused one keeps its own.
+	Icon  *Icon
+	Color *string
 }
 
 // ImportNote is a note of an import file. A zero CreatedAt means the import
@@ -35,6 +44,14 @@ type ImportNote struct {
 	Content   Doc
 	CreatedAt time.Time
 	Archived  bool
+	// SourceID, if set, is the note's ID in the file; IDs maps it to the
+	// created note, or to the existing note a duplicate was skipped for.
+	SourceID string
+	Icon     *Icon
+	Color    *string
+	Pinned   bool
+	// UpdatedAt is the time of last change; zero means CreatedAt.
+	UpdatedAt time.Time
 }
 
 // ImportReport counts the notes and categories an import added and left out.
@@ -55,7 +72,10 @@ func (s *Store) ImportTx(ctx context.Context, q db.Querier, userID string, categ
 	if err := checkCategory(ctx, q, userID, categoryID); err != nil {
 		return ImportReport{}, err
 	}
-	im := &importer{q: q, userID: userID, now: s.Now(), report: ImportReport{TooLargeNotes: tree.TooLarge}}
+	im := &importer{q: q, userID: userID, now: s.Now(), report: ImportReport{TooLargeNotes: tree.TooLarge}, ids: tree.IDs}
+	if im.ids == nil {
+		im.ids = map[string]string{}
+	}
 	if skipDuplicates {
 		var err error
 		if im.seen, err = noteKeys(ctx, q, userID); err != nil {
@@ -73,10 +93,12 @@ type importer struct {
 	q      db.Querier
 	userID string
 	now    time.Time
-	// seen holds the duplicate keys of the user's notes, including those
-	// imported so far, or is nil when duplicates are imported.
-	seen   map[string]bool
+	// seen maps the duplicate keys of the user's notes, including those
+	// imported so far, to their IDs, or is nil when duplicates are imported.
+	seen   map[string]string
 	report ImportReport
+	// ids receives the SourceIDs of the imported, reused and skipped items.
+	ids map[string]string
 }
 
 // add adds the notes and subcategories of c to the category parentID.
@@ -100,17 +122,27 @@ func (im *importer) add(ctx context.Context, parentID *string, c ImportCategory)
 		}
 		id, ok := children[strings.ToLower(title)]
 		if !ok {
+			symbol, imageID, err := checkIcon(ctx, im.q, im.userID, sub.Icon)
+			if err != nil {
+				return err
+			}
+			if err := checkColor(sub.Color); err != nil {
+				return err
+			}
 			id = uuid.NewString()
 			now := db.FormatTime(im.now)
 			if _, err := im.q.ExecContext(ctx,
-				`INSERT INTO note_categories (id, user_id, parent_id, title, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?)`,
-				id, im.userID, parentID, title, now, now,
+				`INSERT INTO note_categories (id, user_id, parent_id, title, icon_symbol, icon_image_id, color, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				id, im.userID, parentID, title, symbol, imageID, sub.Color, now, now,
 			); err != nil {
 				return err
 			}
 			children[strings.ToLower(title)] = id
 			im.report.Categories++
+		}
+		if sub.SourceID != "" {
+			im.ids[sub.SourceID] = id
 		}
 		if err := im.add(ctx, &id, sub); err != nil {
 			return err
@@ -161,29 +193,47 @@ func (im *importer) addNote(ctx context.Context, categoryID *string, n ImportNot
 	if err != nil {
 		return err
 	}
+	var key string
 	if im.seen != nil {
-		key, err := noteKey(title, content)
-		if err != nil {
+		if key, err = noteKey(title, content); err != nil {
 			return err
 		}
-		if im.seen[key] {
+		if existing, ok := im.seen[key]; ok {
 			im.report.DuplicateNotes++
+			if n.SourceID != "" {
+				im.ids[n.SourceID] = existing
+			}
 			return nil
 		}
-		im.seen[key] = true
+	}
+	symbol, imageID, err := checkIcon(ctx, im.q, im.userID, n.Icon)
+	if err != nil {
+		return err
+	}
+	if err := checkColor(n.Color); err != nil {
+		return err
 	}
 	created := n.CreatedAt
 	if created.IsZero() {
 		created = im.now
 	}
-	at := db.FormatTime(created)
+	updated := n.UpdatedAt
+	if updated.IsZero() {
+		updated = created
+	}
 	id := uuid.NewString()
 	if _, err := im.q.ExecContext(ctx,
-		`INSERT INTO notes (id, user_id, category_id, title, content, archived, version, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-		id, im.userID, categoryID, title, content, n.Archived, at, at,
+		`INSERT INTO notes (id, user_id, category_id, title, icon_symbol, icon_image_id, color, content, pinned, archived, version, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+		id, im.userID, categoryID, title, symbol, imageID, n.Color, content, n.Pinned, n.Archived, db.FormatTime(created), db.FormatTime(updated),
 	); err != nil {
 		return err
+	}
+	if im.seen != nil {
+		im.seen[key] = id
+	}
+	if n.SourceID != "" {
+		im.ids[n.SourceID] = id
 	}
 	if err := setAttachments(ctx, im.q, im.userID, id, doc); err != nil {
 		return err
@@ -192,18 +242,20 @@ func (im *importer) addNote(ctx context.Context, categoryID *string, n ImportNot
 	return nil
 }
 
-// noteKeys returns the duplicate keys of the user's notes.
-func noteKeys(ctx context.Context, q db.Querier, userID string) (map[string]bool, error) {
-	rows, err := q.QueryContext(ctx, `SELECT title, content FROM notes WHERE user_id = ?`, userID)
+// noteKeys maps the duplicate keys of the user's notes to their IDs; of
+// notes with the same key, the oldest wins.
+func noteKeys(ctx context.Context, q db.Querier, userID string) (map[string]string, error) {
+	rows, err := q.QueryContext(ctx, `SELECT id, title, content FROM notes WHERE user_id = ? ORDER BY created_at, id`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	keys := map[string]bool{}
+	keys := map[string]string{}
 	for rows.Next() {
+		var id string
 		var title sql.NullString
 		var content string
-		if err := rows.Scan(&title, &content); err != nil {
+		if err := rows.Scan(&id, &title, &content); err != nil {
 			return nil, err
 		}
 		var t *string
@@ -214,7 +266,9 @@ func noteKeys(ctx context.Context, q db.Querier, userID string) (map[string]bool
 		if err != nil {
 			return nil, err
 		}
-		keys[key] = true
+		if _, ok := keys[key]; !ok {
+			keys[key] = id
+		}
 	}
 	return keys, rows.Err()
 }

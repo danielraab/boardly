@@ -106,30 +106,11 @@ func (s *Store) ReadLimited(r io.Reader) ([]byte, error) {
 
 // Create stores a new attachment of the user.
 func (s *Store) Create(ctx context.Context, userID, name string, data []byte) (Attachment, error) {
-	name, err := CleanName(name)
+	a, err := s.Write(name, data)
 	if err != nil {
 		return Attachment{}, err
 	}
-	if int64(len(data)) > s.MaxBytes {
-		return Attachment{}, ErrTooLarge
-	}
-	t, ok := DetectType(name, data)
-	if !ok || !slices.Contains(s.Allowed, t.ContentType) {
-		return Attachment{}, ErrUnsupported
-	}
-	now := s.Now().UTC().Truncate(time.Millisecond)
-	a := Attachment{
-		ID: blobs.NewID(), Name: name, ContentType: t.ContentType, Size: int64(len(data)),
-		CreatedAt: now, NoteIDs: []string{},
-	}
-	a.URL = URL(a.ID, a.Name)
-	if err := s.Files.Write(a.ID, data); err != nil {
-		return Attachment{}, err
-	}
-	if _, err := s.DB.ExecContext(ctx,
-		`INSERT INTO attachments (id, user_id, name, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		a.ID, userID, a.Name, a.ContentType, a.Size, db.FormatTime(now),
-	); err != nil {
+	if err := s.Insert(ctx, s.DB, userID, a); err != nil {
 		_ = s.Files.Remove(a.ID)
 		return Attachment{}, err
 	}
@@ -170,6 +151,43 @@ func (s *Store) scan(row interface{ Scan(...any) error }) (Attachment, error) {
 	slices.Sort(a.NoteIDs)
 	a.URL = URL(a.ID, a.Name)
 	return a, nil
+}
+
+// Write checks the name and data like Create does and writes the data as
+// the file of a new attachment, without a record. Insert stores the record;
+// a file whose record is never stored is removed by the cleanup of orphaned
+// files.
+func (s *Store) Write(name string, data []byte) (Attachment, error) {
+	name, err := CleanName(name)
+	if err != nil {
+		return Attachment{}, err
+	}
+	if int64(len(data)) > s.MaxBytes {
+		return Attachment{}, ErrTooLarge
+	}
+	t, ok := DetectType(name, data)
+	if !ok || !slices.Contains(s.Allowed, t.ContentType) {
+		return Attachment{}, ErrUnsupported
+	}
+	a := Attachment{
+		ID: blobs.NewID(), Name: name, ContentType: t.ContentType, Size: int64(len(data)),
+		CreatedAt: s.Now().UTC().Truncate(time.Millisecond), NoteIDs: []string{},
+	}
+	a.URL = URL(a.ID, a.Name)
+	if err := s.Files.Write(a.ID, data); err != nil {
+		return Attachment{}, err
+	}
+	return a, nil
+}
+
+// Insert stores the record of an attachment written with Write, owned by
+// userID, in q.
+func (s *Store) Insert(ctx context.Context, q db.Querier, userID string, a Attachment) error {
+	_, err := q.ExecContext(ctx,
+		`INSERT INTO attachments (id, user_id, name, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		a.ID, userID, a.Name, a.ContentType, a.Size, db.FormatTime(a.CreatedAt),
+	)
+	return err
 }
 
 // List returns the user's attachments, newest first, then by ID.

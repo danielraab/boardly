@@ -129,7 +129,37 @@ scheduled, too.
   and without files (see `BOARDLY_EXPORTS_PER_HOUR` and `BOARDLY_EXPORTS_PER_DAY` in
   [Configuration](#configuration)). Over the limit, the section shows when the next export is
   possible. The counts start over when the server restarts.
-- Importing an export into Boardly is not supported yet.
+- Exports can be imported again, into the same or another account and on any Boardly server (see
+  [Importing a Boardly export](#importing-a-boardly-export)).
+
+#### Importing a Boardly export
+
+The import section on **Settings → Import / Export** also takes a Boardly export, as the JSON file
+or the ZIP file. Pick the format **Boardly export (JSON or ZIP)** and the parts to import:
+favourites, dashboards, notes and media sources (all are checked at first).
+
+- **It only adds.** Nothing in the account is changed or deleted, and every imported item gets a new
+  ID. Into an empty account, that is a full restore.
+- **Favourites and notes** follow the rules of [Importing bookmarks](#importing-bookmarks): they go
+  into the folder and category you choose, folders and categories with the same name are reused,
+  and links and notes that are already saved are skipped (unless you uncheck that). Tags are matched
+  by name.
+- **Dashboards** are always added, with a free address (`home` becomes `home-2` if `home` is taken).
+  They are never public and never the default dashboard, so nothing becomes visible to others until
+  you decide.
+- **Media sources** whose stream address you already have are skipped.
+- **References stay intact.** A widget, an icon or an attachment that points to something imported
+  in the same run points to the imported item, or to the existing item it was matched with. A
+  reference to something not imported is kept as it is, so a dashboards-only import into the same
+  account still shows your existing folders and notes; in another account, such a widget shows its
+  usual "not found" state.
+- **Files** come only from a ZIP export and must meet this server's rules for images and attachments
+  (types, sizes); others are skipped and counted. Files the account already has are reused. Icons
+  without their image are removed, and attachments without their file are left out of the note.
+- The default folder and note category are taken from the export only when you have none yet. The
+  display name and the address of your account are never changed.
+- The file can have at most 10 MB, like any import. A ZIP with many files can be larger; export
+  without files to get a smaller JSON file.
 
 ### Dashboards
 

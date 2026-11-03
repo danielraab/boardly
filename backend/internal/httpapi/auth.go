@@ -15,6 +15,7 @@ import (
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
+	"boardly/internal/dataimport"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
@@ -57,6 +58,7 @@ type api struct {
 	appTokens      *apptokens.Store
 	accounts       *accounts.Service
 	export         *export.Service
+	dataImport     *dataimport.Service
 	// exportLimiter limits data exports per user.
 	exportLimiter *ratelimit.Window
 	origin        string

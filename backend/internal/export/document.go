@@ -98,6 +98,31 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	}{n.ID, n.Kind, n.URL, n.Title, n.Description, tags, n.PreviewImageID, n.CreatedAt, n.UpdatedAt})
 }
 
+// UnmarshalJSON reads a folder or a link as MarshalJSON writes it.
+func (n *Node) UnmarshalJSON(data []byte) error {
+	var v struct {
+		ID             string   `json:"id"`
+		Kind           string   `json:"kind"`
+		Title          *string  `json:"title"`
+		CreatedAt      string   `json:"createdAt"`
+		UpdatedAt      string   `json:"updatedAt"`
+		URL            string   `json:"url"`
+		Description    *string  `json:"description"`
+		Tags           []string `json:"tags"`
+		PreviewImageID *string  `json:"previewImageId"`
+		Children       []*Node  `json:"children"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	*n = Node{
+		ID: v.ID, Kind: v.Kind, Title: v.Title, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
+		URL: v.URL, Description: v.Description, Tags: v.Tags, PreviewImageID: v.PreviewImageID,
+		Children: v.Children,
+	}
+	return nil
+}
+
 // Tag is a tag of the user, used or not.
 type Tag struct {
 	ID        string `json:"id"`

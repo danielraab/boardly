@@ -240,3 +240,59 @@ func TestImportFolderMustBeOwnFolder(t *testing.T) {
 		}
 	}
 }
+
+func TestImportSourceIDs(t *testing.T) {
+	f := newFixture(t)
+	root := f.tree().ID
+	f.importItems(root, importFolder("Dev", importLink("https://go.dev")))
+	dev := f.child("", "Dev")
+	existing := f.child(dev, "https://go.dev")
+
+	ids := map[string]string{}
+	tree := ImportTree{IDs: ids, Root: ImportFolder{Items: []ImportItem{
+		{Folder: &ImportFolder{Name: "dev", SourceID: "old-dev", Items: []ImportItem{
+			{Link: &ImportLink{URL: "https://go.dev/", SourceID: "old-go"}},
+			{Link: &ImportLink{URL: "https://pkg.go.dev", Title: ptr("pkg"), SourceID: "old-pkg"}},
+		}}},
+		{Folder: &ImportFolder{Name: "New", SourceID: "old-new"}},
+	}}}
+	if _, err := f.s.Import(f.ctx, f.user, root, tree, true); err != nil {
+		t.Fatal(err)
+	}
+	if ids["old-dev"] != dev {
+		t.Errorf("reused folder maps to %q, want %q", ids["old-dev"], dev)
+	}
+	if ids["old-go"] != existing {
+		t.Errorf("skipped duplicate maps to %q, want the existing link %q", ids["old-go"], existing)
+	}
+	if ids["old-pkg"] != f.child(dev, "pkg") {
+		t.Errorf("new link maps to %q", ids["old-pkg"])
+	}
+	if ids["old-new"] != f.child("", "New") {
+		t.Errorf("new folder maps to %q", ids["old-new"])
+	}
+}
+
+func TestImportPreviewImage(t *testing.T) {
+	f := newFixture(t)
+	img := "7f1c1a0e-3b9a-4c43-8a0e-1d2b3c4d5e6f"
+	if _, err := f.s.DB.ExecContext(f.ctx,
+		`INSERT INTO images (id, source, user_id, content_type, size, created_at) VALUES (?, 'preview', ?, 'image/png', 3, ?)`,
+		img, f.user, db.FormatTime(time.Now())); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	tree := ImportTree{IDs: ids, Root: ImportFolder{Items: []ImportItem{
+		{Link: &ImportLink{URL: "https://go.dev", SourceID: "go", PreviewImageID: &img}},
+	}}}
+	if _, err := f.s.Import(f.ctx, f.user, f.tree().ID, tree, true); err != nil {
+		t.Fatal(err)
+	}
+	var got *string
+	if err := f.s.DB.QueryRowContext(f.ctx, `SELECT preview_image_id FROM favourite_nodes WHERE id = ?`, ids["go"]).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || *got != img {
+		t.Errorf("preview_image_id = %v, want %s", got, img)
+	}
+}

@@ -310,3 +310,25 @@ func TestSweepRemovesOrphanFiles(t *testing.T) {
 		t.Fatalf("orphan still exists: %v", err)
 	}
 }
+
+func TestWriteThenInsert(t *testing.T) {
+	ctx := context.Background()
+	s, _, ann, _ := newStore(t)
+	if _, err := s.Write("notes.zip", []byte("PK\x03\x04rest")); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("not allowed: %v", err)
+	}
+	a, err := s.Write("report.pdf", pdfData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Get(ctx, ann, a.ID); err == nil {
+		t.Fatal("record exists before Insert")
+	}
+	if err := s.Insert(ctx, s.DB, ann, a); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Get(ctx, ann, a.ID)
+	if err != nil || got.Name != "report.pdf" || got.ContentType != "application/pdf" {
+		t.Fatalf("Get = %+v, %v", got, err)
+	}
+}

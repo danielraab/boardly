@@ -12,6 +12,7 @@ import (
 	"boardly/internal/attachments"
 	"boardly/internal/auth"
 	"boardly/internal/dashboards"
+	"boardly/internal/dataimport"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
@@ -50,6 +51,8 @@ type Deps struct {
 	Accounts *accounts.Service
 	// Export builds the download of all data of a user.
 	Export *export.Service
+	// DataImport imports a Boardly export into a user's account.
+	DataImport *dataimport.Service
 	// ExportsPerHour and ExportsPerDay limit exports per user; 0 means no limit.
 	ExportsPerHour int
 	ExportsPerDay  int
@@ -66,7 +69,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
 	// Logo links of station searches are signed with a key that lives as long
 	// as the process; they are only used while the dialog is open.
 	a.logoKey = make([]byte, 32)
@@ -85,6 +88,7 @@ func New(d Deps) http.Handler {
 	mux.Handle("DELETE /api/me", a.requireUser(a.deleteMe))
 	mux.Handle("POST /api/me/restore", a.requireUser(a.restoreMe))
 	mux.Handle("GET /api/me/export", a.requireUser(a.exportData))
+	mux.Handle("POST /api/import", a.requireUser(a.importData))
 	mux.Handle("POST /api/auth/passkey/login/options", HandlerFunc(a.passkeyLoginOptions))
 	mux.Handle("POST /api/auth/passkey/login/verify", HandlerFunc(a.passkeyLoginVerify))
 	mux.Handle("GET /api/passkeys", a.requireUser(a.listPasskeys))

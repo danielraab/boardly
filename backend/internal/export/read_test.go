@@ -281,3 +281,27 @@ func TestDocumentUnknownUser(t *testing.T) {
 		t.Fatalf("err = %v, want ErrNoUser", err)
 	}
 }
+
+func TestDocumentRoundTrip(t *testing.T) {
+	f := newFixture(t)
+	f.seed()
+	doc, err := f.s.Document(f.ctx, f.ann.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back Document
+	if err := json.Unmarshal(first, &back); err != nil {
+		t.Fatal(err)
+	}
+	second, err := json.Marshal(&back)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(first) != string(second) {
+		t.Errorf("round trip changed the document:\n%s\n%s", first, second)
+	}
+}

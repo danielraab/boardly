@@ -230,3 +230,34 @@ func TestDeleteUserDeletesSources(t *testing.T) {
 		t.Fatalf("count = %d, err = %v", n, err)
 	}
 }
+
+func TestInsertTx(t *testing.T) {
+	f := newFixture(t)
+	tx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	id, err := f.s.InsertTx(f.ctx, tx, f.user, Imported{Kind: KindStream, Title: "Radio", URL: "https://radio.example.org/stream",
+		Icon: &notes.Icon{Type: notes.IconSymbol, Name: "music"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, n := range map[string]Imported{
+		"kind":  {Kind: "video", Title: "x", URL: "https://x.example.org"},
+		"title": {Kind: KindStream, Title: " ", URL: "https://x.example.org"},
+		"url":   {Kind: KindStream, Title: "x", URL: "ftp://x.example.org"},
+		"icon":  {Kind: KindStream, Title: "x", URL: "https://x.example.org", Icon: &notes.Icon{Type: notes.IconImage, ImageID: "nope"}},
+	} {
+		if _, err := f.s.InsertTx(f.ctx, tx, f.user, n); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.s.Get(f.ctx, f.user, id)
+	if err != nil || got.Title != "Radio" || got.Icon == nil || got.Icon.Name != "music" {
+		t.Fatalf("Get = %+v, %v", got, err)
+	}
+}

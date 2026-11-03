@@ -23,6 +23,7 @@ import (
 	"boardly/internal/blobs"
 	"boardly/internal/config"
 	"boardly/internal/dashboards"
+	"boardly/internal/dataimport"
 	"boardly/internal/db"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
@@ -144,6 +145,10 @@ func run() error {
 			Accounts:    accountService,
 			Export: &export.Service{
 				DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: time.Now,
+			},
+			DataImport: &dataimport.Service{
+				DB: database, Favourites: favouriteStore, Notes: noteStore, Dashboards: dashboardStore,
+				Media: mediaStore, Images: imageStore, Attachments: attachmentStore,
 			},
 			ExportsPerHour:    cfg.Exports.PerHour,
 			ExportsPerDay:     cfg.Exports.PerDay,

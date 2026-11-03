@@ -236,6 +236,121 @@ describe("import / export tab", () => {
 	});
 });
 
+describe("boardly import", () => {
+	const zip = () =>
+		new File(["PK\x03\x04"], "boardly-export-ann.zip", {
+			type: "application/zip",
+		});
+	const dataReport = {
+		favourites: {
+			links: 3,
+			folders: 1,
+			tags: 2,
+			skipped: { duplicates: 1, invalidUrls: 0 },
+			shortenedDescriptions: 0,
+		},
+		dashboards: { dashboards: 1, skippedWidgets: 0 },
+		notes: null,
+		media: null,
+		files: { images: 0, attachments: 0, skipped: 2 },
+	};
+
+	async function chooseBoardly() {
+		const tab = await openTab();
+		await tab.user.click(
+			within(tab.panel).getByRole("radio", {
+				name: "Boardly export (JSON or ZIP)",
+			}),
+		);
+		return tab;
+	}
+
+	it("is titled Import and offers the Boardly format with ZIP files", async () => {
+		const { panel } = await openTab();
+		expect(
+			within(panel).getByRole("heading", { name: "Import" }),
+		).toBeInTheDocument();
+		expect(
+			within(panel).getByRole("radio", {
+				name: "Boardly export (JSON or ZIP)",
+			}),
+		).toBeInTheDocument();
+		expect(within(panel).getByLabelText("File")).toHaveAttribute(
+			"accept",
+			expect.stringContaining(".zip"),
+		);
+	});
+
+	it("checks all parts at first and shows both pickers", async () => {
+		const { panel } = await chooseBoardly();
+		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+			expect(within(panel).getByRole("checkbox", { name })).toBeChecked();
+		}
+		expect(within(panel).getByText("Import into")).toBeInTheDocument();
+		expect(within(panel).getByText("Import notes into")).toBeInTheDocument();
+	});
+
+	it("needs no folder without favourites and sends the checked parts", async () => {
+		const { panel, user, api } = await chooseBoardly();
+		let search: URLSearchParams | null = null;
+		api.set({
+			"POST /api/import": ({ url }) => {
+				search = url.searchParams;
+				return { body: dataReport };
+			},
+		});
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		const submit = within(panel).getByRole("button", { name: "Import" });
+		expect(submit).toBeDisabled();
+
+		await user.click(
+			within(panel).getByRole("checkbox", { name: "Favourites" }),
+		);
+		await user.click(within(panel).getByRole("checkbox", { name: "Notes" }));
+		expect(within(panel).queryByText("Import into")).toBeNull();
+		expect(within(panel).queryByText("Import notes into")).toBeNull();
+		expect(submit).toBeEnabled();
+
+		await user.click(submit);
+		const result = await within(panel).findByRole("status");
+		expect(result).toHaveTextContent(
+			"Imported 3 links, 1 folder, 2 tags, 1 dashboard.",
+		);
+		expect(result).toHaveTextContent("Imported dashboards are private");
+		expect(result).toHaveTextContent("1 link was already in your favourites");
+		expect(result).toHaveTextContent("2 files were missing or aren't allowed");
+
+		const sent = search as unknown as URLSearchParams;
+		expect(sent.get("parts")).toBe("dashboards,media");
+		expect(sent.has("folderId")).toBe(false);
+		expect(sent.has("categoryId")).toBe(false);
+	});
+
+	it("disables the button without any part", async () => {
+		const { panel, user } = await chooseBoardly();
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+			await user.click(within(panel).getByRole("checkbox", { name }));
+		}
+		expect(
+			within(panel).getByRole("button", { name: "Import" }),
+		).toBeDisabled();
+	});
+
+	it("shows the size limit with the hint to export without files", async () => {
+		const { panel, user, api } = await chooseBoardly();
+		api.set({ "POST /api/import": apiError(413, "file_too_large") });
+		await user.upload(within(panel).getByLabelText("File"), zip());
+		await user.click(
+			within(panel).getByRole("checkbox", { name: "Favourites" }),
+		);
+		await user.click(within(panel).getByRole("button", { name: "Import" }));
+		expect(await within(panel).findByRole("alert")).toHaveTextContent(
+			"The file is too large. It can have at most 10 MB. Export without files to get a smaller JSON file.",
+		);
+	});
+});
+
 describe("export section", () => {
 	const createObjectURL = vi.fn(() => "blob:export");
 	const clicks: string[] = [];
