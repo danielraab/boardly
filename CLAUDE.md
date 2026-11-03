@@ -15,3 +15,7 @@ If a request asks for a code change and no matching OpenSpec change exists, prop
 If the work turns out to differ from the change, update the change's artifacts before changing the code.
 
 Exceptions that don't need a change: typo fixes, formatting or lint-only fixes, dependency bumps, and documentation-only edits.
+
+## Keep export and import in step
+
+Every change must check whether the data export (`data-export` spec, `backend/internal/export`) and the import of Boardly exports (`data-import` spec) have to be adapted. This applies whenever a change adds, removes, renames or reshapes user data: tables, columns, fields, widget kinds or their configs, files, or references between items. The proposal states the result, even when it is "export and import are unaffected", and the tasks include the adaptation and its tests. Raise the export format version when older imports couldn't read the new document.
