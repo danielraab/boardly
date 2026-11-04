@@ -9,6 +9,7 @@ import { MiniPlayer } from "#/features/media/MiniPlayer";
 import { MediaPlayerProvider } from "#/features/media/player";
 import { DeletionBanner } from "#/features/settings/DeletionBanner";
 import { appTitle } from "#/lib/appTitle";
+import { AppFooter } from "./AppFooter";
 import { AppIcon } from "./AppIcon";
 import { headerButton } from "./buttonStyles";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -43,10 +44,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 							<UserMenu />
 						</div>
 					</header>
-					<main className={`${container} flex-1 pb-16`}>
+					<main className={`${container} flex-1 pb-10`}>
 						<DeletionBanner />
 						{children}
 					</main>
+					{/* Before the mini player, whose spacer keeps the bar off the footer. */}
+					<AppFooter className={container} />
 					<MiniPlayer />
 				</div>
 			</MediaPlayerProvider>

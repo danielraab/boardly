@@ -265,6 +265,10 @@ func TestLoadInvalid(t *testing.T) {
 		{"AAGUID list URL relative", "BOARDLY_AAGUID_LIST_URL", "/aaguids.json"},
 		{"map style URL other scheme", "BOARDLY_MAP_STYLE_URL", "ftp://example.org/style"},
 		{"map style URL relative", "BOARDLY_MAP_STYLE_URL", "/style.json"},
+		{"imprint URL without scheme", "BOARDLY_IMPRINT_URL", "example.at/impressum"},
+		{"imprint URL other scheme", "BOARDLY_IMPRINT_URL", "ftp://example.at/impressum"},
+		{"privacy URL without scheme", "BOARDLY_PRIVACY_URL", "example.at/privacy"},
+		{"privacy URL relative", "BOARDLY_PRIVACY_URL", "/privacy"},
 		{"preview size zero", "BOARDLY_PREVIEW_MAX_SIZE_MB", "0"},
 		{"preview size negative", "BOARDLY_PREVIEW_MAX_SIZE_MB", "-1"},
 		{"preview pixels not a number", "BOARDLY_PREVIEW_MAX_PIXELS", "many"},
@@ -356,6 +360,33 @@ func TestMapStyleURL(t *testing.T) {
 			}
 			if cfg.MapStyleURL != tt.want {
 				t.Fatalf("MapStyleURL = %q, want %q", cfg.MapStyleURL, tt.want)
+			}
+		})
+	}
+}
+
+func TestLegal(t *testing.T) {
+	tests := []struct {
+		name string
+		vars map[string]string
+		want Legal
+	}{
+		{"unset", nil, Legal{}},
+		{"blank", map[string]string{"BOARDLY_LEGAL_DIR": " ", "BOARDLY_IMPRINT_URL": " ", "BOARDLY_PRIVACY_URL": "\t"}, Legal{}},
+		{"all set and trimmed", map[string]string{
+			"BOARDLY_LEGAL_DIR":   " /legal ",
+			"BOARDLY_IMPRINT_URL": " https://example.at/impressum ",
+			"BOARDLY_PRIVACY_URL": "http://example.at/datenschutz?a=1&b=2",
+		}, Legal{Dir: "/legal", ImprintURL: "https://example.at/impressum", PrivacyURL: "http://example.at/datenschutz?a=1&b=2"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(withBaseURL(tt.vars)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Legal != tt.want {
+				t.Fatalf("Legal = %+v, want %+v", cfg.Legal, tt.want)
 			}
 		})
 	}

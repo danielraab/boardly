@@ -16,6 +16,7 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/legal"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/ratelimit"
@@ -65,11 +66,13 @@ type Deps struct {
 	TrustProxyHeaders bool
 	// LogRequests picks which requests get a log line: "all", "errors" or "none".
 	LogRequests string
+	// Legal holds the imprint and privacy policy; nil means none.
+	Legal *legal.Pages
 }
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
 	// Logo links of station searches are signed with a key that lives as long
 	// as the process; they are only used while the dialog is open.
 	a.logoKey = make([]byte, 32)
@@ -93,6 +96,7 @@ func (a *api) mainAPI(db Pinger) *routeMux {
 	mux := newRouteMux()
 	mux.Handle("GET /api/health", health(db))
 	mux.Handle("GET /api/openapi.yaml", openAPIDoc("boardly.yaml"))
+	mux.Handle("GET /api/legal/{page}", HandlerFunc(a.getLegalPage))
 	mux.Handle("POST /api/auth/magic-link", HandlerFunc(a.requestLink))
 	mux.Handle("POST /api/auth/magic-link/verify", HandlerFunc(a.verifyLink))
 	mux.Handle("POST /api/auth/magic-link/code", HandlerFunc(a.redeemCode))

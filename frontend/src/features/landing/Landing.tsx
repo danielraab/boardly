@@ -66,22 +66,6 @@ export function Landing() {
 					))}
 				</ul>
 			</section>
-
-			<footer className="mt-16 flex items-center gap-2 border-t border-line pt-5 text-sm text-muted">
-				{t("landing.footer.openSource")}
-				<span aria-hidden>·</span>
-				<a
-					href={githubRepoUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					aria-label={`${t("landing.github")} ${t("common.opensInNewTab")}`}
-					className="inline-flex items-center gap-1 rounded-sm hover:text-ink"
-				>
-					<GithubIcon className="size-4" />
-					{t("landing.github")}
-					<ArrowUpRight className="size-3.5" aria-hidden />
-				</a>
-			</footer>
 		</div>
 	);
 }

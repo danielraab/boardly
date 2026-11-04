@@ -13,7 +13,11 @@
 		"settings": "Settings",
 		"signOut": "Sign out",
 		"addLink": "Add link",
-		"github": "GitHub"
+		"github": "GitHub",
+		"footer": {
+			"openSource": "Open source",
+			"legalLinks": "Legal"
+		}
 	},
 	"theme": {
 		"system": "System",
@@ -29,6 +33,12 @@
 		"title": "Page not found",
 		"text": "The page you are looking for does not exist.",
 		"backHome": "Back to the start page"
+	},
+	"legal": {
+		"imprint": "Imprint",
+		"privacy": "Privacy",
+		"loadError": "This page couldn't be loaded.",
+		"retry": "Try again"
 	},
 	"login": {
 		"title": "Sign in",
@@ -60,10 +70,7 @@
 		},
 		"sketch": "Illustration of a Boardly dashboard with favourites, links, a note and a radio widget",
 		"featuresTitle": "What {{appName}} does",
-		"github": "GitHub",
-		"footer": {
-			"openSource": "Open source"
-		}
+		"github": "GitHub"
 	},
 	"features": {
 		"dashboards": {

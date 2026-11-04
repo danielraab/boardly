@@ -83,6 +83,38 @@ describe("NoteRenderer", () => {
 		expect(screen.queryByRole("link")).toBeNull();
 		expect(screen.getByText("docs")).toBeInTheDocument();
 	});
+
+	it("renders links as links with openLinks", () => {
+		const doc: NoteDoc = {
+			v: 1,
+			blocks: [
+				{
+					type: "paragraph",
+					content: [
+						{
+							type: "link",
+							url: "https://example.org/a",
+							content: [{ type: "text", text: "web" }],
+						},
+						{ type: "text", text: " and " },
+						{
+							type: "link",
+							url: "mailto:ann@example.org",
+							content: [{ type: "text", text: "mail" }],
+						},
+					],
+				},
+			],
+		};
+		render(<NoteRenderer doc={doc} openLinks />);
+		const web = screen.getByRole("link", { name: "web" });
+		expect(web).toHaveAttribute("href", "https://example.org/a");
+		expect(web).toHaveAttribute("target", "_blank");
+		expect(web).toHaveAttribute("rel", "noopener noreferrer");
+		const mail = screen.getByRole("link", { name: "mail" });
+		expect(mail).toHaveAttribute("href", "mailto:ann@example.org");
+		expect(mail).not.toHaveAttribute("target");
+	});
 });
 
 describe("NoteRenderer attachments", () => {

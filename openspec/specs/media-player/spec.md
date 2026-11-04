@@ -32,7 +32,7 @@ Playback SHALL continue without interruption when the user moves to another page
 - **THEN** playback stops and the player is closed
 
 ### Requirement: Mini player bar
-While a stream is loaded, the app shell SHALL show a bar fixed to the bottom of the viewport with the station's icon (or a radio icon), its title, a play/pause button ("Play" / "Abspielen", "Pause" / "Pause"), a volume control ("Volume" / "Lautstärke") with a mute button ("Mute" / "Stumm", "Unmute" / "Ton an"), and a close button ("Close player" / "Player schließen") that stops playback and hides the bar. When no stream is loaded, the bar is not shown. While the bar is shown, the page content SHALL get enough space at the bottom that the bar covers none of it. On viewports narrower than 480 px, the bar SHALL leave out the volume control and keep the icon, title, play/pause and close. All controls work with the keyboard and have accessible names.
+While a stream is loaded, the app shell SHALL show a bar fixed to the bottom of the viewport with the station's icon (or a radio icon), its title, a play/pause button ("Play" / "Abspielen", "Pause" / "Pause"), a volume control ("Volume" / "Lautstärke") with a mute button ("Mute" / "Stumm", "Unmute" / "Ton an"), and a close button ("Close player" / "Player schließen") that stops playback and hides the bar. When no stream is loaded, the bar is not shown. While the bar is shown, the page content and the global footer (see the `app-shell` capability) SHALL get enough space at the bottom that the bar covers none of them. On viewports narrower than 480 px, the bar SHALL leave out the volume control and keep the icon, title, play/pause and close. All controls work with the keyboard and have accessible names.
 
 #### Scenario: Bar while playing
 - **WHEN** Ann plays "FM4"
@@ -49,6 +49,10 @@ While a stream is loaded, the app shell SHALL show a bar fixed to the bottom of 
 #### Scenario: Content not covered
 - **WHEN** the bar is shown and Ann scrolls to the end of a long dashboard
 - **THEN** the last widget is fully visible above the bar
+
+#### Scenario: Footer not covered
+- **WHEN** the bar is shown and Ann scrolls to the end of a page
+- **THEN** the global footer with its links is fully visible above the bar
 
 ### Requirement: Volume memory
 The player SHALL remember the volume and the muted state in the browser and use them for every stream, also after a reload. When the browser doesn't allow storing them, the player SHALL use full volume, not muted, and still work.

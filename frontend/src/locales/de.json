@@ -13,7 +13,11 @@
 		"settings": "Einstellungen",
 		"signOut": "Abmelden",
 		"addLink": "Link hinzufügen",
-		"github": "GitHub"
+		"github": "GitHub",
+		"footer": {
+			"openSource": "Open Source",
+			"legalLinks": "Rechtliches"
+		}
 	},
 	"theme": {
 		"system": "System",
@@ -29,6 +33,12 @@
 		"title": "Seite nicht gefunden",
 		"text": "Die gesuchte Seite gibt es nicht.",
 		"backHome": "Zurück zur Startseite"
+	},
+	"legal": {
+		"imprint": "Impressum",
+		"privacy": "Datenschutz",
+		"loadError": "Diese Seite konnte nicht geladen werden.",
+		"retry": "Erneut versuchen"
 	},
 	"login": {
 		"title": "Anmelden",
@@ -60,10 +70,7 @@
 		},
 		"sketch": "Illustration eines Boardly-Dashboards mit Favoriten, Links, einer Notiz und einem Radio-Widget",
 		"featuresTitle": "Was {{appName}} kann",
-		"github": "GitHub",
-		"footer": {
-			"openSource": "Open Source"
-		}
+		"github": "GitHub"
 	},
 	"features": {
 		"dashboards": {

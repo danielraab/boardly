@@ -19,6 +19,7 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/images"
+	"boardly/internal/legal"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/ratelimit"
@@ -64,6 +65,7 @@ type api struct {
 	origin        string
 	secureCookies bool
 	trustProxy    bool
+	legal         *legal.Pages
 }
 
 func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {

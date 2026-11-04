@@ -77,6 +77,48 @@ paths:
           content:
             application/yaml: {}
 
+  /legal/{page}:
+    get:
+      tags: [Meta]
+      summary: Get a legal page's content
+      description: |
+        Returns the imprint or the privacy policy that the operator provides as
+        Markdown files in `BOARDLY_LEGAL_DIR`, converted to a note document.
+        The content is in the requested language when that file exists, else
+        from the fallback file `<page>.md`, else from another language
+        (English first). Pages set by `BOARDLY_IMPRINT_URL` or
+        `BOARDLY_PRIVACY_URL` are external and have no content here.
+      security: []
+      parameters:
+        - name: page
+          in: path
+          required: true
+          schema: { type: string, enum: [imprint, privacy] }
+        - name: lang
+          in: query
+          description: The requested language. Unsupported values are ignored.
+          schema: { type: string, examples: [en, de] }
+      responses:
+        "200":
+          description: The page's content.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [page, language, doc]
+                properties:
+                  page: { type: string, enum: [imprint, privacy] }
+                  language:
+                    description: The language of the file the content came from; null for the fallback file.
+                    type: [string, "null"]
+                    enum: [en, de, null]
+                  doc: { $ref: "#/components/schemas/NoteDocument" }
+        "404":
+          description: Unknown page, a page that isn't configured, or an external page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   # --- Auth -----------------------------------------------------------------
 
   /auth/magic-link:

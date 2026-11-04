@@ -725,6 +725,9 @@ precedence over the file.
 | `BOARDLY_EXPORTS_PER_DAY` | `10` | Most data exports per user within 24 hours. `0` turns this limit off |
 | `BOARDLY_MAP_STYLE_URL` | OpenFreeMap's `https://tiles.openfreemap.org/styles/liberty` | [MapLibre style](https://maplibre.org/maplibre-style-spec/) that maps of note locations are drawn from. See [Maps](#maps) |
 | `BOARDLY_AAGUID_LIST_URL` | the [passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) `combined_aaguid.json` on GitHub | Where the passkey provider list is downloaded from. Set it to an empty value to turn provider detection off |
+| `BOARDLY_LEGAL_DIR` | (empty) | Directory with the Markdown files of the imprint and the privacy policy, for example a read-only volume. See [Imprint and privacy policy](#imprint-and-privacy-policy) |
+| `BOARDLY_IMPRINT_URL` | (empty) | Absolute http(s) URL of an imprint on another site, linked instead of an `imprint*.md` file |
+| `BOARDLY_PRIVACY_URL` | (empty) | Absolute http(s) URL of a privacy policy on another site, linked instead of a `privacy*.md` file |
 
 Database migrations are applied automatically on startup. There are no down migrations: to roll
 back, stop the server and restore a backup of the database file.
@@ -856,6 +859,52 @@ The location form works with its latitude and longitude fields alone.
   self-hosting setup), serve them under Boardly's host name and point `BOARDLY_MAP_STYLE_URL` at
   it. Make sure the style doesn't reference tiles, fonts or sprites on other hosts, which would
   then load without asking.
+
+### Imprint and privacy policy
+
+Boardly can show an imprint and a privacy policy without an admin area. Every page links to them
+in its footer, next to "Open source · GitHub", and the links are visible to signed-out visitors.
+A page that isn't configured has no link. Each page comes either from Markdown files or from an
+external URL:
+
+- **Markdown files** in the directory `BOARDLY_LEGAL_DIR`. The page is then shown at `/imprint` or
+  `/privacy`:
+
+  | File | Shown |
+  |---|---|
+  | `imprint.md`, `privacy.md` | as the fallback, in every language without its own file |
+  | `imprint.de.md`, `imprint.en.md`, `privacy.de.md`, `privacy.en.md` | in that language |
+
+  A visitor gets the file in their language, then the fallback file, then another language
+  (English first). So a single `imprint.de.md` is enough for a German-only imprint.
+- **An external URL** in `BOARDLY_IMPRINT_URL` or `BOARDLY_PRIVACY_URL`, for example the imprint
+  on your company's website. The footer link opens it in a new tab. A URL serves every language.
+
+```yaml
+services:
+  boardly:
+    volumes:
+      - boardly-data:/data
+      - ./legal:/legal:ro          # imprint.de.md, privacy.md, ...
+    environment:
+      BOARDLY_LEGAL_DIR: /legal
+      # or link pages on another site instead of files:
+      # BOARDLY_IMPRINT_URL: https://example.at/impressum
+```
+
+- **Checked at startup.** The server reads the files once when it starts, so restart it after
+  changing them. It refuses to start, naming the problem, when a page has both files and a URL,
+  a `.md` file has an unknown name (such as `impressum.md` or `imprint.fr.md`), a file is empty
+  or larger than 1 MiB, or a URL isn't an absolute http(s) URL. Other files, dotfiles and
+  subdirectories are ignored. Mount the directory, not single files, so edited files are picked up.
+- **Markdown like in notes**: headings, paragraphs, bold, italic, strikethrough, code, lists, task
+  lists, quotes, tables and links (`http`, `https` and `mailto`). Images are shown as links, and
+  HTML is shown as text.
+- **Templates** for both pages are in [docs/legal-example](docs/legal-example). The privacy
+  policy lists what Boardly processes, but it is only a starting point: adapt it to your instance
+  (operator, hosting, mail provider, analytics) and have it checked if you are unsure.
+- The Vite dev server (`make dev-frontend`) serves the web app without the server's settings, so
+  it shows no legal links. Use a build (`make build`) to try them.
 
 ### Passkeys
 
