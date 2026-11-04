@@ -735,6 +735,10 @@
 				"expandAll": "Expand all",
 				"collapseAll": "Collapse all",
 				"addFavourite": "Add favourite",
+				"search": "Search",
+				"searchLabel": "Search this folder",
+				"closeSearch": "Close search",
+				"noMatches": "Nothing matches your search.",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Shown above the tree."
 			},
