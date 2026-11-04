@@ -240,7 +240,8 @@ export function ExplorerTree({
 	const searchBar = searching && children.length > 0 && (
 		<div
 			id={searchId}
-			className="mb-1 flex items-center gap-1.5 rounded-md border border-line bg-paper/40 pl-2"
+			// A solid strip with a divider sets the bar apart from the tree below.
+			className="flex items-center gap-1.5 rounded-t-md border-b border-line bg-paper pl-2"
 		>
 			<Search className={`${style.icon} shrink-0 text-muted`} aria-hidden />
 			<input
