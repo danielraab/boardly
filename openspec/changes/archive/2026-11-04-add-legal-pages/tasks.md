@@ -45,4 +45,4 @@
 
 ## 9. Final check
 
-- [ ] 9.1 Run `make check` and `make test` and confirm both pass. In a built app (`make build` or `docker compose up --build`) with a mounted `legal/` directory, confirm by hand: the footer shows on landing, login, a dashboard and settings, `/imprint` switches content when the language changes, an external privacy URL opens in a new tab, and the mini player doesn't cover the footer.
+- [x] 9.1 Run `make check` and `make test` and confirm both pass. In a built app (`make build` or `docker compose up --build`) with a mounted `legal/` directory, confirm by hand: the footer shows on landing, login, a dashboard and settings, `/imprint` switches content when the language changes, an external privacy URL opens in a new tab, and the mini player doesn't cover the footer.
