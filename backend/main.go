@@ -30,6 +30,7 @@ import (
 	"boardly/internal/httpapi"
 	"boardly/internal/images"
 	"boardly/internal/jobs"
+	"boardly/internal/legal"
 	"boardly/internal/mail"
 	"boardly/internal/media"
 	"boardly/internal/notes"
@@ -53,10 +54,24 @@ func main() {
 	}
 }
 
-func run() error {
-	cfg, err := config.Load(os.LookupEnv)
+// loadConfig reads the configuration and the legal pages it names. Either
+// failing stops the server before anything else starts.
+func loadConfig(lookupEnv func(string) (string, bool)) (config.Config, *legal.Pages, error) {
+	cfg, err := config.Load(lookupEnv)
 	if err != nil {
-		return fmt.Errorf("configuration: %w", err)
+		return config.Config{}, nil, fmt.Errorf("configuration: %w", err)
+	}
+	pages, err := legal.Load(legal.Sources{Dir: cfg.Legal.Dir, ImprintURL: cfg.Legal.ImprintURL, PrivacyURL: cfg.Legal.PrivacyURL})
+	if err != nil {
+		return config.Config{}, nil, fmt.Errorf("configuration: %w", err)
+	}
+	return cfg, pages, nil
+}
+
+func run() error {
+	cfg, legalPages, err := loadConfig(os.LookupEnv)
+	if err != nil {
+		return err
 	}
 	setupLogging(cfg.LogFormat)
 
@@ -128,9 +143,13 @@ func run() error {
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
 		Handler: httpapi.New(httpapi.Deps{
-			DB:          database,
-			Web:         web.Handler(cfg.AppTitle, cfg.AnalyticsSnippet, cfg.MapStyleURL),
+			DB: database,
+			Web: web.Handler(web.Options{
+				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL,
+				ImprintHref: legalPages.Href(legal.Imprint), PrivacyHref: legalPages.Href(legal.Privacy),
+			}),
 			Auth:        authService,
+			Legal:       legalPages,
 			Users:       userStore,
 			Favourites:  favouriteStore,
 			Dashboards:  dashboardStore,

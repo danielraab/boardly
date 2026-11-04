@@ -56,11 +56,33 @@ function Run({ run }: { run: TextRun }) {
 	);
 }
 
+/** Whether links are real links (on read-only pages) rather than inert text. */
+const LinksOpen = createContext(false);
+
 function Inlines({ content }: { content: Inline[] }) {
+	const linksOpen = useContext(LinksOpen);
 	return content.map((inline, i) => {
 		// The content is only rendered, never reordered.
 		const key = i;
 		if (inline.type === "break") return <br key={key} />;
+		if (inline.type === "link" && linksOpen) {
+			// The server only lets http(s) and mailto links into a document.
+			const web = /^https?:/i.test(inline.url);
+			return (
+				<a
+					key={key}
+					href={inline.url}
+					target={web ? "_blank" : undefined}
+					rel={web ? "noopener noreferrer" : undefined}
+					className="text-accent underline underline-offset-2"
+				>
+					{inline.content.map((run, j) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
+						<Run key={j} run={run} />
+					))}
+				</a>
+			);
+		}
 		if (inline.type === "link")
 			// Inert on cards: activating it starts editing like the rest.
 			return (
@@ -211,7 +233,8 @@ function Location({ location }: { location: LocationValue }) {
  * attachments are the note's; images open in the image viewer. With
  * interactiveAttachments, as in widgets, files can be downloaded and audio and
  * video played, while on the cards activating them starts editing like the
- * rest. Locations open their map, without editing.
+ * rest. Locations open their map, without editing. With openLinks, links can
+ * be followed (web links in a new tab); otherwise they are inert text.
  */
 export function NoteRenderer({
 	doc,
@@ -219,10 +242,12 @@ export function NoteRenderer({
 	interactiveAttachments = false,
 	onToggleTask,
 	size,
+	openLinks = false,
 }: {
 	doc: NoteDoc;
 	attachments?: NoteAttachment[];
 	interactiveAttachments?: boolean;
+	openLinks?: boolean;
 	onToggleTask?: OnToggleTask;
 	size?: WidgetSize;
 }) {
@@ -249,12 +274,14 @@ export function NoteRenderer({
 				openLocation: (location, chip) => setMap({ location, chip }),
 			}}
 		>
-			<div className={`space-y-1.5 ${text} break-words`}>
-				{doc.blocks.map((block, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
-					<BlockView key={i} block={block} onToggleTask={onToggleTask} />
-				))}
-			</div>
+			<LinksOpen value={openLinks}>
+				<div className={`space-y-1.5 ${text} break-words`}>
+					{doc.blocks.map((block, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: rendered once, never reordered
+						<BlockView key={i} block={block} onToggleTask={onToggleTask} />
+					))}
+				</div>
+			</LinksOpen>
 			{images.viewer}
 			<LocationMapDialog
 				location={map?.location ?? null}

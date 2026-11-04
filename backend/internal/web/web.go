@@ -31,24 +31,36 @@ const mapStyleMarker = `<meta name="boardly-map-style" content="https://tiles.op
 // headEnd closes the head of index.html; the analytics snippet goes before it.
 const headEnd = "</head>"
 
-// Handler serves the embedded frontend build under the given app title, with
-// analyticsSnippet (may be empty) in the HTML document's head and maps drawn
-// from mapStyleURL (empty keeps the built-in default).
-func Handler(appTitle, analyticsSnippet, mapStyleURL string) http.Handler {
+// Options are the instance settings the server writes into the web app.
+type Options struct {
+	// AppTitle is the product name in index.html and the manifests.
+	AppTitle string
+	// AnalyticsSnippet goes unescaped right before </head>; empty means none.
+	AnalyticsSnippet string
+	// MapStyleURL goes into the map style meta tag; empty keeps the built-in default.
+	MapStyleURL string
+	// ImprintHref and PrivacyHref are the link targets of the legal pages,
+	// written into boardly-imprint and boardly-privacy meta tags; empty
+	// leaves the tag out.
+	ImprintHref string
+	PrivacyHref string
+}
+
+// Handler serves the embedded frontend build with opts filled in.
+func Handler(opts Options) http.Handler {
 	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
 		panic(err)
 	}
-	return NewHandler(sub, appTitle, analyticsSnippet, mapStyleURL)
+	return NewHandler(sub, opts)
 }
 
 // NewHandler serves files from fsys and falls back to index.html for paths
 // that match no file, so client-side routes work on reload. index.html and the
-// web app manifests are served with appTitle as the product name, and
-// index.html carries analyticsSnippet unescaped right before </head> and
-// mapStyleURL, unless it is empty, in its map style meta tag.
-func NewHandler(fsys fs.FS, appTitle, analyticsSnippet, mapStyleURL string) http.Handler {
-	titled, err := titledFiles(fsys, appTitle, analyticsSnippet, mapStyleURL)
+// web app manifests are served with opts.AppTitle as the product name, and
+// index.html carries the other options (see Options).
+func NewHandler(fsys fs.FS, opts Options) http.Handler {
+	titled, err := titledFiles(fsys, opts)
 	if err != nil {
 		panic(err)
 	}
@@ -111,9 +123,10 @@ func serveFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, titled map[st
 }
 
 // titledFiles returns index.html and the root *.webmanifest files of fsys with
-// appTitle filled in, and index.html with analyticsSnippet added and
-// mapStyleURL set, keyed by name. Files that don't exist are left out.
-func titledFiles(fsys fs.FS, appTitle, analyticsSnippet, mapStyleURL string) (map[string][]byte, error) {
+// the app title filled in, and index.html with the other options added, keyed
+// by name. Files that don't exist are left out.
+func titledFiles(fsys fs.FS, opts Options) (map[string][]byte, error) {
+	appTitle, analyticsSnippet, mapStyleURL := opts.AppTitle, opts.AnalyticsSnippet, opts.MapStyleURL
 	out := map[string][]byte{}
 
 	if index, err := fs.ReadFile(fsys, "index.html"); err == nil {
@@ -123,6 +136,18 @@ func titledFiles(fsys fs.FS, appTitle, analyticsSnippet, mapStyleURL string) (ma
 		if mapStyleURL != "" {
 			index = bytes.Replace(index, []byte(mapStyleMarker),
 				[]byte(`<meta name="boardly-map-style" content="`+html.EscapeString(mapStyleURL)+`" />`), 1)
+		}
+		var legal strings.Builder
+		for _, m := range []struct{ name, href string }{
+			{"boardly-imprint", opts.ImprintHref},
+			{"boardly-privacy", opts.PrivacyHref},
+		} {
+			if m.href != "" {
+				fmt.Fprintf(&legal, `<meta name="%s" content="%s" />`, m.name, html.EscapeString(m.href))
+			}
+		}
+		if legal.Len() > 0 {
+			index = bytes.Replace(index, []byte(headEnd), []byte(legal.String()+headEnd), 1)
 		}
 		if analyticsSnippet != "" {
 			// The operator's HTML goes in as written; escaping would break it.

@@ -63,9 +63,12 @@ describe("landing page", () => {
 		expect(github).toHaveAttribute("rel", "noopener noreferrer");
 	});
 
-	it("ends with an 'Open source · GitHub' footer", async () => {
+	it("ends with the app's footer and has none of its own", async () => {
 		renderApp("/");
-		const footer = await screen.findByRole("contentinfo");
+		await screen.findByRole("heading", { level: 1 });
+		const footers = screen.getAllByRole("contentinfo");
+		expect(footers).toHaveLength(1);
+		const footer = footers[0];
 		expect(within(footer).getByText("Open source")).toBeVisible();
 		expect(
 			within(footer).getByRole("link", { name: "GitHub (opens in new tab)" }),

@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
+import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as UserSlugIndexRouteImport } from './routes/$userSlug/index'
@@ -44,6 +46,11 @@ const FavouritesRoute = FavouritesRouteImport.update({
   path: '/favourites',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ImprintRoute = ImprintRouteImport.update({
+  id: '/imprint',
+  path: '/imprint',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MediaRoute = MediaRouteImport.update({
   id: '/media',
   path: '/media',
@@ -52,6 +59,11 @@ const MediaRoute = MediaRouteImport.update({
 const NotesRoute = NotesRouteImport.update({
   id: '/notes',
   path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -100,8 +112,10 @@ export interface FileRoutesByFullPath {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
@@ -116,7 +130,9 @@ export interface FileRoutesByTo {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
@@ -132,8 +148,10 @@ export interface FileRoutesById {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
@@ -150,8 +168,10 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/imprint'
     | '/media'
     | '/notes'
+    | '/privacy'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
@@ -166,7 +186,9 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/imprint'
     | '/media'
+    | '/privacy'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
@@ -181,8 +203,10 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/imprint'
     | '/media'
     | '/notes'
+    | '/privacy'
     | '/settings'
     | '/share'
     | '/$userSlug/$dashboardSlug'
@@ -198,8 +222,10 @@ export interface RootRouteChildren {
   AttachmentsRoute: typeof AttachmentsRoute
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
+  ImprintRoute: typeof ImprintRoute
   MediaRoute: typeof MediaRoute
   NotesRoute: typeof NotesRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   ShareRoute: typeof ShareRoute
   UserSlugDashboardSlugRoute: typeof UserSlugDashboardSlugRoute
@@ -238,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FavouritesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/imprint': {
+      id: '/imprint'
+      path: '/imprint'
+      fullPath: '/imprint'
+      preLoaderRoute: typeof ImprintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/media': {
       id: '/media'
       path: '/media'
@@ -250,6 +283,13 @@ declare module '@tanstack/react-router' {
       path: '/notes'
       fullPath: '/notes'
       preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -328,8 +368,10 @@ const rootRouteChildren: RootRouteChildren = {
   AttachmentsRoute: AttachmentsRoute,
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
+  ImprintRoute: ImprintRoute,
   MediaRoute: MediaRoute,
   NotesRoute: NotesRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   ShareRoute: ShareRoute,
   UserSlugDashboardSlugRoute: UserSlugDashboardSlugRoute,

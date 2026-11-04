@@ -8,6 +8,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Imprint and privacy policy for operators, without an admin area: Markdown files in
+  `BOARDLY_LEGAL_DIR` (`imprint.md`, `imprint.de.md`, `privacy.md`, …, with a fallback when a
+  language has no file of its own) shown at `/imprint` and `/privacy`, or links to other sites with
+  `BOARDLY_IMPRINT_URL` and `BOARDLY_PRIVACY_URL`. The server checks them at startup. Templates are
+  in `docs/legal-example`.
 - OpenAPI documents for every endpoint: `/api/openapi.yaml` for Boardly's API, which links to
   `/api/karakeep/openapi.yaml`, `/api/linkwarden/openapi.yaml` and `/api/memos/openapi.yaml` for
   the connected apps. A test keeps them in step with the registered routes.
@@ -28,6 +33,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Every page now ends with a slim footer that links the imprint and the privacy policy, when they
+  are configured, and "Open source · GitHub". The landing page's own footer is gone.
 - Maps of note locations ask before they load: the map provider (by default
   `tiles.openfreemap.org`) sees the viewer's IP address, so nothing is loaded from it until the
   viewer chooses "Load map", for this page or, with "Always load maps in this browser", for good.

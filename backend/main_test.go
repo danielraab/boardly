@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,3 +89,29 @@ func TestStartJobsRunsLeftoverJobs(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+// TestLoadConfigChecksLegalPages checks that a broken legal directory stops
+// the server before it starts, with the file named.
+func TestLoadConfigChecksLegalPages(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "impressum.md"), []byte("# Impressum"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"BOARDLY_BASE_URL": "http://localhost:8080", "BOARDLY_LEGAL_DIR": dir}
+	lookup := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
+
+	if _, _, err := loadConfig(lookup); err == nil || !strings.Contains(err.Error(), "impressum.md") {
+		t.Fatalf("loadConfig error = %v, want one naming impressum.md", err)
+	}
+
+	if err := os.Rename(filepath.Join(dir, "impressum.md"), filepath.Join(dir, "imprint.de.md")); err != nil {
+		t.Fatal(err)
+	}
+	_, pages, err := loadConfig(lookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pages.Href("imprint") != "/imprint" {
+		t.Fatalf("imprint href = %q", pages.Href("imprint"))
+	}
+}

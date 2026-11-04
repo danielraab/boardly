@@ -62,11 +62,23 @@ type Config struct {
 	// MapStyleURL is the MapLibre style that maps in notes are drawn from.
 	MapStyleURL string
 
+	Legal Legal
+
 	// AccountDeletionDays is the grace period, in days, between scheduling an
 	// account's deletion and carrying it out. 0 deletes at the next sweep.
 	AccountDeletionDays int
 
 	Exports Exports
+}
+
+// Legal names the sources of the legal pages (imprint and privacy policy).
+// Empty fields mean unset; the files in Dir are checked by the legal package.
+type Legal struct {
+	// Dir holds the pages' Markdown files.
+	Dir string
+	// ImprintURL and PrivacyURL are external pages, absolute http(s) URLs.
+	ImprintURL string
+	PrivacyURL string
 }
 
 // Exports holds the per-user limits of data exports. 0 turns a limit off.
@@ -305,6 +317,21 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("BOARDLY_MAP_STYLE_URL: %q must be an absolute http(s) URL", v)
 		}
 		cfg.MapStyleURL = v
+	}
+
+	cfg.Legal.Dir = strings.TrimSpace(getenv("BOARDLY_LEGAL_DIR"))
+	for _, l := range []struct {
+		key string
+		dst *string
+	}{{"BOARDLY_IMPRINT_URL", &cfg.Legal.ImprintURL}, {"BOARDLY_PRIVACY_URL", &cfg.Legal.PrivacyURL}} {
+		v := strings.TrimSpace(getenv(l.key))
+		if v == "" {
+			continue
+		}
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("%s: %q must be an absolute http(s) URL", l.key, v)
+		}
+		*l.dst = v
 	}
 
 	return cfg, nil
