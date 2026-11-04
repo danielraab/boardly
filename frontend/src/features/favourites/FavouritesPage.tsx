@@ -69,6 +69,7 @@ import {
 	SelectionBar,
 } from "./BulkActions";
 import { DeleteDialog, type DeleteTarget } from "./DeleteDialog";
+import { Highlighted } from "./Highlighted";
 import { ManageTagsDialog, type TagChange } from "./ManageTagsDialog";
 import { NodeDialog, type NodeDialogTarget } from "./NodeDialog";
 import {
@@ -81,7 +82,6 @@ import {
 	findParent,
 	flatten,
 	folderPath,
-	highlight,
 	type Indicator,
 	indicatorFor,
 	isFiltering,
@@ -1292,19 +1292,5 @@ function TreeRow({
 			</div>
 			<div className="flex shrink-0 items-center">{actionButtons}</div>
 		</li>
-	);
-}
-
-function Highlighted({ text, terms }: { text: string; terms: string[] }) {
-	if (terms.length === 0) return text;
-	return highlight(text, terms).map((part, index) =>
-		part.match ? (
-			// biome-ignore lint/suspicious/noArrayIndexKey: parts have no other identity
-			<mark key={index} className="rounded-sm bg-accent/25 text-inherit">
-				{part.text}
-			</mark>
-		) : (
-			part.text
-		),
 	);
 }

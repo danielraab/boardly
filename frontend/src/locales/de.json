@@ -735,6 +735,10 @@
 				"expandAll": "Alle aufklappen",
 				"collapseAll": "Alle zuklappen",
 				"addFavourite": "Favorit hinzufügen",
+				"search": "Suchen",
+				"searchLabel": "Diesen Ordner durchsuchen",
+				"closeSearch": "Suche schließen",
+				"noMatches": "Nichts passt zu deiner Suche.",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Wird über dem Baum angezeigt."
 			},

@@ -202,10 +202,12 @@ describe("collapse state", () => {
 
 	it("has no expand-all button without folders", () => {
 		tree({ children: [mail] });
-		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.getAllByRole("button").map((b) => b.ariaLabel)).toEqual([
+			"Search",
+		]);
 	});
 
-	it("shows an add button left of expand all, in the same size", async () => {
+	it("shows add, search and expand all in this order, in the same size", async () => {
 		const user = userEvent.setup();
 		const onAdd = vi.fn();
 		render(
@@ -218,9 +220,12 @@ describe("collapse state", () => {
 			/>,
 		);
 		const add = screen.getByRole("button", { name: "Add favourite" });
+		const search = screen.getByRole("button", { name: "Search" });
 		const expand = screen.getByRole("button", { name: "Expand all" });
-		expect(add.nextElementSibling).toBe(expand);
+		expect(add.nextElementSibling).toBe(search);
+		expect(search.nextElementSibling).toBe(expand);
 		expect(add.className).toBe(expand.className);
+		expect(search.className).toBe(expand.className);
 		await user.click(add);
 		expect(onAdd).toHaveBeenCalledOnce();
 	});
@@ -269,6 +274,183 @@ async function openEditor(sections: Widget[], more = {}) {
 	await screen.findByRole("button", { name: "Save and exit" });
 	return { api, ...app };
 }
+
+describe("explorer search", () => {
+	const jira: FavouriteNode = {
+		id: "jira",
+		kind: "link",
+		title: "Jira",
+		url: "https://jira.example.org/",
+	};
+	const docs: FavouriteNode = {
+		id: "docs",
+		kind: "folder",
+		title: "Docs",
+		children: [
+			{ id: "wiki", kind: "link", title: "Wiki", url: "https://wiki.example/" },
+		],
+	};
+	const tagged: FavouriteNode = {
+		...mail,
+		title: "Mail",
+		url: "https://mail.example.com/",
+		tags: ["daily"],
+	};
+	const data: ExplorerData = {
+		children: [{ ...tools, children: [gitlab, jira] }, docs, tagged],
+	};
+	const field = () =>
+		screen.getByRole("searchbox", { name: "Search this folder" });
+	const open = async () => {
+		const user = userEvent.setup();
+		const view = tree(data);
+		await user.click(screen.getByRole("button", { name: "Search" }));
+		return { user, ...view };
+	};
+	const shownNames = () =>
+		[...document.querySelectorAll("li > :first-child")].map(
+			(row) => row.textContent,
+		);
+
+	it("opens a focused field from the search button", async () => {
+		tree(data);
+		expect(screen.queryByRole("searchbox")).toBeNull();
+		const button = screen.getByRole("button", { name: "Search" });
+		expect(button).toHaveAttribute("aria-expanded", "false");
+		await userEvent.setup().click(button);
+		expect(field()).toHaveFocus();
+		expect(button).toHaveAttribute("aria-expanded", "true");
+		expect(button).toHaveAttribute("aria-controls", field().parentElement?.id);
+	});
+
+	it("filters by title, expands matches and highlights them", async () => {
+		const { user } = await open();
+		await user.type(field(), "git");
+		expect(shownNames()).toEqual(["Tools", "GitLab"]);
+		expect(screen.getByRole("button", { name: "Tools" })).toHaveAttribute(
+			"aria-expanded",
+			"true",
+		);
+		const mark = screen
+			.getByRole("link", { name: "GitLab" })
+			.querySelector("mark");
+		expect(mark).toHaveTextContent("Git");
+	});
+
+	it("needs every term, also from the folder path", async () => {
+		const { user } = await open();
+		await user.type(field(), "tools jira");
+		expect(shownNames()).toEqual(["Tools", "Jira"]);
+	});
+
+	it("shows a matching folder with everything inside", async () => {
+		const { user } = await open();
+		await user.type(field(), "TOOLS");
+		expect(shownNames()).toEqual(["Tools", "GitLab", "Jira"]);
+	});
+
+	it("matches URLs and tags", async () => {
+		const { user } = await open();
+		await user.type(field(), "example.com");
+		expect(shownNames()).toEqual(["Mail"]);
+		await user.clear(field());
+		await user.type(field(), "daily");
+		expect(shownNames()).toEqual(["Mail"]);
+	});
+
+	it("says when nothing matches", async () => {
+		const { user } = await open();
+		await user.type(field(), "zzz");
+		expect(screen.getByText("Nothing matches your search.")).toBeVisible();
+		expect(screen.queryByRole("listitem")).toBeNull();
+	});
+
+	it("treats only whitespace as no search", async () => {
+		const { user } = await open();
+		await user.type(field(), "   ");
+		expect(shownNames()).toEqual(["Tools", "Docs", "Mail"]);
+		expect(screen.getByRole("button", { name: "Expand all" })).toBeVisible();
+	});
+
+	it("hides expand all while searching", async () => {
+		const { user } = await open();
+		await user.type(field(), "git");
+		expect(screen.queryByRole("button", { name: "Expand all" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Collapse all" })).toBeNull();
+		await user.clear(field());
+		expect(screen.getByRole("button", { name: "Expand all" })).toBeVisible();
+	});
+
+	it("keeps the stored folders and restores them when closed", async () => {
+		const user = userEvent.setup();
+		tree(data);
+		await user.click(screen.getByRole("button", { name: "Docs" }));
+		const stored = localStorage.getItem(storageKey("w1"));
+		await user.click(screen.getByRole("button", { name: "Search" }));
+		await user.type(field(), "git");
+		// Folders can't be collapsed while searching.
+		await user.click(screen.getByRole("button", { name: "Tools" }));
+		expect(screen.getByRole("link", { name: "GitLab" })).toBeVisible();
+		await user.click(field());
+		await user.keyboard("{Escape}");
+
+		expect(screen.queryByRole("searchbox")).toBeNull();
+		expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
+		expect(localStorage.getItem(storageKey("w1"))).toBe(stored);
+		expect(shownNames()).toEqual(["Tools", "Docs", "Wiki", "Mail"]);
+	});
+
+	it("closes and clears with the close button and the search button", async () => {
+		const { user } = await open();
+		await user.type(field(), "git");
+		await user.click(screen.getByRole("button", { name: "Close search" }));
+		expect(screen.queryByRole("searchbox")).toBeNull();
+		expect(shownNames()).toEqual(["Tools", "Docs", "Mail"]);
+
+		const button = screen.getByRole("button", { name: "Search" });
+		await user.click(button);
+		expect(field()).toHaveValue("");
+		await user.type(field(), "git");
+		await user.click(button);
+		expect(screen.queryByRole("searchbox")).toBeNull();
+		await user.click(button);
+		expect(field()).toHaveValue("");
+	});
+
+	it("is not stored", async () => {
+		const { user, unmount } = await open();
+		await user.type(field(), "git");
+		unmount();
+		tree(data);
+		expect(screen.queryByRole("searchbox")).toBeNull();
+		expect(shownNames()).toEqual(["Tools", "Docs", "Mail"]);
+	});
+
+	it("works with a title and in edit mode", async () => {
+		const user = userEvent.setup();
+		render(
+			<ExplorerTree
+				widgetId="w1"
+				size="S"
+				data={data}
+				editing
+				title="Work links"
+			/>,
+		);
+		await user.click(screen.getByRole("button", { name: "Search" }));
+		await user.type(field(), "wiki");
+		expect(shownNames()).toEqual(["Docs", "Wiki"]);
+		expect(screen.queryByRole("link")).toBeNull();
+	});
+
+	it("has no search button for an empty or missing folder", () => {
+		const { unmount } = tree({ children: [] });
+		expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
+		unmount();
+		tree({ missing: true });
+		expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
+	});
+});
 
 describe("the favourite explorer on a dashboard", () => {
 	it("shows the server's tree in view mode", async () => {
@@ -461,6 +643,25 @@ describe("adding a favourite from the explorer", () => {
 		renderApp("/ann/home");
 		await screen.findByRole("link", { name: "https://mail.example.org/inbox" });
 		expect(screen.queryByRole("button", { name: "Add favourite" })).toBeNull();
+	});
+
+	it("lets visitors search", async () => {
+		mockApi(
+			viewRoutes(
+				[section("Work", {}, explorer("e1", {}, { children: [tools, mail] }))],
+				{ isOwner: false, id: undefined },
+			),
+		);
+		const { user } = renderApp("/ann/home");
+		await user.click(await screen.findByRole("button", { name: "Search" }));
+		await user.type(
+			screen.getByRole("searchbox", { name: "Search this folder" }),
+			"gitlab",
+		);
+		expect(screen.getByRole("link", { name: "GitLab" })).toBeVisible();
+		expect(
+			screen.queryByRole("link", { name: "https://mail.example.org/inbox" }),
+		).toBeNull();
 	});
 
 	it("has no add button for a deleted folder", async () => {
