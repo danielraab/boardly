@@ -15,5 +15,5 @@
 ## 3. Specs, docs and checks
 
 - [x] 3.1 Confirm that export/import (`backend/internal/export`, `data-import`) and the OpenAPI documents need no change, since no data, config or route changes; note this when archiving
-- [ ] 3.2 Run `make check` and `make test` and verify both pass
+- [x] 3.2 Run `make check` and `make test` and verify both pass
 - [x] 3.3 Run `openspec validate add-explorer-search --strict` and verify it passes
