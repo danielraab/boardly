@@ -39,6 +39,46 @@ function mockShareApi(
 	});
 }
 
+/**
+ * Makes creating folders and categories stateful, so a created one is listed
+ * when the page fetches again.
+ */
+function withCreates(api: ReturnType<typeof mockApi>) {
+	const folders: FavouriteNode = structuredClone(tree);
+	const cats = structuredClone(categories);
+	api.set({
+		"GET /api/favourites": () => ({ body: folders }),
+		"GET /api/note-categories": () => ({ body: cats }),
+		"POST /api/favourites": ({ body }) => {
+			const fields = body as { parentId: string; kind: string; title: string };
+			const node: FavouriteNode =
+				fields.kind === "folder"
+					? {
+							id: `f-${fields.title}`,
+							kind: "folder",
+							title: fields.title,
+							children: [],
+						}
+					: ({ id: "new", ...fields } as unknown as FavouriteNode);
+			if (node.kind === "folder") {
+				const parent =
+					fields.parentId === "root"
+						? folders
+						: folders.children?.find((c) => c.id === fields.parentId);
+				parent?.children?.push(node);
+			}
+			return { status: 201, body: node };
+		},
+		"POST /api/note-categories": ({ body }) => {
+			const fields = body as (typeof categories)[number];
+			const created = { ...fields, id: `c-${fields.title}` };
+			cats.push(created);
+			return { status: 201, body: created };
+		},
+	});
+	return api;
+}
+
 const share = (params: Record<string, string>) =>
 	`/share?${new URLSearchParams(params)}`;
 
@@ -183,6 +223,93 @@ describe("save link page", () => {
 		await waitFor(() => expect(router.state.location.href).toBe("/share"));
 	});
 
+	it("creates a subfolder of the chosen folder and saves into it", async () => {
+		const api = withCreates(mockShareApi());
+		const { user } = renderApp(share({ url: "https://example.org/docs" }));
+		await user.click(await folderRadio("Work"));
+		await user.click(screen.getByRole("button", { name: "New folder" }));
+		const dialog = await screen.findByRole("dialog");
+		expect(within(dialog).getByText("In “Work”")).toBeVisible();
+		await user.type(within(dialog).getByLabelText("Name"), "Reading");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		expect(api.callsTo("POST", "/api/favourites")[0].body).toEqual({
+			parentId: "work",
+			kind: "folder",
+			title: "Reading",
+		});
+		await waitFor(async () =>
+			expect(await folderRadio("Reading")).toBeChecked(),
+		);
+		expect(screen.getByLabelText("URL")).toHaveValue(
+			"https://example.org/docs",
+		);
+
+		await user.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByText("It's now in “Reading”.")).toBeVisible();
+		expect(api.callsTo("POST", "/api/favourites")[1].body).toMatchObject({
+			parentId: "f-Reading",
+			kind: "link",
+		});
+	});
+
+	it("creates a top-level folder from the root", async () => {
+		const api = withCreates(mockShareApi());
+		const { user } = renderApp("/share");
+		expect(await folderRadio("Favourites")).toBeChecked();
+		await user.click(screen.getByRole("button", { name: "New folder" }));
+		const dialog = await screen.findByRole("dialog");
+		await user.type(within(dialog).getByLabelText("Name"), "Inbox");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(async () => expect(await folderRadio("Inbox")).toBeChecked());
+		expect(api.callsTo("POST", "/api/favourites")[0].body).toMatchObject({
+			parentId: "root",
+			kind: "folder",
+		});
+	});
+
+	it("keeps the form when the new folder dialog is cancelled", async () => {
+		const api = withCreates(mockShareApi());
+		const { user } = renderApp(
+			share({ title: "Docs", url: "https://example.org/docs" }),
+		);
+		await user.click(await folderRadio("Home"));
+		await user.type(screen.getByLabelText("Tags"), "docs{Enter}");
+		await user.click(screen.getByRole("button", { name: "New folder" }));
+		const dialog = await screen.findByRole("dialog");
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		expect(api.callsTo("POST", "/api/favourites")).toHaveLength(0);
+		expect(screen.getByLabelText("URL")).toHaveValue(
+			"https://example.org/docs",
+		);
+		expect(screen.getByLabelText("Title (optional)")).toHaveValue("Docs");
+		expect(screen.getByText("docs")).toBeVisible();
+		expect(await folderRadio("Home")).toBeChecked();
+	});
+
+	it("doesn't make a new folder the default", async () => {
+		withCreates(mockShareApi("home"));
+		const { user, router } = renderApp(share({ url: "https://example.org" }));
+		await folderRadio("Home");
+		await user.click(screen.getByRole("button", { name: "New folder" }));
+		const dialog = await screen.findByRole("dialog");
+		await user.type(within(dialog).getByLabelText("Name"), "Reading");
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(async () =>
+			expect(await folderRadio("Reading")).toBeChecked(),
+		);
+		await user.click(screen.getByRole("button", { name: "Save" }));
+		await screen.findByRole("heading", { name: "Link saved" });
+
+		await router.navigate({ to: "/" });
+		await router.navigate({ to: "/share" });
+		expect(await folderRadio("Home")).toBeChecked();
+	});
+
 	it("goes home on cancel", async () => {
 		mockShareApi();
 		const { user, router } = renderApp("/share");
@@ -252,6 +379,101 @@ describe("save note from a share", () => {
 			text: "Meet at 8",
 			categoryId: "ideas",
 		});
+	});
+
+	const newCategory = async (user: ReturnType<typeof renderApp>["user"]) => {
+		await user.click(screen.getByRole("button", { name: "New category" }));
+		return screen.findByRole("dialog", { name: "New category" });
+	};
+
+	it("creates a subcategory of the chosen category and saves into it", async () => {
+		const api = withCreates(mockShareApi(null, "inbox"));
+		const { user } = renderApp(share({ title: "Plan", text: "Meet at 8" }));
+		expect(await categoryRadio("Inbox")).toBeChecked();
+		const dialog = await newCategory(user);
+		expect(
+			within(dialog).getByRole("combobox", { name: "Parent category" }),
+		).toHaveValue("inbox");
+		await user.type(
+			within(dialog).getByRole("textbox", { name: "Title" }),
+			"Garden",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		expect(api.callsTo("POST", "/api/note-categories")[0].body).toMatchObject({
+			title: "Garden",
+			parentId: "inbox",
+		});
+		await waitFor(async () =>
+			expect(await categoryRadio("Garden")).toBeChecked(),
+		);
+		expect(screen.getByLabelText("Text")).toHaveValue("Meet at 8");
+
+		await user.click(screen.getByRole("button", { name: "Save" }));
+		expect(
+			await screen.findByText("It's now in “Inbox › Garden”."),
+		).toBeVisible();
+		expect(api.callsTo("POST", "/api/notes")[0].body).toMatchObject({
+			categoryId: "c-Garden",
+		});
+	});
+
+	it("creates a top-level category from no category", async () => {
+		const api = withCreates(mockShareApi());
+		const { user } = renderApp(share({ text: "Meet at 8" }));
+		expect(await categoryRadio("No category")).toBeChecked();
+		const dialog = await newCategory(user);
+		expect(
+			within(dialog).getByRole("combobox", { name: "Parent category" }),
+		).toHaveValue("");
+		await user.type(
+			within(dialog).getByRole("textbox", { name: "Title" }),
+			"Travel",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+		await waitFor(async () =>
+			expect(await categoryRadio("Travel")).toBeChecked(),
+		);
+		expect(api.callsTo("POST", "/api/note-categories")[0].body).toMatchObject({
+			parentId: null,
+		});
+	});
+
+	it("keeps the form when the new category dialog is cancelled", async () => {
+		const api = withCreates(mockShareApi());
+		const { user } = renderApp(share({ title: "Plan", text: "Meet at 8" }));
+		await user.click(await categoryRadio("Ideas"));
+		const dialog = await newCategory(user);
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+		expect(api.callsTo("POST", "/api/note-categories")).toHaveLength(0);
+		expect(screen.getByLabelText("Title (optional)")).toHaveValue("Plan");
+		expect(screen.getByLabelText("Text")).toHaveValue("Meet at 8");
+		expect(await categoryRadio("Ideas")).toBeChecked();
+	});
+
+	it("doesn't make a new category the default", async () => {
+		withCreates(mockShareApi(null, "inbox"));
+		const { user, router } = renderApp(share({ text: "Meet at 8" }));
+		await categoryRadio("Inbox");
+		const dialog = await newCategory(user);
+		await user.type(
+			within(dialog).getByRole("textbox", { name: "Title" }),
+			"Garden",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Save" }));
+		await waitFor(async () =>
+			expect(await categoryRadio("Garden")).toBeChecked(),
+		);
+		await user.click(screen.getByRole("button", { name: "Save" }));
+		await screen.findByRole("heading", { name: "Note saved" });
+
+		await router.navigate({ to: "/" });
+		await router.navigate({ to: "/share", search: { text: "Again" } });
+		expect(await categoryRadio("Inbox")).toBeChecked();
 	});
 
 	it("explains a category that is gone", async () => {

@@ -937,6 +937,7 @@
 		"savedText": "Er ist jetzt in „{{folder}}“.",
 		"openFavourites": "Favoriten öffnen",
 		"saveAnother": "Weiteren Link speichern",
+		"newFolder": "Neuer Ordner",
 		"mode": "Was speichern",
 		"modes": {
 			"link": "Link",
@@ -949,6 +950,7 @@
 			"textLabel": "Text",
 			"category": "Kategorie",
 			"noCategory": "Keine Kategorie",
+			"newCategory": "Neue Kategorie",
 			"savedTitle": "Notiz gespeichert",
 			"savedText": "Sie ist jetzt in „{{category}}“.",
 			"savedTextNone": "Sie ist jetzt in deinen Notizen, ohne Kategorie.",

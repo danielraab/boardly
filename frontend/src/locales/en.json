@@ -937,6 +937,7 @@
 		"savedText": "It's now in “{{folder}}”.",
 		"openFavourites": "Open favourites",
 		"saveAnother": "Save another link",
+		"newFolder": "New folder",
 		"mode": "What to save",
 		"modes": {
 			"link": "Link",
@@ -949,6 +950,7 @@
 			"textLabel": "Text",
 			"category": "Category",
 			"noCategory": "No category",
+			"newCategory": "New category",
 			"savedTitle": "Note saved",
 			"savedText": "It's now in “{{category}}”.",
 			"savedTextNone": "It's now in your notes, without a category.",
