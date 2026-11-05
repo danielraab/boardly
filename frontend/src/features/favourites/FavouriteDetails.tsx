@@ -7,6 +7,7 @@ import {
 	iconButton,
 	primaryButton,
 	secondaryButton,
+	secondaryIconButton,
 } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { ImageIcon, imageUrl } from "#/components/ImageIcon";
@@ -179,13 +180,18 @@ function Details({
 					</ul>
 				)}
 			</div>
-			<div className="mt-6 flex justify-end gap-3">
+			<div className="mt-6 flex flex-wrap justify-end gap-3">
 				<button type="button" className={secondaryButton} onClick={onEdit}>
 					{t("favourites.details.edit")}
 				</button>
-				<button type="button" className={secondaryButton} onClick={onOffline}>
+				<button
+					type="button"
+					className={secondaryIconButton}
+					onClick={onOffline}
+					aria-label={t("favourites.offline.button")}
+					title={t("favourites.offline.button")}
+				>
 					<Archive className="size-4" aria-hidden />
-					{t("favourites.offline.button")}
 				</button>
 				<a
 					href={url}

@@ -189,9 +189,18 @@ describe("FavouriteDetailsDialog", () => {
 		renderDialog("go");
 		const dialog = screen.getByRole("dialog", { name: "Go tour" });
 		const actions = [...dialog.querySelectorAll("button, a")]
-			.map((el) => el.textContent?.trim() ?? "")
+			.map(
+				(el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "",
+			)
 			.filter((name) => ["Edit", "Offline copy", "Open"].includes(name));
 		expect(actions).toEqual(["Edit", "Offline copy", "Open"]);
+	});
+
+	it("shows Offline copy as an icon with a tooltip", () => {
+		renderDialog("go");
+		const offline = screen.getByRole("button", { name: "Offline copy" });
+		expect(offline).toHaveTextContent(/^$/);
+		expect(offline).toHaveAttribute("title", "Offline copy");
 	});
 
 	it("shows the offline copy and returns to the details", async () => {
