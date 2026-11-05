@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { BookmarkCheck, NotebookPen } from "lucide-react";
+import { BookmarkCheck, NotebookPen, Plus } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
@@ -14,6 +14,10 @@ import {
 	favouritesQueryOptions,
 } from "#/features/favourites/api";
 import { LinkFields } from "#/features/favourites/LinkFields";
+import {
+	NodeDialog,
+	type NodeDialogTarget,
+} from "#/features/favourites/NodeDialog";
 import { findNode, label } from "#/features/favourites/tree";
 import {
 	checkLinkTitle,
@@ -30,6 +34,10 @@ import {
 	noteCategoriesQueryOptions,
 	notesQueryKey,
 } from "#/features/notes/api";
+import {
+	CategoryDialog,
+	type CategoryDialogTarget,
+} from "#/features/notes/categories/CategoryDialog";
 import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
 import { categoryPath } from "#/features/notes/categories/tree";
 import { ApiError } from "#/lib/api";
@@ -92,6 +100,12 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 	const [chosenCategory, setChosenCategory] = useState<{
 		id: string | null;
 	} | null>(null);
+
+	// The dialogs for a new folder or category, inside the chosen one.
+	const [newFolder, setNewFolder] = useState<NodeDialogTarget | null>(null);
+	const [newCategory, setNewCategory] = useState<CategoryDialogTarget | null>(
+		null,
+	);
 
 	const [problem, setProblem] = useState<string | null>(null);
 	const [saved, setSaved] = useState<Saved | null>(null);
@@ -178,6 +192,17 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 			null;
 		setProblem(found && t(`favourites.errors.${found}`));
 		if (!found) saveLink.mutate();
+	}
+
+	function openNewFolder() {
+		const parent = root && findNode(root, folderId);
+		if (!root || parent?.kind !== "folder") return;
+		setNewFolder({
+			kind: "folder",
+			parent,
+			parentLabel:
+				parent.id === root.id ? t("favourites.title") : label(parent),
+		});
 	}
 
 	function switchTo(next: ShareMode) {
@@ -288,7 +313,15 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 						onTitleChange={setTitle}
 						tags={tags}
 						onTagsChange={setTags}
-						folder={{ value: folderId, onChange: setChosenFolder }}
+						folder={{
+							value: folderId,
+							onChange: setChosenFolder,
+							action: (
+								<NewButton disabled={!root} onClick={openNewFolder}>
+									{t("share.newFolder")}
+								</NewButton>
+							),
+						}}
 						hint
 					/>
 				) : (
@@ -330,6 +363,12 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 							value={categoryId}
 							onChange={(id) => setChosenCategory({ id })}
 						/>
+						<NewButton
+							disabled={categories.isPending}
+							onClick={() => setNewCategory({ parentId: categoryId })}
+						>
+							{t("share.note.newCategory")}
+						</NewButton>
 					</>
 				)}
 				{problem && (
@@ -352,7 +391,43 @@ export function SharePage({ shared }: { shared: ShareParams }) {
 					</button>
 				</div>
 			</form>
+			{/* Outside the form: React events bubble through portals, so a
+			    dialog's submit inside it would also submit this form. */}
+			<NodeDialog
+				target={newFolder}
+				onClose={() => setNewFolder(null)}
+				onSaved={(node) => setChosenFolder(node.id)}
+			/>
+			<CategoryDialog
+				target={newCategory}
+				categories={categories.data ?? []}
+				onClose={() => setNewCategory(null)}
+				onSaved={(category) => setChosenCategory({ id: category.id })}
+			/>
 		</section>
+	);
+}
+
+/** A button below a picker that creates a new folder or category. */
+function NewButton({
+	disabled,
+	onClick,
+	children,
+}: {
+	disabled: boolean;
+	onClick: () => void;
+	children: ReactNode;
+}) {
+	return (
+		<button
+			type="button"
+			className={secondaryButton}
+			disabled={disabled}
+			onClick={onClick}
+		>
+			<Plus className="size-4" strokeWidth={1.75} aria-hidden />
+			{children}
+		</button>
 	);
 }
 

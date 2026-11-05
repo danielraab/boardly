@@ -27,14 +27,17 @@ export type CategoryDialogTarget =
 
 export const maxCategoryTitle = 200;
 
+/** onSaved gets the created or edited category, before the dialog closes. */
 export function CategoryDialog({
 	target,
 	categories,
 	onClose,
+	onSaved,
 }: {
 	target: CategoryDialogTarget | null;
 	categories: NoteCategory[];
 	onClose: () => void;
+	onSaved?: (category: NoteCategory) => void;
 }) {
 	return (
 		<Dialog.Root
@@ -52,6 +55,7 @@ export function CategoryDialog({
 							target={target}
 							categories={categories}
 							onClose={onClose}
+							onSaved={onSaved}
 						/>
 					)}
 				</Dialog.Popup>
@@ -64,10 +68,12 @@ function CategoryForm({
 	target,
 	categories,
 	onClose,
+	onSaved,
 }: {
 	target: CategoryDialogTarget;
 	categories: NoteCategory[];
 	onClose: () => void;
+	onSaved?: (category: NoteCategory) => void;
 }) {
 	const { t, i18n } = useTranslation();
 	const queryClient = useQueryClient();
@@ -113,8 +119,9 @@ function CategoryForm({
 				? updateCategory(editing.id, fields)
 				: createCategory(fields);
 		},
-		onSuccess: () => {
+		onSuccess: (category) => {
 			void queryClient.invalidateQueries({ queryKey: noteCategoriesQueryKey });
+			onSaved?.(category);
 			onClose();
 		},
 	});

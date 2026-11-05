@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { textInput } from "#/components/dialogStyles";
 import { DomainHint } from "./DomainHint";
@@ -7,7 +8,7 @@ import { MAX_LINK_TITLE, MAX_URL } from "./validate";
 
 /**
  * The fields of a link: title, URL, tags and, when folder is given, the folder
- * to save it in. With hint, a note that the page's description and preview are
+ * to save it in, followed by folder.action when given. With hint, a note that the page's description and preview are
  * loaded in the background, for new links. Under the URL, a hint with how many
  * links are on its domain, not counting excludeId (the link being edited).
  * Used by the favourites dialog and the "Save link" page.
@@ -29,7 +30,11 @@ export function LinkFields({
 	onTitleChange: (title: string) => void;
 	tags: string[];
 	onTagsChange: (tags: string[]) => void;
-	folder?: { value: string; onChange: (id: string) => void };
+	folder?: {
+		value: string;
+		onChange: (id: string) => void;
+		action?: ReactNode;
+	};
 	hint?: boolean;
 	excludeId?: string;
 }) {
@@ -77,6 +82,7 @@ export function LinkFields({
 					onChange={folder.onChange}
 				/>
 			)}
+			{folder?.action}
 			{hint && (
 				<p className="text-sm text-muted">{t("favourites.dialog.fetchHint")}</p>
 			)}
