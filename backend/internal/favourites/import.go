@@ -48,6 +48,20 @@ type ImportLink struct {
 	SourceID string
 	// PreviewImageID is an image of the user to show as the link's preview.
 	PreviewImageID *string
+	// OfflineCopy, if set, becomes the link's offline copy.
+	OfflineCopy *ImportOfflineCopy
+}
+
+// ImportOfflineCopy is the offline copy of an imported link. ArticleID and
+// ScreenshotID name files already stored in the offline copies' directory;
+// at least one is set. Imported is set when the link was added, so the copy
+// was stored; a skipped duplicate keeps its own copy.
+type ImportOfflineCopy struct {
+	CapturedAt   time.Time
+	Title        *string
+	ArticleID    *string
+	ScreenshotID *string
+	Imported     bool
 }
 
 // ImportReport counts what an import added and left out.
@@ -273,7 +287,21 @@ func (im *importer) addLink(ctx context.Context, parentID string, position int, 
 	if err := im.s.setTags(ctx, im.q, im.userID, id, tags); err != nil {
 		return false, err
 	}
-	if err := im.s.queueFetches(ctx, im.q, im.userID, id, link); err != nil {
+	if c := l.OfflineCopy; c != nil && (c.ArticleID != nil || c.ScreenshotID != nil) {
+		captured := c.CapturedAt
+		if captured.IsZero() {
+			captured = im.now
+		}
+		if _, err := im.q.ExecContext(ctx,
+			`INSERT INTO offline_copies (node_id, user_id, url, status, title, article_id, screenshot_id, captured_at, updated_at)
+			 VALUES (?, ?, ?, 'ready', ?, ?, ?, ?, ?)`,
+			id, im.userID, link, c.Title, c.ArticleID, c.ScreenshotID, db.FormatTime(captured), db.FormatTime(im.now),
+		); err != nil {
+			return false, err
+		}
+		c.Imported = true
+	}
+	if err := im.s.queueFetches(ctx, im.q, im.userID, id, link, false); err != nil {
 		return false, err
 	}
 	if im.urls != nil {

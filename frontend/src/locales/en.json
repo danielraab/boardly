@@ -289,6 +289,8 @@
 				"images_other": "{{count}} images",
 				"attachments_one": "{{count}} attachment",
 				"attachments_other": "{{count}} attachments",
+				"offlineCopies_one": "{{count}} offline copy file",
+				"offlineCopies_other": "{{count}} offline copy files",
 				"duplicates_one": "{{count}} link was already in your favourites",
 				"duplicates_other": "{{count}} links were already in your favourites",
 				"invalidUrls_one": "{{count}} link had an invalid address",
@@ -571,6 +573,29 @@
 			"close": "Close",
 			"tags": "Tags",
 			"previewAlt": "Preview image"
+		},
+		"offline": {
+			"button": "Offline copy",
+			"saved": "Saved {{date}}",
+			"pending": "Saving offline copy…",
+			"failed": "The offline copy couldn't be saved.",
+			"none": "No offline copy yet.",
+			"article": "Article",
+			"screenshot": "Screenshot",
+			"articleFrame": "Article of {{title}}",
+			"screenshotAlt": "Screenshot of {{title}}",
+			"refresh": "Refresh",
+			"openOriginal": "Open original",
+			"rateLimited": "Too many refreshes, try again later.",
+			"refreshFailed": "The refresh couldn't be requested.",
+			"close": "Close",
+			"reasons": {
+				"fetch_failed": "The page couldn't be loaded.",
+				"blocked_address": "The page is on a private network address.",
+				"too_large": "The page is too large.",
+				"not_html": "The address isn't a web page.",
+				"no_content": "The page has no readable content."
+			}
 		}
 	},
 	"dashboards": {

@@ -68,6 +68,37 @@ func (s *Service) WriteArchive(w io.Writer, doc *Document) error {
 		}
 	}
 
+	var offlineErr error
+	walkLinks(doc.Favourites, func(n *Node) {
+		c := n.OfflineCopy
+		if c == nil || offlineErr != nil {
+			return
+		}
+		for _, part := range []struct {
+			id, name, contentType string
+			path                  **string
+		}{
+			{c.articleID, "offline/" + n.ID + "/article.html", "text/html", &c.Article},
+			{c.screenshotID, "offline/" + n.ID + "/screenshot.jpg", "image/jpeg", &c.Screenshot},
+		} {
+			if part.id == "" {
+				continue
+			}
+			ok, err := addFile(zw, s.OfflineFiles, part.id, part.name, part.contentType, c.CapturedAt)
+			if err != nil {
+				offlineErr = fmt.Errorf("adding the offline copy of %s: %w", n.ID, err)
+				return
+			}
+			if ok {
+				name := part.name
+				*part.path = &name
+			}
+		}
+	})
+	if offlineErr != nil {
+		return offlineErr
+	}
+
 	header := &zip.FileHeader{Name: DocumentName, Method: zip.Deflate}
 	header.Modified, _ = time.Parse(time.RFC3339, doc.ExportedAt)
 	f, err := zw.CreateHeader(header)
@@ -78,6 +109,19 @@ func (s *Service) WriteArchive(w io.Writer, doc *Document) error {
 		return err
 	}
 	return zw.Close()
+}
+
+// walkLinks calls fn for every link below n, in the order of the tree.
+func walkLinks(n *Node, fn func(*Node)) {
+	if n == nil {
+		return
+	}
+	if n.Kind == "link" {
+		fn(n)
+	}
+	for _, c := range n.Children {
+		walkLinks(c, fn)
+	}
 }
 
 // addFile copies the blob id into the archive as name. It reports false

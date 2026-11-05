@@ -63,10 +63,11 @@ func newFixture(t *testing.T) *fixture {
 	}
 	imageDir, _ := blobs.Open(filepath.Join(t.TempDir(), "images"))
 	attachmentDir, _ := blobs.Open(filepath.Join(t.TempDir(), "attachments"))
+	offlineDir, _ := blobs.Open(filepath.Join(t.TempDir(), "offline"))
 	f.s = &Service{
 		DB: database, Users: f.users, Now: func() time.Time { return f.now }, Days: 7,
 		Mailer: f.mails, AppTitle: "Boardly", Link: "https://dash.example.org/",
-		ImageFiles: imageDir, AttachmentFiles: attachmentDir,
+		ImageFiles: imageDir, AttachmentFiles: attachmentDir, OfflineFiles: offlineDir,
 	}
 	return f
 }
@@ -261,13 +262,21 @@ func TestDeleteAccount(t *testing.T) {
 	now := db.FormatTime(f.now)
 	ptr := func(s string) *string { return &s }
 
-	img, fav, att := blobs.NewID(), blobs.NewID(), blobs.NewID()
+	img, fav, att, article := blobs.NewID(), blobs.NewID(), blobs.NewID(), blobs.NewID()
 
-	// Favourites with tags.
+	// Favourites with tags; Ann's link has an offline copy.
 	favs := favourites.NewStore(f.db)
 	for _, u := range []string{ann, bob} {
-		if _, err := favs.Create(ctx, u, favourites.NewNode{Kind: favourites.KindLink, URL: ptr("https://example.org/" + u), Tags: []string{"news"}}); err != nil {
+		link, err := favs.Create(ctx, u, favourites.NewNode{Kind: favourites.KindLink, URL: ptr("https://example.org/" + u), Tags: []string{"news"}})
+		if err != nil {
 			t.Fatal(err)
+		}
+		if u == ann {
+			f.exec(`INSERT INTO offline_copies (node_id, user_id, url, status, article_id, updated_at) VALUES (?, ?, 'https://example.org', 'ready', ?, ?)`,
+				link.ID, ann, article, now)
+			if err := f.s.OfflineFiles.Write(article, []byte("<p>")); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	// Dashboards with a section and a widget.
@@ -329,6 +338,7 @@ func TestDeleteAccount(t *testing.T) {
 	}
 	f.exec(`INSERT INTO jobs (kind, payload, created_at) VALUES ('preview_fetch', json_object('userId', ?, 'nodeId', 'n', 'url', 'u'), ?)`, ann, now)
 	f.exec(`INSERT INTO jobs (kind, payload, created_at) VALUES ('preview_fetch', json_object('userId', ?, 'nodeId', 'n', 'url', 'u'), ?)`, bob, now)
+	f.exec(`INSERT INTO jobs (kind, payload, created_at) VALUES ('offline_capture', json_object('userId', ?, 'nodeId', 'n', 'url', 'u'), ?)`, ann, now)
 	f.exec(`INSERT INTO jobs (kind, dedup_key, payload, created_at) VALUES ('favicon', 'https://example.org', '{"url":"https://example.org"}', ?)`, now)
 
 	f.schedule()
@@ -350,7 +360,7 @@ func TestDeleteAccount(t *testing.T) {
 		t.Fatalf("user still exists: %v", err)
 	}
 	for _, table := range []string{"sessions", "passkeys", "app_tokens", "dashboards", "favourite_nodes", "tags",
-		"notes", "note_categories", "attachments", "media_sources", "images"} {
+		"notes", "note_categories", "attachments", "media_sources", "images", "offline_copies"} {
 		if n := f.count(`SELECT COUNT(*) FROM `+table+` WHERE user_id = ?`, ann); n != 0 {
 			t.Errorf("%s: %d rows of the deleted user left", table, n)
 		}
@@ -367,7 +377,10 @@ func TestDeleteAccount(t *testing.T) {
 	if n := f.count(`SELECT COUNT(*) FROM jobs`); n != 2 {
 		t.Errorf("jobs = %d, want Bob's preview and the favicon job", n)
 	}
-	for _, path := range []string{f.s.ImageFiles.Path(img), f.s.AttachmentFiles.Path(att)} {
+	if n := f.count(`SELECT COUNT(*) FROM offline_copies`); n != 0 {
+		t.Errorf("offline_copies: %d rows left", n)
+	}
+	for _, path := range []string{f.s.ImageFiles.Path(img), f.s.AttachmentFiles.Path(att), f.s.OfflineFiles.Path(article)} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("%s still exists", path)
 		}

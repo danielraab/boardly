@@ -28,6 +28,7 @@ import (
 	"boardly/internal/mail"
 	"boardly/internal/media"
 	"boardly/internal/notes"
+	"boardly/internal/offline"
 	"boardly/internal/users"
 	"boardly/internal/widgets"
 )
@@ -92,6 +93,7 @@ type server struct {
 	directory   *media.Directory
 	favicons    *images.Favicons
 	previews    *images.Previews
+	offline     *offline.Store
 	jobs        *jobs.Queue
 }
 
@@ -138,6 +140,11 @@ func newServer(t *testing.T) *server {
 	mediaStore := media.NewStore(database, fakeStreamCheck, favicons.FetchLogo)
 	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, favicons)
 
+	offlineStore, err := offline.NewStore(database, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	offlineStore.Now = c.Now
 	appTokens := apptokens.NewStore(database)
 	appTokens.Now = c.Now
 	directory := media.NewDirectory(true)
@@ -145,7 +152,7 @@ func newServer(t *testing.T) *server {
 
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Directory: directory,
-		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, AppTokens: appTokens,
+		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, Offline: offlineStore, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
 		Export: &export.Service{
 			DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: c.Now,
@@ -156,7 +163,7 @@ func newServer(t *testing.T) *server {
 		},
 		ExportsPerHour: 3, ExportsPerDay: 10,
 	})
-	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, jobs: queue}
+	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, offline: offlineStore, jobs: queue}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.

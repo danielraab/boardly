@@ -57,6 +57,8 @@ type Config struct {
 
 	Previews Previews
 
+	Offline Offline
+
 	Attachments Attachments
 
 	// MapStyleURL is the MapLibre style that maps in notes are drawn from.
@@ -98,6 +100,15 @@ type Attachments struct {
 	DeleteAfterDays int
 	// Types are the allowed content types (see attachments.Types).
 	Types []string
+}
+
+// Offline holds the settings of links' offline copies.
+type Offline struct {
+	// MaxBytes is the largest page read for a readable article.
+	MaxBytes int64
+	// BrowserURL is the Chrome DevTools Protocol endpoint of the headless
+	// browser that takes screenshots. Empty means no screenshots.
+	BrowserURL string
 }
 
 // Previews holds the limits of link preview images.
@@ -151,6 +162,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		},
 		AllowRegistration:   true,
 		Previews:            Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
+		Offline:             Offline{MaxBytes: 5 << 20},
 		Attachments:         Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
 		AccountDeletionDays: 7,
 		Exports:             Exports{PerHour: 3, PerDay: 10},
@@ -251,6 +263,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		{"BOARDLY_PREVIEW_MAX_SIZE_MB", func(n int64) { cfg.Previews.MaxBytes = n << 20 }},
 		{"BOARDLY_PREVIEW_MAX_PIXELS", func(n int64) { cfg.Previews.MaxPixels = n }},
 		{"BOARDLY_PREVIEW_WIDTH", func(n int64) { cfg.Previews.Width = int(n) }},
+		{"BOARDLY_OFFLINE_MAX_SIZE_MB", func(n int64) { cfg.Offline.MaxBytes = n << 20 }},
 		{"BOARDLY_ATTACHMENT_MAX_SIZE_MB", func(n int64) { cfg.Attachments.MaxBytes = n << 20 }},
 		{"BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS", func(n int64) { cfg.Attachments.DeleteAfterDays = int(n) }},
 	} {
@@ -261,6 +274,14 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			}
 			p.set(n)
 		}
+	}
+
+	if v := strings.TrimSpace(getenv("BOARDLY_BROWSER_URL")); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || u.Host == "" || (u.Scheme != "ws" && u.Scheme != "wss" && u.Scheme != "http" && u.Scheme != "https") {
+			return Config{}, fmt.Errorf("BOARDLY_BROWSER_URL: %q must be a ws, wss, http or https URL of the browser's DevTools endpoint", v)
+		}
+		cfg.Offline.BrowserURL = v
 	}
 
 	if v := getenv("BOARDLY_ACCOUNT_DELETION_DAYS"); v != "" {

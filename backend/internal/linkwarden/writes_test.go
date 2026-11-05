@@ -35,6 +35,10 @@ func TestCreateLink(t *testing.T) {
 	if got := f.queuedFavicons(); len(got) != 1 || got[0] != "https://example.org" {
 		t.Errorf("queued favicons = %v", got)
 	}
+	var captures int
+	if err := f.fav.DB.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind = 'offline_capture' AND json_extract(payload, '$.url') = 'https://example.org'`).Scan(&captures); err != nil || captures != 1 {
+		t.Errorf("offline captures queued = %d, err %v; want 1", captures, err)
+	}
 
 	// Into a collection by ID, and again with the same URL: saved twice.
 	for range 2 {

@@ -375,6 +375,7 @@ type DataReportKey =
 	| "invalidSources"
 	| "images"
 	| "attachments"
+	| "offlineCopies"
 	| "skippedFiles";
 
 function DataReport({ report }: { report: DataImportReport }) {
@@ -407,6 +408,7 @@ function DataReport({ report }: { report: DataImportReport }) {
 	}
 	add("images", report.files.images);
 	add("attachments", report.files.attachments);
+	add("offlineCopies", report.files.offlineCopies ?? 0);
 	add("skippedFiles", report.files.skipped, notes);
 	return (
 		<output className="mt-6 block rounded-lg border border-line bg-paper/40 px-4 py-3 text-sm">

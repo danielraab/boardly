@@ -92,7 +92,7 @@ Favicons SHALL be stored once per origin (scheme, host and port) and shared by a
 - **THEN** the server responds 400 with `blocked_address` and makes no request to that address
 
 ### Requirement: Private address protection
-Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons, checks a media stream URL or fetches a station logo (see the `media-library` capability). The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
+Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons, checks a media stream URL, fetches a station logo (see the `media-library` capability), or loads a page for an offline copy (see the `offline-copies` capability). The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. For the browser that takes offline copy screenshots, it SHALL apply to every request the browser makes, as described in the `offline-copies` capability. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
 
 #### Scenario: Name that resolves to a private address
 - **WHEN** private addresses are not allowed and a link's host name resolves to `10.0.0.5`
@@ -109,6 +109,10 @@ Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to 
 #### Scenario: Station URL on a private address
 - **WHEN** private addresses are not allowed and a pasted stream URL's host resolves to `10.0.0.5`
 - **THEN** no connection is made and the station isn't saved
+
+#### Scenario: Offline copy of a private page
+- **WHEN** private addresses are not allowed and a link's host resolves to `10.0.0.5`
+- **THEN** neither the server nor the browser connects to it, and the link's offline copy is `failed` with `blocked_address`
 
 ### Requirement: Cleanup of unused uploads
 An uploaded image that no favourite, no dashboard widget, no note, no note category and no media source refers to SHALL be deleted, file and record, once it is older than 24 hours. A preview image that no link refers to SHALL be deleted, file and record, once it is older than one hour. The server checks this on start and then once an hour. Favicons are not deleted by this cleanup.
@@ -134,7 +138,7 @@ An uploaded image that no favourite, no dashboard widget, no note, no note categ
 - **THEN** the image is kept
 
 ### Requirement: Background jobs survive restarts
-Favicon fetches, preview fetches and preview conversions that the server has started or queued SHALL be stored in the database, and SHALL run, or run again from the start, after the server restarts. None of them is dropped because many are waiting. A job SHALL be queued in the same transaction as the link change that causes it, so a saved link always has its pending jobs. Pending favicon fetches for the same origin SHALL be combined into one, and pending preview fetches for the same link into one for its latest URL. A job that was interrupted by restarts three times SHALL be dropped and logged, so a broken image can't stop the server from starting. A job that ran and failed is not repeated.
+Favicon fetches, preview fetches, preview conversions and offline copy captures that the server has started or queued SHALL be stored in the database, and SHALL run, or run again from the start, after the server restarts. None of them is dropped because many are waiting. A job SHALL be queued in the same transaction as the link change that causes it, so a saved link always has its pending jobs. Pending favicon fetches for the same origin SHALL be combined into one, pending preview fetches for the same link into one for its latest URL, and pending offline copy captures for the same link into one for its latest URL. A job that was interrupted by restarts three times SHALL be dropped and logged, so a broken image can't stop the server from starting. A job that ran and failed is not repeated.
 
 #### Scenario: Restart while fetching
 - **WHEN** Ann saves a link and the server restarts before its favicon and preview were fetched
@@ -151,6 +155,14 @@ Favicon fetches, preview fetches and preview conversions that the server has sta
 #### Scenario: Image that keeps crashing the server
 - **WHEN** a conversion was interrupted by a restart three times
 - **THEN** it isn't started again, the link's preview is unchanged and the server logs a warning
+
+#### Scenario: Restart during a capture
+- **WHEN** Ann saves a link and the server restarts before its offline copy was captured
+- **THEN** after the restart the capture runs, and the link's copy becomes `ready`
+
+#### Scenario: Interrupted capture dropped
+- **WHEN** a capture was interrupted by a restart three times
+- **THEN** it isn't started again, the copy is `failed` with `fetch_failed`, and the server logs a warning
 
 ### Requirement: Manual favicon refresh
 `POST /api/favicons/refresh` with `{ "url": "<http or https URL>" }` SHALL fetch the favicon of the URL's origin again right away, also when a fetch failed less than 24 hours ago, and respond 200 with `{ "id": "<image id>" }`. A refresh keeps the favicon's image ID, so every link and widget that uses it shows the new image. When no favicon can be found, it responds 404 `favicon_not_found`, and a favicon stored before stays. A URL that isn't an absolute `http` or `https` URL gets 400 `invalid_url`, and a blocked address gets 400 `blocked_address`. It requires a session. Each user SHALL be allowed at most 30 refreshes per hour; more get 429 `rate_limited`.

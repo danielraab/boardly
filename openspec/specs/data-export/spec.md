@@ -45,7 +45,7 @@ The export document SHALL be a JSON object with:
 - `exportedAt`: the time of the export,
 - `withFiles`: whether the export contains the files,
 - `profile`: the email address, display name, slug, creation time, the ID of the default folder for new links and the ID of the default category for new notes,
-- `favourites`: the user's favourites tree, starting at the root folder, with every folder's children in their order. A folder has its ID, title, creation and change time and children. A link has its ID, URL, title, description, tag names, preview image ID, and creation and change time,
+- `favourites`: the user's favourites tree, starting at the root folder, with every folder's children in their order. A folder has its ID, title, creation and change time and children. A link has its ID, URL, title, description, tag names, preview image ID, creation and change time, and `offlineCopy`. `offlineCopy` is `null` when the link has no offline copy with an article or a screenshot. Otherwise it is an object with `capturedAt`, `title`, `article` and `screenshot`. `article` and `screenshot` are the paths of these files inside the export archive, or `null` when the copy doesn't have that part, the export has no files, or the file couldn't be read,
 - `tags`: all of the user's tags with ID, name and creation time, including tags no link uses,
 - `dashboards`: every dashboard with its ID, slug, title, whether it is the default and whether it is public, its layout settings, creation and change time, and its widgets as a tree in their order, each with ID, kind, width and configuration as stored,
 - `noteCategories`: every note category with ID, parent ID, title, icon, colour, and creation and change time,
@@ -54,7 +54,7 @@ The export document SHALL be a JSON object with:
 - `images`: every image the user uploaded or that was fetched as a link preview for them, with ID, source (`upload` or `preview`), content type, size, creation time, and `file`,
 - `attachments`: every attachment of the user that isn't deleted, with ID, file name, content type, size, creation time, and `file`.
 
-IDs SHALL be the IDs the Boardly API uses for the same items, so that references inside the document (default folder and category, tag names, icon and preview image IDs, widget configurations, note content and attachments) point to items in the same document. Icons have the same shape as in the API. Times are RFC 3339 timestamps in UTC. `file` is the path of the file inside the export archive, or `null` when the export has no files or the file couldn't be read. The records of images and attachments SHALL be included also when the export has no files.
+IDs SHALL be the IDs the Boardly API uses for the same items, so that references inside the document (default folder and category, tag names, icon and preview image IDs, widget configurations, note content and attachments) point to items in the same document. Icons have the same shape as in the API. Times are RFC 3339 timestamps in UTC. `file` is the path of the file inside the export archive, or `null` when the export has no files or the file couldn't be read. The records of images and attachments SHALL be included also when the export has no files. The state of offline copies (pending or failed) and their pending captures SHALL NOT be exported.
 
 #### Scenario: Version and format
 - **WHEN** Ann exports her data
@@ -84,6 +84,14 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 - **WHEN** Ann and Bob both have notes and Ann exports her data
 - **THEN** the document contains none of Bob's data
 
+#### Scenario: Offline copy without files
+- **WHEN** Ann's link "Go tour" has an offline copy with an article and a screenshot, and she exports without files
+- **THEN** the link's `offlineCopy` has its `capturedAt` and `title`, and `article` and `screenshot` are `null`
+
+#### Scenario: Link without offline copy
+- **WHEN** Ann's link was imported and never captured
+- **THEN** its `offlineCopy` is `null`
+
 ### Requirement: Data left out of the export
 The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, or any data of other users.
 
@@ -96,12 +104,13 @@ The export SHALL NOT contain passkeys, app tokens (neither their secrets nor the
 - **THEN** the archive contains no favicon files and the document lists no favicons
 
 ### Requirement: Export archive
-With `files=true`, the ZIP archive SHALL contain `boardly.json`, the export document with `withFiles` `true`, and the files of the images and attachments in the document:
+With `files=true`, the ZIP archive SHALL contain `boardly.json`, the export document with `withFiles` `true`, and the files of the images, attachments and offline copies in the document:
 
 - each image at `images/<id>.<extension>`, the extension following its content type,
-- each attachment at `attachments/<id>/<file name>`, where the file name is the attachment's name with path separators and characters not allowed in file names replaced, and never a name that leads out of the directory.
+- each attachment at `attachments/<id>/<file name>`, where the file name is the attachment's name with path separators and characters not allowed in file names replaced, and never a name that leads out of the directory,
+- each offline copy's article at `offline/<link id>/article.html` and its screenshot at `offline/<link id>/screenshot.jpg`.
 
-The `file` of each image and attachment SHALL be its path in the archive. A file that can't be read SHALL be left out of the archive, and its record keeps `file` `null`. The files SHALL keep their stored content unchanged.
+The `file` of each image and attachment, and the `article` and `screenshot` of each offline copy, SHALL be its path in the archive. A file that can't be read SHALL be left out of the archive, and its record keeps `null` in its place. The files SHALL keep their stored content unchanged.
 
 #### Scenario: Image and attachment files
 - **WHEN** Ann has an uploaded icon (PNG) and the attachment "invoice.pdf" and exports with files
@@ -114,6 +123,10 @@ The `file` of each image and attachment SHALL be its path in the archive. A file
 #### Scenario: Missing file
 - **WHEN** the file of one of Ann's images is missing on the server
 - **THEN** the archive is still created, the image's record has `file` `null`, and all other files are included
+
+#### Scenario: Offline copy files
+- **WHEN** Ann's link with the ID `L1` has an offline copy with an article and a screenshot, and she exports with files
+- **THEN** the archive contains `offline/L1/article.html` and `offline/L1/screenshot.jpg`, and the link's `offlineCopy` points to them
 
 ### Requirement: Export rate limit
 Exports SHALL be limited per user over two sliding windows: at most `BOARDLY_EXPORTS_PER_HOUR` exports in the last 60 minutes (default `3`) and at most `BOARDLY_EXPORTS_PER_DAY` exports in the last 24 hours (default `10`). Exports with and without files count towards the same limits. An export counts when it starts, also when the download is cancelled or fails afterwards. A request over either limit SHALL get `429` with code `rate_limited` and a `Retry-After` header with the number of seconds until the next export is allowed, and nothing is exported. `0` turns the limit of its window off. A value that isn't a non-negative integer SHALL stop the server from starting with an error that names the variable. The counts SHALL NOT survive a restart of the server.

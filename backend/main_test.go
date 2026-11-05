@@ -15,6 +15,7 @@ import (
 	"boardly/internal/favourites"
 	"boardly/internal/images"
 	"boardly/internal/jobs"
+	"boardly/internal/offline"
 	"boardly/internal/users"
 )
 
@@ -31,7 +32,8 @@ func TestStartJobsRunsLeftoverJobs(t *testing.T) {
 			_, _ = w.Write(append([]byte{0, 0, 1, 0, 1, 0}, make([]byte, 32)...))
 		case "/article":
 			w.Header().Set("Content-Type", "text/html")
-			_, _ = w.Write([]byte(`<meta property="og:description" content="Left over">`))
+			_, _ = w.Write([]byte(`<meta property="og:description" content="Left over"><title>Left over</title><article><p>` +
+				strings.Repeat("A paragraph of a long article that has more than enough text. ", 10) + `</p></article>`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -56,7 +58,18 @@ func TestStartJobsRunsLeftoverJobs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store, err := images.NewStore(database, filepath.Join(t.TempDir(), "data"))
+	// An interrupted offline capture.
+	if _, err := database.Exec(`INSERT INTO offline_copies (node_id, user_id, url, status, updated_at) VALUES (?, ?, ?, 'pending', ?)`,
+		link.ID, ann.ID, site.URL+"/article", ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(insert, jobs.KindOfflineCapture, link.ID,
+		`{"userId":"`+ann.ID+`","nodeId":"`+link.ID+`","url":"`+site.URL+`/article","setPreview":true}`, 1, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+
+	dataDir := filepath.Join(t.TempDir(), "data")
+	store, err := images.NewStore(database, dataDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,22 +80,28 @@ func TestStartJobsRunsLeftoverJobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := startJobs(ctx, queue, favicons, previews); err != nil {
+	offlineStore, err := offline.NewStore(database, dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	capturer := &offline.Capturer{Store: offlineStore, Jobs: queue, Client: favicons.Client, MaxBytes: 1 << 20}
+	if err := startJobs(ctx, queue, favicons, previews, capturer); err != nil {
 		t.Fatal(err)
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		var icon, description sql.NullString
+		var icon, description, status sql.NullString
 		_ = database.QueryRow(`SELECT image_id FROM favicons WHERE origin = ?`, site.URL).Scan(&icon)
+		_ = database.QueryRow(`SELECT status FROM offline_copies WHERE node_id = ?`, link.ID).Scan(&status)
 		if err := database.QueryRow(`SELECT description FROM favourite_nodes WHERE id = ?`, link.ID).Scan(&description); err != nil {
 			t.Fatal(err)
 		}
-		if icon.Valid && description.String == "Left over" {
+		if icon.Valid && description.String == "Left over" && status.String == "ready" {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("favicon %v, description %v; want both from the leftover jobs", icon, description)
+			t.Fatalf("favicon %v, description %v, offline copy %v; want all from the leftover jobs", icon, description, status)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

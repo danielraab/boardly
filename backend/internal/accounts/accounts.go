@@ -48,9 +48,11 @@ type Service struct {
 	AppTitle string
 	// Link is the address of the web app the reminder email links to.
 	Link string
-	// ImageFiles and AttachmentFiles hold the files removed with an account.
+	// ImageFiles, AttachmentFiles and OfflineFiles hold the files removed
+	// with an account.
 	ImageFiles      blobs.Dir
 	AttachmentFiles blobs.Dir
+	OfflineFiles    blobs.Dir
 }
 
 // Schedule schedules the deletion of the session's user. email must be the
@@ -276,12 +278,18 @@ func (s *Service) deleteAccount(ctx context.Context, id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	offline, err := ids(ctx, tx,
+		`SELECT article_id FROM offline_copies WHERE user_id = ? AND article_id IS NOT NULL
+		 UNION ALL SELECT screenshot_id FROM offline_copies WHERE user_id = ? AND screenshot_id IS NOT NULL`, id, id)
+	if err != nil {
+		return false, err
+	}
 	for _, q := range []struct {
 		query string
 		arg   string
 	}{
 		{`DELETE FROM magic_link_tokens WHERE email = ?`, email},
-		{`DELETE FROM jobs WHERE kind IN ('preview_fetch', 'preview_convert') AND json_extract(payload, '$.userId') = ?`, id},
+		{`DELETE FROM jobs WHERE kind IN ('preview_fetch', 'preview_convert', 'offline_capture') AND json_extract(payload, '$.userId') = ?`, id},
 		{`DELETE FROM users WHERE id = ?`, id},
 	} {
 		if _, err := tx.ExecContext(ctx, q.query, q.arg); err != nil {
@@ -296,7 +304,7 @@ func (s *Service) deleteAccount(ctx context.Context, id string) (bool, error) {
 	for _, f := range []struct {
 		dir blobs.Dir
 		ids []string
-	}{{s.ImageFiles, images}, {s.AttachmentFiles, files}} {
+	}{{s.ImageFiles, images}, {s.AttachmentFiles, files}, {s.OfflineFiles, offline}} {
 		if f.dir == "" {
 			continue
 		}

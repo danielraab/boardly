@@ -74,6 +74,19 @@ func (p *Previews) Replace(ctx context.Context, userID, nodeID, rawURL string, d
 	return p.queueConvert(ctx, jobs.PreviewConvertPayload{UserID: userID, NodeID: nodeID, URL: rawURL, Replace: true}, data)
 }
 
+// Fill queues data, an image the server made for a link such as a
+// screenshot of its page, to become that link's preview only if the link
+// still has rawURL and no preview when the conversion finishes.
+func (p *Previews) Fill(ctx context.Context, userID, nodeID, rawURL string, data []byte) error {
+	if int64(len(data)) > p.MaxBytes {
+		return ErrTooLarge
+	}
+	if _, err := PreviewType(data); err != nil {
+		return err
+	}
+	return p.queueConvert(ctx, jobs.PreviewConvertPayload{UserID: userID, NodeID: nodeID, URL: rawURL}, data)
+}
+
 // queueConvert writes data as a raw file and queues its conversion.
 func (p *Previews) queueConvert(ctx context.Context, job jobs.PreviewConvertPayload, data []byte) error {
 	name := uuid.NewString()

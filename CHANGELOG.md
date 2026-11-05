@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Offline copies of links, like Karakeep's: a readable article of the page, and with a headless
+  browser next to Boardly (`BOARDLY_BROWSER_URL`, e.g. `chromedp/headless-shell`) a screenshot of
+  it. They are saved when a link is added or its URL changes, and shown with **Offline copy** in
+  a link's details on the dashboard, with **Refresh** to save them again. Only the owner sees
+  them. A page without a preview image gets its screenshot as preview. Exports with files
+  contain the copies, and imports restore them. Pages larger than `BOARDLY_OFFLINE_MAX_SIZE_MB`
+  (5 MB) get no article.
 - Imprint and privacy policy for operators, without an admin area: Markdown files in
   `BOARDLY_LEGAL_DIR` (`imprint.md`, `imprint.de.md`, `privacy.md`, …, with a fallback when a
   language has no file of its own) shown at `/imprint` and `/privacy`, or links to other sites with

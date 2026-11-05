@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Info, X } from "lucide-react";
+import { Archive, ExternalLink, Info, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,6 +12,7 @@ import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import { ImageIcon, imageUrl } from "#/components/ImageIcon";
 import { type FavouriteNode, favouritesQueryOptions } from "./api";
 import { NodeDialog } from "./NodeDialog";
+import { OfflineCopyDialog } from "./OfflineCopyDialog";
 import { findNode, label } from "./tree";
 
 /**
@@ -59,9 +60,10 @@ export function useFavouriteLink(favouriteId: string | null | undefined) {
 
 /**
  * The read-only details of the owner's link favouriteId while it is set, with
- * actions to open and edit it. Editing swaps the details for the link's edit
- * dialog and returns to them on close; onSaved runs after a save, and also
- * after the link was deleted from the edit dialog, which closes the details.
+ * actions to open it, see its offline copy and edit it. The offline copy and
+ * editing swap the details for their dialog and return to them on close;
+ * onSaved runs after a save, and also after the link was deleted from the
+ * edit dialog, which closes the details.
  */
 export function FavouriteDetailsDialog({
 	favouriteId,
@@ -74,19 +76,30 @@ export function FavouriteDetailsDialog({
 }) {
 	const link = useFavouriteLink(favouriteId);
 	const [editing, setEditing] = useState(false);
+	const [offline, setOffline] = useState(false);
 	return (
 		<>
 			<Dialog.Root
-				open={link !== undefined && !editing}
+				open={link !== undefined && !editing && !offline}
 				onOpenChange={(open) => !open && onClose()}
 			>
 				<Dialog.Portal>
 					<Dialog.Backdrop className={dialogBackdrop} />
 					<Dialog.Popup className={dialogPopup}>
-						{link && <Details link={link} onEdit={() => setEditing(true)} />}
+						{link && (
+							<Details
+								link={link}
+								onEdit={() => setEditing(true)}
+								onOffline={() => setOffline(true)}
+							/>
+						)}
 					</Dialog.Popup>
 				</Dialog.Portal>
 			</Dialog.Root>
+			<OfflineCopyDialog
+				link={offline && link ? link : null}
+				onClose={() => setOffline(false)}
+			/>
 			<NodeDialog
 				target={editing && link ? { node: link } : null}
 				onSaved={onSaved}
@@ -103,9 +116,11 @@ export function FavouriteDetailsDialog({
 function Details({
 	link,
 	onEdit,
+	onOffline,
 }: {
 	link: FavouriteNode;
 	onEdit: () => void;
+	onOffline: () => void;
 }) {
 	const { t } = useTranslation();
 	const url = link.url ?? "";
@@ -167,6 +182,10 @@ function Details({
 			<div className="mt-6 flex justify-end gap-3">
 				<button type="button" className={secondaryButton} onClick={onEdit}>
 					{t("favourites.details.edit")}
+				</button>
+				<button type="button" className={secondaryButton} onClick={onOffline}>
+					<Archive className="size-4" aria-hidden />
+					{t("favourites.offline.button")}
 				</button>
 				<a
 					href={url}

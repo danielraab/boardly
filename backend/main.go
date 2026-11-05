@@ -34,6 +34,7 @@ import (
 	"boardly/internal/mail"
 	"boardly/internal/media"
 	"boardly/internal/notes"
+	"boardly/internal/offline"
 	"boardly/internal/users"
 	"boardly/internal/web"
 	"boardly/internal/widgets"
@@ -114,10 +115,23 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := startJobs(ctx, queue, favicons, previews); err != nil {
+	offlineStore, err := offline.NewStore(database, cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	capturer := &offline.Capturer{
+		Store: offlineStore, Jobs: queue, Client: favicons.Client, MaxBytes: cfg.Offline.MaxBytes,
+		Converter: images.Converter{MaxPixels: cfg.Previews.MaxPixels, Width: offline.ScreenshotWidth},
+		Previews:  previews,
+	}
+	if cfg.Offline.BrowserURL != "" {
+		capturer.Browser = offline.NewBrowser(cfg.Offline.BrowserURL, images.GuardedTransport(cfg.FetchAllowPrivate))
+	}
+	if err := startJobs(ctx, queue, favicons, previews, capturer); err != nil {
 		return err
 	}
 	go imageStore.RunCleanup(ctx, time.Hour)
+	go offlineStore.RunCleanup(ctx, time.Hour)
 
 	attachmentStore, err := attachments.NewStore(database, cfg.DataDir,
 		cfg.Attachments.MaxBytes, cfg.Attachments.Types, cfg.Attachments.DeleteAfterDays)
@@ -129,7 +143,7 @@ func run() error {
 	accountService := &accounts.Service{
 		DB: database, Users: userStore, Now: time.Now, Days: cfg.AccountDeletionDays,
 		Mailer: mailer, AppTitle: cfg.AppTitle, Link: cfg.BaseURL.String() + "/",
-		ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files,
+		ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, OfflineFiles: offlineStore.Files,
 	}
 	go accountService.RunSweep(ctx, time.Hour)
 
@@ -160,14 +174,18 @@ func run() error {
 			Favicons:    favicons,
 			Directory:   media.NewDirectory(cfg.FetchAllowPrivate),
 			Previews:    previews,
+			Offline:     offlineStore,
 			AppTokens:   apptokens.NewStore(database),
 			Accounts:    accountService,
 			Export: &export.Service{
-				DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: time.Now,
+				DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files,
+				OfflineFiles: offlineStore.Files, Now: time.Now,
 			},
 			DataImport: &dataimport.Service{
 				DB: database, Favourites: favouriteStore, Notes: noteStore, Dashboards: dashboardStore,
 				Media: mediaStore, Images: imageStore, Attachments: attachmentStore,
+				OfflineFiles: offlineStore.Files, OfflineMaxBytes: cfg.Offline.MaxBytes,
+				Screenshots: images.Converter{MaxPixels: cfg.Previews.MaxPixels, Width: offline.ScreenshotWidth},
 			},
 			ExportsPerHour:    cfg.Exports.PerHour,
 			ExportsPerDay:     cfg.Exports.PerDay,
@@ -206,12 +224,13 @@ func run() error {
 
 // startJobs queues the jobs that were running when the server stopped again
 // and starts the workers of every job kind.
-func startJobs(ctx context.Context, queue *jobs.Queue, favicons *images.Favicons, previews *images.Previews) error {
+func startJobs(ctx context.Context, queue *jobs.Queue, favicons *images.Favicons, previews *images.Previews, capturer *offline.Capturer) error {
 	if err := queue.Recover(ctx); err != nil {
 		return fmt.Errorf("recovering background jobs: %w", err)
 	}
 	favicons.Run(ctx)
 	previews.Run(ctx)
+	capturer.Run(ctx)
 	return nil
 }
 

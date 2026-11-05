@@ -1104,3 +1104,37 @@ func TestAttachmentsConstraints(t *testing.T) {
 		t.Fatalf("after deleting the user: refs = %d, attachments = %d, err %v", refs, atts, err)
 	}
 }
+
+func TestOfflineCopiesCascade(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := Migrate(context.Background(), db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	const ts = "2026-01-01T00:00:00Z"
+	for _, q := range []string{
+		`INSERT INTO users (id, email, created_at, updated_at) VALUES ('u1', 'a@example.org', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, created_at, updated_at) VALUES ('r1', 'u1', NULL, 'folder', 0, '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, url, created_at, updated_at) VALUES ('f1', 'u1', 'r1', 'folder', 0, NULL, '` + ts + `', '` + ts + `')`,
+		`INSERT INTO favourite_nodes (id, user_id, parent_id, kind, position, url, created_at, updated_at) VALUES ('l1', 'u1', 'f1', 'link', 0, 'https://go.dev', '` + ts + `', '` + ts + `')`,
+		`INSERT INTO offline_copies (node_id, user_id, url, status, updated_at) VALUES ('l1', 'u1', 'https://go.dev', 'pending', '` + ts + `')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if _, err := db.Exec(`INSERT INTO offline_copies (node_id, user_id, url, status, updated_at) VALUES ('l1', 'u1', 'x', 'done', '` + ts + `')`); err == nil {
+		t.Fatal("unknown status succeeded, want a constraint error")
+	}
+	// Deleting the folder removes the link and with it its offline copy.
+	if _, err := db.Exec(`DELETE FROM favourite_nodes WHERE id = 'f1'`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM offline_copies`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("offline_copies = %d, err %v; want 0 after deleting the link's folder", n, err)
+	}
+}

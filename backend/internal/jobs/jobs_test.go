@@ -69,6 +69,12 @@ func TestEnqueueCombinesPendingJobs(t *testing.T) {
 	if got := pending(t, qu, KindPreviewFetch); len(got) != 1 || got[0] != "https://new.example/" {
 		t.Fatalf("preview fetch jobs = %v", got)
 	}
+	// Offline captures take the newest URL of a link too.
+	enqueue(t, qu, KindOfflineCapture, "node1", "https://old.example/")
+	enqueue(t, qu, KindOfflineCapture, "node1", "https://new.example/")
+	if got := pending(t, qu, KindOfflineCapture); len(got) != 1 || got[0] != "https://new.example/" {
+		t.Fatalf("offline capture jobs = %v", got)
+	}
 	// Jobs without a key are never combined.
 	enqueue(t, qu, KindPreviewConvert, "", "x")
 	enqueue(t, qu, KindPreviewConvert, "", "x")
