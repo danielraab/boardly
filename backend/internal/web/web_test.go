@@ -11,6 +11,13 @@ import (
 
 const index = `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" /></head>app</html>`
 
+// notice is the cookie notice variant every document carries while consent
+// is off and no analytics snippet is set.
+const notice = `<meta name="boardly-cookie-notice" content="necessary" />`
+
+// served is index as the handler serves it without further options.
+const served = `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" />` + notice + `</head>app</html>`
+
 var built = fstest.MapFS{
 	"index.html":              {Data: []byte(index)},
 	"assets/app-abc.js":       {Data: []byte("console.log(1)")},
@@ -28,7 +35,7 @@ func get(h http.Handler, method, path string) *httptest.ResponseRecorder {
 
 func TestServesIndexAtRoot(t *testing.T) {
 	rec := get(NewHandler(built, Options{AppTitle: "Boardly"}), http.MethodGet, "/")
-	if rec.Code != http.StatusOK || rec.Body.String() != index {
+	if rec.Code != http.StatusOK || rec.Body.String() != served {
 		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
 	}
 	if cc := rec.Header().Get("Cache-Control"); cc != "no-cache" {
@@ -64,7 +71,7 @@ func TestServesManifestAsManifestJSON(t *testing.T) {
 
 func TestIndexCarriesAppTitle(t *testing.T) {
 	h := NewHandler(built, Options{AppTitle: "Boardly Staging"})
-	want := `<html><head><title>Boardly Staging</title><meta name="application-name" content="Boardly Staging" /></head>app</html>`
+	want := `<html><head><title>Boardly Staging</title><meta name="application-name" content="Boardly Staging" />` + notice + `</head>app</html>`
 	for _, p := range []string{"/", "/settings", "/index.html"} {
 		rec := get(h, http.MethodGet, p)
 		if rec.Code != http.StatusOK || rec.Body.String() != want {
@@ -75,7 +82,7 @@ func TestIndexCarriesAppTitle(t *testing.T) {
 
 func TestIndexEscapesAppTitle(t *testing.T) {
 	rec := get(NewHandler(built, Options{AppTitle: `A & B <test> "x"`}), http.MethodGet, "/")
-	want := `<html><head><title>A &amp; B &lt;test&gt; &#34;x&#34;</title><meta name="application-name" content="A &amp; B &lt;test&gt; &#34;x&#34;" /></head>app</html>`
+	want := `<html><head><title>A &amp; B &lt;test&gt; &#34;x&#34;</title><meta name="application-name" content="A &amp; B &lt;test&gt; &#34;x&#34;" />` + notice + `</head>app</html>`
 	if rec.Body.String() != want {
 		t.Fatalf("got %q", rec.Body.String())
 	}
@@ -99,7 +106,8 @@ func TestManifestsCarryAppTitle(t *testing.T) {
 func TestIndexCarriesAnalyticsSnippet(t *testing.T) {
 	snippet := `<script defer src="https://stats.example.org/script.js" data-website-id="abc"></script>`
 	h := NewHandler(built, Options{AppTitle: "Boardly", AnalyticsSnippet: snippet})
-	want := `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" />` + snippet + `</head>app</html>`
+	want := `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" />` +
+		`<meta name="boardly-cookie-notice" content="cookieless-analytics" />` + snippet + `</head>app</html>`
 	for _, p := range []string{"/", "/settings", "/index.html"} {
 		rec := get(h, http.MethodGet, p)
 		if rec.Code != http.StatusOK || rec.Body.String() != want {
@@ -124,7 +132,7 @@ func TestIndexKeepsAnalyticsSnippetUnescaped(t *testing.T) {
 func TestDeepLinkFallsBackToIndex(t *testing.T) {
 	for _, p := range []string{"/profile", "/assets", "/a/b/c", "/index.html"} {
 		rec := get(NewHandler(built, Options{AppTitle: "Boardly"}), http.MethodGet, p)
-		if rec.Code != http.StatusOK || rec.Body.String() != index {
+		if rec.Code != http.StatusOK || rec.Body.String() != served {
 			t.Fatalf("%s: got %d %q", p, rec.Code, rec.Body.String())
 		}
 	}
@@ -166,12 +174,12 @@ func TestEmbeddedIndexHasTitleMarkers(t *testing.T) {
 func TestIndexCarriesMapStyle(t *testing.T) {
 	fsys := fstest.MapFS{"index.html": {Data: []byte("<head>" + mapStyleMarker + "</head>")}}
 	rec := get(NewHandler(fsys, Options{AppTitle: "Boardly", MapStyleURL: "https://maps.example.org/style.json?key=a&b"}), http.MethodGet, "/")
-	want := `<head><meta name="boardly-map-style" content="https://maps.example.org/style.json?key=a&amp;b" /></head>`
+	want := `<head><meta name="boardly-map-style" content="https://maps.example.org/style.json?key=a&amp;b" />` + notice + `</head>`
 	if rec.Body.String() != want {
 		t.Fatalf("got %q", rec.Body.String())
 	}
 	rec = get(NewHandler(fsys, Options{AppTitle: "Boardly"}), http.MethodGet, "/")
-	if rec.Body.String() != "<head>"+mapStyleMarker+"</head>" {
+	if rec.Body.String() != "<head>"+mapStyleMarker+notice+"</head>" {
 		t.Fatalf("empty style URL changed the default: %q", rec.Body.String())
 	}
 }
@@ -185,7 +193,7 @@ func TestIndexCarriesLegalLinks(t *testing.T) {
 	want := `<html><head><title>Boardly</title><meta name="application-name" content="Boardly" />` +
 		`<meta name="boardly-imprint" content="/imprint" />` +
 		`<meta name="boardly-privacy" content="https://example.at/datenschutz?a=1&amp;b=2" />` +
-		`</head>app</html>`
+		notice + `</head>app</html>`
 	for _, p := range []string{"/", "/settings", "/imprint"} {
 		rec := get(h, http.MethodGet, p)
 		if rec.Code != http.StatusOK || rec.Body.String() != want {
@@ -202,7 +210,8 @@ func TestIndexCarriesLegalLinks(t *testing.T) {
 func TestIndexLegalLinksBeforeAnalyticsSnippet(t *testing.T) {
 	snippet := `<script src="https://stats.example.org/s.js"></script>`
 	rec := get(NewHandler(built, Options{AppTitle: "Boardly", AnalyticsSnippet: snippet, ImprintHref: "/imprint"}), http.MethodGet, "/")
-	if body := rec.Body.String(); !strings.Contains(body, `<meta name="boardly-imprint" content="/imprint" />`+snippet+"</head>") {
+	if body := rec.Body.String(); !strings.Contains(body, `<meta name="boardly-imprint" content="/imprint" />`+
+		`<meta name="boardly-cookie-notice" content="cookieless-analytics" />`+snippet+"</head>") {
 		t.Fatalf("got %q", body)
 	}
 }
@@ -211,5 +220,47 @@ func TestIndexWithoutLegalLinks(t *testing.T) {
 	body := get(NewHandler(built, Options{AppTitle: "Boardly"}), http.MethodGet, "/").Body.String()
 	if strings.Contains(body, "boardly-imprint") || strings.Contains(body, "boardly-privacy") {
 		t.Fatalf("got legal meta tags in %q", body)
+	}
+}
+
+func TestIndexCarriesConsentSettings(t *testing.T) {
+	h := NewHandler(built, Options{
+		AppTitle: "Boardly", AnalyticsSnippet: "<script></script>",
+		ConsentService: `A & "B"`, ConsentCookies: []string{"_ga", "_ga_*"}, ConsentRevision: 42,
+	})
+	want := `<meta name="boardly-consent-analytics" content="A &amp; &#34;B&#34;" />` +
+		`<meta name="boardly-consent-cookies" content="_ga,_ga_*" />` +
+		`<meta name="boardly-consent-revision" content="42" />` +
+		`<script></script></head>`
+	for _, p := range []string{"/", "/settings"} {
+		body := get(h, http.MethodGet, p).Body.String()
+		if !strings.Contains(body, want) || strings.Contains(body, "boardly-cookie-notice") {
+			t.Fatalf("%s: got %q", p, body)
+		}
+	}
+	if body := get(h, http.MethodGet, "/assets/app-abc.js").Body.String(); strings.Contains(body, "boardly-consent") {
+		t.Fatalf("got consent tags in a bundle: %q", body)
+	}
+
+	body := get(NewHandler(built, Options{AppTitle: "Boardly", AnalyticsSnippet: "<script></script>", ConsentService: "Matomo", ConsentRevision: 1}),
+		http.MethodGet, "/").Body.String()
+	if strings.Contains(body, "boardly-consent-cookies") || !strings.Contains(body, `content="Matomo"`) {
+		t.Fatalf("without cookies: got %q", body)
+	}
+}
+
+func TestIndexCarriesCookieNoticeVariant(t *testing.T) {
+	for _, tt := range []struct {
+		name, snippet, want string
+	}{
+		{"no snippet", "", "necessary"},
+		{"snippet without consent", "<script></script>", "cookieless-analytics"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			body := get(NewHandler(built, Options{AppTitle: "Boardly", AnalyticsSnippet: tt.snippet}), http.MethodGet, "/settings").Body.String()
+			if !strings.Contains(body, `<meta name="boardly-cookie-notice" content="`+tt.want+`" />`) || strings.Contains(body, "boardly-consent-") {
+				t.Fatalf("got %q", body)
+			}
+		})
 	}
 }

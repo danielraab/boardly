@@ -16,6 +16,17 @@ If the work turns out to differ from the change, update the change's artifacts b
 
 Exceptions that don't need a change: typo fixes, formatting or lint-only fixes, dependency bumps, and documentation-only edits.
 
+## Test only what changed
+
+Run the tests of the side whose code changed, and only that side:
+
+- Code under `frontend/` changed: run the frontend checks and tests (`cd frontend && pnpm check && pnpm exec tsc --noEmit && pnpm test`).
+- Code under `backend/` changed: run the backend checks and tests (`cd backend && go vet ./... && test -z "$(gofmt -l .)" && go test ./...`).
+- Both changed: run both (`make check` and `make test`).
+- Neither changed (for example documentation, `CHANGELOG.md`, OpenSpec artifacts, or resolving a conflict in such files during a rebase): run no tests.
+
+Check with `git diff --name-only` (against the base of the step) which paths a step changed before testing.
+
 ## Keep export and import in step
 
 Every change must check whether the data export (`data-export` spec, `backend/internal/export`) and the import of Boardly exports (`data-import` spec) have to be adapted. This applies whenever a change adds, removes, renames or reshapes user data: tables, columns, fields, widget kinds or their configs, files, or references between items. The proposal states the result, even when it is "export and import are unaffected", and the tasks include the adaptation and its tests. Raise the export format version when older imports couldn't read the new document.

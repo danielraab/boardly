@@ -467,3 +467,51 @@ func TestAnalyticsSnippet(t *testing.T) {
 		})
 	}
 }
+
+func TestConsent(t *testing.T) {
+	tests := []struct {
+		name    string
+		vars    map[string]string
+		want    Consent
+		wantErr []string
+	}{
+		{"unset is off", nil, Consent{}, nil},
+		{"blank service is off", map[string]string{"BOARDLY_CONSENT_ANALYTICS": "   "}, Consent{}, nil},
+		{"service with cookies", map[string]string{
+			"BOARDLY_CONSENT_ANALYTICS":         " Google Analytics ",
+			"BOARDLY_CONSENT_ANALYTICS_COOKIES": " _ga, _ga_* ,",
+		}, Consent{Service: "Google Analytics", Cookies: []string{"_ga", "_ga_*"}}, nil},
+		{"invalid cookie name", map[string]string{
+			"BOARDLY_CONSENT_ANALYTICS":         "Google Analytics",
+			"BOARDLY_CONSENT_ANALYTICS_COOKIES": "_ga;path=/",
+		}, Consent{}, []string{"BOARDLY_CONSENT_ANALYTICS_COOKIES", "_ga;path=/"}},
+		{"only a wildcard", map[string]string{
+			"BOARDLY_CONSENT_ANALYTICS":         "Google Analytics",
+			"BOARDLY_CONSENT_ANALYTICS_COOKIES": "**",
+		}, Consent{}, []string{"BOARDLY_CONSENT_ANALYTICS_COOKIES"}},
+		{"cookies without a service", map[string]string{"BOARDLY_CONSENT_ANALYTICS_COOKIES": "_ga"},
+			Consent{}, []string{"BOARDLY_CONSENT_ANALYTICS_COOKIES", "BOARDLY_CONSENT_ANALYTICS"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(env(withBaseURL(tt.vars)))
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Fatal("want an error")
+				}
+				for _, w := range tt.wantErr {
+					if !strings.Contains(err.Error(), w) {
+						t.Fatalf("error %q doesn't name %q", err, w)
+					}
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(cfg.Consent, tt.want) {
+				t.Fatalf("Consent = %#v, want %#v", cfg.Consent, tt.want)
+			}
+		})
+	}
+}

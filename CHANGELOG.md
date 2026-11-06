@@ -8,6 +8,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Optional consent banner for the analytics snippet: `BOARDLY_CONSENT_ANALYTICS` names the service
+  and `BOARDLY_CONSENT_ANALYTICS_COOKIES` its cookies. Scripts marked
+  `type="text/plain" data-category="analytics"` only run after the visitor accepts. The footer gets
+  "Cookie settings" to change or withdraw the choice, and the server refuses to start when the
+  snippet would run without consent or no privacy policy is configured. Without consent, a small
+  closable notice says that only necessary cookies are used.
 - Offline copies of links, like Karakeep's: a readable article of the page, and with a headless
   browser next to Boardly (`BOARDLY_BROWSER_URL`, e.g. `chromedp/headless-shell`) a screenshot of
   it. They are saved when a link is added or its URL changes, and shown with **Offline copy** in

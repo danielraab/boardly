@@ -724,6 +724,8 @@ precedence over the file.
 | `BOARDLY_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
 | `BOARDLY_APP_TITLE` | `Boardly` | Name the web app, its installed app (manifest) and sign-in emails show, for example `Boardly Staging` to tell a staging system apart. Blank means the default. Development with the Vite dev server always shows `Boardly` |
 | `BOARDLY_ANALYTICS_SNIPPET` | (empty) | HTML inserted unchanged right before `</head>` of the web app, for example the `<script>` tag of Umami, Plausible or Matomo. It is read at startup, so changing it needs a restart, not a new build. The web app loads it once per full page load, so let the tool track page changes itself (most do by default). The snippet runs on every page, signed-in ones included, with full access to them: only put code there you trust. The Vite dev server doesn't insert it |
+| `BOARDLY_CONSENT_ANALYTICS` | (empty) | Name of the analytics service in `BOARDLY_ANALYTICS_SNIPPET`, for example `Google Analytics`. Setting it turns on a consent banner: the snippet's scripts only run after the visitor accepts. It needs marked scripts and a privacy policy. See [Analytics and cookie consent](#analytics-and-cookie-consent) |
+| `BOARDLY_CONSENT_ANALYTICS_COOKIES` | (empty) | Comma-separated cookie names the analytics service sets, `*` as a wildcard, for example `_ga,_ga_*`. The banner lists them and they're deleted when a visitor withdraws consent. Needs `BOARDLY_CONSENT_ANALYTICS` |
 | `BOARDLY_ALLOW_REGISTRATION` | `true` | Whether the first sign-in with a new email address creates an account. `false` closes registration: only existing users can sign in, and new addresses get an email saying that registration is closed. See [Sign-in](#sign-in) |
 | `BOARDLY_SMTP_HOST` | (empty) | SMTP server for sign-in emails. Empty disables delivery: links are written to the log instead |
 | `BOARDLY_SMTP_PORT` | `587` | SMTP port |
@@ -971,6 +973,61 @@ services:
   (operator, hosting, mail provider, analytics) and have it checked if you are unsure.
 - The Vite dev server (`make dev-frontend`) serves the web app without the server's settings, so
   it shows no legal links. Use a build (`make build`) to try them.
+
+### Analytics and cookie consent
+
+`BOARDLY_ANALYTICS_SNIPPET` adds an analytics tool to every page. Whether visitors must agree first
+depends on the tool. Tools that set cookies or similar identifiers, such as Google Analytics or
+Matomo with cookies, need consent under the GDPR and the ePrivacy rules (in Austria § 165 (3) TKG
+2021, in Germany § 25 TDDDG). For those, turn on Boardly's consent banner:
+
+1. Name the service in `BOARDLY_CONSENT_ANALYTICS`, and optionally its cookies in
+   `BOARDLY_CONSENT_ANALYTICS_COOKIES`.
+2. Mark **every** `<script>` of the snippet with `type="text/plain" data-category="analytics"`. The
+   browser doesn't run these scripts, and the banner runs them once the visitor accepts.
+3. Configure a privacy policy (see [Imprint and privacy policy](#imprint-and-privacy-policy)). The
+   banner links to it, and it must say what the tool collects.
+
+```yaml
+environment:
+  BOARDLY_CONSENT_ANALYTICS: Google Analytics
+  BOARDLY_CONSENT_ANALYTICS_COOKIES: _ga,_ga_*
+  BOARDLY_ANALYTICS_SNIPPET: >-
+    <script type="text/plain" data-category="analytics" async
+      src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"></script>
+    <script type="text/plain" data-category="analytics">
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date()); gtag('config', 'G-XXXXXXX');
+    </script>
+```
+
+For Matomo, mark its tracking `<script>` the same way, set `BOARDLY_CONSENT_ANALYTICS: Matomo`
+and `BOARDLY_CONSENT_ANALYTICS_COOKIES: _pk_id.*,_pk_ses.*`, and leave out the `<noscript>` image.
+
+- **The banner** names the service, links to the privacy policy, and offers "Accept" and "Reject"
+  with equal weight, plus "Settings". It doesn't block the page, follows the app's language and
+  theme, and is shown to signed-in and signed-out visitors. The footer gets a "Cookie settings"
+  button, where visitors change or withdraw their choice. Withdrawing deletes the listed cookies,
+  also on parent domains, and reloads the page so the tool stops.
+- **The choice is stored only in the visitor's browser**, in the necessary first-party cookie
+  `boardly_consent`, for 182 days. The server keeps no consent records.
+- **Asking again.** When the snippet, the service name or the cookie names change, the banner asks
+  every visitor again after the restart.
+- **Checked at startup.** With `BOARDLY_CONSENT_ANALYTICS` set, the server refuses to start, naming
+  the problem, when the snippet is empty, a `<script>` isn't marked, the snippet contains other
+  elements that would load without consent (such as `<img>`, `<noscript>`, `<link>` or
+  `<iframe>`), or no privacy policy is configured.
+- **Without consent**, every page shows a small notice that can be closed: Boardly only uses
+  necessary cookies and browser storage. With a snippet, it adds that usage statistics are
+  collected without cookies. So only use a snippet without `BOARDLY_CONSENT_ANALYTICS` for a
+  cookieless tool such as Umami or Plausible, and the notice stays true.
+- **What stays your job.** Boardly provides the consent mechanism. The privacy policy's content
+  (provider, what it collects, legal basis, transfers to other countries, how long data is kept),
+  the settings in the analytics tool, and whether a cookieless tool needs consent are yours to
+  decide. Have them checked if you are unsure.
+- The Vite dev server doesn't insert the snippet or these settings, so it shows neither banner nor
+  notice. Use a build (`make build`) to try them.
 
 ### Passkeys
 

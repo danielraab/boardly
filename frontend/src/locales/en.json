@@ -16,7 +16,8 @@
 		"github": "GitHub",
 		"footer": {
 			"openSource": "Open source",
-			"legalLinks": "Legal"
+			"legalLinks": "Legal",
+			"cookieSettings": "Cookie settings"
 		}
 	},
 	"theme": {
@@ -1345,5 +1346,31 @@
 				"invalidTitle": "The name must have 1 to 200 characters."
 			}
 		}
+	},
+	"consent": {
+		"title": "Cookies and analytics",
+		"text": "With your consent, {{appName}} uses {{service}} to see how the app is used. You can change your choice at any time under “Cookie settings” at the bottom of the page.",
+		"privacy": "Privacy policy",
+		"accept": "Accept",
+		"reject": "Reject",
+		"settings": "Settings",
+		"settingsTitle": "Cookie settings",
+		"intro": "Choose which cookies {{appName}} may use.",
+		"acceptAll": "Accept all",
+		"rejectAll": "Reject all",
+		"save": "Save settings",
+		"close": "Close",
+		"necessaryTitle": "Necessary",
+		"necessaryText": "{{appName}} uses these cookies only to keep you signed in and to remember this choice. They're always on.",
+		"analyticsTitle": "Analytics",
+		"analyticsText": "{{service}} shows how {{appName}} is used. It's only loaded with your consent.",
+		"cookie": "Cookie"
+	},
+	"cookieNotice": {
+		"label": "Cookie notice",
+		"necessary": "{{appName}} only uses necessary cookies and browser storage, to keep you signed in and remember your settings.",
+		"cookieless": "Usage statistics are collected without cookies.",
+		"privacy": "Privacy policy",
+		"close": "Close cookie notice"
 	}
 }

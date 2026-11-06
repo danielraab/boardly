@@ -1,9 +1,17 @@
 import { screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import i18n from "#/i18n";
 import { mockApi, signedIn } from "#/test/api";
+import { setConsentMeta } from "#/test/consent";
 import { setLegalLinks } from "#/test/legal";
 import { renderApp } from "#/test/renderApp";
+
+const consent = vi.hoisted(() => ({ open: vi.fn(async () => {}) }));
+
+vi.mock("#/lib/consent", () => ({
+	openConsentSettings: consent.open,
+	startConsent: vi.fn(),
+}));
 
 let cleanup = () => {};
 
@@ -85,4 +93,31 @@ describe("app footer", () => {
 			expect(f.previousElementSibling).toBe(screen.getByRole("main"));
 		},
 	);
+
+	it("has 'Cookie settings' after the legal links with consent on", async () => {
+		const legal = setLegalLinks({ privacy: "/privacy" });
+		const meta = setConsentMeta({ service: "Matomo", revision: 1 });
+		cleanup = () => {
+			legal();
+			meta();
+		};
+		await i18n.changeLanguage("de");
+		const { user } = renderApp("/");
+		const f = await footer();
+		const nav = within(f).getByRole("navigation", { name: "Rechtliches" });
+		expect(nav).toHaveTextContent("Datenschutz·Cookie-Einstellungen");
+		await user.click(
+			within(nav).getByRole("button", { name: "Cookie-Einstellungen" }),
+		);
+		expect(consent.open).toHaveBeenCalled();
+	});
+
+	it("has no 'Cookie settings' with consent off", async () => {
+		cleanup = setConsentMeta({ notice: "necessary" });
+		renderApp("/");
+		const f = await footer();
+		expect(
+			within(f).queryByRole("button", { name: "Cookie settings" }),
+		).toBeNull();
+	});
 });
