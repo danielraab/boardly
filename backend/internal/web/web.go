@@ -44,6 +44,12 @@ type Options struct {
 	// leaves the tag out.
 	ImprintHref string
 	PrivacyHref string
+	// ConsentService turns on the analytics consent banner and names the
+	// service; empty means consent is off and the web app shows the cookie
+	// notice instead. ConsentCookies and ConsentRevision go with it.
+	ConsentService  string
+	ConsentCookies  []string
+	ConsentRevision int
 }
 
 // Handler serves the embedded frontend build with opts filled in.
@@ -146,9 +152,8 @@ func titledFiles(fsys fs.FS, opts Options) (map[string][]byte, error) {
 				fmt.Fprintf(&legal, `<meta name="%s" content="%s" />`, m.name, html.EscapeString(m.href))
 			}
 		}
-		if legal.Len() > 0 {
-			index = bytes.Replace(index, []byte(headEnd), []byte(legal.String()+headEnd), 1)
-		}
+		writeConsentTags(&legal, opts)
+		index = bytes.Replace(index, []byte(headEnd), []byte(legal.String()+headEnd), 1)
 		if analyticsSnippet != "" {
 			// The operator's HTML goes in as written; escaping would break it.
 			index = bytes.Replace(index, []byte(headEnd), []byte(analyticsSnippet+headEnd), 1)
@@ -180,4 +185,23 @@ func titledFiles(fsys fs.FS, opts Options) (map[string][]byte, error) {
 		}
 	}
 	return out, nil
+}
+
+// writeConsentTags writes the analytics consent settings when consent is on,
+// and otherwise the cookie notice's variant: "necessary" without an analytics
+// snippet and "cookieless-analytics" with one.
+func writeConsentTags(b *strings.Builder, opts Options) {
+	if opts.ConsentService == "" {
+		variant := "necessary"
+		if opts.AnalyticsSnippet != "" {
+			variant = "cookieless-analytics"
+		}
+		fmt.Fprintf(b, `<meta name="boardly-cookie-notice" content="%s" />`, variant)
+		return
+	}
+	fmt.Fprintf(b, `<meta name="boardly-consent-analytics" content="%s" />`, html.EscapeString(opts.ConsentService))
+	if len(opts.ConsentCookies) > 0 {
+		fmt.Fprintf(b, `<meta name="boardly-consent-cookies" content="%s" />`, html.EscapeString(strings.Join(opts.ConsentCookies, ",")))
+	}
+	fmt.Fprintf(b, `<meta name="boardly-consent-revision" content="%d" />`, opts.ConsentRevision)
 }

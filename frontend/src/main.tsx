@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { createQueryClient } from "#/features/auth/session";
 import { initI18n } from "#/i18n";
+import { startConsent } from "#/lib/consent";
 import { initTheme } from "#/theme";
 import { routeTree } from "./routeTree.gen";
 
@@ -17,6 +18,8 @@ const router = createRouter({
 	defaultPreload: "intent",
 	scrollRestoration: true,
 });
+
+void startConsent({ navigate: (path) => router.history.push(path) });
 
 declare module "@tanstack/react-router" {
 	interface Register {

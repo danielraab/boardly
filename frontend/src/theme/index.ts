@@ -76,6 +76,11 @@ function subscribe(listener: () => void): () => void {
 	return () => listeners.delete(listener);
 }
 
+/** Calls listener whenever the shown theme may have changed; returns an unsubscribe. */
+export function onThemeChange(listener: () => void): () => void {
+	return subscribe(listener);
+}
+
 function notify(): void {
 	for (const listener of listeners) listener();
 }

@@ -22,6 +22,7 @@ import (
 	"boardly/internal/auth"
 	"boardly/internal/blobs"
 	"boardly/internal/config"
+	"boardly/internal/consent"
 	"boardly/internal/dashboards"
 	"boardly/internal/dataimport"
 	"boardly/internal/db"
@@ -55,8 +56,9 @@ func main() {
 	}
 }
 
-// loadConfig reads the configuration and the legal pages it names. Either
-// failing stops the server before anything else starts.
+// loadConfig reads the configuration and the legal pages it names, and checks
+// the analytics consent settings against both. Any failure stops the server
+// before anything else starts.
 func loadConfig(lookupEnv func(string) (string, bool)) (config.Config, *legal.Pages, error) {
 	cfg, err := config.Load(lookupEnv)
 	if err != nil {
@@ -64,6 +66,9 @@ func loadConfig(lookupEnv func(string) (string, bool)) (config.Config, *legal.Pa
 	}
 	pages, err := legal.Load(legal.Sources{Dir: cfg.Legal.Dir, ImprintURL: cfg.Legal.ImprintURL, PrivacyURL: cfg.Legal.PrivacyURL})
 	if err != nil {
+		return config.Config{}, nil, fmt.Errorf("configuration: %w", err)
+	}
+	if err := consent.Check(cfg.Consent, cfg.AnalyticsSnippet, pages.Href(legal.Privacy)); err != nil {
 		return config.Config{}, nil, fmt.Errorf("configuration: %w", err)
 	}
 	return cfg, pages, nil
@@ -161,6 +166,8 @@ func run() error {
 			Web: web.Handler(web.Options{
 				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL,
 				ImprintHref: legalPages.Href(legal.Imprint), PrivacyHref: legalPages.Href(legal.Privacy),
+				ConsentService: cfg.Consent.Service, ConsentCookies: cfg.Consent.Cookies,
+				ConsentRevision: consent.Revision(cfg.AnalyticsSnippet, cfg.Consent.Service, cfg.Consent.Cookies),
 			}),
 			Auth:        authService,
 			Legal:       legalPages,

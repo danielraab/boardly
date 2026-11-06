@@ -12,6 +12,7 @@ import { appTitle } from "#/lib/appTitle";
 import { AppFooter } from "./AppFooter";
 import { AppIcon } from "./AppIcon";
 import { headerButton } from "./buttonStyles";
+import { CookieNotice } from "./CookieNotice";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { UserMenu } from "./UserMenu";
@@ -51,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 					{/* Before the mini player, whose spacer keeps the bar off the footer. */}
 					<AppFooter className={container} />
 					<MiniPlayer />
+					<CookieNotice />
 				</div>
 			</MediaPlayerProvider>
 		</CurrentDashboardProvider>

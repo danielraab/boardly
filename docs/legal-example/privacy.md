@@ -24,7 +24,8 @@ visible to anyone who has their address.
 
 **Cookies.** Boardly sets only cookies that are needed: `boardly_session` keeps you signed in and
 expires 30 days after you last used it, and `boardly_login_request` ties a sign-in link to the
-browser that asked for it. There are no tracking cookies. Your browser also stores settings such as
+browser that asked for it. [If you use analytics with consent: Cookies for analytics are only set
+after you agree, see "Analytics" below. Otherwise:] There are no tracking cookies. Your browser also stores settings such as
 the language, the theme, collapsed sections and whether maps may load, in its local storage. They
 never leave your device.
 
@@ -42,8 +43,19 @@ not stored. [Add the logs of your reverse proxy or hosting provider, and how lon
   IP address while you listen.
 - **Maps.** Maps of note locations are loaded from [OpenFreeMap / your map provider] only after you
   choose "Load map". The map provider then sees your IP address and the area you view.
-- [**Analytics.** If you set `BOARDLY_ANALYTICS_SNIPPET`, name the tool, what it collects and
-  the legal basis. Otherwise remove this point.]
+- [**Analytics.** If you set `BOARDLY_ANALYTICS_SNIPPET`, keep one of these and remove the other.
+  Otherwise remove this point.]
+  - [With consent (`BOARDLY_CONSENT_ANALYTICS`):] Only if you agree in the cookie banner, we use
+    [Google Analytics, provided by …] to see how this site is used. It collects [which pages you
+    view, your device and browser, an approximate location …] and sets the cookies [`_ga`,
+    `_ga_*`], which are kept for [… months]. [Data is transferred to … ; basis for the transfer: …]
+    The legal basis is your consent (Art. 6(1)(a) GDPR). You can withdraw it at any time under
+    "Cookie settings" at the bottom of every page; the cookies are then deleted. Your choice is
+    stored for 182 days in the necessary cookie `boardly_consent`.
+  - [Without cookies:] We use [Umami / Plausible, hosted by …] to count page views without
+    cookies or similar identifiers. It collects [the page, the referring site, the browser type,
+    the country …] and doesn't identify you. The legal basis is [our legitimate interest in knowing
+    how this site is used (Art. 6(1)(f) GDPR)].
 
 ## How long data is kept
 

@@ -134,3 +134,45 @@ func TestLoadConfigChecksLegalPages(t *testing.T) {
 		t.Fatalf("imprint href = %q", pages.Href("imprint"))
 	}
 }
+
+// TestLoadConfigChecksConsent checks that analytics consent stops the server
+// when the snippet would run without consent or no privacy policy exists.
+func TestLoadConfigChecksConsent(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "privacy.md"), []byte("# Privacy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	marked := `<script type="text/plain" data-category="analytics" src="https://stats.example.org/a.js"></script>`
+	tests := []struct {
+		name    string
+		env     map[string]string
+		wantErr string
+	}{
+		{"unmarked snippet", map[string]string{
+			"BOARDLY_LEGAL_DIR": dir, "BOARDLY_CONSENT_ANALYTICS": "Matomo",
+			"BOARDLY_ANALYTICS_SNIPPET": `<script src="https://stats.example.org/a.js"></script>`,
+		}, "BOARDLY_ANALYTICS_SNIPPET"},
+		{"no privacy policy", map[string]string{
+			"BOARDLY_CONSENT_ANALYTICS": "Matomo", "BOARDLY_ANALYTICS_SNIPPET": marked,
+		}, "privacy policy"},
+		{"valid", map[string]string{
+			"BOARDLY_LEGAL_DIR": dir, "BOARDLY_CONSENT_ANALYTICS": "Matomo", "BOARDLY_ANALYTICS_SNIPPET": marked,
+		}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.env["BOARDLY_BASE_URL"] = "http://localhost:8080"
+			lookup := func(k string) (string, bool) { v, ok := tt.env[k]; return v, ok }
+			_, _, err := loadConfig(lookup)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("loadConfig error = %v, want one naming %s", err, tt.wantErr)
+			}
+		})
+	}
+}

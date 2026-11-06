@@ -1,0 +1,62 @@
+/*
+ * The consent banner in Boardly's colours. The tokens follow [data-theme], so
+ * every theme fits; the selectors outrank the library's own light and dark
+ * (.cc--darkmode) defaults. Accept and reject share one button style, so
+ * neither looks preferred.
+ */
+html #cc-main,
+html.cc--darkmode #cc-main {
+	--cc-font-family: var(--font-sans);
+	--cc-modal-border-radius: 0.75rem;
+	--cc-btn-border-radius: 0.5rem;
+	--cc-bg: var(--color-surface);
+	--cc-primary-color: var(--color-ink);
+	--cc-secondary-color: var(--color-muted);
+	--cc-link-color: var(--color-accent);
+	--cc-separator-border-color: var(--color-line);
+	--cc-overlay-bg: rgb(0 0 0 / 0.5);
+
+	--cc-btn-primary-bg: var(--color-ink);
+	--cc-btn-primary-color: var(--color-surface);
+	--cc-btn-primary-border-color: var(--color-ink);
+	--cc-btn-primary-hover-bg: color-mix(
+		in srgb,
+		var(--color-ink) 85%,
+		var(--color-surface)
+	);
+	--cc-btn-primary-hover-color: var(--color-surface);
+	--cc-btn-primary-hover-border-color: color-mix(
+		in srgb,
+		var(--color-ink) 85%,
+		var(--color-surface)
+	);
+	--cc-btn-secondary-bg: var(--color-paper);
+	--cc-btn-secondary-color: var(--color-ink);
+	--cc-btn-secondary-border-color: var(--color-line);
+	--cc-btn-secondary-hover-bg: var(--color-line);
+	--cc-btn-secondary-hover-color: var(--color-ink);
+	--cc-btn-secondary-hover-border-color: var(--color-line);
+
+	--cc-toggle-on-bg: var(--color-accent);
+	--cc-toggle-off-bg: var(--color-muted);
+	--cc-toggle-on-knob-bg: var(--color-surface);
+	--cc-toggle-off-knob-bg: var(--color-surface);
+	--cc-toggle-enabled-icon-color: var(--color-surface);
+	--cc-toggle-disabled-icon-color: var(--color-surface);
+	--cc-toggle-readonly-bg: var(--color-line);
+	--cc-toggle-readonly-knob-bg: var(--color-muted);
+	--cc-toggle-readonly-knob-icon-color: var(--color-line);
+
+	--cc-section-category-border: var(--color-line);
+	--cc-cookie-category-block-bg: var(--color-paper);
+	--cc-cookie-category-block-border: var(--color-line);
+	--cc-cookie-category-block-hover-bg: var(--color-line);
+	--cc-cookie-category-block-hover-border: var(--color-line);
+	--cc-cookie-category-expanded-block-bg: transparent;
+	--cc-cookie-category-expanded-block-hover-bg: var(--color-line);
+	--cc-footer-bg: var(--color-paper);
+	--cc-footer-color: var(--color-muted);
+	--cc-footer-border-color: var(--color-line);
+	--cc-webkit-scrollbar-bg: var(--color-line);
+	--cc-webkit-scrollbar-hover-bg: var(--color-muted);
+}

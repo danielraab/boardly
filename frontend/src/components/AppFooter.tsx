@@ -3,6 +3,8 @@ import { ArrowUpRight } from "lucide-react";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { GithubIcon } from "#/components/GithubIcon";
+import { openConsentSettings } from "#/lib/consent";
+import { consentSettings } from "#/lib/consent/settings";
 import { legalLink, legalPageNames } from "#/lib/legalLinks";
 import { githubRepoUrl } from "#/lib/sourceCode";
 
@@ -10,7 +12,8 @@ const linkClass = "inline-flex items-center gap-1 rounded-sm hover:text-ink";
 
 /**
  * The slim footer at the end of every page: links to the configured legal
- * pages, and "Open source · GitHub".
+ * pages, "Cookie settings" when analytics consent is on, and
+ * "Open source · GitHub".
  */
 export function AppFooter({ className = "" }: { className?: string }) {
 	const { t } = useTranslation();
@@ -19,12 +22,13 @@ export function AppFooter({ className = "" }: { className?: string }) {
 		const link = legalLink(page);
 		return link ? [{ page, link }] : [];
 	});
+	const consent = consentSettings() !== null;
 
 	return (
 		<footer
 			className={`${className} flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line py-4 text-sm text-muted`}
 		>
-			{legal.length > 0 && (
+			{(legal.length > 0 || consent) && (
 				<nav
 					aria-label={t("shell.footer.legalLinks")}
 					className="flex items-center gap-2"
@@ -50,6 +54,18 @@ export function AppFooter({ className = "" }: { className?: string }) {
 							)}
 						</Fragment>
 					))}
+					{consent && (
+						<>
+							{legal.length > 0 && <span aria-hidden>·</span>}
+							<button
+								type="button"
+								onClick={() => void openConsentSettings()}
+								className={`${linkClass} cursor-pointer`}
+							>
+								{t("shell.footer.cookieSettings")}
+							</button>
+						</>
+					)}
 				</nav>
 			)}
 			<p className="flex items-center gap-2 sm:ml-auto">

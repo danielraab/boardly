@@ -16,7 +16,8 @@
 		"github": "GitHub",
 		"footer": {
 			"openSource": "Open Source",
-			"legalLinks": "Rechtliches"
+			"legalLinks": "Rechtliches",
+			"cookieSettings": "Cookie-Einstellungen"
 		}
 	},
 	"theme": {
@@ -1345,5 +1346,31 @@
 				"invalidTitle": "Der Name muss 1 bis 200 Zeichen haben."
 			}
 		}
+	},
+	"consent": {
+		"title": "Cookies und Statistik",
+		"text": "Mit deiner Zustimmung verwendet {{appName}} {{service}}, um zu sehen, wie die App genutzt wird. Du kannst deine Wahl jederzeit unter „Cookie-Einstellungen“ unten auf der Seite ändern.",
+		"privacy": "Datenschutzerklärung",
+		"accept": "Akzeptieren",
+		"reject": "Ablehnen",
+		"settings": "Einstellungen",
+		"settingsTitle": "Cookie-Einstellungen",
+		"intro": "Wähle, welche Cookies {{appName}} verwenden darf.",
+		"acceptAll": "Alle akzeptieren",
+		"rejectAll": "Alle ablehnen",
+		"save": "Einstellungen speichern",
+		"close": "Schließen",
+		"necessaryTitle": "Notwendig",
+		"necessaryText": "{{appName}} verwendet diese Cookies nur, um dich angemeldet zu halten und diese Wahl zu merken. Sie sind immer aktiv.",
+		"analyticsTitle": "Statistik",
+		"analyticsText": "{{service}} zeigt, wie {{appName}} genutzt wird. Es wird nur mit deiner Zustimmung geladen.",
+		"cookie": "Cookie"
+	},
+	"cookieNotice": {
+		"label": "Cookie-Hinweis",
+		"necessary": "{{appName}} verwendet nur notwendige Cookies und Browser-Speicher, um dich angemeldet zu halten und deine Einstellungen zu merken.",
+		"cookieless": "Nutzungsstatistiken werden ohne Cookies erhoben.",
+		"privacy": "Datenschutzerklärung",
+		"close": "Cookie-Hinweis schließen"
 	}
 }

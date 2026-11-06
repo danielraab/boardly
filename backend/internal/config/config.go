@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -66,12 +67,26 @@ type Config struct {
 
 	Legal Legal
 
+	Consent Consent
+
 	// AccountDeletionDays is the grace period, in days, between scheduling an
 	// account's deletion and carrying it out. 0 deletes at the next sweep.
 	AccountDeletionDays int
 
 	Exports Exports
 }
+
+// Consent turns on the consent banner for the analytics snippet. An empty
+// Service means consent is off.
+type Consent struct {
+	// Service is the analytics service's name the banner shows.
+	Service string
+	// Cookies are the service's cookie names; "*" matches any characters.
+	Cookies []string
+}
+
+// cookieNameRe is what a name in BOARDLY_CONSENT_ANALYTICS_COOKIES may hold.
+var cookieNameRe = regexp.MustCompile(`^[A-Za-z0-9_.*-]+$`)
 
 // Legal names the sources of the legal pages (imprint and privacy policy).
 // Empty fields mean unset; the files in Dir are checked by the legal package.
@@ -353,6 +368,21 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("%s: %q must be an absolute http(s) URL", l.key, v)
 		}
 		*l.dst = v
+	}
+
+	cfg.Consent.Service = strings.TrimSpace(getenv("BOARDLY_CONSENT_ANALYTICS"))
+	for _, name := range strings.Split(getenv("BOARDLY_CONSENT_ANALYTICS_COOKIES"), ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !cookieNameRe.MatchString(name) || strings.Trim(name, "*") == "" {
+			return Config{}, fmt.Errorf("BOARDLY_CONSENT_ANALYTICS_COOKIES: %q must consist of letters, digits, _, -, . and * and not only *", name)
+		}
+		cfg.Consent.Cookies = append(cfg.Consent.Cookies, name)
+	}
+	if len(cfg.Consent.Cookies) > 0 && cfg.Consent.Service == "" {
+		return Config{}, fmt.Errorf("BOARDLY_CONSENT_ANALYTICS_COOKIES: needs BOARDLY_CONSENT_ANALYTICS, the name of the analytics service")
 	}
 
 	return cfg, nil
