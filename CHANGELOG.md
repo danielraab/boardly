@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-06
+
 ### Added
 
 - Optional consent banner for the analytics snippet: `BOARDLY_CONSENT_ANALYTICS` names the service
@@ -45,8 +47,20 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - A domain filter on `/favourites` (`?domain=github.com`), shown as a removable chip and cleared
   with the other filters.
 
+- Deleting your own account on **Settings → Profile**: it needs an email sign-in within the last
+  3 minutes and the typed email address. Scheduling it signs out other devices, revokes all app
+  tokens and hides public dashboards right away, and a banner offers to cancel. After
+  `BOARDLY_ACCOUNT_DELETION_DAYS` (7) the account is deleted with all its data and files, after a
+  reminder email one day before.
+- A search in the favourite explorer widget, between "Add favourite" and "Expand all": it filters
+  the tree like the favourites page and shows matches expanded and highlighted, without changing
+  the remembered folders. Escape or × closes it.
+- "New folder" and "New category" buttons on the share page, below the folder and category
+  choice. The new folder or category is chosen for that save only, without changing the defaults.
+
 ### Changed
 
+- On narrow screens the station search shows its add buttons as icons only.
 - Every page now ends with a slim footer that links the imprint and the privacy policy, when they
   are configured, and "Open source · GitHub". The landing page's own footer is gone.
 - Maps of note locations ask before they load: the map provider (by default
@@ -256,7 +270,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/danielraab/boardly/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/danielraab/boardly/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/danielraab/boardly/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielraab/boardly/compare/v0.1.0...v0.2.0
