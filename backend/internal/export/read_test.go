@@ -51,7 +51,11 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.s = &Service{DB: database, ImageFiles: imageDir, AttachmentFiles: attachmentDir, Now: func() time.Time { return f.now }}
+	offlineDir, err := blobs.Open(filepath.Join(t.TempDir(), "offline"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.s = &Service{DB: database, ImageFiles: imageDir, AttachmentFiles: attachmentDir, OfflineFiles: offlineDir, Now: func() time.Time { return f.now }}
 	return f
 }
 

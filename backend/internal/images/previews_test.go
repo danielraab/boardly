@@ -380,3 +380,32 @@ func TestRawPathRejectsOtherNames(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+func TestFillOnlyFillsAnEmptyPreview(t *testing.T) {
+	f := newPreviewFixture(t, true)
+	empty := f.link("https://example.org/a", nil)
+	if err := f.p.Fill(f.ctx, f.user, empty, "https://example.org/a", encodePNG(t, halves(1280, 800))); err != nil {
+		t.Fatal(err)
+	}
+	f.runJobs(jobs.KindPreviewConvert, f.p.convert)
+	_, p := f.node(empty)
+	if p == nil {
+		t.Fatal("no preview after Fill")
+	}
+	var source string
+	if err := f.p.Images.DB.QueryRow(`SELECT source FROM images WHERE id = ?`, *p).Scan(&source); err != nil || source != SourcePreview {
+		t.Fatalf("source = %q, err %v", source, err)
+	}
+
+	// A link that has a preview keeps it.
+	if err := f.p.Fill(f.ctx, f.user, empty, "https://example.org/a", encodePNG(t, halves(20, 20))); err != nil {
+		t.Fatal(err)
+	}
+	f.runJobs(jobs.KindPreviewConvert, f.p.convert)
+	if _, again := f.node(empty); *again != *p {
+		t.Fatal("Fill replaced an existing preview")
+	}
+	if err := f.p.Fill(f.ctx, f.user, empty, "https://example.org/a", []byte("text")); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("text: err = %v", err)
+	}
+}

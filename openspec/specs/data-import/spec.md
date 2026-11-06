@@ -112,7 +112,7 @@ Every reference in an imported item to another item of the file SHALL point to t
 - **THEN** the note is imported without that attachment in its content
 
 ### Requirement: Imported favourites
-With `favourites`, the tree below the file's root SHALL be imported into the import folder following the bookmark import's rules for the folder structure, imported links, import order and duplicate URLs (see the `bookmark-import` capability). Each link keeps its URL, title, description, tags, creation time and, when the image is imported, its preview image. Imported links get the same background fetches as links of a bookmark import.
+With `favourites`, the tree below the file's root SHALL be imported into the import folder following the bookmark import's rules for the folder structure, imported links, import order and duplicate URLs (see the `bookmark-import` capability). Each link keeps its URL, title, description, tags, creation time and, when the image is imported, its preview image. Each link also keeps its offline copy, with its capture time, title and the parts whose files are imported (see "Files from the archive"). A copy is `ready` when it has at least one imported part, and otherwise the link has no offline copy. A link skipped as a duplicate keeps the existing link's copy, and the file's copy is not imported. Imported links get the same background fetches as links of a bookmark import, so no offline copy is captured for them.
 
 #### Scenario: Duplicate link
 - **WHEN** Ann has `https://go.dev/` and imports an export with `https://go.dev` and `skipDuplicates` `true`
@@ -121,6 +121,18 @@ With `favourites`, the tree below the file's root SHALL be imported into the imp
 #### Scenario: Description and preview kept
 - **WHEN** a ZIP export has a link with a description and a preview image
 - **THEN** the imported link has that description and preview image
+
+#### Scenario: Offline copy restored
+- **WHEN** a ZIP export has the link "Go tour" with an offline copy with an article and a screenshot, captured on 2026-10-01
+- **THEN** the imported link's offline copy is `ready`, captured on 2026-10-01, with that article and screenshot, and no capture is queued
+
+#### Scenario: JSON export with offline copies
+- **WHEN** a JSON export has links whose `offlineCopy` has `capturedAt` and no files
+- **THEN** the imported links have no offline copy
+
+#### Scenario: Export from before offline copies
+- **WHEN** a version 1 export without `offlineCopy` on its links is imported
+- **THEN** the links are imported without offline copies
 
 ### Requirement: Imported notes
 With `notes`, the categories of the file SHALL be imported below the import category, keeping their tree, following the bookmark import's rules for categories, and the notes into their imported categories, or into the import category when they have none. Duplicate notes are skipped by the bookmark import's rules for duplicate notes. Each note keeps its title, icon, colour, content, pinned and archived flags, and creation and change time. Each category keeps its title, icon and colour.
@@ -156,7 +168,7 @@ With `media`, every media source of the file SHALL be added after the user's med
 - **THEN** no second station is added, and the report counts one duplicate media source
 
 ### Requirement: Files from the archive
-An image or attachment of a ZIP export SHALL be imported from the file named in its `file` and SHALL meet this server's rules for uploaded images and attachments (allowed types and maximum size). A file that doesn't, that is missing from the archive, or whose `file` is `null`, SHALL be skipped and counted in the report, and the items that use it are imported without it (see "References between imported items"). A JSON export has no files, so no image or attachment is imported from it.
+An image, attachment or offline copy part of a ZIP export SHALL be imported from the file named in its `file`, or in the `article` or `screenshot` of an `offlineCopy`. Images and attachments SHALL meet this server's rules for uploaded images and attachments (allowed types and maximum size). An article SHALL be HTML of at most `BOARDLY_OFFLINE_MAX_SIZE_MB` megabytes, and it SHALL be sanitized again like a captured article before it is stored (see "Readable article" in the `offline-copies` capability). A screenshot SHALL be a JPEG, PNG or WebP within the preview image limits, and it is converted like a captured screenshot. A file that doesn't meet these rules, that is missing from the archive, or, for images and attachments, whose `file` is `null`, SHALL be skipped and counted in the report. The items that use it are imported without it (see "References between imported items"). An offline copy part whose path is `null` is not imported and not counted, because the copy may simply not have that part. A JSON export has no files, so no image, attachment or offline copy part is imported from it.
 
 #### Scenario: Attachment type not allowed here
 - **WHEN** a ZIP export has a note with a `.docx` attachment and this server doesn't allow that type
@@ -165,6 +177,14 @@ An image or attachment of a ZIP export SHALL be imported from the file named in 
 #### Scenario: Missing file
 - **WHEN** a ZIP export lists an image whose file isn't in the archive
 - **THEN** the image is skipped and counted in the report
+
+#### Scenario: Article with a script
+- **WHEN** a ZIP export's offline copy article was edited to contain `<script>`
+- **THEN** the imported article contains no script
+
+#### Scenario: Screenshot that isn't an image
+- **WHEN** an offline copy's `screenshot` file is a text file
+- **THEN** the screenshot is skipped and counted in the report, and the copy is imported with its article only
 
 ### Requirement: Profile defaults
 When the user has no default folder for new links and the file's default folder was imported or matched, the default folder SHALL be set to it. When the user has no default category for new notes and the file's default category was imported or matched, the default category SHALL be set to it. The display name and the slug of the user SHALL NOT be changed.
@@ -185,11 +205,15 @@ A successful import SHALL return a report with, for each imported part:
 - `notes`: the number of imported notes and created categories, and of duplicate notes,
 - `media`: the number of added media sources, of duplicates and of invalid ones,
 
-and `files`: the number of imported images and attachments, and of skipped files. A part that wasn't imported is `null`.
+and `files`: the number of imported images, attachments and offline copy parts, and of skipped files. A part that wasn't imported is `null`.
 
 #### Scenario: Report of a full import
 - **WHEN** an export with 10 links, 2 dashboards, 5 notes and 3 stations, one of them already saved, is imported with all parts
 - **THEN** the report has 10 links, 2 dashboards, 5 notes, 2 media sources and 1 duplicate media source
+
+#### Scenario: Offline copy files counted
+- **WHEN** a ZIP export with one link whose offline copy has an article and a screenshot is imported with `favourites`
+- **THEN** the report's `files` counts 2 imported files
 
 ### Requirement: Boardly format in the import form
 When the format "Boardly export (JSON or ZIP)" / "Boardly-Export (JSON oder ZIP)" is chosen in the import form, the form SHALL show a checkbox for each part, all checked at first: "Favourites" / "Favoriten", "Dashboards" / "Dashboards", "Notes" / "Notizen" and "Media sources" / "Medienquellen". The import folder is shown only while "Favourites" is checked, and the import category only while "Notes" is checked, with a hint that notes without a category go into it. The "Import" button is disabled while no part is checked, and while "Favourites" is checked without an import folder. The import is sent to `/api/import` with the checked parts. After a successful import, the section SHALL show the report, and favourites, tags, dashboards, notes, categories and media sources are reloaded wherever they are shown. A `413` SHALL show that the file can have at most 10 MB, with the hint "Export without files to get a smaller JSON file." / "Exportiere ohne Dateien, um eine kleinere JSON-Datei zu erhalten."

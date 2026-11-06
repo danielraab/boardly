@@ -72,8 +72,13 @@ func newFixture(t *testing.T) *fixture {
 	noLogo := func(context.Context, string, string) (string, error) { return "", errors.New("no logos") }
 	f.media = media.NewStore(database, noCheck, noLogo)
 	widgets.Register(f.dash, f.fav, f.notes, f.media, images.NewFavicons(f.images, false))
-	f.export = &export.Service{DB: database, ImageFiles: blobs.Dir(f.images.Dir), AttachmentFiles: f.att.Files, Now: time.Now}
-	f.s = &Service{DB: database, Favourites: f.fav, Notes: f.notes, Dashboards: f.dash, Media: f.media, Images: f.images, Attachments: f.att}
+	offlineDir, err := blobs.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.export = &export.Service{DB: database, ImageFiles: blobs.Dir(f.images.Dir), AttachmentFiles: f.att.Files, OfflineFiles: offlineDir, Now: time.Now}
+	f.s = &Service{DB: database, Favourites: f.fav, Notes: f.notes, Dashboards: f.dash, Media: f.media, Images: f.images, Attachments: f.att,
+		OfflineFiles: offlineDir, OfflineMaxBytes: 1 << 20, Screenshots: images.Converter{MaxPixels: 25_000_000, Width: 1280}}
 	return f
 }
 

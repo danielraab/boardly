@@ -359,7 +359,7 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 		if node.Tags, err = nodeTags(ctx, tx, id); err != nil {
 			return nil, err
 		}
-		if err := s.queueFetches(ctx, tx, userID, id, *link); err != nil {
+		if err := s.queueFetches(ctx, tx, userID, id, *link, true); err != nil {
 			return nil, err
 		}
 	}
@@ -371,8 +371,10 @@ func (s *Store) Create(ctx context.Context, userID string, n NewNode) (*Node, er
 }
 
 // queueFetches queues the favicon of the link's origin and the metadata of
-// its page. It does nothing without a job queue.
-func (s *Store) queueFetches(ctx context.Context, q db.Querier, userID, nodeID, rawURL string) error {
+// its page, and with offline also the capture of its offline copy, which may
+// set a screenshot as preview. Imports pass offline false. It does nothing
+// without a job queue.
+func (s *Store) queueFetches(ctx context.Context, q db.Querier, userID, nodeID, rawURL string, offline bool) error {
 	if s.Jobs == nil {
 		return nil
 	}
@@ -381,14 +383,55 @@ func (s *Store) queueFetches(ctx context.Context, q db.Querier, userID, nodeID, 
 			return err
 		}
 	}
-	return s.Jobs.Enqueue(ctx, q, jobs.KindPreviewFetch, nodeID,
-		jobs.PreviewFetchPayload{UserID: userID, NodeID: nodeID, URL: rawURL})
+	if err := s.Jobs.Enqueue(ctx, q, jobs.KindPreviewFetch, nodeID,
+		jobs.PreviewFetchPayload{UserID: userID, NodeID: nodeID, URL: rawURL}); err != nil {
+		return err
+	}
+	if !offline {
+		return nil
+	}
+	return s.QueueOfflineCapture(ctx, q, userID, nodeID, rawURL, true)
+}
+
+// QueueOfflineCapture marks the offline copy of a link as pending for rawURL
+// and queues its capture; q may be a transaction. When the copy was for
+// another URL, its article, screenshot, title and capture time are removed;
+// for the same URL they stay until the new capture succeeds. setPreview lets
+// the capture set a screenshot as the link's preview. It does nothing
+// without a job queue.
+func (s *Store) QueueOfflineCapture(ctx context.Context, q db.Querier, userID, nodeID, rawURL string, setPreview bool) error {
+	if s.Jobs == nil {
+		return nil
+	}
+	if _, err := q.ExecContext(ctx,
+		`INSERT INTO offline_copies (node_id, user_id, url, status, updated_at) VALUES (?, ?, ?, 'pending', ?)
+		 ON CONFLICT (node_id) DO UPDATE SET
+		   status = 'pending', error = NULL, updated_at = excluded.updated_at,
+		   title = CASE WHEN url = excluded.url THEN title END,
+		   article_id = CASE WHEN url = excluded.url THEN article_id END,
+		   screenshot_id = CASE WHEN url = excluded.url THEN screenshot_id END,
+		   captured_at = CASE WHEN url = excluded.url THEN captured_at END,
+		   url = excluded.url`,
+		nodeID, userID, rawURL, db.FormatTime(s.Now()),
+	); err != nil {
+		return err
+	}
+	return s.Jobs.Enqueue(ctx, q, jobs.KindOfflineCapture, nodeID,
+		jobs.OfflineCapturePayload{UserID: userID, NodeID: nodeID, URL: rawURL, SetPreview: setPreview})
+}
+
+// NotifyOfflineCapture wakes a capture worker after a commit that queued a
+// capture with QueueOfflineCapture.
+func (s *Store) NotifyOfflineCapture() {
+	if s.Jobs != nil {
+		s.Jobs.Notify(jobs.KindOfflineCapture)
+	}
 }
 
 // notifyFetches wakes the fetch workers after a commit that queued jobs.
 func (s *Store) notifyFetches(queued bool) {
 	if queued && s.Jobs != nil {
-		s.Jobs.Notify(jobs.KindFavicon, jobs.KindPreviewFetch)
+		s.Jobs.Notify(jobs.KindFavicon, jobs.KindPreviewFetch, jobs.KindOfflineCapture)
 	}
 }
 
@@ -472,7 +515,7 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (*Node, 
 			return nil, err
 		}
 		if urlChanged {
-			if err := s.queueFetches(ctx, tx, userID, id, *link); err != nil {
+			if err := s.queueFetches(ctx, tx, userID, id, *link, true); err != nil {
 				return nil, err
 			}
 		}

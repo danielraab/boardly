@@ -25,6 +25,7 @@ const (
 	KindFavicon        Kind = "favicon"
 	KindPreviewFetch   Kind = "preview_fetch"
 	KindPreviewConvert Kind = "preview_convert"
+	KindOfflineCapture Kind = "offline_capture"
 )
 
 // FaviconPayload asks for the favicon of URL's origin.
@@ -52,6 +53,16 @@ type PreviewConvertPayload struct {
 	Replace bool   `json:"replace"`
 }
 
+// OfflineCapturePayload asks for the offline copy (readable article and
+// screenshot) of a link whose URL is still URL. With SetPreview, a screenshot
+// of a page without a preview image may become the link's preview.
+type OfflineCapturePayload struct {
+	UserID     string `json:"userId"`
+	NodeID     string `json:"nodeId"`
+	URL        string `json:"url"`
+	SetPreview bool   `json:"setPreview"`
+}
+
 // MaxAttempts is how often a job may be started. A job that was interrupted
 // this often is dropped by Recover, so a job that crashes the server can't
 // keep it from starting.
@@ -64,7 +75,7 @@ const DefaultPollInterval = 30 * time.Second
 
 // replaceOnConflict lists the kinds whose pending job with the same key takes
 // the newer payload. Other kinds keep the pending job.
-var replaceOnConflict = map[Kind]bool{KindPreviewFetch: true}
+var replaceOnConflict = map[Kind]bool{KindPreviewFetch: true, KindOfflineCapture: true}
 
 // Job is a claimed job.
 type Job struct {

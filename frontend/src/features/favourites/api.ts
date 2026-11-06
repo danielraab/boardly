@@ -127,3 +127,61 @@ export function renameTag(id: string, name: string, merge = false) {
 export function deleteTag(id: string) {
 	return api<void>(`/api/tags/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+/** Why the last capture of an offline copy got nothing. */
+export type OfflineReason =
+	| "fetch_failed"
+	| "blocked_address"
+	| "too_large"
+	| "not_html"
+	| "no_content";
+
+/** The state of a link's offline copy, for its owner only. */
+export type OfflineCopy = {
+	status: "none" | "pending" | "ready" | "failed";
+	/** When the parts were captured, as RFC 3339; null before the first capture. */
+	capturedAt: string | null;
+	title: string | null;
+	hasArticle: boolean;
+	hasScreenshot: boolean;
+	error: OfflineReason | null;
+};
+
+/** How often a pending offline copy is checked, in milliseconds. */
+export const offlinePollInterval = 3000;
+
+function offlinePath(id: string) {
+	return `/api/favourites/${encodeURIComponent(id)}/offline`;
+}
+
+export function offlineCopyQueryKey(id: string) {
+	return ["favourites", id, "offline"] as const;
+}
+
+/** The offline copy of the link id, checked again while it is pending. */
+export function offlineCopyQueryOptions(id: string) {
+	return queryOptions({
+		queryKey: offlineCopyQueryKey(id),
+		queryFn: () => api<OfflineCopy>(offlinePath(id)),
+		refetchInterval: (query) =>
+			query.state.data?.status === "pending" ? offlinePollInterval : false,
+	});
+}
+
+/** Queues a new capture of the link's offline copy. */
+export function refreshOfflineCopy(id: string) {
+	return api<OfflineCopy>(offlinePath(id), { method: "POST" });
+}
+
+/**
+ * The URL of a part of the link's offline copy. The capture time makes a
+ * new capture a new URL, so the browser doesn't show the old part.
+ */
+export function offlinePartUrl(
+	id: string,
+	part: "article" | "screenshot",
+	capturedAt: string | null,
+) {
+	const version = capturedAt ? `?v=${encodeURIComponent(capturedAt)}` : "";
+	return `${offlinePath(id)}/${part}${version}`;
+}

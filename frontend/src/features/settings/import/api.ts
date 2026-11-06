@@ -86,7 +86,12 @@ export type DataImportReport = {
 	dashboards: { dashboards: number; skippedWidgets: number } | null;
 	notes: { notes: number; categories: number; duplicateNotes: number } | null;
 	media: { sources: number; duplicates: number; invalid: number } | null;
-	files: { images: number; attachments: number; skipped: number };
+	files: {
+		images: number;
+		attachments: number;
+		offlineCopies?: number;
+		skipped: number;
+	};
 };
 
 /**

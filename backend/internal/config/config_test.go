@@ -62,6 +62,28 @@ func TestLoadDefaults(t *testing.T) {
 	}
 }
 
+func TestOffline(t *testing.T) {
+	cfg, err := Load(env(withBaseURL(nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (Offline{MaxBytes: 5 << 20}); cfg.Offline != want {
+		t.Fatalf("default Offline = %+v, want %+v", cfg.Offline, want)
+	}
+	for _, browser := range []string{"ws://chrome:3000", "wss://chrome/devtools", "http://chrome:9222", "https://chrome:9222"} {
+		cfg, err := Load(env(withBaseURL(map[string]string{
+			"BOARDLY_OFFLINE_MAX_SIZE_MB": "2",
+			"BOARDLY_BROWSER_URL":         browser,
+		})))
+		if err != nil {
+			t.Fatalf("%s: %v", browser, err)
+		}
+		if want := (Offline{MaxBytes: 2 << 20, BrowserURL: browser}); cfg.Offline != want {
+			t.Fatalf("Offline = %+v, want %+v", cfg.Offline, want)
+		}
+	}
+}
+
 func TestLoadAttachments(t *testing.T) {
 	cfg, err := Load(env(map[string]string{
 		"BOARDLY_BASE_URL":                     "http://localhost:3000",
@@ -274,6 +296,11 @@ func TestLoadInvalid(t *testing.T) {
 		{"preview pixels not a number", "BOARDLY_PREVIEW_MAX_PIXELS", "many"},
 		{"preview width not a number", "BOARDLY_PREVIEW_WIDTH", "wide"},
 		{"preview width fraction", "BOARDLY_PREVIEW_WIDTH", "800.5"},
+		{"offline size zero", "BOARDLY_OFFLINE_MAX_SIZE_MB", "0"},
+		{"offline size not a number", "BOARDLY_OFFLINE_MAX_SIZE_MB", "big"},
+		{"browser URL without scheme", "BOARDLY_BROWSER_URL", "chrome:9222"},
+		{"browser URL other scheme", "BOARDLY_BROWSER_URL", "ftp://chrome:9222"},
+		{"browser URL relative", "BOARDLY_BROWSER_URL", "/devtools"},
 		{"deletion days negative", "BOARDLY_ACCOUNT_DELETION_DAYS", "-1"},
 		{"deletion days not a number", "BOARDLY_ACCOUNT_DELETION_DAYS", "week"},
 		{"exports per hour negative", "BOARDLY_EXPORTS_PER_HOUR", "-1"},

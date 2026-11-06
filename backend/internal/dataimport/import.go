@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"boardly/internal/attachments"
+	"boardly/internal/blobs"
 	"boardly/internal/dashboards"
 	"boardly/internal/db"
 	"boardly/internal/export"
@@ -17,6 +19,7 @@ import (
 	"boardly/internal/images"
 	"boardly/internal/media"
 	"boardly/internal/notes"
+	"boardly/internal/offline"
 )
 
 // Errors of an import besides ErrInvalidFile and those of the database.
@@ -80,11 +83,13 @@ type MediaReport struct {
 	Invalid    int `json:"invalid"`
 }
 
-// FilesReport counts the imported and skipped image and attachment files.
+// FilesReport counts the imported and skipped files: images, attachments
+// and the parts (articles and screenshots) of offline copies.
 type FilesReport struct {
-	Images      int `json:"images"`
-	Attachments int `json:"attachments"`
-	Skipped     int `json:"skipped"`
+	Images        int `json:"images"`
+	Attachments   int `json:"attachments"`
+	OfflineCopies int `json:"offlineCopies"`
+	Skipped       int `json:"skipped"`
 }
 
 // Service imports Boardly exports.
@@ -96,6 +101,13 @@ type Service struct {
 	Media       *media.Store
 	Images      *images.Store
 	Attachments *attachments.Store
+	// OfflineFiles is where the parts of offline copies are stored; empty
+	// imports no offline copies.
+	OfflineFiles blobs.Dir
+	// OfflineMaxBytes is the largest article read from an archive.
+	OfflineMaxBytes int64
+	// Screenshots converts imported screenshots like captured ones.
+	Screenshots images.Converter
 }
 
 // run is the state of one import.
@@ -117,6 +129,10 @@ type run struct {
 	// available holds the account IDs of the images and attachments the
 	// imported items may use.
 	available map[string]bool
+	// offline maps the file's link IDs to the offline copies written for
+	// them; offlineFiles are the files written.
+	offline      map[string]*favourites.ImportOfflineCopy
+	offlineFiles []string
 }
 
 // Import adds the chosen parts of the export in data to the user's account.
@@ -126,7 +142,7 @@ func (s *Service) Import(ctx context.Context, userID string, data []byte, opts O
 		return Report{}, err
 	}
 	r := &run{s: s, ctx: ctx, userID: userID, file: file, doc: file.Doc, opts: opts,
-		ids: map[string]string{}, available: map[string]bool{}}
+		ids: map[string]string{}, available: map[string]bool{}, offline: map[string]*favourites.ImportOfflineCopy{}}
 	if err := r.checkTargets(); err != nil {
 		return Report{}, err
 	}
@@ -149,6 +165,7 @@ func (s *Service) Import(ctx context.Context, userID string, data []byte, opts O
 	if err := tx.Commit(); err != nil {
 		return Report{}, err
 	}
+	r.dropUnusedOffline()
 	if r.report.Favourites != nil {
 		s.Favourites.AfterImport(r.report.Favourites.ImportReport)
 	}
@@ -341,7 +358,103 @@ func (r *run) writeFiles() error {
 		r.attachments = append(r.attachments, written)
 		r.ids[a.ID], r.available[written.ID] = written.ID, true
 	}
-	return nil
+	return r.writeOffline()
+}
+
+// writeOffline stores the articles and screenshots of the imported links'
+// offline copies: articles are sanitized again and screenshots converted
+// again, because the file can't be trusted. A part that can't be read or
+// isn't valid is skipped and counted; a missing path means the copy doesn't
+// have the part, or the export has no files.
+func (r *run) writeOffline() error {
+	if !r.opts.Parts.Favourites || r.doc.Favourites == nil || r.s.OfflineFiles == "" {
+		return nil
+	}
+	var firstErr error
+	var walk func(n *export.Node)
+	walk = func(n *export.Node) {
+		for _, c := range n.Children {
+			walk(c)
+		}
+		c := n.OfflineCopy
+		if n.Kind != string(favourites.KindLink) || c == nil || firstErr != nil {
+			return
+		}
+		imported := &favourites.ImportOfflineCopy{CapturedAt: parseTime(c.CapturedAt), Title: c.Title}
+		if c.Article != nil {
+			data, err := r.file.ReadFile(c.Article, r.s.OfflineMaxBytes)
+			title := ""
+			if c.Title != nil {
+				title = *c.Title
+			}
+			var clean []byte
+			ok := err == nil
+			if ok {
+				clean, ok = offline.SanitizeDocument(data, title, n.URL)
+			}
+			if !ok {
+				r.report.Files.Skipped++
+			} else if imported.ArticleID, err = r.writeOfflineFile(clean); err != nil {
+				firstErr = err
+				return
+			}
+		}
+		if c.Screenshot != nil {
+			data, err := r.file.ReadFile(c.Screenshot, maxPreviewBytes)
+			var out []byte
+			if err == nil && screenshotType(data) {
+				out, err = r.s.Screenshots.Convert(data)
+			} else if err == nil {
+				err = images.ErrUnsupported
+			}
+			if err != nil {
+				r.report.Files.Skipped++
+			} else if imported.ScreenshotID, err = r.writeOfflineFile(out); err != nil {
+				firstErr = err
+				return
+			}
+		}
+		if imported.ArticleID != nil || imported.ScreenshotID != nil {
+			r.offline[n.ID] = imported
+		}
+	}
+	walk(r.doc.Favourites)
+	return firstErr
+}
+
+func (r *run) writeOfflineFile(data []byte) (*string, error) {
+	id := blobs.NewID()
+	if err := r.s.OfflineFiles.Write(id, data); err != nil {
+		return nil, err
+	}
+	r.offlineFiles = append(r.offlineFiles, id)
+	return &id, nil
+}
+
+// screenshotType reports whether data is a JPEG, PNG or WebP image.
+func screenshotType(data []byte) bool {
+	switch http.DetectContentType(data) {
+	case "image/jpeg", "image/png", "image/webp":
+		return true
+	}
+	return false
+}
+
+// dropUnusedOffline counts the offline copy parts that imported links got
+// and removes those of links that were skipped, such as duplicates.
+func (r *run) dropUnusedOffline() {
+	for _, c := range r.offline {
+		for _, id := range []*string{c.ArticleID, c.ScreenshotID} {
+			if id == nil {
+				continue
+			}
+			if c.Imported {
+				r.report.Files.OfflineCopies++
+			} else {
+				_ = r.s.OfflineFiles.Remove(*id)
+			}
+		}
+	}
 }
 
 func (r *run) insertFiles(q db.Querier) error {
@@ -381,8 +494,13 @@ func (r *run) icon(icon *notes.Icon) *notes.Icon {
 	return nil
 }
 
+// parseTime reads a time of the file: as the export writes it, or else in
+// any RFC 3339 form. An invalid time is zero.
 func parseTime(s string) time.Time {
-	t, _ := db.ParseTime(s)
+	t, err := db.ParseTime(s)
+	if err != nil {
+		t, _ = time.Parse(time.RFC3339Nano, s)
+	}
 	return t
 }
 
@@ -439,6 +557,7 @@ func (r *run) importFavourites(q db.Querier) error {
 			out = append(out, favourites.ImportItem{Link: &favourites.ImportLink{
 				URL: n.URL, Title: n.Title, Tags: n.Tags, Description: n.Description,
 				CreatedAt: parseTime(n.CreatedAt), SourceID: n.ID, PreviewImageID: r.mappedImage(n.PreviewImageID),
+				OfflineCopy: r.offline[n.ID],
 			}})
 		}
 		return out

@@ -301,6 +301,10 @@ func TestCreateBookmark(t *testing.T) {
 	if got := f.queuedFavicons(); !reflect.DeepEqual(got, []string{"https://example.org"}) {
 		t.Errorf("favicons queued = %v", got)
 	}
+	var captures int
+	if err := f.fav.DB.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind = 'offline_capture' AND json_extract(payload, '$.url') = 'https://example.org'`).Scan(&captures); err != nil || captures != 1 {
+		t.Errorf("offline captures queued = %d, err %v; want 1", captures, err)
+	}
 
 	again, err := f.s.CreateBookmark(f.ctx, f.sc, CreateBookmarkInput{Type: "link", URL: "https://example.org/#top"})
 	if err != nil || !again.AlreadyExists || again.ID != created.ID {

@@ -526,6 +526,74 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /favourites/{id}/offline:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Favourites]
+      summary: The state of a link's offline copy
+      description: |
+        Only for the link's owner, with a session; app tokens can't use it.
+        Folders and other users' links get `not_found`.
+      responses:
+        "200":
+          description: The offline copy; `status` `none` when the link never had one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OfflineCopy" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Favourites]
+      summary: Capture a link's offline copy again
+      description: |
+        Queues a new capture of the link's current URL. The parts of an earlier
+        capture stay until the new one succeeds. A refresh never sets the
+        link's preview. Rate limited per user (30 at once, then one every 2
+        minutes).
+      responses:
+        "202":
+          description: The offline copy, now `pending`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OfflineCopy" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /favourites/{id}/offline/article:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Favourites]
+      summary: The readable article of a link's offline copy
+      description: |
+        A sanitized HTML document, served with a sandboxing
+        `Content-Security-Policy` that runs no scripts, and
+        `Referrer-Policy: no-referrer`. Its images load from the original site.
+      responses:
+        "200":
+          description: The article.
+          content:
+            text/html: {}
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favourites/{id}/offline/screenshot:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Favourites]
+      summary: The screenshot of a link's offline copy
+      description: A 1280×800 JPEG of the page's viewport.
+      responses:
+        "200":
+          description: The screenshot.
+          content:
+            image/jpeg: {}
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /favourites/bulk:
     post:
       tags: [Favourites]
@@ -1516,6 +1584,7 @@ components:
           properties:
             images: { type: integer }
             attachments: { type: integer }
+            offlineCopies: { type: integer, description: "Imported articles and screenshots of offline copies." }
             skipped: { type: integer }
 
     BookmarkImportCounts:
@@ -1552,6 +1621,22 @@ components:
         description: { type: string }
         previewImageId: { type: string }
         createdAt: { type: string, format: date-time }
+
+    OfflineCopy:
+      type: object
+      required: [status, capturedAt, title, hasArticle, hasScreenshot, error]
+      properties:
+        status:
+          type: string
+          enum: [none, pending, ready, failed]
+        capturedAt: { type: [string, "null"], format: date-time, description: "When the parts were captured; null before the first successful capture." }
+        title: { type: [string, "null"] }
+        hasArticle: { type: boolean }
+        hasScreenshot: { type: boolean }
+        error:
+          type: [string, "null"]
+          enum: [fetch_failed, blocked_address, too_large, not_html, no_content, null]
+          description: Why the last capture failed; null unless `status` is `failed`.
 
     Tag:
       type: object

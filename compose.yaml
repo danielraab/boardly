@@ -3,6 +3,11 @@
 #   docker compose up -d --build        (built from this checkout)
 # Sign-in links are written to its log: docker compose logs boardly
 #
+# The `screenshots` profile adds the headless browser that takes the screenshots of offline
+# copies: docker compose --profile screenshots up -d, with BOARDLY_BROWSER_URL below
+# uncommented. The browser is on a network without internet access; Boardly loads every
+# request of the page for it and blocks private addresses.
+#
 # The `dev` profile holds the development services. `make dev-backend` starts and
 # stops only those (or manually: docker compose --profile dev up -d mailpit sqlite-web).
 
@@ -20,8 +25,15 @@ services:
       # Not BOARDLY_BASE_URL: compose reads the dev .env, where that points to Vite (:3000).
       BOARDLY_BASE_URL: ${BOARDLY_COMPOSE_BASE_URL:-http://localhost:8080}
       BOARDLY_LOG_FORMAT: text
+      # BOARDLY_BROWSER_URL: ws://chrome:9222
     volumes:
       - boardly-data:/data
+    networks: [default, browser]
+
+  chrome:
+    image: chromedp/headless-shell:156.0.8078.36
+    profiles: [screenshots]
+    networks: [browser]
 
   mailpit:
     image: axllent/mailpit:v1.31
@@ -41,6 +53,11 @@ services:
       - ./data:/data
     ports:
       - "8081:8080" # web UI: http://localhost:8081
+
+networks:
+  # No internet access: the browser only talks to Boardly.
+  browser:
+    internal: true
 
 volumes:
   boardly-data:

@@ -37,6 +37,16 @@ function renderDialog(id: string, links: FavouriteNode[] = [go, bare]) {
 			tree = treeOf(node, bare);
 			return { body: node };
 		},
+		"GET /api/favourites/go/offline": {
+			body: {
+				status: "ready",
+				capturedAt: "2026-10-01T08:00:00.000Z",
+				title: "A Tour of Go",
+				hasArticle: true,
+				hasScreenshot: false,
+				error: null,
+			},
+		},
 		"DELETE /api/favourites/go": () => {
 			tree = treeOf(bare);
 			return { status: 204 };
@@ -173,6 +183,40 @@ describe("FavouriteDetailsDialog", () => {
 		const details = await screen.findByRole("dialog", { name: "Go tour" });
 		expect(within(details).getByText("A tour of Go")).toBeVisible();
 		expect(api.callsTo("PATCH", "/api/favourites/go")).toHaveLength(0);
+	});
+
+	it("has Edit, Offline copy and Open in this order", () => {
+		renderDialog("go");
+		const dialog = screen.getByRole("dialog", { name: "Go tour" });
+		const actions = [...dialog.querySelectorAll("button, a")]
+			.map(
+				(el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "",
+			)
+			.filter((name) => ["Edit", "Offline copy", "Open"].includes(name));
+		expect(actions).toEqual(["Edit", "Offline copy", "Open"]);
+	});
+
+	it("shows Offline copy as an icon with a tooltip", () => {
+		renderDialog("go");
+		const offline = screen.getByRole("button", { name: "Offline copy" });
+		expect(offline).toHaveTextContent(/^$/);
+		expect(offline).toHaveAttribute("title", "Offline copy");
+	});
+
+	it("shows the offline copy and returns to the details", async () => {
+		const { user } = renderDialog("go");
+		await user.click(screen.getByRole("button", { name: "Offline copy" }));
+		const offline = await screen.findByRole("dialog", { name: "Go tour" });
+		expect(
+			await within(offline).findByTitle("Article of Go tour"),
+		).toBeVisible();
+		expect(screen.queryByText("A tour of Go")).toBeNull();
+		await user.click(within(offline).getByRole("button", { name: "Close" }));
+
+		const details = await screen.findByRole("dialog", { name: "Go tour" });
+		await waitFor(() =>
+			expect(within(details).getByText("A tour of Go")).toBeVisible(),
+		);
 	});
 
 	it("closes and refreshes after the link is deleted from the edit dialog", async () => {

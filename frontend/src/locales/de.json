@@ -289,6 +289,8 @@
 				"images_other": "{{count}} Bilder",
 				"attachments_one": "{{count}} Anhang",
 				"attachments_other": "{{count}} Anhänge",
+				"offlineCopies_one": "{{count}} Offline-Kopie-Datei",
+				"offlineCopies_other": "{{count}} Offline-Kopie-Dateien",
 				"duplicates_one": "{{count}} Link war schon in deinen Favoriten",
 				"duplicates_other": "{{count}} Links waren schon in deinen Favoriten",
 				"invalidUrls_one": "{{count}} Link hatte eine ungültige Adresse",
@@ -571,6 +573,29 @@
 			"close": "Schließen",
 			"tags": "Tags",
 			"previewAlt": "Vorschaubild"
+		},
+		"offline": {
+			"button": "Offline-Kopie",
+			"saved": "Gespeichert {{date}}",
+			"pending": "Offline-Kopie wird gespeichert…",
+			"failed": "Die Offline-Kopie konnte nicht gespeichert werden.",
+			"none": "Noch keine Offline-Kopie.",
+			"article": "Artikel",
+			"screenshot": "Screenshot",
+			"articleFrame": "Artikel von {{title}}",
+			"screenshotAlt": "Screenshot von {{title}}",
+			"refresh": "Aktualisieren",
+			"openOriginal": "Original öffnen",
+			"rateLimited": "Zu viele Aktualisierungen, versuche es später erneut.",
+			"refreshFailed": "Die Aktualisierung konnte nicht angefordert werden.",
+			"close": "Schließen",
+			"reasons": {
+				"fetch_failed": "Die Seite konnte nicht geladen werden.",
+				"blocked_address": "Die Seite liegt an einer privaten Netzwerkadresse.",
+				"too_large": "Die Seite ist zu groß.",
+				"not_html": "Die Adresse ist keine Webseite.",
+				"no_content": "Die Seite hat keinen lesbaren Inhalt."
+			}
 		}
 	},
 	"dashboards": {

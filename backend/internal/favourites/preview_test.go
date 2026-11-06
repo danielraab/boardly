@@ -1,6 +1,7 @@
 package favourites
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -159,6 +160,7 @@ func TestQueuesFetches(t *testing.T) {
 	want := []string{
 		"favicon https://example.org https://example.org/Docs",
 		"preview_fetch " + id + " https://example.org/Docs",
+		"offline_capture " + id + " https://example.org/Docs",
 	}
 	if got := queued(f); !equal(got, want) {
 		t.Fatalf("jobs after create = %v, want %v", got, want)
@@ -179,6 +181,7 @@ func TestQueuesFetches(t *testing.T) {
 	want = []string{
 		"favicon https://example.org https://example.org/Docs",
 		"preview_fetch " + id + " https://go.dev/tour",
+		"offline_capture " + id + " https://go.dev/tour",
 		"favicon https://go.dev https://go.dev/tour",
 	}
 	if got := queued(f); !equal(got, want) {
@@ -191,6 +194,76 @@ func TestQueuesFetches(t *testing.T) {
 	}
 	if got := queued(f); !equal(got, want) {
 		t.Fatalf("jobs after failed create = %v, want %v", got, want)
+	}
+}
+
+// offlineRow is the offline copy row of a link as "status url title article
+// screenshot captured", with empty fields for NULL, or "" without a row.
+func offlineRow(f *fixture, id string) string {
+	f.t.Helper()
+	var row string
+	err := f.s.DB.QueryRow(
+		`SELECT status || ' ' || url || ' ' || COALESCE(title, '') || ' ' || COALESCE(article_id, '') || ' ' ||
+		   COALESCE(screenshot_id, '') || ' ' || COALESCE(captured_at, '') FROM offline_copies WHERE node_id = ?`, id,
+	).Scan(&row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ""
+	}
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return row
+}
+
+func TestQueuesOfflineCapture(t *testing.T) {
+	f := newFixture(t)
+	f.s.Jobs = jobs.New(f.s.DB)
+	id := f.link("", "Docs")
+	if got, want := offlineRow(f, id), "pending https://example.org/Docs    "; got != want {
+		t.Fatalf("row after create = %q, want %q", got, want)
+	}
+	var setPreview bool
+	if err := f.s.DB.QueryRow(`SELECT json_extract(payload, '$.setPreview') FROM jobs WHERE kind = 'offline_capture'`).Scan(&setPreview); err != nil || !setPreview {
+		t.Fatalf("setPreview = %v, err %v; want true for a created link", setPreview, err)
+	}
+
+	// A captured copy keeps its parts for a refresh of the same URL.
+	if _, err := f.s.DB.Exec(`UPDATE offline_copies SET status = 'ready', title = 'T', article_id = 'a', screenshot_id = 's', captured_at = 'c' WHERE node_id = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.QueueOfflineCapture(f.ctx, f.s.DB, f.user, id, "https://example.org/Docs", false); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := offlineRow(f, id), "pending https://example.org/Docs T a s c"; got != want {
+		t.Fatalf("row after refresh = %q, want %q", got, want)
+	}
+	if err := f.s.DB.QueryRow(`SELECT json_extract(payload, '$.setPreview') FROM jobs WHERE kind = 'offline_capture'`).Scan(&setPreview); err != nil || setPreview {
+		t.Fatalf("setPreview = %v, err %v; want false for a refresh", setPreview, err)
+	}
+
+	// A title change queues nothing; a URL change drops the parts.
+	if _, err := f.s.Update(f.ctx, f.user, id, Patch{Title: ptr("Documentation")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := offlineRow(f, id), "pending https://example.org/Docs T a s c"; got != want {
+		t.Fatalf("row after title change = %q, want %q", got, want)
+	}
+	if _, err := f.s.Update(f.ctx, f.user, id, Patch{URL: ptr("https://go.dev/tour")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := offlineRow(f, id), "pending https://go.dev/tour    "; got != want {
+		t.Fatalf("row after URL change = %q, want %q", got, want)
+	}
+
+	// Imported links get no copy and no capture.
+	f.importItems(f.tree().ID, importLink("https://go.dev/doc"))
+	imported := f.child("", "https://go.dev/doc")
+	if got := offlineRow(f, imported); got != "" {
+		t.Fatalf("row of an imported link = %q, want none", got)
+	}
+	var n int
+	if err := f.s.DB.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind = 'offline_capture' AND dedup_key = ?`, imported).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("capture jobs of an imported link = %d, err %v", n, err)
 	}
 }
 

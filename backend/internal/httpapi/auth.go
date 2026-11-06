@@ -22,6 +22,7 @@ import (
 	"boardly/internal/legal"
 	"boardly/internal/media"
 	"boardly/internal/notes"
+	"boardly/internal/offline"
 	"boardly/internal/ratelimit"
 	"boardly/internal/users"
 )
@@ -54,6 +55,9 @@ type api struct {
 	attachments *attachments.Store
 	favicons    *images.Favicons
 	previews    *images.Previews
+	offline     *offline.Store
+	// offlineLimiter limits offline copy refreshes per user.
+	offlineLimiter *ratelimit.Limiter
 	// refreshLimiter limits favicon refreshes per user.
 	refreshLimiter *ratelimit.Limiter
 	appTokens      *apptokens.Store

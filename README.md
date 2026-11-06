@@ -65,6 +65,25 @@ The tree is managed on the **Favourites** page (`/favourites`, linked from the u
 Dashboards (through navigation trees) and the Karakeep and Linkwarden APIs all read from and write to
 this tree. None of them keeps its own separate copy of the bookmarks.
 
+#### Offline copies
+
+Like Karakeep, Boardly keeps an **offline copy** of every link you save, so you can still read it
+when the page changes or goes away:
+
+- a **readable article**, the page's main text with its headings, lists, tables, links and images,
+  cleaned of scripts, styles, forms and frames. Its images stay links to the original site and
+  aren't downloaded;
+- a **screenshot** of the top of the page (1280×800), when a
+  [screenshot browser](#screenshots-for-offline-copies) is set up.
+
+The copy is saved in the background when a link is added (in Boardly or by a connected app) and
+when its URL changes. A new URL replaces the old copy. Links from a bookmark import or a data
+import get no copy automatically. On a dashboard, open a link's details with its info button and
+choose **Offline copy** to see the article or the screenshot, when it was saved, and **Refresh** to
+save it again (30 refreshes at once, then one every two minutes). A refresh that fails keeps the
+earlier copy. Copies are only ever shown to you, never to visitors of a public dashboard. When a
+page has no preview image of its own, its screenshot becomes the link's preview.
+
 #### Importing bookmarks
 
 Bookmarks, and the text bookmarks of Karakeep as notes, can be imported once from an export file on
@@ -717,6 +736,8 @@ precedence over the file.
 | `BOARDLY_PREVIEW_MAX_SIZE_MB` | `10` | Largest preview image, in megabytes, that the server downloads from a page or accepts from a connected app before converting it |
 | `BOARDLY_PREVIEW_MAX_PIXELS` | `25000000` | Largest preview image, as width times height, that the server decodes. Lower it on machines with little memory: decoding takes about 4 bytes per pixel |
 | `BOARDLY_PREVIEW_WIDTH` | `800` | Width, in pixels, that larger preview images are scaled down to |
+| `BOARDLY_OFFLINE_MAX_SIZE_MB` | `5` | Largest page, in megabytes, that is read for the article of an [offline copy](#offline-copies). Larger pages get no article |
+| `BOARDLY_BROWSER_URL` | (empty) | DevTools address of the headless browser that takes the screenshots of offline copies, `ws://`, `wss://`, `http://` or `https://`, for example `ws://chrome:9222`. Empty means no screenshots. See [Screenshots for offline copies](#screenshots-for-offline-copies) |
 | `BOARDLY_ATTACHMENT_MAX_SIZE_MB` | `5` | Largest note attachment, in megabytes |
 | `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
 | `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |
@@ -827,6 +848,51 @@ Mailpit instead (http://localhost:8025).
 - **Images are stored as files** in `BOARDLY_DATA_DIR/images`, next to the database in the
   container's `/data` volume. Uploaded images that nothing uses (no widget, note or note category)
   are deleted after 24 hours, and previews that no link uses any more after about an hour.
+
+### Screenshots for offline copies
+
+The articles of [offline copies](#offline-copies) need nothing extra. **Screenshots** need a
+headless Chrome that runs next to Boardly, for example
+[`chromedp/headless-shell`](https://hub.docker.com/r/chromedp/headless-shell). Set
+`BOARDLY_BROWSER_URL` to its DevTools address; without it, copies have no screenshots.
+
+```yaml
+services:
+  boardly:
+    # … as above, plus:
+    environment:
+      BOARDLY_BROWSER_URL: ws://chrome:9222
+    networks: [default, browser]
+  chrome:
+    image: chromedp/headless-shell:156.0.8078.36
+    restart: unless-stopped
+    networks: [browser]
+
+networks:
+  browser:
+    internal: true # no internet access for the browser
+```
+
+- **The browser never goes online itself.** Boardly pauses every request of the page, loads it
+  with the same rules as favicons, including the [private address protection](#favicons-and-images),
+  and hands the answer to the browser. Only `GET` and `HEAD` requests over `http` and `https` are
+  made, at most 300 per page, each at most 10 MB and 10 seconds. Cookies aren't kept.
+- **Keep the browser on its own network without internet access**, as above. Boardly's checks
+  don't depend on it, but it also stops WebSockets and other traffic that Boardly can't see.
+  Don't publish the browser's port: anyone who can reach it can control it.
+- **Cookie banners are left out.** Requests to the hosts of common consent tools (OneTrust,
+  Cookiebot, Usercentrics, Didomi, Quantcast, Sourcepoint, TrustArc, consentmanager, iubenda and
+  others) are refused, and the banners of these and of common self-hosted tools (Complianz,
+  Borlabs, Klaro, Cookie Notice, …) are hidden before the screenshot. Nothing is clicked and no
+  consent is given, so a page that shows its content only after consent may still show a banner.
+  The lists are `backend/internal/offline/consent_hosts.txt` and `consent.css`.
+- One screenshot is taken at a time, and one may take at most 30 seconds. A browser that can't be
+  reached only means no screenshot, with a warning in the log; the article is still saved.
+- Copies are stored in `BOARDLY_DATA_DIR/offline`. Files of replaced copies and of deleted links
+  are removed within about two hours.
+
+The repository's [compose.yaml](compose.yaml) has this browser in the `screenshots` profile:
+`docker compose --profile screenshots up -d`, after uncommenting `BOARDLY_BROWSER_URL`.
 
 ### Attachments
 

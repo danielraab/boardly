@@ -16,12 +16,13 @@ import (
 // ErrNoUser is returned for a user that doesn't exist.
 var ErrNoUser = errors.New("user not found")
 
-// Service builds exports. ImageFiles and AttachmentFiles are where the files
-// of images and attachments are kept.
+// Service builds exports. ImageFiles, AttachmentFiles and OfflineFiles are
+// where the files of images, attachments and offline copies are kept.
 type Service struct {
 	DB              *sql.DB
 	ImageFiles      blobs.Dir
 	AttachmentFiles blobs.Dir
+	OfflineFiles    blobs.Dir
 	Now             func() time.Time
 }
 
@@ -119,15 +120,25 @@ func (r reader) favourites(doc *Document) error {
 	var order []*Node
 	parents := map[*Node]string{}
 	err = r.each(
-		`SELECT id, parent_id, kind, title, url, description, preview_image_id, created_at, updated_at
-		 FROM favourite_nodes WHERE user_id = ? ORDER BY position, id`,
+		`SELECT n.id, n.parent_id, n.kind, n.title, n.url, n.description, n.preview_image_id, n.created_at, n.updated_at,
+		   o.captured_at, o.title, o.article_id, o.screenshot_id
+		 FROM favourite_nodes n
+		 LEFT JOIN offline_copies o ON o.node_id = n.id AND o.captured_at IS NOT NULL
+		   AND (o.article_id IS NOT NULL OR o.screenshot_id IS NOT NULL)
+		 WHERE n.user_id = ? ORDER BY n.position, n.id`,
 		func(rows *sql.Rows) error {
 			n := &Node{}
-			var parentID, url sql.NullString
-			if err := rows.Scan(&n.ID, &parentID, &n.Kind, &n.Title, &url, &n.Description, &n.PreviewImageID, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			var parentID, url, captured, article, shot sql.NullString
+			var offlineTitle *string
+			if err := rows.Scan(&n.ID, &parentID, &n.Kind, &n.Title, &url, &n.Description, &n.PreviewImageID, &n.CreatedAt, &n.UpdatedAt,
+				&captured, &offlineTitle, &article, &shot); err != nil {
 				return err
 			}
 			n.URL = url.String
+			if captured.Valid {
+				n.OfflineCopy = &OfflineCopy{CapturedAt: captured.String, Title: offlineTitle,
+					articleID: article.String, screenshotID: shot.String}
+			}
 			n.Tags = tags[n.ID]
 			byID[n.ID] = n
 			order = append(order, n)

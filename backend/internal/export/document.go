@@ -60,6 +60,8 @@ type Node struct {
 	Description    *string
 	Tags           []string
 	PreviewImageID *string
+	// OfflineCopy is nil when the link has no offline copy with a part.
+	OfflineCopy *OfflineCopy
 
 	// Folders only, in their order.
 	Children []*Node
@@ -86,31 +88,33 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 		tags = []string{}
 	}
 	return json.Marshal(struct {
-		ID             string   `json:"id"`
-		Kind           string   `json:"kind"`
-		URL            string   `json:"url"`
-		Title          *string  `json:"title"`
-		Description    *string  `json:"description"`
-		Tags           []string `json:"tags"`
-		PreviewImageID *string  `json:"previewImageId"`
-		CreatedAt      string   `json:"createdAt"`
-		UpdatedAt      string   `json:"updatedAt"`
-	}{n.ID, n.Kind, n.URL, n.Title, n.Description, tags, n.PreviewImageID, n.CreatedAt, n.UpdatedAt})
+		ID             string       `json:"id"`
+		Kind           string       `json:"kind"`
+		URL            string       `json:"url"`
+		Title          *string      `json:"title"`
+		Description    *string      `json:"description"`
+		Tags           []string     `json:"tags"`
+		PreviewImageID *string      `json:"previewImageId"`
+		OfflineCopy    *OfflineCopy `json:"offlineCopy"`
+		CreatedAt      string       `json:"createdAt"`
+		UpdatedAt      string       `json:"updatedAt"`
+	}{n.ID, n.Kind, n.URL, n.Title, n.Description, tags, n.PreviewImageID, n.OfflineCopy, n.CreatedAt, n.UpdatedAt})
 }
 
 // UnmarshalJSON reads a folder or a link as MarshalJSON writes it.
 func (n *Node) UnmarshalJSON(data []byte) error {
 	var v struct {
-		ID             string   `json:"id"`
-		Kind           string   `json:"kind"`
-		Title          *string  `json:"title"`
-		CreatedAt      string   `json:"createdAt"`
-		UpdatedAt      string   `json:"updatedAt"`
-		URL            string   `json:"url"`
-		Description    *string  `json:"description"`
-		Tags           []string `json:"tags"`
-		PreviewImageID *string  `json:"previewImageId"`
-		Children       []*Node  `json:"children"`
+		ID             string       `json:"id"`
+		Kind           string       `json:"kind"`
+		Title          *string      `json:"title"`
+		CreatedAt      string       `json:"createdAt"`
+		UpdatedAt      string       `json:"updatedAt"`
+		URL            string       `json:"url"`
+		Description    *string      `json:"description"`
+		Tags           []string     `json:"tags"`
+		PreviewImageID *string      `json:"previewImageId"`
+		OfflineCopy    *OfflineCopy `json:"offlineCopy"`
+		Children       []*Node      `json:"children"`
 	}
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
@@ -118,9 +122,23 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 	*n = Node{
 		ID: v.ID, Kind: v.Kind, Title: v.Title, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 		URL: v.URL, Description: v.Description, Tags: v.Tags, PreviewImageID: v.PreviewImageID,
-		Children: v.Children,
+		OfflineCopy: v.OfflineCopy, Children: v.Children,
 	}
 	return nil
+}
+
+// OfflineCopy is the offline copy of a link: when it was captured, the
+// page title, and the paths of its article and screenshot in the archive,
+// nil without files or when the copy doesn't have that part. Its state
+// (pending, failed) isn't exported.
+type OfflineCopy struct {
+	CapturedAt string  `json:"capturedAt"`
+	Title      *string `json:"title"`
+	Article    *string `json:"article"`
+	Screenshot *string `json:"screenshot"`
+
+	// The stored files, for the archive.
+	articleID, screenshotID string
 }
 
 // Tag is a tag of the user, used or not.
