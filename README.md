@@ -880,6 +880,12 @@ networks:
 - **Keep the browser on its own network without internet access**, as above. Boardly's checks
   don't depend on it, but it also stops WebSockets and other traffic that Boardly can't see.
   Don't publish the browser's port: anyone who can reach it can control it.
+- **Cookie banners are left out.** Requests to the hosts of common consent tools (OneTrust,
+  Cookiebot, Usercentrics, Didomi, Quantcast, Sourcepoint, TrustArc, consentmanager, iubenda and
+  others) are refused, and the banners of these and of common self-hosted tools (Complianz,
+  Borlabs, Klaro, Cookie Notice, …) are hidden before the screenshot. Nothing is clicked and no
+  consent is given, so a page that shows its content only after consent may still show a banner.
+  The lists are `backend/internal/offline/consent_hosts.txt` and `consent.css`.
 - One screenshot is taken at a time, and one may take at most 30 seconds. A browser that can't be
   reached only means no screenshot, with a warning in the log; the article is still saved.
 - Copies are stored in `BOARDLY_DATA_DIR/offline`. Files of replaced copies and of deleted links

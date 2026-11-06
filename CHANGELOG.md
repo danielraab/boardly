@@ -12,7 +12,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   browser next to Boardly (`BOARDLY_BROWSER_URL`, e.g. `chromedp/headless-shell`) a screenshot of
   it. They are saved when a link is added or its URL changes, and shown with **Offline copy** in
   a link's details on the dashboard, with **Refresh** to save them again. Only the owner sees
-  them. A page without a preview image gets its screenshot as preview. Exports with files
+  them. Screenshots leave out the cookie banners of common consent tools. A page without a
+  preview image gets its screenshot as preview. Exports with files
   contain the copies, and imports restore them. Pages larger than `BOARDLY_OFFLINE_MAX_SIZE_MB`
   (5 MB) get no article.
 - Imprint and privacy policy for operators, without an admin area: Markdown files in

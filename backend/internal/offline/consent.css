@@ -1,0 +1,77 @@
+/* Hides the cookie banners, dialogs and overlays of common consent tools
+   before a screenshot. Only provider-specific ids and classes belong here,
+   never generic names such as .modal or .overlay. */
+
+/* OneTrust / CookiePro */
+#onetrust-consent-sdk,
+#onetrust-banner-sdk,
+.onetrust-pc-dark-filter,
+/* Cookiebot */
+#CybotCookiebotDialog,
+#CybotCookiebotDialogBodyUnderlay,
+/* Usercentrics */
+#usercentrics-root,
+#usercentrics-cmp-ui,
+/* Didomi */
+#didomi-host,
+#didomi-notice,
+.didomi-popup-backdrop,
+/* Quantcast Choice */
+#qc-cmp2-container,
+.qc-cmp2-container,
+/* Sourcepoint */
+[id^="sp_message_container"],
+/* Google Funding Choices */
+.fc-consent-root,
+/* TrustArc */
+#truste-consent-track,
+.truste_box_overlay,
+.truste_overlay,
+/* consentmanager.net */
+#cmpbox,
+#cmpbox2,
+/* iubenda */
+#iubenda-cs-banner,
+/* Termly */
+#termly-code-snippet-support,
+/* Osano */
+.osano-cm-window,
+/* CookieYes */
+.cky-consent-container,
+.cky-overlay,
+/* Cookie Script */
+#cookiescript_injected,
+#cookiescript_injected_wrapper,
+/* CookieFirst */
+.cookiefirst-root,
+/* Axeptio */
+#axeptio_overlay,
+/* Sirdata */
+#sd-cmp,
+/* Civic Cookie Control */
+#ccc,
+/* Complianz (WordPress) */
+#cmplz-cookiebanner-container,
+.cmplz-cookiebanner,
+/* Borlabs Cookie (WordPress) */
+#BorlabsCookieBox,
+/* Cookie Notice (WordPress) */
+#cookie-notice,
+/* CookieYes / GDPR Cookie Consent (WordPress) */
+#cookie-law-info-bar,
+.cli-modal-backdrop,
+/* Klaro */
+.klaro .cookie-notice,
+.klaro .cookie-modal,
+/* Osano Cookie Consent (cookieconsent.js) */
+.cc-window,
+/* orestbida cookieconsent */
+#cc-main {
+	display: none !important;
+}
+
+/* Banners often keep the page from scrolling while they are open. */
+html,
+body {
+	overflow: auto !important;
+}

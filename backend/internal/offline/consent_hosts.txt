@@ -1,0 +1,77 @@
+# Hosts of consent-management providers whose requests the browser fails
+# while it takes a screenshot, so their cookie banners never load.
+# A host also matches its subdomains. Only list script and CDN hosts,
+# not the providers' own websites.
+
+# OneTrust / CookiePro
+cdn.cookielaw.org
+geolocation.onetrust.com
+cookie-cdn.cookiepro.com
+optanon.blob.core.windows.net
+
+# Cookiebot
+consent.cookiebot.com
+consentcdn.cookiebot.com
+
+# Usercentrics
+app.usercentrics.eu
+api.usercentrics.eu
+web.cmp.usercentrics.eu
+privacy-proxy.usercentrics.eu
+
+# Didomi
+sdk.privacy-center.org
+api.privacy-center.org
+
+# Quantcast Choice
+cmp.quantcast.com
+
+# IAB consent framework (legacy CMP hosts)
+mgr.consensu.org
+
+# Sourcepoint
+cdn.privacy-mgmt.com
+
+# TrustArc
+consent.trustarc.com
+consent-pref.trustarc.com
+
+# consentmanager.net
+cdn.consentmanager.net
+delivery.consentmanager.net
+
+# iubenda
+cdn.iubenda.com
+cs.iubenda.com
+
+# Termly
+app.termly.io
+
+# Osano
+cmp.osano.com
+
+# CookieYes
+cdn-cookieyes.com
+
+# Cookie Script
+cdn.cookie-script.com
+
+# CookieFirst
+consent.cookiefirst.com
+
+# Axeptio
+static.axept.io
+client.axept.io
+
+# Sirdata
+cache.consentframework.com
+choices.consentframework.com
+
+# Commanders Act TrustCommander
+cdn.trustcommander.net
+
+# Civic Cookie Control
+cc.cdn.civiccomputing.com
+
+# Google Funding Choices
+fundingchoicesmessages.google.com

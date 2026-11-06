@@ -139,6 +139,75 @@ func TestBrowserScreenshot(t *testing.T) {
 	}
 }
 
+// TestBrowserHidesCookieBanners checks, against a real headless browser, that
+// requests to consent providers are failed and that known banners are hidden,
+// even under a strict Content Security Policy. See TestBrowserScreenshot.
+func TestBrowserHidesCookieBanners(t *testing.T) {
+	browserURL := os.Getenv("BOARDLY_TEST_BROWSER_URL")
+	if browserURL == "" {
+		t.Skip("BOARDLY_TEST_BROWSER_URL not set")
+	}
+	var provider atomic.Int32
+	// The consent provider is reached as "localhost", the page as 127.0.0.1.
+	consent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		provider.Add(1)
+		w.Header().Set("Content-Type", "text/javascript")
+		_, _ = io.WriteString(w, `document.body.insertAdjacentHTML("beforeend", "<div class=unknown-banner></div>")`)
+	}))
+	defer consent.Close()
+	_, consentPort, _ := net.SplitHostPort(consent.Listener.Addr().String())
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/page.css":
+			w.Header().Set("Content-Type", "text/css")
+			_, _ = io.WriteString(w, `html, body { margin: 0; height: 100%; overflow: hidden; background: #c00; }
+#onetrust-banner-sdk, .unknown-banner { position: fixed; inset: 0; z-index: 99; background: #00c; }`)
+		default:
+			// The page's own styles come only from its stylesheet, so an
+			// injected <style> element would be refused.
+			w.Header().Set("Content-Security-Policy", "default-src * 'unsafe-inline'; style-src 'self'")
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = io.WriteString(w, `<html><head><link rel="stylesheet" href="/page.css"></head><body>
+<div id="onetrust-banner-sdk">We value your privacy</div>
+<script src="http://localhost:`+consentPort+`/banner.js"></script></body></html>`)
+		}
+	}))
+	defer srv.Close()
+
+	b := NewBrowser(browserURL, images.GuardedTransport(true))
+	b.consentHost = func(host string) bool { return host == "localhost" }
+	corner := func(pageURL string) (r, g, bl uint32) {
+		t.Helper()
+		shot, err := b.Screenshot(context.Background(), pageURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, _, err := image.Decode(bytes.NewReader(shot))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, g, bl, _ = img.At(ScreenshotWidth-10, ScreenshotHeight-10).RGBA()
+		return r >> 8, g >> 8, bl >> 8
+	}
+	if r, g, bl := corner(srv.URL); r < 0xb0 || g > 0x30 || bl > 0x30 {
+		t.Fatalf("corner colour = %d %d %d, want the page's red behind the banner", r, g, bl)
+	}
+	if n := provider.Load(); n != 0 {
+		t.Fatalf("requests to the consent provider = %d", n)
+	}
+
+	// The page itself is loaded even when its host is on the list.
+	b.consentHost = func(string) bool { return true }
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, `<html><body bgcolor="#cc0000">Hello</body></html>`)
+	}))
+	defer plain.Close()
+	if r, g, bl := corner(plain.URL); r < 0xb0 || g > 0x30 || bl > 0x30 {
+		t.Fatalf("corner colour on a listed host = %d %d %d, want red", r, g, bl)
+	}
+}
+
 func TestResolveEndpoint(t *testing.T) {
 	ctx := context.Background()
 	for in, want := range map[string]string{

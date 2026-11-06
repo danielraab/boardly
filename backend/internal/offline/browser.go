@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -11,6 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/css"
+	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
@@ -46,6 +50,10 @@ type Browser struct {
 	// browser sees and requests each step, and each is checked.
 	Client *http.Client
 
+	// consentHost reports whether a host belongs to a consent-management
+	// provider. Requests to it are failed, except the page itself.
+	consentHost func(host string) bool
+
 	slot chan struct{}
 }
 
@@ -58,7 +66,8 @@ func NewBrowser(browserURL string, transport http.RoundTripper) *Browser {
 			Transport:     transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
-		slot: make(chan struct{}, 1),
+		consentHost: isConsentHost,
+		slot:        make(chan struct{}, 1),
 	}
 }
 
@@ -101,8 +110,13 @@ func (b *Browser) Screenshot(ctx context.Context, pageURL string) ([]byte, error
 	if err := chromedp.Do(tabCtx,
 		chromedp.EmulateViewport(ScreenshotWidth, ScreenshotHeight),
 		chromedp.Navigate(pageURL),
-		chromedp.Sleep(settleTime),
 	); err != nil {
+		return nil, err
+	}
+	if err := hideConsentBanners(tabCtx); err != nil {
+		slog.DebugContext(ctx, "hiding cookie banners failed", "url", pageURL, "error", err)
+	}
+	if err := chromedp.Do(tabCtx, chromedp.Sleep(settleTime)); err != nil {
 		return nil, err
 	}
 	quality := int64(screenshotQuality)
@@ -113,6 +127,24 @@ func (b *Browser) Screenshot(ctx context.Context, pageURL string) ([]byte, error
 		return nil, err
 	}
 	return res.Data, nil
+}
+
+// hideConsentBanners adds consent.css to the page as an inspector
+// stylesheet. Unlike a <style> element, the page's Content Security Policy
+// doesn't apply to it, and it stays in place for banners added later.
+func hideConsentBanners(ctx context.Context) error {
+	if _, err := chromedp.Call(ctx, dom.Enable, dom.EnableParams{}); err != nil {
+		return err
+	}
+	if _, err := chromedp.Call(ctx, css.Enable, cdp.Empty{}); err != nil {
+		return err
+	}
+	sheet, err := chromedp.Call(ctx, css.CreateStyleSheet, css.CreateStyleSheetParams{FrameID: mainFrame(ctx)})
+	if err != nil {
+		return err
+	}
+	_, err = chromedp.Call(ctx, css.SetStyleSheetText, css.SetStyleSheetTextParams{StyleSheetID: sheet.StyleSheetID, Text: consentStyles})
+	return err
 }
 
 // resolveEndpoint replaces the host name of the DevTools endpoint with its
@@ -149,6 +181,10 @@ func resolveEndpoint(ctx context.Context, endpoint string) (string, error) {
 
 // answer makes the paused request and fulfils it, or fails it.
 func (b *Browser) answer(ctx context.Context, ev fetch.EventRequestPaused, count *atomic.Int32) {
+	if b.blocksConsent(ev, mainFrame(ctx)) {
+		_, _ = chromedp.Call(ctx, fetch.FailRequest, fetch.FailRequestParams{RequestID: ev.RequestID, ErrorReason: network.ErrorReasonBlockedByClient})
+		return
+	}
 	fulfil, reason := b.Fetch(ctx, ev.Request, count.Add(1))
 	if fulfil != nil {
 		fulfil.RequestID = ev.RequestID
@@ -158,6 +194,29 @@ func (b *Browser) answer(ctx context.Context, ev fetch.EventRequestPaused, count
 		reason = network.ErrorReasonFailed
 	}
 	_, _ = chromedp.Call(ctx, fetch.FailRequest, fetch.FailRequestParams{RequestID: ev.RequestID, ErrorReason: reason})
+}
+
+// mainFrame returns the id of the tab's main frame, which in Chrome is the
+// id of the page target.
+func mainFrame(ctx context.Context) cdp.FrameID {
+	if c := chromedp.FromContext(ctx); c != nil && c.Target != nil {
+		return cdp.FrameID(c.Target.TargetID)
+	}
+	return ""
+}
+
+// blocksConsent reports whether the paused request goes to a
+// consent-management provider and is not the page itself: the document of
+// the main frame, with its redirects, is never blocked.
+func (b *Browser) blocksConsent(ev fetch.EventRequestPaused, main cdp.FrameID) bool {
+	if b.consentHost == nil || ev.Request == nil {
+		return false
+	}
+	if ev.ResourceType == network.ResourceTypeDocument && ev.FrameID == main {
+		return false
+	}
+	u, err := url.Parse(ev.Request.URL)
+	return err == nil && b.consentHost(u.Hostname())
 }
 
 // Fetch makes the browser's request req, the n-th of the screenshot, and
