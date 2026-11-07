@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"boardly/internal/memos"
 	"boardly/internal/notes"
@@ -159,6 +160,7 @@ func TestMemosSync(t *testing.T) {
 		{"title": "Loose"},
 		{"title": "Old plan", "categoryId": home, "archived": true, "pinned": true},
 	} {
+		s.clock.Advance(time.Second) // the newest note comes first
 		if rec := s.req("POST", "/api/notes", mustJSON(n), withCookie(ann)); rec.Code != http.StatusCreated {
 			t.Fatalf("create note: %d %s", rec.Code, rec.Body)
 		}

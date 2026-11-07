@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"boardly/internal/notes"
 )
@@ -72,6 +73,7 @@ func TestNotesAPI(t *testing.T) {
 		t.Errorf("patched = %+v", p)
 	}
 
+	s.clock.Advance(time.Second) // the archived note becomes the last changed
 	rec = s.req("PATCH", "/api/notes/"+n.ID, `{"version":2,"archived":true}`, withCookie(ann))
 	if a := decodeJSONBody[notes.Note](t, rec); rec.Code != http.StatusOK || !a.Archived || a.Pinned || a.Version != 3 {
 		t.Fatalf("archive: %d %s", rec.Code, rec.Body)
