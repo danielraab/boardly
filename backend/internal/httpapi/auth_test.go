@@ -132,6 +132,7 @@ func newServer(t *testing.T) *server {
 	favouriteStore.Now = c.Now
 	favouriteStore.Jobs = queue
 	noteStore := notes.NewStore(database)
+	noteStore.Now = c.Now
 	attachmentStore, err := attachments.NewStore(database, t.TempDir(), 1<<20, attachments.DefaultAllowed(), 30)
 	if err != nil {
 		t.Fatal(err)
