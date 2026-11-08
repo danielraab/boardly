@@ -62,6 +62,8 @@ type Config struct {
 
 	Attachments Attachments
 
+	Feeds Feeds
+
 	// MapStyleURL is the MapLibre style that maps in notes are drawn from.
 	MapStyleURL string
 
@@ -104,6 +106,14 @@ type Exports struct {
 	PerHour int
 	// PerDay is the most exports in the last 24 hours.
 	PerDay int
+}
+
+// Feeds holds the settings of the feed refresh.
+type Feeds struct {
+	// LatestItems is how many of the newest items are kept per feed.
+	LatestItems int
+	// RefreshMinutes is the refresh cycle.
+	RefreshMinutes int
 }
 
 // Attachments holds the limits of note attachments.
@@ -179,6 +189,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 		Previews:            Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
 		Offline:             Offline{MaxBytes: 5 << 20},
 		Attachments:         Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
+		Feeds:               Feeds{LatestItems: 100, RefreshMinutes: 60},
 		AccountDeletionDays: 7,
 		Exports:             Exports{PerHour: 3, PerDay: 10},
 	}
@@ -286,6 +297,23 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			n, err := strconv.ParseInt(v, 10, 32)
 			if err != nil || n < 1 {
 				return Config{}, fmt.Errorf("%s: %q must be a positive whole number", p.name, v)
+			}
+			p.set(n)
+		}
+	}
+
+	for _, p := range []struct {
+		name     string
+		min, max int
+		set      func(int)
+	}{
+		{"BOARDLY_FEED_LATEST_ITEMS", 1, 1000, func(n int) { cfg.Feeds.LatestItems = n }},
+		{"BOARDLY_FEED_REFRESH_MINUTES", 5, 10080, func(n int) { cfg.Feeds.RefreshMinutes = n }},
+	} {
+		if v := getenv(p.name); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n < p.min || n > p.max {
+				return Config{}, fmt.Errorf("%s: %q must be a whole number from %d to %d", p.name, v, p.min, p.max)
 			}
 			p.set(n)
 		}

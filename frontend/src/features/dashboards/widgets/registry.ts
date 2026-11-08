@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import { type ContentWidget, isSection, type Widget } from "../api";
 import { favouriteExplorerKind } from "./favouriteExplorer";
+import { feedKind } from "./feed";
 import { linkKind } from "./link";
 import { linkListKind } from "./linkList";
 import { mediaKind } from "./media";
@@ -30,7 +31,7 @@ export type WidgetSettingsProps = {
 };
 
 /** The groups of the widget picker, in the order it shows them. */
-export const widgetGroups = ["favourites", "notes", "media"] as const;
+export const widgetGroups = ["favourites", "notes", "media", "feeds"] as const;
 
 export type WidgetGroup = (typeof widgetGroups)[number];
 
@@ -59,6 +60,7 @@ export const widgetKinds: WidgetKind[] = [
 	noteListKind,
 	selectedNotesKind,
 	mediaKind,
+	feedKind,
 ];
 
 export function findKind(kind: string): WidgetKind | undefined {

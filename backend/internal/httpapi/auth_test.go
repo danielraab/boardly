@@ -23,6 +23,7 @@ import (
 	"boardly/internal/dbtest"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/jobs"
 	"boardly/internal/mail"
@@ -139,7 +140,8 @@ func newServer(t *testing.T) *server {
 	}
 	attachmentStore.Now = c.Now
 	mediaStore := media.NewStore(database, fakeStreamCheck, favicons.FetchLogo)
-	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, favicons)
+	feedStore := feeds.NewStore(database, feeds.NewFetcher(true), favicons, time.Hour, 100)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, feedStore, favicons)
 
 	offlineStore, err := offline.NewStore(database, t.TempDir())
 	if err != nil {
@@ -152,7 +154,7 @@ func newServer(t *testing.T) *server {
 	accountService := &accounts.Service{DB: database, Users: store, Now: c.Now, Days: 7, Mailer: box, Link: testOrigin + "/"}
 
 	h := New(Deps{
-		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Directory: directory,
+		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Feeds: feedStore, Directory: directory,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, Offline: offlineStore, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
 		Export: &export.Service{
@@ -160,7 +162,7 @@ func newServer(t *testing.T) *server {
 		},
 		DataImport: &dataimport.Service{
 			DB: database, Favourites: favouriteStore, Notes: noteStore, Dashboards: dashboardStore,
-			Media: mediaStore, Images: imageStore, Attachments: attachmentStore,
+			Media: mediaStore, Feeds: feedStore, Images: imageStore, Attachments: attachmentStore,
 		},
 		ExportsPerHour: 3, ExportsPerDay: 10,
 	})

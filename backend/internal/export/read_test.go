@@ -159,7 +159,7 @@ func TestDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if doc.Format != "boardly" || doc.Version != 1 || doc.ExportedAt != "2026-11-02T10:00:00.000Z" || doc.WithFiles {
+	if doc.Format != "boardly" || doc.Version != 2 || doc.ExportedAt != "2026-11-02T10:00:00.000Z" || doc.WithFiles {
 		t.Errorf("header = %q %d %q %v", doc.Format, doc.Version, doc.ExportedAt, doc.WithFiles)
 	}
 	p := doc.Profile
@@ -307,5 +307,50 @@ func TestDocumentRoundTrip(t *testing.T) {
 	}
 	if string(first) != string(second) {
 		t.Errorf("round trip changed the document:\n%s\n%s", first, second)
+	}
+}
+
+func TestFeedsInDocument(t *testing.T) {
+	database := dbtest.Open(t)
+	ctx := context.Background()
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := database.Exec(q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, u := range []string{"ann", "bob"} {
+		exec(`INSERT INTO users (id, email, created_at, updated_at) VALUES (?, ?, 'x', 'x')`, u, u+"@example.org")
+	}
+	for _, f := range []string{"f1", "f2", "f3"} {
+		exec(`INSERT INTO feeds (id, url, title, next_fetch_at, created_at) VALUES (?, ?, ?, 'x', 'x')`, f, "https://a.example/"+f, "Title "+f)
+	}
+	for _, i := range [][2]string{{"i1", "f1"}, {"i2", "f1"}, {"i3", "f2"}, {"i4", "f3"}} {
+		exec(`INSERT INTO feed_items (id, feed_id, identity, title, item_time, first_seen_at, audio_url) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00.000Z', 'x', 'https://a.example/a.mp3')`, i[0], i[1], "g-"+i[0], "Item "+i[0])
+	}
+	exec(`INSERT INTO feed_subscriptions (id, user_id, feed_id, custom_title, position, created_at, updated_at) VALUES ('s1', 'ann', 'f1', 'Mine', 0, 'x', 'x')`)
+	exec(`INSERT INTO feed_subscriptions (id, user_id, feed_id, position, created_at, updated_at) VALUES ('s9', 'bob', 'f3', 0, 'x', 'x')`)
+	exec(`INSERT INTO feed_item_flags (user_id, item_id, liked_at) VALUES ('ann', 'i1', 'y'), ('ann', 'i3', 'y'), ('bob', 'i4', 'y')`)
+
+	s := &Service{DB: database, Now: time.Now}
+	doc, err := s.Document(ctx, "ann")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Feeds) != 2 || doc.Feeds[0].ID != "s1" || !doc.Feeds[0].Subscribed || *doc.Feeds[0].CustomTitle != "Mine" {
+		t.Fatalf("feeds = %+v", doc.Feeds)
+	}
+	if doc.Feeds[1].ID != "f2" || doc.Feeds[1].Subscribed || doc.Feeds[1].Position != nil {
+		t.Fatalf("saved feed = %+v", doc.Feeds[1])
+	}
+	if len(doc.FeedItems) != 2 {
+		t.Fatalf("items = %+v", doc.FeedItems)
+	}
+	byGUID := map[string]FeedItem{}
+	for _, it := range doc.FeedItems {
+		byGUID[it.GUID] = it
+	}
+	if byGUID["g-i1"].FeedID != "s1" || byGUID["g-i3"].FeedID != "f2" || byGUID["g-i1"].Audio == nil {
+		t.Fatalf("items = %+v", byGUID)
 	}
 }

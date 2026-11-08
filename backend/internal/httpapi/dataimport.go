@@ -27,7 +27,7 @@ func (a *api) importData(w http.ResponseWriter, r *http.Request) error {
 	query := r.URL.Query()
 	parts, ok := dataimport.ParseParts(query.Get("parts"))
 	if !ok {
-		return NewError(http.StatusBadRequest, "invalid_request", "parts must list favourites, dashboards, notes or media")
+		return NewError(http.StatusBadRequest, "invalid_request", "parts must list favourites, dashboards, notes, media or feeds")
 	}
 	opts := dataimport.Options{Parts: parts, FolderID: query.Get("folderId"), SkipDuplicates: true}
 	if parts.Favourites && opts.FolderID == "" {

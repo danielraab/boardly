@@ -65,13 +65,19 @@ export function importBookmarks(
 }
 
 /** The parts of a Boardly export that can be imported. */
-export type ImportPart = "favourites" | "dashboards" | "notes" | "media";
+export type ImportPart =
+	| "favourites"
+	| "dashboards"
+	| "notes"
+	| "media"
+	| "feeds";
 
 export const importParts: readonly ImportPart[] = [
 	"favourites",
 	"dashboards",
 	"notes",
 	"media",
+	"feeds",
 ];
 
 /** What the import of a Boardly export added and left out, per part. */
@@ -86,6 +92,13 @@ export type DataImportReport = {
 	dashboards: { dashboards: number; skippedWidgets: number } | null;
 	notes: { notes: number; categories: number; duplicateNotes: number } | null;
 	media: { sources: number; duplicates: number; invalid: number } | null;
+	feeds?: {
+		subscriptions: number;
+		duplicates: number;
+		invalid: number;
+		restoredItems: number;
+		skippedItems: number;
+	} | null;
 	files: {
 		images: number;
 		attachments: number;

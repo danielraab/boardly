@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"boardly/internal/dbtest"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/media"
 	"boardly/internal/notes"
@@ -26,7 +29,7 @@ import (
 var (
 	pngData  = append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 32)...)
 	pdfData  = []byte("%PDF-1.7\nhello")
-	allParts = Parts{Favourites: true, Dashboards: true, Notes: true, Media: true}
+	allParts = Parts{Favourites: true, Dashboards: true, Notes: true, Media: true, Feeds: true}
 )
 
 type fixture struct {
@@ -38,6 +41,7 @@ type fixture struct {
 	notes    *notes.Store
 	dash     *dashboards.Store
 	media    *media.Store
+	feeds    *feeds.Store
 	images   *images.Store
 	att      *attachments.Store
 	export   *export.Service
@@ -72,13 +76,14 @@ func newFixture(t *testing.T) *fixture {
 	noCheck := func(_ context.Context, u string) (string, error) { return u, nil }
 	noLogo := func(context.Context, string, string) (string, error) { return "", errors.New("no logos") }
 	f.media = media.NewStore(database, noCheck, noLogo)
-	widgets.Register(f.dash, f.fav, f.notes, f.media, images.NewFavicons(f.images, false))
+	f.feeds = feeds.NewStore(database, feeds.NewFetcher(true), nil, time.Hour, 100)
+	widgets.Register(f.dash, f.fav, f.notes, f.media, f.feeds, images.NewFavicons(f.images, false))
 	offlineDir, err := blobs.Open(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.export = &export.Service{DB: database, ImageFiles: blobs.Dir(f.images.Dir), AttachmentFiles: f.att.Files, OfflineFiles: offlineDir, Now: time.Now}
-	f.s = &Service{DB: database, Favourites: f.fav, Notes: f.notes, Dashboards: f.dash, Media: f.media, Images: f.images, Attachments: f.att,
+	f.s = &Service{DB: database, Favourites: f.fav, Notes: f.notes, Dashboards: f.dash, Media: f.media, Feeds: f.feeds, Images: f.images, Attachments: f.att,
 		OfflineFiles: offlineDir, OfflineMaxBytes: 1 << 20, Screenshots: images.Converter{MaxPixels: 25_000_000, Width: 1280}}
 	return f
 }
@@ -339,8 +344,8 @@ func TestDashboardSizesRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if doc.Version != 1 {
-		t.Errorf("export version = %d, want 1", doc.Version)
+	if doc.Version != export.Version {
+		t.Errorf("export version = %d, want %d", doc.Version, export.Version)
 	}
 	for _, w := range doc.Dashboards[0].Widgets[0].Children {
 		if strings.Contains(string(w.Config), `"height"`) {
@@ -477,5 +482,180 @@ func TestParseParts(t *testing.T) {
 		if _, ok := ParseParts(s); ok {
 			t.Errorf("ParseParts(%q) accepted", s)
 		}
+	}
+}
+
+// serveRSS serves a feed whose only entry has the GUID "real" and the title
+// "Real title".
+func serveRSS(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		_, _ = w.Write([]byte(`<rss version="2.0"><channel><title>Example</title><item><guid>real</guid><title>Real title</title></item></channel></rss>`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL + "/feed"
+}
+
+func (f *fixture) feedItems(user, view string) []feeds.Item {
+	f.t.Helper()
+	items, _, err := f.feeds.Items(f.ctx, user, feeds.ItemQuery{View: view, Limit: 100})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return items
+}
+
+func TestImportFeedsRestoresSubscriptionsAndFlags(t *testing.T) {
+	f := newFixture(t)
+	feedURL := serveRSS(t)
+	sub, err := f.feeds.Subscribe(f.ctx, f.ann, feedURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	title := "My name"
+	if _, err := f.feeds.Update(f.ctx, f.ann, sub.ID, feeds.Patch{CustomTitle: func() **string { p := &title; return &p }()}); err != nil {
+		t.Fatal(err)
+	}
+	item := f.feedItems(f.ann, feeds.ViewLatest)[0]
+	yes := true
+	if _, err := f.feeds.SetFlags(f.ctx, f.ann, item.ID, nil, &yes); err != nil {
+		t.Fatal(err)
+	}
+	data := f.exportOf(f.ann, false)
+
+	report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	if report.Feeds == nil || report.Feeds.Subscriptions != 1 || report.Feeds.RestoredItems != 1 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feeds`); n != 1 {
+		t.Fatalf("%d feeds", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feed_items`); n != 1 {
+		t.Fatalf("%d items", n)
+	}
+	liked := f.feedItems(f.bob, feeds.ViewLiked)
+	if len(liked) != 1 || liked[0].ID != item.ID || liked[0].Feed.Title != "My name" {
+		t.Fatalf("%+v", liked)
+	}
+
+	again := f.importInto(f.ann, data, Options{Parts: Parts{Feeds: true}})
+	if again.Feeds.Subscriptions != 0 || again.Feeds.Duplicates != 1 {
+		t.Fatalf("%+v", again.Feeds)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feed_subscriptions WHERE user_id = ?`, f.ann); n != 1 {
+		t.Fatalf("%d subscriptions", n)
+	}
+}
+
+func TestImportFeedsVersionOne(t *testing.T) {
+	f := newFixture(t)
+	data := bytes.Replace(f.exportOf(f.ann, false), []byte(`"version": 2`), []byte(`"version": 1`), 1)
+	data = bytes.Replace(data, []byte(`"version":2`), []byte(`"version":1`), 1)
+	report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	if report.Feeds == nil || report.Feeds.Subscriptions != 0 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+}
+
+// craftedFeedDoc is an export with a feed and one flagged item.
+func craftedFeedDoc(feedURL, guid, itemTitle string) []byte {
+	doc := map[string]any{
+		"format": "boardly", "version": 2, "exportedAt": "2026-11-08T10:00:00.000Z", "withFiles": false,
+		"profile": map[string]any{"email": "m@example.org", "createdAt": "2026-01-01T00:00:00.000Z"},
+		"feeds":   []map[string]any{{"id": "doc-feed", "url": feedURL, "title": "Forged feed", "subscribed": true}},
+		"feedItems": []map[string]any{{"feedId": "doc-feed", "guid": guid, "title": itemTitle,
+			"publishedAt": "2026-11-08T09:00:00.000Z", "likedAt": "2026-11-08T09:00:00.000Z"}},
+	}
+	data, _ := json.Marshal(doc)
+	return data
+}
+
+func TestImportCantChangeWhatOthersSee(t *testing.T) {
+	f := newFixture(t)
+	feedURL := serveRSS(t)
+	if _, err := f.feeds.Subscribe(f.ctx, f.ann, feedURL); err != nil {
+		t.Fatal(err)
+	}
+
+	report := f.importInto(f.bob, craftedFeedDoc(feedURL, "real", "Forged title"), Options{Parts: Parts{Feeds: true}})
+	if report.Feeds.RestoredItems != 1 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	if got := f.feedItems(f.ann, feeds.ViewLatest)[0].Title; got != "Real title" {
+		t.Fatalf("Ann sees %q", got)
+	}
+	if got := f.feedItems(f.bob, feeds.ViewLiked)[0].Title; got != "Real title" {
+		t.Fatalf("Bob sees %q", got)
+	}
+
+	f.importInto(f.bob, craftedFeedDoc(feedURL, "invented", "Injected"), Options{Parts: Parts{Feeds: true}})
+	for _, it := range f.feedItems(f.ann, feeds.ViewLatest) {
+		if it.Title == "Injected" {
+			t.Fatal("an item from a file reached another user")
+		}
+	}
+	if len(f.feedItems(f.bob, feeds.ViewLiked)) != 2 {
+		t.Fatalf("%+v", f.feedItems(f.bob, feeds.ViewLiked))
+	}
+}
+
+func TestImportNewFeedIgnoresTitleAndDoesntFetch(t *testing.T) {
+	f := newFixture(t)
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits++ }))
+	defer srv.Close()
+	f.importInto(f.bob, craftedFeedDoc(srv.URL+"/feed", "x", "Item"), Options{Parts: Parts{Feeds: true}})
+	if hits != 0 {
+		t.Fatal("the import fetched the feed")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feeds WHERE title = 'Forged feed'`); n != 0 {
+		t.Fatal("the feed's title came from the file")
+	}
+}
+
+func TestImportFeedInvalidURLAndOrphanItem(t *testing.T) {
+	f := newFixture(t)
+	report := f.importInto(f.bob, craftedFeedDoc("javascript:alert(1)", "x", "Item"), Options{Parts: Parts{Feeds: true}})
+	if report.Feeds.Invalid != 1 || report.Feeds.SkippedItems != 1 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+}
+
+func TestImportWidgetFollowsItsFeed(t *testing.T) {
+	f := newFixture(t)
+	feedURL := serveRSS(t)
+	sub, err := f.feeds.Subscribe(f.ctx, f.ann, feedURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := craftedFeedDoc(feedURL, "real", "x")
+	var parsed map[string]any
+	_ = json.Unmarshal(doc, &parsed)
+	parsed["feeds"].([]any)[0].(map[string]any)["id"] = "doc-sub"
+	parsed["feedItems"].([]any)[0].(map[string]any)["feedId"] = "doc-sub"
+	parsed["dashboards"] = []map[string]any{{"id": "d", "slug": "news", "title": "News", "isDefault": false, "public": false, "columns": 6,
+		"createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z",
+		"widgets": []map[string]any{{"id": "w", "kind": "section", "width": 6, "config": map[string]any{"title": "", "border": false, "height": "auto"}, "children": []map[string]any{
+			{"id": "w2", "kind": "feed", "width": 6, "config": map[string]any{"height": "auto", "config": map[string]any{"feedIds": []string{"doc-sub"}, "show": "latest", "count": 5, "size": "M", "showIfPublic": false, "showSummary": false}}},
+		}}},
+	}}
+	doc, _ = json.Marshal(parsed)
+	report := f.importInto(f.bob, doc, Options{Parts: Parts{Feeds: true, Dashboards: true}})
+	if report.Dashboards == nil || report.Dashboards.Dashboards != 1 || report.Dashboards.SkippedWidgets != 0 {
+		t.Fatalf("%+v", report.Dashboards)
+	}
+	bobsSub := f.count(`SELECT COUNT(*) FROM feed_subscriptions WHERE user_id = ? AND feed_id = ?`, f.bob, sub.FeedID)
+	if bobsSub != 1 {
+		t.Fatalf("%d subscriptions", bobsSub)
+	}
+	var config string
+	if err := f.db.QueryRow(`SELECT w.config FROM dashboard_widgets w JOIN dashboards d ON d.id = w.dashboard_id WHERE d.user_id = ? AND w.kind = 'feed'`, f.bob).Scan(&config); err != nil {
+		t.Fatal(err)
+	}
+	var bobSubID string
+	_ = f.db.QueryRow(`SELECT id FROM feed_subscriptions WHERE user_id = ?`, f.bob).Scan(&bobSubID)
+	if !strings.Contains(config, bobSubID) || strings.Contains(config, "doc-sub") {
+		t.Fatalf("config = %s, want %s", config, bobSubID)
 	}
 }

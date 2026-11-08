@@ -6,10 +6,12 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"boardly/internal/dashboards"
 	"boardly/internal/dbtest"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/media"
 	"boardly/internal/notes"
@@ -52,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 	f.media = media.NewStore(database,
 		func(_ context.Context, rawURL string) (string, error) { return rawURL, nil },
 		func(context.Context, string, string) (string, error) { return "", errors.New("no logos in tests") })
-	Register(f.dash, f.fav, f.notes, f.media, images.NewFavicons(imageStore, false))
+	Register(f.dash, f.fav, f.notes, f.media, feeds.NewStore(database, feeds.NewFetcher(true), nil, time.Hour, 100), images.NewFavicons(imageStore, false))
 	d, err := f.dash.Create(ctx, ann.ID, dashboards.Fields{Title: "Home", Slug: "home", IsPublic: true})
 	if err != nil {
 		t.Fatal(err)

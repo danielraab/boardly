@@ -15,6 +15,7 @@ import (
 	"boardly/internal/dataimport"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/legal"
 	"boardly/internal/media"
@@ -40,6 +41,7 @@ type Deps struct {
 	Dashboards *dashboards.Store
 	Notes      *notes.Store
 	Media      *media.Store
+	Feeds      *feeds.Store
 	// Directory searches radio-browser.info for the "Add station" dialog.
 	Directory *media.Directory
 	Images    *images.Store
@@ -75,7 +77,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, feeds: d.Feeds, feedLimiter: ratelimit.New(feedAddsPerHour, feedAddBurst, 10_000), directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
 	// Logo links of station searches are signed with a key that lives as long
 	// as the process; they are only used while the dialog is open.
 	a.logoKey = make([]byte, 32)
@@ -144,6 +146,13 @@ func (a *api) mainAPI(db Pinger) *routeMux {
 	mux.Handle("POST /api/note-categories", a.requireUser(a.createNoteCategory))
 	mux.Handle("PATCH /api/note-categories/{id}", a.requireUser(a.updateNoteCategory))
 	mux.Handle("DELETE /api/note-categories/{id}", a.requireUser(a.deleteNoteCategory))
+	mux.Handle("GET /api/feeds", a.requireUser(a.listFeeds))
+	mux.Handle("POST /api/feeds", a.requireUser(a.createFeed))
+	mux.Handle("PUT /api/feeds/order", a.requireUser(a.reorderFeeds))
+	mux.Handle("PATCH /api/feeds/{id}", a.requireUser(a.updateFeed))
+	mux.Handle("DELETE /api/feeds/{id}", a.requireUser(a.deleteFeed))
+	mux.Handle("GET /api/feed-items", a.requireUser(a.listFeedItems))
+	mux.Handle("PATCH /api/feed-items/{id}", a.requireUser(a.updateFeedItem))
 	mux.Handle("GET /api/media", a.requireUser(a.listMedia))
 	mux.Handle("POST /api/media", a.requireUser(a.createMedia))
 	mux.Handle("PUT /api/media/order", a.requireUser(a.reorderMedia))

@@ -95,6 +95,9 @@ func (w Widget) MarshalJSON() ([]byte, error) {
 type Kind struct {
 	Normalize func(ctx context.Context, userID string, config json.RawMessage) (json.RawMessage, error)
 	Resolve   func(ctx context.Context, viewer Viewer, config json.RawMessage) (data any, ok bool, err error)
+	// VisitorConfig, if set, returns what anyone but the owner gets of the
+	// stored config.
+	VisitorConfig func(config json.RawMessage) (json.RawMessage, error)
 }
 
 // Viewer is who a layout is resolved for.
@@ -339,6 +342,13 @@ func (s *Store) resolveWidgets(ctx context.Context, viewer Viewer, list []Widget
 				continue
 			}
 			w.Data = data
+		}
+		if kind.VisitorConfig != nil && !viewer.IsOwner {
+			config, err := kind.VisitorConfig(w.Config)
+			if err != nil {
+				return nil, fmt.Errorf("resolving widget %s: %w", w.ID, err)
+			}
+			w.Config = config
 		}
 		out = append(out, w)
 	}

@@ -17,7 +17,7 @@ import (
 // Format and Version identify the export document.
 const (
 	Format  = "boardly"
-	Version = 1
+	Version = 2
 )
 
 // Document is an export of all data of one user. Times are RFC 3339 in UTC.
@@ -33,6 +33,8 @@ type Document struct {
 	NoteCategories []Category    `json:"noteCategories"`
 	Notes          []Note        `json:"notes"`
 	MediaSources   []MediaSource `json:"mediaSources"`
+	Feeds          []Feed        `json:"feeds"`
+	FeedItems      []FeedItem    `json:"feedItems"`
 	Images         []Image       `json:"images"`
 	Attachments    []Attachment  `json:"attachments"`
 }
@@ -208,6 +210,39 @@ type MediaSource struct {
 	Position  int         `json:"position"`
 	CreatedAt string      `json:"createdAt"`
 	UpdatedAt string      `json:"updatedAt"`
+}
+
+// Feed is a feed the user subscribes to or has flagged items in. ID is the
+// subscription's ID, or the feed's without a subscription.
+type Feed struct {
+	ID          string      `json:"id"`
+	URL         string      `json:"url"`
+	Title       string      `json:"title"`
+	CustomTitle *string     `json:"customTitle"`
+	Icon        *notes.Icon `json:"icon"`
+	Position    *int        `json:"position"`
+	Subscribed  bool        `json:"subscribed"`
+}
+
+// FeedItem is an item the user flagged. FeedID is the ID of its Feed, and
+// GUID is the item's identity within it.
+type FeedItem struct {
+	FeedID      string         `json:"feedId"`
+	GUID        string         `json:"guid"`
+	Title       string         `json:"title"`
+	Link        *string        `json:"link"`
+	Summary     *string        `json:"summary"`
+	PublishedAt string         `json:"publishedAt"`
+	Audio       *FeedItemAudio `json:"audio"`
+	ReadLaterAt *string        `json:"readLaterAt"`
+	LikedAt     *string        `json:"likedAt"`
+}
+
+// FeedItemAudio is the file of a podcast episode.
+type FeedItemAudio struct {
+	URL             string  `json:"url"`
+	Type            *string `json:"type"`
+	DurationSeconds *int    `json:"durationSeconds"`
 }
 
 // Image is an image the user uploaded or a link preview fetched for them.

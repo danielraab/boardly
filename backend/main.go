@@ -28,6 +28,7 @@ import (
 	"boardly/internal/db"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/httpapi"
 	"boardly/internal/images"
 	"boardly/internal/jobs"
@@ -157,7 +158,10 @@ func run() error {
 	dashboardStore := dashboards.NewStore(database)
 	noteStore := notes.NewStore(database)
 	mediaStore := media.NewStore(database, media.NewChecker(cfg.FetchAllowPrivate).Check, favicons.FetchLogo)
-	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, favicons)
+	feedStore := feeds.NewStore(database, feeds.NewFetcher(cfg.FetchAllowPrivate), favicons,
+		time.Duration(cfg.Feeds.RefreshMinutes)*time.Minute, cfg.Feeds.LatestItems)
+	go feedStore.Run(ctx, time.Minute, time.Hour)
+	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, feedStore, favicons)
 
 	srv := &http.Server{
 		Addr: ":" + strconv.Itoa(cfg.Port),
@@ -176,6 +180,7 @@ func run() error {
 			Dashboards:  dashboardStore,
 			Notes:       noteStore,
 			Media:       mediaStore,
+			Feeds:       feedStore,
 			Images:      imageStore,
 			Attachments: attachmentStore,
 			Favicons:    favicons,
@@ -190,7 +195,7 @@ func run() error {
 			},
 			DataImport: &dataimport.Service{
 				DB: database, Favourites: favouriteStore, Notes: noteStore, Dashboards: dashboardStore,
-				Media: mediaStore, Images: imageStore, Attachments: attachmentStore,
+				Media: mediaStore, Feeds: feedStore, Images: imageStore, Attachments: attachmentStore,
 				OfflineFiles: offlineStore.Files, OfflineMaxBytes: cfg.Offline.MaxBytes,
 				Screenshots: images.Converter{MaxPixels: cfg.Previews.MaxPixels, Width: offline.ScreenshotWidth},
 			},

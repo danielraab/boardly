@@ -515,3 +515,37 @@ func TestConsent(t *testing.T) {
 		})
 	}
 }
+
+func TestFeeds(t *testing.T) {
+	cfg, err := Load(env(withBaseURL(nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Feeds != (Feeds{LatestItems: 100, RefreshMinutes: 60}) {
+		t.Fatalf("defaults = %+v", cfg.Feeds)
+	}
+	cfg, err = Load(env(withBaseURL(map[string]string{"BOARDLY_FEED_LATEST_ITEMS": "30", "BOARDLY_FEED_REFRESH_MINUTES": "15"})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Feeds != (Feeds{LatestItems: 30, RefreshMinutes: 15}) {
+		t.Fatalf("custom = %+v", cfg.Feeds)
+	}
+	for name, value := range map[string]string{
+		"BOARDLY_FEED_LATEST_ITEMS":    "0",
+		"BOARDLY_FEED_REFRESH_MINUTES": "1",
+	} {
+		_, err := Load(env(withBaseURL(map[string]string{name: value})))
+		if err == nil || !strings.Contains(err.Error(), name) {
+			t.Errorf("%s=%s: err = %v", name, value, err)
+		}
+	}
+	for name, value := range map[string]string{
+		"BOARDLY_FEED_LATEST_ITEMS":    "1001",
+		"BOARDLY_FEED_REFRESH_MINUTES": "ten",
+	} {
+		if _, err := Load(env(withBaseURL(map[string]string{name: value}))); err == nil {
+			t.Errorf("%s=%s: no error", name, value)
+		}
+	}
+}

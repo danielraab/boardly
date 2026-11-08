@@ -142,6 +142,7 @@ describe("adding, editing and deleting widgets", () => {
 			"widget-group-favourites",
 			"widget-group-notes",
 			"widget-group-media",
+			"widget-group-feeds",
 		]);
 		const names = (group: HTMLElement) =>
 			within(group)
@@ -175,7 +176,7 @@ describe("adding, editing and deleting widgets", () => {
 			within(picker)
 				.getAllByRole("heading", { level: 3 })
 				.map((h) => h.textContent),
-		).toEqual(["Favoriten", "Notizen", "Medien"]);
+		).toEqual(["Favoriten", "Notizen", "Medien", "Feeds"]);
 	});
 
 	it("adds nothing when the settings are cancelled", async () => {

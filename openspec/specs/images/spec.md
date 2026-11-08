@@ -92,7 +92,7 @@ Favicons SHALL be stored once per origin (scheme, host and port) and shared by a
 - **THEN** the server responds 400 with `blocked_address` and makes no request to that address
 
 ### Requirement: Private address protection
-Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons, checks a media stream URL, fetches a station logo (see the `media-library` capability), or loads a page for an offline copy (see the `offline-copies` capability). The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. For the browser that takes offline copy screenshots, it SHALL apply to every request the browser makes, as described in the `offline-copies` capability. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
+Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to loopback, private, link-local, unique-local, carrier-grade NAT, multicast or unspecified addresses, in IPv4 or IPv6, when it fetches favicons, checks a media stream URL, fetches a station logo (see the `media-library` capability), fetches a feed or a page that advertises one (see the `feeds` capability), or loads a page for an offline copy (see the `offline-copies` capability). The check SHALL apply to the address actually connected to after DNS resolution, and to every redirect. For the browser that takes offline copy screenshots, it SHALL apply to every request the browser makes, as described in the `offline-copies` capability. `BOARDLY_FETCH_ALLOW_PRIVATE` defaults to `false`.
 
 #### Scenario: Name that resolves to a private address
 - **WHEN** private addresses are not allowed and a link's host name resolves to `10.0.0.5`
@@ -110,12 +110,16 @@ Unless `BOARDLY_FETCH_ALLOW_PRIVATE` is `true`, the server SHALL NOT connect to 
 - **WHEN** private addresses are not allowed and a pasted stream URL's host resolves to `10.0.0.5`
 - **THEN** no connection is made and the station isn't saved
 
+#### Scenario: Feed on a private address
+- **WHEN** private addresses are not allowed and a feed's host resolves to `10.0.0.5`
+- **THEN** no connection is made and the feed isn't added or refreshed
+
 #### Scenario: Offline copy of a private page
 - **WHEN** private addresses are not allowed and a link's host resolves to `10.0.0.5`
 - **THEN** neither the server nor the browser connects to it, and the link's offline copy is `failed` with `blocked_address`
 
 ### Requirement: Cleanup of unused uploads
-An uploaded image that no favourite, no dashboard widget, no note, no note category and no media source refers to SHALL be deleted, file and record, once it is older than 24 hours. A preview image that no link refers to SHALL be deleted, file and record, once it is older than one hour. The server checks this on start and then once an hour. Favicons are not deleted by this cleanup.
+An uploaded image that no favourite, no dashboard widget, no note, no note category, no media source and no feed subscription refers to SHALL be deleted, file and record, once it is older than 24 hours. A preview image that no link refers to SHALL be deleted, file and record, once it is older than one hour. The server checks this on start and then once an hour. Favicons are not deleted by this cleanup.
 
 #### Scenario: Unused upload
 - **WHEN** Ann uploaded an image 25 hours ago and never used it
@@ -135,6 +139,10 @@ An uploaded image that no favourite, no dashboard widget, no note, no note categ
 
 #### Scenario: Station icon
 - **WHEN** a station's logo was stored 25 hours ago and the station still uses it as its icon
+- **THEN** the image is kept
+
+#### Scenario: Feed icon
+- **WHEN** Ann uploaded an image 25 hours ago and uses it as the icon of a feed subscription
 - **THEN** the image is kept
 
 ### Requirement: Background jobs survive restarts
