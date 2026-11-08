@@ -146,7 +146,7 @@ With `notes`, the categories of the file SHALL be imported below the import cate
 - **THEN** the imported notes are pinned and archived
 
 ### Requirement: Imported dashboards
-With `dashboards`, every dashboard of the file SHALL be added with its title, layout settings and widgets in their order. An imported dashboard SHALL NOT be public and SHALL NOT be the default dashboard. Its slug is the slug of the file when the user has no dashboard with it, otherwise the slug followed by `-2`, `-3` and so on, the first one that is free. A widget whose configuration this server doesn't accept SHALL be left out and counted in the report.
+With `dashboards`, every dashboard of the file SHALL be added with its title, layout settings and widgets in their order. An imported dashboard SHALL NOT be public and SHALL NOT be the default dashboard. Its slug is the slug of the file when the user has no dashboard with it, otherwise the slug followed by `-2`, `-3` and so on, the first one that is free. A widget whose configuration this server doesn't accept SHALL be left out and counted in the report. Widget heights in an older export SHALL follow the same rule as on an upgrade: a section with height `auto` whose only child is a content widget with a fixed height takes over that height, and all other widget heights are dropped.
 
 #### Scenario: Never public
 - **WHEN** an export has the public default dashboard "Home"
@@ -159,6 +159,18 @@ With `dashboards`, every dashboard of the file SHALL be added with its title, la
 #### Scenario: Unknown widget kind
 - **WHEN** an export has a widget of a kind this server doesn't know
 - **THEN** the dashboard is imported without that widget, and the report counts one skipped widget
+
+#### Scenario: Older export with a fixed-height only child
+- **WHEN** an export has an `auto`-height section whose only child is a content widget with a height of 6 rows
+- **THEN** the imported section has a height of 6 rows and the imported widget has no height
+
+#### Scenario: Older export with several fixed-height widgets
+- **WHEN** an export has a section with two content widgets with fixed heights
+- **THEN** both widgets are imported without a height, and nothing is counted as left out
+
+#### Scenario: Export without widget heights
+- **WHEN** an export's content widgets have no height
+- **THEN** the dashboards are imported as usual
 
 ### Requirement: Imported media sources
 With `media`, every media source of the file SHALL be added after the user's media sources, in the order of the file, with its kind, title, URL and icon. A media source whose URL equals the URL of one of the user's media sources, or of one imported before it, SHALL be skipped and counted as a duplicate. A media source of a kind this server doesn't know is skipped and counted as invalid.

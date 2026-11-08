@@ -207,7 +207,6 @@ function selectedWidget(
 		id: "w1",
 		kind: "selected_notes",
 		width: 2,
-		height: "auto",
 		config: {
 			noteIds: ["roses"],
 			title: null,

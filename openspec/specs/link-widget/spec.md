@@ -90,17 +90,6 @@ The settings dialog SHALL show the current icon and its kind on one button, and 
 - **WHEN** Ann opens the icon chooser of a widget whose icon is "None"
 - **THEN** the chooser shows the "Website icon" tab
 
-### Requirement: Link widget height
-A link widget SHALL always be as tall as its content. Its settings dialog SHALL NOT offer a height choice, and the server SHALL store a link widget with the height "auto", whatever height a layout sends for it.
-
-#### Scenario: No height choice
-- **WHEN** Ann opens the settings of a link widget
-- **THEN** the dialog offers the width but no height
-
-#### Scenario: Fixed height sent
-- **WHEN** a layout with a link widget of height 3 is saved
-- **THEN** the widget is stored and returned with the height "auto"
-
 ### Requirement: Link widget rendering
 A link widget SHALL show its icon as chosen, and a globe for "None", for a website without a known favicon, or when an image can't be loaded. Next to it, it shows its title on the first line and its URL on the second, or only its URL when it has no title. Each line uses the available width and is cut off with "…" when it doesn't fit. The full title and URL are available as a tooltip. The size sets the icon size, the font size and the padding, on the same scale as the favourite explorer. Activating the widget opens the URL in a new tab or in the same tab, as set. In edit mode, activating it doesn't open the link.
 

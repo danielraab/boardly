@@ -92,18 +92,20 @@ function SectionList({
 	columns,
 	parentId,
 	level,
+	fill = false,
 }: {
 	sections: Widget[];
 	columns: number;
 	parentId: string | null;
 	level: number;
+	fill?: boolean;
 }) {
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const addSection = level <= maxDepth;
 	const addWidget = canAddWidgets(parentId);
 	const grid = (
-		<Grid columns={columns} parentId={parentId}>
+		<Grid columns={columns} parentId={parentId} fill={fill}>
 			{sections.map((widget) =>
 				isSection(widget) ? (
 					<SectionBlock
@@ -157,16 +159,21 @@ function SectionList({
 function Grid({
 	columns,
 	parentId,
+	fill,
 	children,
 }: {
 	columns: number;
 	parentId: string | null;
+	fill: boolean;
 	children: ReactNode;
 }) {
 	const editor = useEditor();
 	const style: CSSProperties = {
 		gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
 		gap: "var(--dashboard-gap)",
+		// The first row takes the free height but never shrinks below its
+		// content, so a child that is too tall makes the section scroll.
+		...(fill && { flexGrow: 1, gridTemplateRows: "minmax(min-content, 1fr)" }),
 	};
 	if (!editor) {
 		return (
@@ -303,6 +310,11 @@ function SectionFrame({
 	const collapsed = collapsible && ids.has(section.id);
 	const span = Math.min(section.width, parentColumns);
 	const rows = section.height === "auto" || collapsed ? null : section.height;
+	// A content widget that is the only child fills a fixed-height section.
+	const fill =
+		rows !== null &&
+		section.children.length === 1 &&
+		!isSection(section.children[0]);
 	const Heading = `h${Math.min(level + 1, 6)}` as "h2";
 	const title = section.title ?? t("dashboards.editor.untitled");
 
@@ -392,6 +404,7 @@ function SectionFrame({
 						columns={span}
 						parentId={section.id}
 						level={level + 1}
+						fill={fill}
 					/>
 				)}
 		</section>
@@ -496,9 +509,10 @@ function SortableContent(props: {
 }
 
 /**
- * A content widget's cell: it fills its grid cell, has its height, and
- * scrolls when its content doesn't fit. In edit mode it gets a dashed outline
- * and a bar with the drag handle and the edit button.
+ * A content widget's cell: it fills its grid cell and scrolls horizontally
+ * when its content is too wide. Vertically only its section scrolls. In edit
+ * mode it gets a dashed outline and a bar with the drag handle and the edit
+ * button.
  */
 function WidgetFrame({
 	widget,
@@ -519,7 +533,6 @@ function WidgetFrame({
 	const editor = useEditor();
 	const kind = findKind(widget.kind);
 	const span = Math.min(widget.width, parentColumns);
-	const rows = widget.height === "auto" ? null : widget.height;
 	const label = widgetLabel(widget, t);
 	const dropBefore = editor?.dropTarget?.overId === widget.id;
 	const outline = !editor
@@ -537,9 +550,6 @@ function WidgetFrame({
 			className={`flex min-w-0 flex-col gap-2 ${outline}`}
 			style={{
 				gridColumn: `span ${span} / span ${span}`,
-				height: rows
-					? `calc(${rows} * var(--dashboard-row) + ${rows - 1} * var(--dashboard-gap))`
-					: undefined,
 				...dragStyle,
 			}}
 		>
@@ -560,7 +570,7 @@ function WidgetFrame({
 					</button>
 				</div>
 			)}
-			<div className="min-h-0 min-w-0 flex-1 overflow-auto">
+			<div className="min-w-0 flex-1 overflow-x-auto">
 				{kind && (
 					<kind.View
 						widget={widget}

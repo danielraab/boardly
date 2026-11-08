@@ -160,6 +160,9 @@ describe("section dialog", () => {
 		const dialog = await screen.findByRole("dialog", { name: "Edit section" });
 		await user.click(within(dialog).getByLabelText("Border"));
 		await user.click(within(dialog).getByLabelText("Fixed"));
+		expect(
+			within(dialog).queryByRole("option", { name: "Full width" }),
+		).toBeNull();
 		const rows = within(dialog).getByRole("spinbutton", { name: "Rows" });
 		await user.clear(rows);
 		await user.type(rows, "4");

@@ -46,7 +46,6 @@ import {
 import {
 	canMove,
 	currentSlot,
-	findSection,
 	findWidget,
 	isSameTree,
 	isWithin,
@@ -59,6 +58,7 @@ import {
 } from "./layoutTree";
 import { SectionDialog, type SectionDialogTarget } from "./SectionDialog";
 import { DashboardGrid } from "./SectionGrid";
+import { fullWidth } from "./SizeFields";
 import { WidgetDialog, WidgetPicker } from "./WidgetDialogs";
 
 type KeyboardDrag = {
@@ -531,17 +531,11 @@ export function LayoutEditor({
 				onClose={() => setPicking(null)}
 				onPick={(kind) => {
 					if (picking === null) return;
-					// A new widget is as wide as its section.
-					const width = Math.min(
-						findSection(draft, picking)?.width ?? view.columns.desktopColumns,
-						view.columns.desktopColumns,
-					);
 					setWidgetDialog({
 						widget: {
 							id: crypto.randomUUID(),
 							kind: kind.kind,
-							width,
-							height: "auto",
+							width: fullWidth,
 							config: kind.defaultConfig(),
 						},
 						isNew: true,

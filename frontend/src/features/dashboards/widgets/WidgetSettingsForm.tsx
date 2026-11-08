@@ -1,18 +1,17 @@
 import { Dialog } from "@base-ui/react/dialog";
-import type { FormEvent, ReactNode } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
-import type { ContentWidget, SectionHeight } from "../api";
-import { SizeFields, useSizeState } from "../layout/SizeFields";
+import type { ContentWidget } from "../api";
+import { WidthField } from "../layout/SizeFields";
 
 /** The most characters of a widget's own title (as the server allows). */
 export const maxWidgetTitle = 200;
 
 /**
  * The frame of a widget kind's settings dialog: its title, the kind's own
- * fields, the shared width and height, and the delete, cancel and apply
- * buttons. `valid` is whether the kind's fields can be applied. A fitContent
- * widget has no height choice and is always as tall as its content.
+ * fields, the shared width, and the delete, cancel and apply buttons. `valid`
+ * is whether the kind's fields can be applied.
  */
 export function WidgetSettingsForm({
 	title,
@@ -20,7 +19,6 @@ export function WidgetSettingsForm({
 	isNew,
 	desktopColumns,
 	valid,
-	fitContent = false,
 	onApply,
 	onDelete,
 	children,
@@ -30,19 +28,16 @@ export function WidgetSettingsForm({
 	isNew: boolean;
 	desktopColumns: number;
 	valid: boolean;
-	fitContent?: boolean;
-	onApply: (size: { width: number; height: SectionHeight }) => void;
+	onApply: (size: { width: number }) => void;
 	onDelete: () => void;
 	children: ReactNode;
 }) {
 	const { t } = useTranslation();
-	const size = useSizeState(widget, desktopColumns);
+	const [width, setWidth] = useState(widget.width);
 
 	function onSubmit(event: FormEvent) {
 		event.preventDefault();
-		if (!valid) return;
-		if (fitContent) onApply({ width: size.width, height: "auto" });
-		else if (size.valid) onApply(size.value());
+		if (valid) onApply({ width });
 	}
 
 	return (
@@ -50,7 +45,13 @@ export function WidgetSettingsForm({
 			<Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
 			<form className="mt-5 space-y-4" onSubmit={onSubmit} noValidate>
 				{children}
-				<SizeFields state={size} idPrefix="widget" height={!fitContent} />
+				<WidthField
+					width={width}
+					onChange={setWidth}
+					desktopColumns={desktopColumns}
+					idPrefix="widget"
+					offerFull
+				/>
 				<div className="flex flex-wrap items-center justify-end gap-3 pt-2">
 					{!isNew && (
 						<button
@@ -64,11 +65,7 @@ export function WidgetSettingsForm({
 					<Dialog.Close className={secondaryButton}>
 						{t("dashboards.widgetDialog.cancel")}
 					</Dialog.Close>
-					<button
-						type="submit"
-						className={primaryButton}
-						disabled={!valid || (!fitContent && !size.valid)}
-					>
+					<button type="submit" className={primaryButton} disabled={!valid}>
 						{isNew
 							? t("dashboards.widgetDialog.add")
 							: t("dashboards.widgetDialog.apply")}

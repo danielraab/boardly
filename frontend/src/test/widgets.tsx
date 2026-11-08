@@ -14,7 +14,6 @@ export function textWidget(
 		id,
 		kind: "text",
 		width: 2,
-		height: "auto",
 		config: { text: id },
 		...fields,
 	};

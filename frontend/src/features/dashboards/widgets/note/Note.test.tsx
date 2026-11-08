@@ -69,7 +69,6 @@ function noteWidget(
 		id,
 		kind: "note",
 		width: 2,
-		height: "auto",
 		config: {
 			noteId: groceries.id,
 			size: "M",
@@ -381,7 +380,6 @@ describe("the note widget", () => {
 		expect(
 			within(dialog).getByLabelText("Show on public dashboard"),
 		).not.toBeChecked();
-		expect(within(dialog).getByLabelText("Fit the content")).toBeChecked();
 
 		const search = await within(dialog).findByRole("combobox", {
 			name: "Note",

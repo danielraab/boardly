@@ -8,6 +8,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Height is now set on sections only: widgets no longer have a height of their own. A widget that is
+  the only child of a fixed-height section fills it, and the section scrolls when its content needs
+  more room. On upgrade, a fixed height moves to the section when the widget is alone in an
+  auto-height section; other widget heights are dropped.
+- New widgets start at "Full width" and follow their section when it gets wider.
 - The save status of the note editor moved into the sticky toolbar row, so it stays visible on long
   notes, also for failed saves and when a note was changed elsewhere. On phones, "Saving…" and
   "Saved" are icons, and the toolbar stays on one row that scrolls sideways. "Saved" is now green and disappears as soon as the note is changed again.

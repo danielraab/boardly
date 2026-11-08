@@ -5,7 +5,13 @@ import type { SectionHeight } from "../api";
 
 export const maxRows = 50;
 
-/** The width and height of a widget while its dialog is open. */
+/**
+ * The stored width of a full-width widget. Rendering caps a width at the
+ * parent's, so such a widget always follows its section.
+ */
+export const fullWidth = 12;
+
+/** The width and height of a section while its dialog is open. */
 export function useSizeState(
 	initial: { width: number; height: SectionHeight },
 	desktopColumns: number,
@@ -38,94 +44,120 @@ export function useSizeState(
 export type SizeState = ReturnType<typeof useSizeState>;
 
 /**
- * The width select and the height choice, shared by every widget dialog.
- * Without height, only the width is offered.
+ * The width select. With offerFull, as in widget dialogs, the first choice is
+ * "Full width" instead of a column count.
  */
-export function SizeFields({
-	state,
+export function WidthField({
+	width,
+	onChange,
+	desktopColumns,
 	idPrefix,
-	height = true,
+	offerFull = false,
 }: {
-	state: SizeState;
+	width: number;
+	onChange: (width: number) => void;
+	desktopColumns: number;
 	idPrefix: string;
-	height?: boolean;
+	offerFull?: boolean;
 }) {
 	const { t } = useTranslation();
 	// A width above the desktop count (after lowering it) stays selectable.
 	const widths = Array.from(
-		{ length: Math.max(state.desktopColumns, state.width) },
+		{ length: Math.max(desktopColumns, width) },
 		(_, i) => i + 1,
+	).filter((n) => !offerFull || n !== fullWidth);
+	return (
+		<div>
+			<label
+				htmlFor={`${idPrefix}-width`}
+				className="block text-sm font-medium"
+			>
+				{t("dashboards.sectionDialog.widthLabel")}
+			</label>
+			<select
+				id={`${idPrefix}-width`}
+				value={width}
+				onChange={(e) => onChange(Number(e.target.value))}
+				className={textInput}
+			>
+				{offerFull && (
+					<option value={fullWidth}>
+						{t("dashboards.sectionDialog.widthFull")}
+					</option>
+				)}
+				{widths.map((n) => (
+					<option key={n} value={n}>
+						{t("dashboards.sectionDialog.widthOption", { count: n })}
+					</option>
+				))}
+			</select>
+		</div>
 	);
+}
+
+/** The width select and the height choice of a section's dialog. */
+export function SizeFields({
+	state,
+	idPrefix,
+}: {
+	state: SizeState;
+	idPrefix: string;
+}) {
+	const { t } = useTranslation();
 	return (
 		<>
-			<div>
-				<label
-					htmlFor={`${idPrefix}-width`}
-					className="block text-sm font-medium"
-				>
-					{t("dashboards.sectionDialog.widthLabel")}
-				</label>
-				<select
-					id={`${idPrefix}-width`}
-					value={state.width}
-					onChange={(e) => state.setWidth(Number(e.target.value))}
-					className={textInput}
-				>
-					{widths.map((n) => (
-						<option key={n} value={n}>
-							{t("dashboards.sectionDialog.widthOption", { count: n })}
-						</option>
-					))}
-				</select>
-			</div>
-			{height && (
-				<fieldset>
-					<legend className="text-sm font-medium">
-						{t("dashboards.sectionDialog.heightLabel")}
-					</legend>
-					<div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+			<WidthField
+				width={state.width}
+				onChange={state.setWidth}
+				desktopColumns={state.desktopColumns}
+				idPrefix={idPrefix}
+			/>
+			<fieldset>
+				<legend className="text-sm font-medium">
+					{t("dashboards.sectionDialog.heightLabel")}
+				</legend>
+				<div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+					<label className="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name={`${idPrefix}-height`}
+							checked={!state.fixed}
+							onChange={() => state.setFixed(false)}
+							className="size-4 accent-ink"
+						/>
+						{t("dashboards.sectionDialog.heightAuto")}
+					</label>
+					<label className="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name={`${idPrefix}-height`}
+							checked={state.fixed}
+							onChange={() => state.setFixed(true)}
+							className="size-4 accent-ink"
+						/>
+						{t("dashboards.sectionDialog.heightRows")}
+					</label>
+					{state.fixed && (
 						<label className="inline-flex items-center gap-2">
+							<span>{t("dashboards.sectionDialog.rowsLabel")}</span>
 							<input
-								type="radio"
-								name={`${idPrefix}-height`}
-								checked={!state.fixed}
-								onChange={() => state.setFixed(false)}
-								className="size-4 accent-ink"
+								type="number"
+								min={1}
+								max={maxRows}
+								value={state.rows}
+								onChange={(e) => state.setRows(e.target.value)}
+								aria-invalid={!state.rowsValid}
+								className="w-20 rounded-lg border border-line bg-paper/40 px-3 py-1.5 text-ink outline-none focus-visible:border-ink"
 							/>
-							{t("dashboards.sectionDialog.heightAuto")}
 						</label>
-						<label className="inline-flex items-center gap-2">
-							<input
-								type="radio"
-								name={`${idPrefix}-height`}
-								checked={state.fixed}
-								onChange={() => state.setFixed(true)}
-								className="size-4 accent-ink"
-							/>
-							{t("dashboards.sectionDialog.heightRows")}
-						</label>
-						{state.fixed && (
-							<label className="inline-flex items-center gap-2">
-								<span>{t("dashboards.sectionDialog.rowsLabel")}</span>
-								<input
-									type="number"
-									min={1}
-									max={maxRows}
-									value={state.rows}
-									onChange={(e) => state.setRows(e.target.value)}
-									aria-invalid={!state.rowsValid}
-									className="w-20 rounded-lg border border-line bg-paper/40 px-3 py-1.5 text-ink outline-none focus-visible:border-ink"
-								/>
-							</label>
-						)}
-					</div>
-					{state.fixed && !state.rowsValid && (
-						<p role="alert" className="mt-1 text-sm text-red-700">
-							{t("dashboards.sectionDialog.rowsInvalid")}
-						</p>
 					)}
-				</fieldset>
-			)}
+				</div>
+				{state.fixed && !state.rowsValid && (
+					<p role="alert" className="mt-1 text-sm text-red-700">
+						{t("dashboards.sectionDialog.rowsInvalid")}
+					</p>
+				)}
+			</fieldset>
 		</>
 	);
 }

@@ -37,9 +37,12 @@ const KindSection = "section"
 type Widget struct {
 	// ID is the stored ID. On save it may be empty for a new widget; an ID
 	// that isn't one of the dashboard's widgets is replaced.
-	ID     string `json:"id"`
-	Kind   string `json:"kind"`
-	Width  int    `json:"width"`
+	ID    string `json:"id"`
+	Kind  string `json:"kind"`
+	Width int    `json:"width"`
+
+	// Height is a section's height. A content widget has none: a height it
+	// is sent with is cleared when its layout is normalized.
 	Height Height `json:"height"`
 
 	// Title, Border and Children are only used by sections.
@@ -79,23 +82,19 @@ func (w Widget) MarshalJSON() ([]byte, error) {
 		ID     string          `json:"id"`
 		Kind   string          `json:"kind"`
 		Width  int             `json:"width"`
-		Height Height          `json:"height"`
 		Config json.RawMessage `json:"config"`
 		Data   any             `json:"data,omitempty"`
-	}{w.ID, w.Kind, w.Width, w.Height, config, w.Data})
+	}{w.ID, w.Kind, w.Width, config, w.Data})
 }
 
 // Kind is a content widget kind. Normalize validates and canonicalises a
 // config of userID's widget; it returns an error wrapping ErrInvalidLayout for
 // a config it doesn't accept. Resolve returns the data of a widget for a
 // lookup, or ok=false to leave the widget out of the response. Resolve may
-// be nil when a kind has no data and is shown to everyone. A FitContent
-// kind is always as tall as its content: its widgets are stored with height
-// "auto", whatever height they are sent with.
+// be nil when a kind has no data and is shown to everyone.
 type Kind struct {
-	Normalize  func(ctx context.Context, userID string, config json.RawMessage) (json.RawMessage, error)
-	Resolve    func(ctx context.Context, viewer Viewer, config json.RawMessage) (data any, ok bool, err error)
-	FitContent bool
+	Normalize func(ctx context.Context, userID string, config json.RawMessage) (json.RawMessage, error)
+	Resolve   func(ctx context.Context, viewer Viewer, config json.RawMessage) (data any, ok bool, err error)
 }
 
 // Viewer is who a layout is resolved for.
@@ -229,15 +228,15 @@ func (s *Store) normalizeLayout(ctx context.Context, userID string, sections []W
 			if w.Width < 1 || w.Width > MaxColumns {
 				return fmt.Errorf("%w: width must be 1 to %d", ErrInvalidLayout, MaxColumns)
 			}
-			if w.Height < 0 || w.Height > MaxHeightRows {
-				return fmt.Errorf("%w: height must be \"auto\" or 1 to %d rows", ErrInvalidLayout, MaxHeightRows)
-			}
 			w.Data = nil
 			if w.Kind != KindSection {
 				if err := s.normalizeContent(ctx, userID, w, level); err != nil {
 					return err
 				}
 				continue
+			}
+			if w.Height < 0 || w.Height > MaxHeightRows {
+				return fmt.Errorf("%w: height must be \"auto\" or 1 to %d rows", ErrInvalidLayout, MaxHeightRows)
 			}
 			if level > MaxDepth {
 				return fmt.Errorf("%w: sections nest at most %d levels deep", ErrInvalidLayout, MaxDepth)
@@ -285,10 +284,7 @@ func (s *Store) normalizeContent(ctx context.Context, userID string, w *Widget, 
 	if err != nil {
 		return err
 	}
-	w.Config = normalized
-	if kind.FitContent {
-		w.Height = 0
-	}
+	w.Config, w.Height = normalized, 0
 	return nil
 }
 
@@ -350,16 +346,15 @@ func (s *Store) resolveWidgets(ctx context.Context, viewer Viewer, list []Widget
 }
 
 // contentConfig is what a content widget stores in dashboard_widgets.config:
-// its height and the config of its kind.
+// the config of its kind.
 type contentConfig struct {
-	Height Height          `json:"height"`
 	Config json.RawMessage `json:"config"`
 }
 
 // widgetConfig returns what a widget stores in dashboard_widgets.config.
 func widgetConfig(w Widget) ([]byte, error) {
 	if w.Kind != KindSection {
-		return json.Marshal(contentConfig{Height: w.Height, Config: w.Config})
+		return json.Marshal(contentConfig{Config: w.Config})
 	}
 	return json.Marshal(sectionConfig{Title: w.Title, Border: w.Border, Height: w.Height})
 }
@@ -419,7 +414,7 @@ func loadWidgets(ctx context.Context, q db.Querier, dashboardID string) ([]Widge
 			if err := json.Unmarshal([]byte(config), &c); err != nil {
 				return nil, fmt.Errorf("widget %s: %w", w.ID, err)
 			}
-			w.Height, w.Config = c.Height, c.Config
+			w.Config = c.Config
 		}
 		byParent[parentID.String] = append(byParent[parentID.String], w)
 	}

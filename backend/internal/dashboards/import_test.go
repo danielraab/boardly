@@ -45,6 +45,59 @@ func TestImportSlugsAndFlags(t *testing.T) {
 	}
 }
 
+func TestImportOlderWidgetHeights(t *testing.T) {
+	f := newFixture(t)
+	withNotes(f)
+	content := func(config string) Widget {
+		t.Helper()
+		w, err := StoredWidget("note", 2, json.RawMessage(config), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return w
+	}
+	section := func(height string, children ...Widget) Widget {
+		t.Helper()
+		w, err := StoredWidget(KindSection, 6, json.RawMessage(`{"border":true,"height":`+height+`}`), children)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return w
+	}
+	fixed := `{"height":6,"config":{"text":"a"}}`
+	withoutHeight := `{"config":{"text":"a"}}`
+	inner := section(`4`)
+
+	for name, tt := range map[string]struct {
+		section Widget
+		want    Height
+	}{
+		"only child":       {section(`"auto"`, content(fixed)), 6},
+		"already fixed":    {section(`4`, content(fixed)), 4},
+		"several children": {section(`"auto"`, content(fixed), content(fixed)), 0},
+		"no heights":       {section(`"auto"`, content(withoutHeight)), 0},
+		"nested section":   {section(`"auto"`, inner), 0},
+	} {
+		d, dropped := f.importDashboard("home", []Widget{tt.section})
+		if dropped != 0 {
+			t.Errorf("%s: dropped = %d", name, dropped)
+		}
+		layout, err := f.s.Lookup(f.ctx, "ann", d.Slug, f.ann)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := layout.Sections[0]
+		if got.Height != tt.want || len(got.Children) != len(tt.section.Children) {
+			t.Errorf("%s: section = %+v, want height %d", name, got, tt.want)
+		}
+		for _, child := range got.Children {
+			if child.Kind != KindSection && child.Height != 0 {
+				t.Errorf("%s: widget kept its height: %+v", name, child)
+			}
+		}
+	}
+}
+
 func TestImportWidgets(t *testing.T) {
 	f := newFixture(t)
 	f.s.Kinds["counter"] = Kind{Normalize: func(_ context.Context, _ string, raw json.RawMessage) (json.RawMessage, error) {

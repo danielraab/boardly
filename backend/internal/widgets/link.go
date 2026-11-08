@@ -97,8 +97,6 @@ func Link(fav *favourites.Store, icons *images.Favicons) dashboards.Kind {
 		})
 	}
 	return dashboards.Kind{
-		// A link is one or two lines; a fixed height only adds space or cuts it off.
-		FitContent: true,
 		Normalize: func(ctx context.Context, userID string, raw json.RawMessage) (json.RawMessage, error) {
 			var c linkConfig
 			if err := decodeConfig(raw, &c); err != nil {

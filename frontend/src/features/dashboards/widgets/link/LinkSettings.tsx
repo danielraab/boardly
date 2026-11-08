@@ -19,7 +19,6 @@ import { NodeDialog } from "#/features/favourites/NodeDialog";
 import { findNode } from "#/features/favourites/tree";
 import { checkUrl } from "#/features/favourites/validate";
 import { useDebounced } from "#/lib/useDebounced";
-import type { SectionHeight } from "../../api";
 import type { WidgetSettingsProps } from "../registry";
 import { type WidgetSize, widgetSizes } from "../sizes";
 import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
@@ -98,7 +97,7 @@ export function LinkSettings(props: WidgetSettingsProps) {
 
 	const valid = linkUrl !== null;
 
-	function apply(dims: { width: number; height: SectionHeight }) {
+	function apply(dims: { width: number }) {
 		const common = {
 			title: title.trim() || null,
 			iconSource: icon.source,
@@ -131,7 +130,6 @@ export function LinkSettings(props: WidgetSettingsProps) {
 			isNew={props.isNew}
 			desktopColumns={props.desktopColumns}
 			valid={valid}
-			fitContent
 			onApply={apply}
 			onDelete={props.onDelete}
 		>

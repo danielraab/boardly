@@ -15,7 +15,9 @@ import (
 
 // StoredWidget turns a widget as dashboard_widgets stores it (its kind,
 // width and config column, as the export carries it) back into a Widget,
-// with children for a section.
+// with children for a section. A section with height "auto" takes over the
+// height that an older export has on its only child, if that is a content
+// widget. Any other height of a content widget is cleared on import.
 func StoredWidget(kind string, width int, config json.RawMessage, children []Widget) (Widget, error) {
 	w := Widget{Kind: kind, Width: width}
 	if kind == KindSection {
@@ -28,9 +30,15 @@ func StoredWidget(kind string, width int, config json.RawMessage, children []Wid
 		if w.Children == nil {
 			w.Children = []Widget{}
 		}
+		if w.Height == 0 && len(w.Children) == 1 && w.Children[0].Kind != KindSection {
+			w.Height = w.Children[0].Height
+		}
 		return w, nil
 	}
-	var c contentConfig
+	var c struct {
+		contentConfig
+		Height Height `json:"height"`
+	}
 	if err := json.Unmarshal(config, &c); err != nil {
 		return Widget{}, fmt.Errorf("%w: widget: %v", ErrInvalidLayout, err)
 	}

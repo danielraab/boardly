@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -325,6 +326,38 @@ func TestImportDashboardsOnlyKeepsReferences(t *testing.T) {
 	}
 	if configs := f.widgetConfigs(dashID); configs[widgets.KindLinkList]["folderId"] != s.dev {
 		t.Errorf("widget lost its folder: %v", configs)
+	}
+}
+
+func TestDashboardSizesRoundTrip(t *testing.T) {
+	f := newFixture(t)
+	s := f.seed()
+	if _, err := f.db.ExecContext(f.ctx, `UPDATE dashboard_widgets SET config = json_set(config, '$.height', 4) WHERE kind = 'section'`); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := f.export.Document(f.ctx, f.ann)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Version != 1 {
+		t.Errorf("export version = %d, want 1", doc.Version)
+	}
+	for _, w := range doc.Dashboards[0].Widgets[0].Children {
+		if strings.Contains(string(w.Config), `"height"`) {
+			t.Errorf("widget %s has a height in the export: %s", w.ID, w.Config)
+		}
+	}
+
+	f.importInto(f.bob, f.exportOf(f.ann, false), Options{Parts: Parts{Dashboards: true}})
+	var dashID string
+	if err := f.db.QueryRowContext(f.ctx, `SELECT id FROM dashboards WHERE user_id = ? AND id <> ?`, f.bob, s.dashboard).Scan(&dashID); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = ? AND kind = 'section' AND width = 6 AND json_extract(config, '$.height') = 4`, dashID); n != 1 {
+		t.Errorf("sections with their width and height = %d, want 1", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM dashboard_widgets WHERE dashboard_id = ? AND kind <> 'section' AND width = 2 AND json_type(config, '$.height') IS NULL`, dashID); n != 2 {
+		t.Errorf("widgets with their width and no height = %d, want 2", n)
 	}
 }
 

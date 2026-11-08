@@ -6,7 +6,7 @@ A dashboard widget that shows one of the owner's notes like a note card, lets th
 ## Requirements
 
 ### Requirement: Note widget settings
-The widget kind `note` ("Note" / "Notiz") SHALL have, besides the common width and height, a note, a size (`S`, `M` or `L`, default `M`) and a "Show on public dashboard" / "Auf öffentlichem Dashboard zeigen" flag (default off). The settings dialog SHALL offer the note as a search field with the placeholder "Choose a note" / "Notiz wählen" over all of the owner's notes, archived ones included. Each result SHALL show the note's icon, its display title (see "Display title" in the `notes` capability) and, if it has a category, the category's path (e.g. "Home › Garden"). An archived note's result SHALL show an archive icon with the tooltip "Archived" / "Archiviert" and be dimmed. Typing filters the results to notes whose display title or category path contains the typed text, ignoring case and accents. Results are ordered by display title, with untitled notes without text last. When no note matches, the results show "No matching notes" / "Keine passenden Notizen". Choosing a result, with the pointer or the keyboard, makes it the widget's note. While the search isn't being typed in, the field SHALL show the chosen note with its icon, display title, category path and archived mark. The dialog SHALL NOT be confirmable without a note. The height is the common choice of `auto` or a fixed number of rows. A layout with a note widget without a note ID, with an unknown size, or with a config the kind doesn't accept is rejected with 400 and `invalid_layout`. The note doesn't have to exist when the layout is saved.
+The widget kind `note` ("Note" / "Notiz") SHALL have, besides the common width, a note, a size (`S`, `M` or `L`, default `M`) and a "Show on public dashboard" / "Auf öffentlichem Dashboard zeigen" flag (default off). The settings dialog SHALL offer the note as a search field with the placeholder "Choose a note" / "Notiz wählen" over all of the owner's notes, archived ones included. Each result SHALL show the note's icon, its display title (see "Display title" in the `notes` capability) and, if it has a category, the category's path (e.g. "Home › Garden"). An archived note's result SHALL show an archive icon with the tooltip "Archived" / "Archiviert" and be dimmed. Typing filters the results to notes whose display title or category path contains the typed text, ignoring case and accents. Results are ordered by display title, with untitled notes without text last. When no note matches, the results show "No matching notes" / "Keine passenden Notizen". Choosing a result, with the pointer or the keyboard, makes it the widget's note. While the search isn't being typed in, the field SHALL show the chosen note with its icon, display title, category path and archived mark. The dialog SHALL NOT be confirmable without a note. A layout with a note widget without a note ID, with an unknown size, or with a config the kind doesn't accept is rejected with 400 and `invalid_layout`. The note doesn't have to exist when the layout is saved.
 
 #### Scenario: Add a note widget
 - **WHEN** Ann picks "Note" in the widget picker, chooses "Groceries" in the search and confirms
@@ -45,15 +45,15 @@ The widget kind `note` ("Note" / "Notiz") SHALL have, besides the common width a
 - **THEN** the server responds 400 with `invalid_layout`
 
 ### Requirement: Note widget rendering
-A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; at the top, its icon and its title, if any, followed on the same line by its category badge, if it has a category, and at the end of the line a pin icon with the tooltip "Pinned" / "Angeheftet" for a pinned note and the mark "Archived" / "Archiviert" for an archived note (a note with neither title, icon, category nor mark shows no title line); and its rendered content with task items as checkboxes in their state. A long title is shortened so the badge stays on the line. The badge SHALL NOT open a category picker. Content is not cut off or faded: with height `auto` the widget is as tall as the note, and with a fixed height content that doesn't fit scrolls inside the widget. Links in the content SHALL NOT open.
+A note widget SHALL show its note like a note card (see "Note cards" in the `notes` capability): the note's colour as background, or `surface` when it has none; at the top, its icon and its title, if any, followed on the same line by its category badge, if it has a category, and at the end of the line a pin icon with the tooltip "Pinned" / "Angeheftet" for a pinned note and the mark "Archived" / "Archiviert" for an archived note (a note with neither title, icon, category nor mark shows no title line); and its rendered content with task items as checkboxes in their state. A long title is shortened so the badge stays on the line. The badge SHALL NOT open a category picker. Content is not cut off or faded: the widget is as tall as the note, and when it is the only child of a fixed-height section it fills that section, and a note that doesn't fit scrolls with the section. Links in the content SHALL NOT open.
 
 #### Scenario: Card look
 - **WHEN** "Groceries" has the colour `green`, the symbol icon "cart" and the category "Home"
 - **THEN** the widget has the green note background, shows the cart symbol and "Groceries" with the badge "Home" next to it at the top, and its content below
 
 #### Scenario: Fixed height
-- **WHEN** a note widget has a height of 3 rows and the note is longer than that
-- **THEN** the widget is 3 rows tall and its content scrolls
+- **WHEN** a note widget is the only child of a section with a height of 3 rows and the note is longer than that
+- **THEN** the section is 3 rows tall and scrolls vertically, and the note isn't cut off
 
 #### Scenario: Note changed
 - **WHEN** Ann adds a task to "Groceries" on `/notes` and opens the dashboard
@@ -62,6 +62,10 @@ A note widget SHALL show its note like a note card (see "Note cards" in the `not
 #### Scenario: Archived note
 - **WHEN** the widget's note is archived
 - **THEN** the widget still shows the note, with the mark "Archived"
+
+#### Scenario: Short note in a fixed-height section
+- **WHEN** a note widget is the only child of a section with a height of 6 rows and the note is shorter than that
+- **THEN** the note's card fills the section
 
 ### Requirement: Note widget size
 The size SHALL set the text size of the widget's title and content, including the size of the checkboxes and the icon, on the same S/M/L scale as the other widgets. The padding SHALL stay the same for every size.

@@ -30,7 +30,7 @@ async function openEditor(sections: Widget[], more = {}) {
 }
 
 describe("content widgets in view mode", () => {
-	it("render through their kind, with width, height and scrolling", async () => {
+	it("render through their kind, with their width and horizontal scrolling", async () => {
 		mockApi({
 			"GET /api/u/ann/home": {
 				body: viewData(
@@ -38,7 +38,7 @@ describe("content widgets in view mode", () => {
 						section(
 							"Work",
 							{ width: 4 },
-							textWidget("n1", { width: 2, height: 2, data: "resolved" }),
+							textWidget("n1", { width: 2, data: "resolved" }),
 							textWidget("n2", { width: 6 }),
 						),
 					],
@@ -49,11 +49,9 @@ describe("content widgets in view mode", () => {
 		renderApp("/ann/home");
 		expect(await screen.findByText("n1 [resolved]")).toBeVisible();
 		expect(widget("n1")).toHaveAttribute("data-span", "2");
-		expect(widget("n1").style.height).toBe(
-			"calc(2 * var(--dashboard-row) + 1 * var(--dashboard-gap))",
-		);
+		expect(widget("n1").style.height).toBe("");
 		expect(screen.getByText("n1 [resolved]").parentElement).toHaveClass(
-			"overflow-auto",
+			"overflow-x-auto",
 		);
 		// Wider than its section: clamped to the section's width.
 		expect(widget("n2")).toHaveAttribute("data-span", "4");
@@ -109,8 +107,9 @@ describe("adding, editing and deleting widgets", () => {
 		);
 
 		const dialog = await screen.findByRole("dialog", { name: "New text" });
-		expect(within(dialog).getByLabelText("Width")).toHaveValue("4");
-		expect(within(dialog).getByLabelText("Fit the content")).toBeChecked();
+		expect(within(dialog).getByLabelText("Width")).toHaveDisplayValue(
+			"Full width",
+		);
 		const add = within(dialog).getByRole("button", { name: "Add" });
 		expect(add).toBeDisabled();
 		await user.type(within(dialog).getByLabelText("Text"), "Hello");
@@ -123,6 +122,15 @@ describe("adding, editing and deleting widgets", () => {
 			),
 		].map((el) => el.getAttribute("data-testid")?.split("-")[0]);
 		expect(children).toEqual(["section", "widget"]);
+
+		// The new widget follows its section when that is widened.
+		const added = () => frame("Work").querySelector("[data-testid^='widget-']");
+		expect(added()).toHaveAttribute("data-span", "4");
+		await user.click(screen.getByRole("button", { name: "Edit Work" }));
+		const edit = await screen.findByRole("dialog");
+		await user.selectOptions(within(edit).getByLabelText("Width"), "6");
+		await user.click(within(edit).getByRole("button", { name: "Apply" }));
+		await waitFor(() => expect(added()).toHaveAttribute("data-span", "6"));
 	});
 
 	it("groups the kinds in the picker", async () => {
@@ -187,23 +195,33 @@ describe("adding, editing and deleting widgets", () => {
 		expect(screen.queryByRole("alertdialog")).toBeNull();
 	});
 
-	it("edits a widget's settings and height", async () => {
+	it("edits a widget's settings and width, and offers no height", async () => {
 		const { user } = await openEditor([section("Work", {}, textWidget("n1"))]);
 		await user.click(screen.getByRole("button", { name: "Edit Text widget" }));
 		const dialog = await screen.findByRole("dialog", { name: "Edit text" });
 		const text = within(dialog).getByLabelText("Text");
 		await user.clear(text);
 		await user.type(text, "Changed");
-		await user.click(within(dialog).getByLabelText("Fixed"));
-		const rows = within(dialog).getByRole("spinbutton", { name: "Rows" });
-		await user.clear(rows);
-		await user.type(rows, "3");
+		expect(within(dialog).queryByLabelText("Fixed")).toBeNull();
+		expect(within(dialog).queryByLabelText("Fit the content")).toBeNull();
+		await user.selectOptions(within(dialog).getByLabelText("Width"), "2");
 		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
 
 		expect(await screen.findByText("Changed (editing)")).toBeVisible();
-		expect(widget("n1").style.height).toBe(
-			"calc(3 * var(--dashboard-row) + 2 * var(--dashboard-gap))",
-		);
+		expect(widget("n1")).toHaveAttribute("data-span", "2");
+	});
+
+	it("shows the width 12 as full width", async () => {
+		const { user } = await openEditor([
+			section("Work", {}, textWidget("n1", { width: 12 })),
+		]);
+		await user.click(screen.getByRole("button", { name: "Edit Text widget" }));
+		const dialog = await screen.findByRole("dialog", { name: "Edit text" });
+		const width = within(dialog).getByLabelText("Width");
+		expect(width).toHaveDisplayValue("Full width");
+		expect(
+			within(width).queryByRole("option", { name: "12 columns" }),
+		).toBeNull();
 	});
 
 	it("deletes a widget after confirming", async () => {
