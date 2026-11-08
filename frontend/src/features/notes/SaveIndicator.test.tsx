@@ -12,6 +12,17 @@ describe("SaveIndicator", () => {
 		expect(screen.getByRole("status").querySelector("svg")).not.toBeNull();
 	});
 
+	it("is green when saved and red when not", () => {
+		const { rerender } = render(
+			<SaveIndicator status="saved" onRetry={noop} compact />,
+		);
+		expect(screen.getByRole("status")).toHaveClass("text-success");
+		rerender(<SaveIndicator status="failed" onRetry={noop} compact />);
+		expect(screen.getByRole("status")).toHaveClass("text-danger");
+		rerender(<SaveIndicator status="saving" onRetry={noop} compact />);
+		expect(screen.getByRole("status")).toHaveClass("text-muted");
+	});
+
 	it("shows no icon unless compact", () => {
 		render(<SaveIndicator status="saving" onRetry={noop} />);
 		expect(screen.getByRole("status")).toHaveTextContent("Saving…");

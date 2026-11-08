@@ -54,16 +54,17 @@ export function SaveIndicator({
 		status === "saving"
 			? t("notes.editor.status.saving")
 			: t("notes.editor.status.saved");
+	const colour = status === "saved" ? "text-success" : "text-muted";
 	if (!compact) {
 		return (
-			<span role="status" className="text-sm text-muted">
+			<span role="status" className={`text-sm ${colour}`}>
 				{text}
 			</span>
 		);
 	}
 	const Icon = status === "saving" ? LoaderCircle : Check;
 	return (
-		<span role="status" className="flex items-center text-sm text-muted">
+		<span role="status" className={`flex items-center text-sm ${colour}`}>
 			<Icon
 				className={`size-4 sm:hidden ${status === "saving" ? "motion-safe:animate-spin" : ""}`}
 				aria-hidden

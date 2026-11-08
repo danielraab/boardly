@@ -3,11 +3,15 @@
 ## ADDED Requirements
 
 ### Requirement: Save status stays visible
-The editor page and the note editor modal of dashboards SHALL show the save status described in "Autosave" at the end of the sticky toolbar row of the content editor, and only there, so that it stays visible while the content is scrolled. On a viewport narrower than 640 px, "Saving…" / "Wird gespeichert…" and "Saved" / "Gespeichert" SHALL be shown as an icon that keeps the text as its accessible name; from 640 px on they SHALL be shown as text. "Not saved" / "Nicht gespeichert" and its "Retry" / "Erneut versuchen" button SHALL be shown as text at every width. After a `version_conflict`, the status SHALL show "Changed elsewhere" / "Anderswo geändert" with a "Reload" / "Neu laden" button, in addition to the explanation at the top of the editor. The status of inline editing on cards SHALL stay on the card. On a phone whose browser supports resizing the page for the on-screen keyboard, the sticky toolbar row SHALL stay in view while the keyboard is open.
+The editor page and the note editor modal of dashboards SHALL show the save status described in "Autosave" at the end of the sticky toolbar row of the content editor, and only there, so that it stays visible while the content is scrolled. On a viewport narrower than 640 px, "Saving…" / "Wird gespeichert…" and "Saved" / "Gespeichert" SHALL be shown as an icon that keeps the text as its accessible name; from 640 px on they SHALL be shown as text. "Not saved" / "Nicht gespeichert" and its "Retry" / "Erneut versuchen" button SHALL be shown as text at every width. After a `version_conflict`, the status SHALL show "Changed elsewhere" / "Anderswo geändert" with a "Reload" / "Neu laden" button, in addition to the explanation at the top of the editor. "Saved" / "Gespeichert" and its icon SHALL use the theme colour `success`, and "Not saved" / "Nicht gespeichert" and "Changed elsewhere" / "Anderswo geändert" SHALL use `danger`, in the editor and on cards. The status of inline editing on cards SHALL stay on the card. On a phone whose browser supports resizing the page for the on-screen keyboard, the sticky toolbar row SHALL stay in view while the keyboard is open.
 
 #### Scenario: Saved on a long note
 - **WHEN** Ann has scrolled to the end of a long note on a phone and types a word
 - **THEN** about a second later the toolbar row, still in view, shows the saved icon, and a screen reader announces "Saved"
+
+#### Scenario: Status colours
+- **WHEN** a save succeeds, and a later save fails
+- **THEN** the status is first shown in the `success` colour, then "Not saved" in the `danger` colour
 
 #### Scenario: Status as text on a wider viewport
 - **WHEN** Ann changes a note in a viewport 1024 px wide
