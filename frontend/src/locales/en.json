@@ -985,6 +985,7 @@
 				"showLabel": "Show",
 				"countLabel": "Number of items",
 				"summaryLabel": "Show summary",
+				"audioOnlyLabel": "Only items with audio",
 				"titleLabel": "Title",
 				"publicLabel": "Show on public dashboard",
 				"publicHint": "Visitors of a public dashboard see the titles and links of these items. Otherwise only you see the widget.",

@@ -546,8 +546,10 @@ type ItemQuery struct {
 	View string
 	// SubscriptionIDs limits the items to these feeds; empty means all.
 	SubscriptionIDs []string
-	Limit           int
-	Cursor          string
+	// AudioOnly limits the items to those with audio.
+	AudioOnly bool
+	Limit     int
+	Cursor    string
 }
 
 // itemFrom is the FROM clause of a view. Each binds the user three times.
@@ -633,6 +635,9 @@ func (s *Store) Items(ctx context.Context, userID string, q ItemQuery) ([]Item, 
 		for _, id := range q.SubscriptionIDs {
 			args = append(args, id)
 		}
+	}
+	if q.AudioOnly {
+		where += ` AND i.audio_url IS NOT NULL`
 	}
 	if q.Cursor != "" {
 		key, id, err := decodeCursor(q.Cursor)

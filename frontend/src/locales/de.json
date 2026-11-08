@@ -985,6 +985,7 @@
 				"showLabel": "Anzeigen",
 				"countLabel": "Anzahl Einträge",
 				"summaryLabel": "Zusammenfassung zeigen",
+				"audioOnlyLabel": "Nur Einträge mit Audio",
 				"titleLabel": "Titel",
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge. Sonst siehst nur du das Widget.",

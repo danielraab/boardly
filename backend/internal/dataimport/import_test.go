@@ -637,7 +637,7 @@ func TestImportWidgetFollowsItsFeed(t *testing.T) {
 	parsed["dashboards"] = []map[string]any{{"id": "d", "slug": "news", "title": "News", "isDefault": false, "public": false, "columns": 6,
 		"createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z",
 		"widgets": []map[string]any{{"id": "w", "kind": "section", "width": 6, "config": map[string]any{"title": "", "border": false, "height": "auto"}, "children": []map[string]any{
-			{"id": "w2", "kind": "feed", "width": 6, "config": map[string]any{"height": "auto", "config": map[string]any{"feedIds": []string{"doc-sub"}, "show": "latest", "count": 5, "size": "M", "showIfPublic": false, "showSummary": false}}},
+			{"id": "w2", "kind": "feed", "width": 6, "config": map[string]any{"height": "auto", "config": map[string]any{"feedIds": []string{"doc-sub"}, "show": "latest", "count": 5, "size": "M", "showIfPublic": false, "showSummary": false, "audioOnly": true}}},
 		}}},
 	}}
 	doc, _ = json.Marshal(parsed)
@@ -655,7 +655,7 @@ func TestImportWidgetFollowsItsFeed(t *testing.T) {
 	}
 	var bobSubID string
 	_ = f.db.QueryRow(`SELECT id FROM feed_subscriptions WHERE user_id = ?`, f.bob).Scan(&bobSubID)
-	if !strings.Contains(config, bobSubID) || strings.Contains(config, "doc-sub") {
+	if !strings.Contains(config, bobSubID) || strings.Contains(config, "doc-sub") || !strings.Contains(config, `"audioOnly":true`) {
 		t.Fatalf("config = %s, want %s", config, bobSubID)
 	}
 }

@@ -221,12 +221,67 @@ describe("the feed widget", () => {
 		expect(within(dialog).getByLabelText("Number of items")).toHaveValue(10);
 		expect(within(dialog).getByLabelText("Show summary")).not.toBeChecked();
 		expect(
+			within(dialog).getByLabelText("Only items with audio"),
+		).not.toBeChecked();
+		expect(
 			within(dialog).getByLabelText("Show on public dashboard"),
 		).not.toBeChecked();
 		expect(
 			within(dialog).getByText(/also of feeds you add later/),
 		).toBeVisible();
 		expect(within(dialog).getByRole("button", { name: "Add" })).toBeEnabled();
+	});
+
+	it("saves the audio filter", async () => {
+		let saved: { sections: Widget[] } | undefined;
+		const api = dashboard(() => [section("Work")], {
+			feeds: [{ id: "s1", title: "Heise", icon: null, faviconId: null }],
+			more: {
+				"PUT /api/dashboards/d1/layout": ({ body }) => {
+					saved = body as { sections: Widget[] };
+					return { body: { version: 1, sections: [] } };
+				},
+			},
+		});
+		const { user } = renderApp("/ann/home?edit=true");
+		await user.click(await screen.findByRole("button", { name: "Add widget" }));
+		const picker = await screen.findByRole("dialog", { name: "Add widget" });
+		await user.click(
+			within(within(picker).getByRole("region", { name: "Feeds" })).getByRole(
+				"button",
+				{ name: /^Feed/ },
+			),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "Add feed" });
+		await user.click(within(dialog).getByLabelText("Only items with audio"));
+		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await user.click(screen.getByRole("button", { name: "Save and exit" }));
+		await waitFor(() => expect(saved).toBeDefined());
+		expect(saved?.sections[0]).toMatchObject({
+			children: [{ kind: "feed", config: { audioOnly: true } }],
+		});
+		expect(api.calls.some((c) => c.method === "PUT")).toBe(true);
+	});
+
+	it("previews only items with audio when filtered", async () => {
+		const episode = item("e", "Episode", {
+			audio: {
+				url: "https://cdn.example/1.mp3",
+				type: null,
+				durationSeconds: null,
+			},
+		});
+		dashboard(() => [section("Work", {}, feedWidget({ audioOnly: true }))], {
+			more: {
+				"GET /api/feed-items": {
+					body: { items: [item("n", "News two"), episode], nextCursor: null },
+				},
+			},
+		});
+		renderApp("/ann/home?edit=true");
+		expect(await screen.findByText("Episode")).toBeVisible();
+		expect(screen.queryByText("News two")).not.toBeInTheDocument();
 	});
 
 	it("needs a valid number of items", async () => {

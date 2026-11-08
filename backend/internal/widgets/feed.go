@@ -25,6 +25,7 @@ type feedConfig struct {
 	Show         string   `json:"show"`
 	Count        int      `json:"count"`
 	ShowSummary  bool     `json:"showSummary"`
+	AudioOnly    bool     `json:"audioOnly"`
 	Title        *string  `json:"title"`
 	Size         Size     `json:"size"`
 	ShowIfPublic bool     `json:"showIfPublic"`
@@ -125,7 +126,7 @@ func Feed(store *feeds.Store) dashboards.Kind {
 					return feedData{Items: []feeds.Item{}, Missing: true}, true, nil
 				}
 			}
-			items, _, err := store.Items(ctx, viewer.OwnerID, feeds.ItemQuery{View: c.Show, SubscriptionIDs: c.FeedIDs, Limit: c.Count})
+			items, _, err := store.Items(ctx, viewer.OwnerID, feeds.ItemQuery{View: c.Show, SubscriptionIDs: c.FeedIDs, AudioOnly: c.AudioOnly, Limit: c.Count})
 			if err != nil {
 				return nil, false, err
 			}

@@ -763,3 +763,31 @@ func TestDeletingAnAccount(t *testing.T) {
 		t.Fatalf("Bob sees %s", got)
 	}
 }
+
+func TestAudioOnlyAppliesBeforeTheLimit(t *testing.T) {
+	e := newEnv(t, 100)
+	entries := ""
+	for i, audio := range []bool{false, true, false, true, true} {
+		enclosure := ""
+		if audio {
+			enclosure = fmt.Sprintf(`<enclosure url="https://a.example/%d.mp3" type="audio/mpeg"/>`, i)
+		}
+		entries += fmt.Sprintf(`<item><guid>%d</guid><title>T%d</title>%s<pubDate>%s</pubDate></item>`,
+			i, i, enclosure, e.clock.now().Add(-time.Duration(i+1)*time.Minute).Format(time.RFC1123Z))
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		fmt.Fprintf(w, `<rss version="2.0"><channel><title>Mixed</title>%s</channel></rss>`, entries)
+	}))
+	defer srv.Close()
+	ann := e.user("ann")
+	e.subscribe(ann, srv.URL+"/feed")
+	items, next, err := e.s.Items(ctx, ann, ItemQuery{View: ViewLatest, AudioOnly: true, Limit: 2})
+	if err != nil || titles(items) != "T1,T3" || next == "" {
+		t.Fatalf("%s %q %v", titles(items), next, err)
+	}
+	items, _, err = e.s.Items(ctx, ann, ItemQuery{View: ViewLatest, AudioOnly: true, Limit: 2, Cursor: next})
+	if err != nil || titles(items) != "T4" {
+		t.Fatalf("%s %v", titles(items), err)
+	}
+}

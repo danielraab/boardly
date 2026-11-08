@@ -174,3 +174,21 @@ func TestFeedVisitorConfigHasNoSubscriptions(t *testing.T) {
 		t.Fatalf("%s", got)
 	}
 }
+
+func TestFeedAudioOnly(t *testing.T) {
+	f := newFeedFixture(t)
+	raw := json.RawMessage(`{"feedIds":[],"show":"latest","count":10,"showSummary":false,"audioOnly":true,"size":"M","showIfPublic":true}`)
+	if _, err := f.kind.Normalize(context.Background(), f.owner, raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, owner := range []bool{true, false} {
+		got, ok := f.resolve(t, owner, raw)
+		if !ok || !strings.Contains(got, "Episode") || strings.Contains(got, "News one") {
+			t.Errorf("owner %v: %v %s", owner, ok, got)
+		}
+	}
+	// A widget saved before the setting existed shows everything.
+	if got, _ := f.resolve(t, true, feedRaw(nil, "latest", false, false)); !strings.Contains(got, "News one") || !strings.Contains(got, "Episode") {
+		t.Errorf("without the field: %s", got)
+	}
+}

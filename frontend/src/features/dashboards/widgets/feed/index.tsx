@@ -30,6 +30,8 @@ export type FeedConfig = {
 	show: FeedView;
 	count: number;
 	showSummary: boolean;
+	/** Missing on widgets saved before the setting existed. */
+	audioOnly?: boolean;
 	title: string | null;
 	size: WidgetSize;
 	showIfPublic: boolean;
@@ -56,8 +58,9 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 		items = preview.data.items
 			.filter(
 				(it) =>
-					config.feedIds.length === 0 ||
-					config.feedIds.includes(it.feed.subscriptionId ?? ""),
+					(config.feedIds.length === 0 ||
+						config.feedIds.includes(it.feed.subscriptionId ?? "")) &&
+					(!config.audioOnly || it.audio),
 			)
 			.slice(0, config.count);
 	}
@@ -101,6 +104,7 @@ function Settings(props: WidgetSettingsProps) {
 	const [show, setShow] = useState(config.show);
 	const [count, setCount] = useState(String(config.count));
 	const [showSummary, setShowSummary] = useState(config.showSummary);
+	const [audioOnly, setAudioOnly] = useState(config.audioOnly ?? false);
 	const [title, setTitle] = useState(config.title ?? "");
 	const [size, setSize] = useState(config.size);
 	const [showIfPublic, setShowIfPublic] = useState(config.showIfPublic);
@@ -134,6 +138,7 @@ function Settings(props: WidgetSettingsProps) {
 						show,
 						count: number,
 						showSummary,
+						audioOnly,
 						title: title.trim() || null,
 						size,
 						showIfPublic,
@@ -226,6 +231,18 @@ function Settings(props: WidgetSettingsProps) {
 					{t("dashboards.widgets.feed.summaryLabel")}
 				</label>
 			</div>
+			<div className="flex items-center gap-3">
+				<input
+					id="feed-audio-only"
+					type="checkbox"
+					checked={audioOnly}
+					onChange={(e) => setAudioOnly(e.target.checked)}
+					className="size-4 accent-ink"
+				/>
+				<label htmlFor="feed-audio-only" className="text-sm font-medium">
+					{t("dashboards.widgets.feed.audioOnlyLabel")}
+				</label>
+			</div>
 			<div>
 				<label htmlFor="feed-title" className="block text-sm font-medium">
 					{t("dashboards.widgets.feed.titleLabel")}
@@ -292,6 +309,7 @@ export const feedKind: WidgetKind = {
 		show: "latest",
 		count: 10,
 		showSummary: false,
+		audioOnly: false,
 		title: null,
 		size: "M",
 		showIfPublic: false,
