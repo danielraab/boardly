@@ -27,6 +27,12 @@ Run the tests of the side whose code changed, and only that side:
 
 Check with `git diff --name-only` (against the base of the step) which paths a step changed before testing.
 
+The test suites are resource heavy (the frontend suite alone takes several minutes), so run them only when really necessary:
+
+- While working, run only the tests of what you touched (`go test ./internal/<package>`, `pnpm exec vitest run <path>`), and rerun only the tests that failed.
+- Run a full suite once, when the work is done, and again only if the code changed since it last passed.
+- Don't run a full suite alongside builds or another suite. Some frontend tests take close to their 5 second limit and time out on a busy machine.
+
 ## Keep export and import in step
 
 Every change must check whether the data export (`data-export` spec, `backend/internal/export`) and the import of Boardly exports (`data-import` spec) have to be adapted. This applies whenever a change adds, removes, renames or reshapes user data: tables, columns, fields, widget kinds or their configs, files, or references between items. The proposal states the result, even when it is "export and import are unaffected", and the tasks include the adaptation and its tests. Raise the export format version when older imports couldn't read the new document.
