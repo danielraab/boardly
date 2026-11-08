@@ -459,6 +459,15 @@ describe("autosave", () => {
 		},
 	);
 
+	it("shows the status once, in the toolbar row", slow, async () => {
+		const server = await openNote();
+		await typeInEditor(server.content, "eggs");
+		const status = await screen.findByText("Saved", {}, { timeout: 3000 });
+		expect(screen.getAllByRole("status")).toHaveLength(1);
+		const row = screen.getByRole("toolbar").parentElement as HTMLElement;
+		expect(row).toContainElement(status);
+	});
+
 	it("keeps the text and offers Retry when a save fails", slow, async () => {
 		const server = await openNote();
 		server.api.set({ "PATCH /api/notes/n1": apiError(500, "error") });

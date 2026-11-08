@@ -133,7 +133,6 @@ export function NoteEditorPage({
 					</Link>
 				)}
 				<div className="ml-auto flex items-center gap-2">
-					<SaveIndicator status={status} onRetry={retry} />
 					<ColourButton
 						value={draft.color}
 						onChange={(color) => update({ color })}
@@ -258,13 +257,21 @@ export function NoteEditorPage({
 				/>
 				<NoteMarks pinned={draft.pinned} archived={draft.archived} />
 			</div>
-			<div className="mt-6">
+			<div className="mt-6 bg-inherit">
 				<NoteEditor
 					initial={draft.content}
 					attachments={known}
 					onAttachmentAdded={(a) => setKnown((list) => [...list, a])}
 					editable={!readOnly}
 					onChange={(content) => update({ content })}
+					toolbarEnd={
+						<SaveIndicator
+							status={status}
+							onRetry={retry}
+							onReload={onReload}
+							compact
+						/>
+					}
 				/>
 			</div>
 			{images.viewer}
