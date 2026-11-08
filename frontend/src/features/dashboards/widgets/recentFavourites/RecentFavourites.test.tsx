@@ -175,7 +175,6 @@ function recentWidget(id: string, config: object, data?: RecentData) {
 		id,
 		kind: "recent_favourites",
 		width: 2,
-		height: "auto",
 		config: {
 			folderId: "work",
 			limit: 10,

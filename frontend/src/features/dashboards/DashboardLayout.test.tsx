@@ -4,6 +4,7 @@ import { mockApi, signedIn } from "#/test/api";
 import { stubColorScheme } from "#/test/colorScheme";
 import { section, viewData } from "#/test/dashboards";
 import { renderApp } from "#/test/renderApp";
+import { textWidget } from "#/test/widgets";
 
 const frame = (id: string) => screen.getByTestId(`section-${id}`);
 
@@ -66,6 +67,27 @@ describe("dashboard layout", () => {
 		expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
 		expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Add section" })).toBeNull();
+	});
+
+	it("lets only an only-child widget fill a fixed-height section", async () => {
+		mockApi({
+			"GET /api/u/ann/home": {
+				body: viewData([
+					section("Only", { height: 6 }, textWidget("a")),
+					section("Several", { height: 6 }, textWidget("b"), textWidget("c")),
+					section("Nested", { height: 6 }, section("Inner")),
+					section("Auto", {}, textWidget("d")),
+				]),
+			},
+		});
+		renderApp("/ann/home");
+		await screen.findByRole("heading", { name: "Only" });
+		const grid = (name: string) =>
+			frame(name).querySelector<HTMLElement>(":scope > .grid");
+		expect(grid("Only")?.style.flexGrow).toBe("1");
+		expect(grid("Several")?.style.flexGrow).toBe("");
+		expect(grid("Nested")?.style.flexGrow).toBe("");
+		expect(grid("Auto")?.style.flexGrow).toBe("");
 	});
 
 	it("collapses titled sections and remembers them in this browser", async () => {

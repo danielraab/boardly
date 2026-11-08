@@ -688,6 +688,7 @@
 			"titleHint": "Optional. Ohne Titel zeigt der Abschnitt keine Überschrift.",
 			"titleTooLong": "Der Titel darf höchstens 100 Zeichen lang sein.",
 			"widthLabel": "Breite",
+			"widthFull": "Volle Breite",
 			"widthOption_one": "{{count}} Spalte",
 			"widthOption_other": "{{count}} Spalten",
 			"borderLabel": "Rahmen",

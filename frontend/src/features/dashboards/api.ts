@@ -44,7 +44,6 @@ export type ContentWidget = {
 	id: string;
 	kind: string;
 	width: number;
-	height: SectionHeight;
 	config: unknown;
 	/** Resolved by the server for a lookup; never saved. */
 	data?: unknown;

@@ -443,6 +443,91 @@ func TestDashboardWidgetsConstraints(t *testing.T) {
 	}
 }
 
+func TestRemoveWidgetHeightMigrationOnExistingData(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if err := Migrate(ctx, db, migrationsUpTo(t, "0025")); err != nil {
+		t.Fatalf("Migrate to 0025: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00.000Z"
+	if _, err := db.Exec(`INSERT INTO users (id, email, slug, created_at, updated_at) VALUES ('u1', 'a@example.org', 'ann', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO dashboards (id, user_id, slug, title, created_at, updated_at) VALUES ('d1', 'u1', 'home', 'Home', ?, ?)`, ts, ts); err != nil {
+		t.Fatal(err)
+	}
+	const fixed, auto = `{"height":6,"config":{"text":"a"}}`, `{"height":"auto","config":{"text":"a"}}`
+	section := func(height string) string { return `{"title":null,"border":true,"height":` + height + `}` }
+	for _, w := range []struct {
+		id, parent, kind string
+		width            int
+		config           string
+	}{
+		{"only", "", "section", 6, section(`"auto"`)},
+		{"only-w", "only", "note", 3, fixed},
+		{"legacy", "", "section", 6, `{"border":true}`},
+		{"legacy-w", "legacy", "note", 3, fixed},
+		{"set", "", "section", 6, section(`4`)},
+		{"set-w", "set", "note", 3, fixed},
+		{"several", "", "section", 6, section(`"auto"`)},
+		{"several-a", "several", "note", 3, fixed},
+		{"several-b", "several", "note", 3, fixed},
+		{"plain", "", "section", 6, section(`"auto"`)},
+		{"plain-w", "plain", "note", 3, auto},
+		{"outer", "", "section", 6, section(`"auto"`)},
+		{"inner", "outer", "section", 3, section(`5`)},
+	} {
+		var parent any
+		if w.parent != "" {
+			parent = w.parent
+		}
+		if _, err := db.Exec(`INSERT INTO dashboard_widgets (id, dashboard_id, parent_id, kind, position, width, config)
+			VALUES (?, 'd1', ?, ?, 0, ?, ?)`, w.id, parent, w.kind, w.width, w.config); err != nil {
+			t.Fatalf("%s: %v", w.id, err)
+		}
+	}
+	if err := Migrate(ctx, db, Migrations); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	wantSections := map[string]string{"only": "6", "legacy": "6", "set": "4", "several": "auto", "plain": "auto", "outer": "auto", "inner": "5"}
+	rows, err := db.Query(`SELECT id, kind, width, config, json_type(config, '$.height'), json_extract(config, '$.height') FROM dashboard_widgets`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	count := 0
+	for rows.Next() {
+		var id, kind, config string
+		var width int
+		var heightType, height sql.NullString
+		if err := rows.Scan(&id, &kind, &width, &config, &heightType, &height); err != nil {
+			t.Fatal(err)
+		}
+		count++
+		if kind == "section" {
+			if height.String != wantSections[id] {
+				t.Errorf("section %s height = %q, want %q", id, height.String, wantSections[id])
+			}
+			continue
+		}
+		if heightType.Valid || width != 3 || !strings.Contains(config, `"text":"a"`) {
+			t.Errorf("widget %s = width %d, config %s", id, width, config)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if count != 13 {
+		t.Errorf("rows = %d, want 13", count)
+	}
+}
+
 func TestWidgetKindsMigrationOnExistingData(t *testing.T) {
 	db, err := Open(openTemp(t))
 	if err != nil {

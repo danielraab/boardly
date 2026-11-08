@@ -171,7 +171,6 @@ function linkList(id: string, config: object, data?: LinkListData) {
 		id,
 		kind: "link_list",
 		width: 2,
-		height: "auto",
 		config: {
 			folderId: "work",
 			title: null,

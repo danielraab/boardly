@@ -688,6 +688,7 @@
 			"titleHint": "Optional. Without a title, the section shows no heading.",
 			"titleTooLong": "The title can be at most 100 characters long.",
 			"widthLabel": "Width",
+			"widthFull": "Full width",
 			"widthOption_one": "{{count}} column",
 			"widthOption_other": "{{count}} columns",
 			"borderLabel": "Border",

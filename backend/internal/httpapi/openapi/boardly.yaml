@@ -1741,14 +1741,13 @@ components:
               items: { $ref: "#/components/schemas/Widget" }
         - type: object
           title: Content widget
-          required: [kind, width, height, config]
+          required: [kind, width, config]
           properties:
             id: { type: string }
             kind:
               type: string
               enum: [link, link_list, favourite_explorer, recent_favourites, media, note, note_list, recent_notes, selected_notes]
-            width: { type: integer, minimum: 1 }
-            height: { $ref: "#/components/schemas/WidgetHeight" }
+            width: { type: integer, minimum: 1, description: "A width above the parent's renders as the parent's, so 12 is full width." }
             config: { type: object }
             data: { description: "What the widget shows, resolved for the viewer. Only in responses." }
 

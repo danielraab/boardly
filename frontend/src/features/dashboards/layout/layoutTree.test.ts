@@ -45,7 +45,6 @@ const w = (id: string, data?: unknown): ContentWidget => ({
 	id,
 	kind: "text",
 	width: 2,
-	height: "auto",
 	config: { text: id },
 	...(data === undefined ? {} : { data }),
 });
@@ -174,10 +173,10 @@ describe("tree helpers", () => {
 		const next = layoutReducer(tree, {
 			type: "update",
 			id: "n",
-			widget: { ...w("n"), height: 3, config: { text: "new" } },
+			widget: { ...w("n"), width: 3, config: { text: "new" } },
 		});
 		expect(findWidget(next, "n")).toMatchObject({
-			height: 3,
+			width: 3,
 			config: { text: "new" },
 		});
 	});

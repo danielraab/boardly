@@ -33,7 +33,6 @@ function mediaWidget(
 		id: "w1",
 		kind: "media",
 		width: 2,
-		height: "auto",
 		config: {
 			sourceIds: ["fm4", "jazz"],
 			title: null,

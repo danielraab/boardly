@@ -142,7 +142,6 @@ function listWidget(
 		id: "w1",
 		kind: "note_list",
 		width: 2,
-		height: "auto",
 		config: {
 			category: "category",
 			categoryId: "home",

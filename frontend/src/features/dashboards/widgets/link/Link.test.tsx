@@ -144,7 +144,6 @@ function linkWidget(
 		id: "l1",
 		kind: "link",
 		width: 2,
-		height: "auto",
 		config: {
 			source: "url",
 			url: "https://example.org/",
@@ -313,25 +312,13 @@ describe("the link widget on a dashboard", () => {
 		expect(api.calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
 	});
 
-	it("has no height choice and always fits its content", async () => {
-		const { api, user, router } = await openEditor([
-			// Stored with a fixed height by an older version.
-			section("Work", {}, { ...linkWidget({}), height: 3 }),
-		]);
+	it("offers the width but no height", async () => {
+		const { user } = await openEditor([section("Work", {}, linkWidget({}))]);
 		await user.click(screen.getByRole("button", { name: "Edit Link" }));
 		const dialog = await screen.findByRole("dialog", { name: "Edit link" });
 		expect(within(dialog).getByLabelText("Width")).toBeVisible();
 		expect(within(dialog).queryByLabelText("Fit the content")).toBeNull();
 		expect(within(dialog).queryByLabelText("Fixed")).toBeNull();
-		await user.click(within(dialog).getByRole("button", { name: "Apply" }));
-
-		await user.click(screen.getByRole("button", { name: "Save and exit" }));
-		await waitFor(() => expect(router.state.location.search).toEqual({}));
-		const [call] = api.callsTo("PUT", "/api/dashboards/d1/layout");
-		const sent = (call.body as { sections: Widget[] }).sections[0] as {
-			children: ContentWidget[];
-		};
-		expect(sent.children[0].height).toBe("auto");
 	});
 
 	it("falls back to the copies when the favourite is gone", async () => {

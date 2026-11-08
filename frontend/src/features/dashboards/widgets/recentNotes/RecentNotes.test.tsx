@@ -146,7 +146,6 @@ function recentWidget(
 		id: "w1",
 		kind: "recent_notes",
 		width: 2,
-		height: "auto",
 		config: {
 			sortBy: "created",
 			limit: 10,

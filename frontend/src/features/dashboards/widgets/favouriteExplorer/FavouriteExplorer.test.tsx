@@ -257,7 +257,6 @@ function explorer(
 		id,
 		kind: "favourite_explorer",
 		width: 2,
-		height: "auto",
 		config: { rootFolderId: "work", size: "M", showIfPublic: false, ...config },
 		data,
 	};

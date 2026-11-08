@@ -228,7 +228,7 @@ func withNotes(f *fixture) {
 	}
 }
 
-// note builds a note widget with height auto.
+// note builds a note widget.
 func note(width int, config string) Widget {
 	return Widget{Kind: "note", Width: width, Config: json.RawMessage(config)}
 }
@@ -247,7 +247,7 @@ func TestContentWidgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := saved.Sections[0].Children
-	if len(got) != 3 || got[0].Kind != "note" || got[0].Height != 3 || got[0].Width != 2 ||
+	if len(got) != 3 || got[0].Kind != "note" || got[0].Height != 0 || got[0].Width != 2 ||
 		string(got[0].Config) != `{"text":"hi","private":false}` || got[0].Data != "[hi]" || got[0].Children != nil {
 		t.Fatalf("saved children = %+v", got)
 	}
@@ -255,8 +255,8 @@ func TestContentWidgets(t *testing.T) {
 	if err := f.s.DB.QueryRow(`SELECT config FROM dashboard_widgets WHERE id = ?`, got[0].ID).Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(stored, "ignored") {
-		t.Fatalf("data was stored: %s", stored)
+	if strings.Contains(stored, "ignored") || strings.Contains(stored, "height") {
+		t.Fatalf("data or height was stored: %s", stored)
 	}
 
 	owner := f.lookup("ann", "home", f.ann)
@@ -271,7 +271,7 @@ func TestContentWidgets(t *testing.T) {
 	if err != nil || strings.Contains(string(data), "secret") {
 		t.Fatalf("visitor JSON = %s, %v", data, err)
 	}
-	if !strings.Contains(string(data), `"kind":"note","width":2,"height":3,"config":{"text":"hi","private":false},"data":"[hi]"}`) {
+	if !strings.Contains(string(data), `"kind":"note","width":2,"config":{"text":"hi","private":false},"data":"[hi]"}`) {
 		t.Fatalf("visitor JSON = %s", data)
 	}
 
@@ -296,8 +296,6 @@ func TestContentWidgetValidation(t *testing.T) {
 	withChild.Children = []Widget{sec(1, "")}
 	withTitle := note(2, `{"text":"a"}`)
 	withTitle.Title = ptr("T")
-	tall := note(2, `{"text":"a"}`)
-	tall.Height = MaxHeightRows + 1
 	sectionConfig := sec(2, "")
 	sectionConfig.Config = json.RawMessage(`{}`)
 	for name, layout := range map[string][]Widget{
@@ -309,7 +307,6 @@ func TestContentWidgetValidation(t *testing.T) {
 		"invalid config": {sec(6, "", note(2, `{"text":" "}`))},
 		"unknown field":  {sec(6, "", note(2, `{"text":"a","color":"red"}`))},
 		"width 13":       {sec(6, "", note(13, `{"text":"a"}`))},
-		"height 51":      {sec(6, "", tall)},
 		"section config": {sectionConfig},
 	} {
 		if _, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, 0, layout); !errors.Is(err, ErrInvalidLayout) {
@@ -318,6 +315,24 @@ func TestContentWidgetValidation(t *testing.T) {
 	}
 	if v := f.lookup("ann", "home", f.ann); v.LayoutVersion != 0 {
 		t.Fatalf("invalid saves changed the layout: %+v", v)
+	}
+}
+
+func TestContentWidgetHeightIsIgnored(t *testing.T) {
+	f := newFixture(t)
+	withNotes(f)
+	d := f.create(f.ann, Fields{Title: "Home", Slug: "home"})
+
+	for version, rows := range []Height{3, MaxHeightRows + 1} {
+		tall := note(2, `{"text":"a"}`)
+		tall.Height = rows
+		saved, err := f.s.SaveLayout(f.ctx, f.ann, d.ID, version, []Widget{sec(6, "", tall)})
+		if err != nil {
+			t.Fatalf("height %d: %v", rows, err)
+		}
+		if got := saved.Sections[0].Children[0]; got.Height != 0 {
+			t.Fatalf("height %d: saved %+v", rows, got)
+		}
 	}
 }
 
