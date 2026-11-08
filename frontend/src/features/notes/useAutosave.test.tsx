@@ -36,6 +36,19 @@ describe("useAutosave", () => {
 		]);
 	});
 
+	it("stops showing saved once the note changes again", async () => {
+		const n = note("n1");
+		fakeNotesServer([n]);
+		const { result } = renderSaver(n);
+		act(() => result.current.saveNow({ title: "a" }));
+		await waitFor(() => expect(result.current.status).toBe("saved"));
+		act(() => result.current.change({ title: "b" }));
+		expect(result.current.status).toBe("idle");
+		await waitFor(() => expect(result.current.status).toBe("saved"), {
+			timeout: 3000,
+		});
+	});
+
 	it("takes over a newer version of the note while idle", async () => {
 		const n = note("n1");
 		const server = fakeNotesServer([n]);

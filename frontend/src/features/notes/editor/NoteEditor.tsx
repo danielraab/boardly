@@ -12,7 +12,7 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import type { LexicalEditor } from "lexical";
-import { useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NoteAttachment } from "#/features/attachments/api";
 import { useImageViewer } from "#/features/attachments/ImageViewer";
@@ -36,7 +36,8 @@ import { noteTransformers } from "./transformers";
  * change of the content as a document; later changes of initial are ignored.
  * Without toolbar, it is the compact editor of a card on /notes. attachments
  * are those of the note; files pasted or dropped into it are uploaded and
- * passed to onAttachmentAdded.
+ * passed to onAttachmentAdded. toolbarEnd is shown at the end of the toolbar
+ * row, which stays in view while the content scrolls.
  */
 export function NoteEditor({
 	initial,
@@ -45,6 +46,7 @@ export function NoteEditor({
 	onAttachmentAdded,
 	editable = true,
 	toolbar = true,
+	toolbarEnd,
 	autoFocus = false,
 }: {
 	initial: NoteDoc;
@@ -53,6 +55,7 @@ export function NoteEditor({
 	onAttachmentAdded?: (attachment: NoteAttachment) => void;
 	editable?: boolean;
 	toolbar?: boolean;
+	toolbarEnd?: ReactNode;
 	/** Puts the cursor at the end of the content on mount. */
 	autoFocus?: boolean;
 }) {
@@ -92,8 +95,9 @@ export function NoteEditor({
 			}}
 		>
 			{toolbar && (
-				<div className="sticky top-0 z-10 -mx-2 mb-3 rounded-lg bg-inherit px-2 py-1">
+				<div className="sticky top-0 z-10 -mx-2 mb-3 flex items-center gap-2 rounded-lg bg-inherit px-2 py-1">
 					<Toolbar disabled={!editable} />
+					{toolbarEnd && <div className="max-w-[65%]">{toolbarEnd}</div>}
 				</div>
 			)}
 			<EditorAttachmentsContext value={context}>

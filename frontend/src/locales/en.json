@@ -1170,6 +1170,7 @@
 				"saving": "Saving…",
 				"saved": "Saved",
 				"failed": "Not saved",
+				"conflict": "Changed elsewhere",
 				"retry": "Retry"
 			},
 			"conflict": "This note was changed elsewhere. Reload it to keep editing; your last changes here weren't saved.",

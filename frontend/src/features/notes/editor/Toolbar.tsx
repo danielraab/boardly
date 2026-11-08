@@ -141,7 +141,7 @@ export function Toolbar({ disabled }: { disabled: boolean }) {
 		<div
 			role="toolbar"
 			aria-label={t("notes.editor.toolbar.label")}
-			className="flex flex-wrap items-center gap-0.5"
+			className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
 		>
 			<button
 				type="button"
@@ -174,7 +174,7 @@ export function Toolbar({ disabled }: { disabled: boolean }) {
 					<Icon className="size-4" aria-hidden />
 				</button>
 			))}
-			<span className="mx-1 h-5 w-px bg-line" aria-hidden />
+			<span className="mx-1 h-5 w-px shrink-0 bg-line" aria-hidden />
 			{formats.map(({ format, icon: Icon, key }) => (
 				<button
 					key={format}

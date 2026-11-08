@@ -6,6 +6,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The save status of the note editor moved into the sticky toolbar row, so it stays visible on long
+  notes, also for failed saves and when a note was changed elsewhere. On phones, "Saving…" and
+  "Saved" are icons, and the toolbar stays on one row that scrolls sideways. "Saved" is now green and disappears as soon as the note is changed again.
+
+### Fixed
+
+- Text no longer shows through the note editor's sticky toolbar.
+- On Android, the on-screen keyboard resizes the page instead of pushing the toolbar out of view.
+
 ## [1.1.0] - 2026-11-06
 
 ### Added

@@ -1170,6 +1170,7 @@
 				"saving": "Wird gespeichert…",
 				"saved": "Gespeichert",
 				"failed": "Nicht gespeichert",
+				"conflict": "Anderswo geändert",
 				"retry": "Erneut versuchen"
 			},
 			"conflict": "Diese Notiz wurde woanders geändert. Lade sie neu, um weiterzuschreiben; deine letzten Änderungen hier wurden nicht gespeichert.",

@@ -14,6 +14,7 @@ const tokens = [
 	"line",
 	"accent",
 	"danger",
+	"success",
 	"on-danger",
 	"shadow",
 ];
@@ -26,6 +27,8 @@ const pairs: [string, string, number][] = [
 	["muted", "surface", 4.5],
 	["danger", "paper", 4.5],
 	["danger", "surface", 4.5],
+	["success", "paper", 4.5],
+	["success", "surface", 4.5],
 	["on-danger", "danger", 4.5],
 	["accent", "paper", 3],
 	["accent", "surface", 3],
@@ -46,6 +49,7 @@ function declarations(selector: string): Record<string, string> {
 const onNoteColours: [string, number][] = [
 	["ink", 4.5],
 	["muted", 4.5],
+	["success", 4.5],
 	["accent", 3],
 ];
 
