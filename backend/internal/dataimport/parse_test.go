@@ -67,7 +67,7 @@ func TestParseZIP(t *testing.T) {
 
 func TestParseInvalid(t *testing.T) {
 	for name, data := range map[string][]byte{
-		"version 2":       []byte(strings.Replace(minimalDoc, `"version":1`, `"version":2`, 1)),
+		"version 3":       []byte(strings.Replace(minimalDoc, `"version":1`, `"version":3`, 1)),
 		"other format":    []byte(`{"bookmarks":[],"lists":[]}`),
 		"not JSON":        []byte("<html>"),
 		"broken ZIP":      []byte("PK\x03\x04 broken"),

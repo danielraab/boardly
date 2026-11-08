@@ -13,8 +13,15 @@ import { imageUrl } from "#/components/ImageIcon";
 import { useMe } from "#/features/auth/session";
 import { appTitle } from "#/lib/appTitle";
 import type { PlayableSource } from "./api";
+import { forgetPosition, readPosition, savePosition } from "./episodePositions";
 
-export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
+export type PlayerStatus =
+	| "idle"
+	| "loading"
+	| "playing"
+	| "paused"
+	| "finished"
+	| "error";
 
 export type MediaPlayer = {
 	/** The loaded source, or null when the player is closed. */
@@ -22,8 +29,13 @@ export type MediaPlayer = {
 	status: PlayerStatus;
 	/** Plays a source, replacing the current one. */
 	play: (source: PlayableSource) => void;
-	/** Pauses the current source, or plays it again from the live position. */
+	/**
+	 * Pauses the current source, or plays it again: a stream from the live
+	 * position, an episode from where it was paused.
+	 */
 	toggle: () => void;
+	/** Moves an episode to a position in seconds. */
+	seek: (seconds: number) => void;
 	/** Stops playback and closes the player. */
 	stop: () => void;
 	/**
@@ -38,6 +50,32 @@ export type MediaPlayer = {
 };
 
 const PlayerContext = createContext<MediaPlayer | null>(null);
+
+/** An episode's position and length, in seconds. */
+export type PlayerProgress = { position: number; duration: number };
+
+// Separate from the player, so that the times don't re-render everyone.
+const ProgressContext = createContext<PlayerProgress>({
+	position: 0,
+	duration: 0,
+});
+
+export function usePlayerProgress() {
+	return useContext(ProgressContext);
+}
+
+/** How often an episode's position is stored while it plays, in seconds. */
+const positionSaveInterval = 10;
+
+/** Tells the operating system where an episode is, where it can be told. */
+function reportPosition(position: number, duration: number) {
+	if (!(duration > 0) || position > duration) return;
+	try {
+		navigator.mediaSession?.setPositionState?.({ duration, position });
+	} catch {
+		// Only a nicety of the lock screen.
+	}
+}
 
 /** The app's one media player; it lives in the app shell. */
 export function useMediaPlayer() {
@@ -100,8 +138,24 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	);
 	// Ignores events of a stream that was replaced or stopped meanwhile.
 	const loadId = useRef(0);
+	const [progress, setProgress] = useState<PlayerProgress>({
+		position: 0,
+		duration: 0,
+	});
+	// The episode whose position is being kept, and where to continue it.
+	const episodeId = useRef<string | null>(null);
+	const continueAt = useRef(0);
+	const lastSaved = useRef(0);
+
+	const rememberPosition = useCallback(() => {
+		const audio = audioRef.current;
+		if (audio && episodeId.current && audio.currentTime > 0)
+			savePosition(episodeId.current, audio.currentTime);
+	}, []);
 
 	const detach = useCallback(() => {
+		rememberPosition();
+		episodeId.current = null;
 		hlsRef.current?.destroy();
 		hlsRef.current = null;
 		const audio = audioRef.current;
@@ -109,6 +163,19 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 		audio.pause();
 		audio.removeAttribute("src");
 		audio.load();
+	}, [rememberPosition]);
+
+	const playElement = useCallback((audio: HTMLAudioElement, id: number) => {
+		const fail = (e: unknown) => {
+			if (id !== loadId.current) return;
+			if (e instanceof DOMException && e.name === "AbortError") return;
+			setStatus("error");
+		};
+		try {
+			void Promise.resolve(audio.play()).catch(fail);
+		} catch (e) {
+			fail(e);
+		}
 	}, []);
 
 	const start = useCallback(
@@ -118,18 +185,18 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			detach();
 			const id = ++loadId.current;
 			setStatus("loading");
+			setProgress({ position: 0, duration: source.durationSeconds ?? 0 });
+			if (source.kind === "episode") {
+				episodeId.current = source.id;
+				continueAt.current = readPosition(source.id);
+				lastSaved.current = continueAt.current;
+			}
 			const fail = (e: unknown) => {
 				if (id !== loadId.current) return;
 				if (e instanceof DOMException && e.name === "AbortError") return;
 				setStatus("error");
 			};
-			const playNow = () => {
-				try {
-					void Promise.resolve(audio.play()).catch(fail);
-				} catch (e) {
-					fail(e);
-				}
-			};
+			const playNow = () => playElement(audio, id);
 			if (
 				isHlsUrl(source.url) &&
 				!audio.canPlayType("application/vnd.apple.mpegurl")
@@ -153,7 +220,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			audio.src = source.url;
 			playNow();
 		},
-		[detach],
+		[detach, playElement],
 	);
 
 	const play = useCallback(
@@ -174,13 +241,36 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	const pause = useCallback(() => {
 		loadId.current++;
 		audioRef.current?.pause();
+		rememberPosition();
 		setStatus((s) => (s === "idle" ? s : "paused"));
-	}, []);
+	}, [rememberPosition]);
 
-	// A live stream resumes at the live position, not a stale buffer.
+	// A live stream resumes at the live position, not a stale buffer. A paused
+	// episode just goes on.
 	const resume = useCallback(() => {
-		if (current) start(current);
-	}, [current, start]);
+		if (!current) return;
+		const audio = audioRef.current;
+		if (current.kind === "episode" && status === "paused" && audio) {
+			setStatus("loading");
+			playElement(audio, ++loadId.current);
+			return;
+		}
+		start(current);
+	}, [current, status, start, playElement]);
+
+	const seek = useCallback(
+		(seconds: number) => {
+			const audio = audioRef.current;
+			if (!audio) return;
+			audio.currentTime = seconds;
+			setProgress((p) => {
+				reportPosition(seconds, p.duration);
+				return { ...p, position: seconds };
+			});
+			rememberPosition();
+		},
+		[rememberPosition],
+	);
 
 	const update = useCallback(
 		(source: PlayableSource) => {
@@ -241,7 +331,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 		if (typeof MediaMetadata !== "undefined") {
 			session.metadata = new MediaMetadata({
 				title: current.title,
-				artist: appTitle(),
+				artist: current.subtitle ?? appTitle(),
 				artwork:
 					current.icon?.type === "image"
 						? [{ src: imageUrl(current.icon.imageId) }]
@@ -251,7 +341,19 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 		session.setActionHandler("play", () => resume());
 		session.setActionHandler("pause", () => pause());
 		session.setActionHandler("stop", () => stop());
-	}, [current, pause, resume, stop]);
+		try {
+			session.setActionHandler(
+				"seekto",
+				current.kind === "episode"
+					? (details) => {
+							if (details.seekTime !== undefined) seek(details.seekTime);
+						}
+					: null,
+			);
+		} catch {
+			// Not every browser knows this action.
+		}
+	}, [current, pause, resume, stop, seek]);
 
 	const value = useMemo<MediaPlayer>(
 		() => ({
@@ -259,6 +361,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			status,
 			play,
 			toggle,
+			seek,
 			stop,
 			update,
 			volume,
@@ -271,6 +374,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			status,
 			play,
 			toggle,
+			seek,
 			stop,
 			update,
 			volume,
@@ -282,7 +386,9 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 
 	return (
 		<PlayerContext.Provider value={value}>
-			{children}
+			<ProgressContext.Provider value={progress}>
+				{children}
+			</ProgressContext.Provider>
 			{/* biome-ignore lint/a11y/useMediaCaption: live radio has no captions */}
 			<audio
 				ref={audioRef}
@@ -293,7 +399,40 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 					if (audioRef.current?.getAttribute("src") && !hlsRef.current)
 						setStatus("error");
 				}}
-				onEnded={() => setStatus("error")}
+				onEnded={() => {
+					if (current?.kind !== "episode") {
+						setStatus("error");
+						return;
+					}
+					if (episodeId.current) forgetPosition(episodeId.current);
+					episodeId.current = null;
+					loadId.current++;
+					setStatus("finished");
+				}}
+				onLoadedMetadata={() => {
+					const audio = audioRef.current;
+					if (!audio || current?.kind !== "episode") return;
+					if (continueAt.current > 0) {
+						audio.currentTime = continueAt.current;
+						continueAt.current = 0;
+					}
+					const duration = Number.isFinite(audio.duration)
+						? audio.duration
+						: (current.durationSeconds ?? 0);
+					setProgress({ position: audio.currentTime, duration });
+					reportPosition(audio.currentTime, duration);
+				}}
+				onTimeUpdate={() => {
+					const audio = audioRef.current;
+					if (!audio || current?.kind !== "episode") return;
+					const position = audio.currentTime;
+					setProgress((p) => ({ ...p, position }));
+					if (Math.abs(position - lastSaved.current) >= positionSaveInterval) {
+						lastSaved.current = position;
+						rememberPosition();
+						reportPosition(position, audio.duration);
+					}
+				}}
 			/>
 		</PlayerContext.Provider>
 	);

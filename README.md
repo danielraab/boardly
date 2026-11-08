@@ -8,6 +8,7 @@ real user accounts.
 - **Bookmarks** like Karakeep: every user has one favourites tree that holds all their links.
 - **Notes** with todos, written with Markdown shortcuts and sorted into nested categories.
 - **Internet radio** in a player that keeps playing while you move around the app.
+- **News and podcasts** from RSS, Atom and JSON feeds, on their own page and in a dashboard widget.
 - **Karakeep- and Linkwarden-compatible server**, so the Karakeep and Linkwarden browser extensions and mobile apps can save straight into Boardly, and [Floccus](#floccus-bookmark-sync) can sync your browser bookmarks with it.
 - **Memos-compatible server**, so the MoeMemos Android app can write, tick off, pin and archive your notes.
 - **Passwordless login** with magic links and passkeys.
@@ -343,6 +344,30 @@ plays at a time.
   icon; the server fetches it once and stores it with your images. The URL check and the logo
   fetch follow `BOARDLY_FETCH_ALLOW_PRIVATE` like favicons (see [Favicons and images](#favicons-and-images)),
   so stations on your local network need it set to `true`.
+
+### Feeds
+
+The **Feeds** page (`/feeds`, linked from the user menu) follows RSS, Atom and JSON feeds of news
+and podcasts. Add the address of a feed, or of a website that advertises one. A **Feed** widget
+shows the same items as a short list on a dashboard.
+
+- **Shared storage**: each feed and item exists once per server, however many users follow it, and
+  the server fetches it once. What's yours is your subscription, with its own title and icon, and
+  your marks on items. Other users can't see either.
+- **Refresh**: the server fetches feeds in the background every `BOARDLY_FEED_REFRESH_MINUTES`
+  (60), asks whether anything changed, and waits longer after failures. Opening a dashboard never
+  fetches a feed. Fetches follow `BOARDLY_FETCH_ALLOW_PRIVATE` like favicons (see
+  [Favicons and images](#favicons-and-images)), so feeds on your local network need it set to
+  `true`.
+- **Read later and Liked**: the server keeps the newest `BOARDLY_FEED_LATEST_ITEMS` (100) items of
+  each feed. An item someone marked stays until the mark is removed, also after unsubscribing from
+  its feed. A mark keeps the item's title, link and summary, not the article itself.
+- **Podcasts**: episodes play in the media player, straight from their host, so the host sees the
+  IP address of whoever plays them. Your position is remembered in your browser. Episodes whose
+  audio only exists over `http://` can't be played on an https page.
+- **Public dashboards**: a Feed widget with **Show on public dashboard** shows visitors the titles
+  and links of its items, and lets them play episodes. They never get the address of the feed, but
+  a private podcast's episode URLs do reach them.
 
 ### Karakeep-compatible server
 
@@ -740,6 +765,8 @@ precedence over the file.
 | `BOARDLY_PREVIEW_WIDTH` | `800` | Width, in pixels, that larger preview images are scaled down to |
 | `BOARDLY_OFFLINE_MAX_SIZE_MB` | `5` | Largest page, in megabytes, that is read for the article of an [offline copy](#offline-copies). Larger pages get no article |
 | `BOARDLY_BROWSER_URL` | (empty) | DevTools address of the headless browser that takes the screenshots of offline copies, `ws://`, `wss://`, `http://` or `https://`, for example `ws://chrome:9222`. Empty means no screenshots. See [Screenshots for offline copies](#screenshots-for-offline-copies) |
+| `BOARDLY_FEED_LATEST_ITEMS` | `100` | How many of the newest items are kept per feed, 1 to 1000. Items someone flagged are kept in addition. See [Feeds](#feeds) |
+| `BOARDLY_FEED_REFRESH_MINUTES` | `60` | How often feeds are refreshed, in minutes, 5 to 10080 |
 | `BOARDLY_ATTACHMENT_MAX_SIZE_MB` | `5` | Largest note attachment, in megabytes |
 | `BOARDLY_ATTACHMENT_DELETE_AFTER_DAYS` | `30` | Days an unused attachment stays marked for deletion before it is deleted |
 | `BOARDLY_ATTACHMENT_TYPES` | images except SVG, and PDF | Allowed attachment types, comma-separated content types or `<group>/*` such as `image/*`; [.env.example](.env.example) lists all known types |

@@ -18,6 +18,7 @@ import (
 	"boardly/internal/dataimport"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/legal"
 	"boardly/internal/media"
@@ -40,12 +41,14 @@ const (
 const maxBodyBytes = 64 << 10
 
 type api struct {
-	auth       *auth.Service
-	users      *users.Store
-	favourites *favourites.Store
-	dashboards *dashboards.Store
-	notes      *notes.Store
-	media      *media.Store
+	auth        *auth.Service
+	users       *users.Store
+	favourites  *favourites.Store
+	dashboards  *dashboards.Store
+	notes       *notes.Store
+	media       *media.Store
+	feeds       *feeds.Store
+	feedLimiter *ratelimit.Limiter
 	// directory searches radio-browser.info; searchLimiter limits it per user.
 	directory     *media.Directory
 	searchLimiter *ratelimit.Limiter

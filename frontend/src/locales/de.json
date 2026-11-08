@@ -18,7 +18,8 @@
 			"openSource": "Open Source",
 			"legalLinks": "Rechtliches",
 			"cookieSettings": "Cookie-Einstellungen"
-		}
+		},
+		"feeds": "Feeds"
 	},
 	"theme": {
 		"system": "System",
@@ -266,7 +267,8 @@
 				"favourites": "Favoriten",
 				"dashboards": "Dashboards",
 				"notes": "Notizen",
-				"media": "Medienquellen"
+				"media": "Medienquellen",
+				"feeds": "Feeds"
 			},
 			"dataReport": {
 				"imported": "Importiert: {{items}}.",
@@ -305,12 +307,22 @@
 				"skippedWidgets_one": "{{count}} Widget wird hier nicht unterstützt und wurde weggelassen",
 				"skippedWidgets_other": "{{count}} Widgets werden hier nicht unterstützt und wurden weggelassen",
 				"skippedFiles_one": "{{count}} Datei fehlte oder ist hier nicht erlaubt und wurde weggelassen",
-				"skippedFiles_other": "{{count}} Dateien fehlten oder sind hier nicht erlaubt und wurden weggelassen"
+				"skippedFiles_other": "{{count}} Dateien fehlten oder sind hier nicht erlaubt und wurden weggelassen",
+				"feeds_one": "{{count}} Feed",
+				"feeds_other": "{{count}} Feeds",
+				"feedItems_one": "{{count}} gemerkter Eintrag",
+				"feedItems_other": "{{count}} gemerkte Einträge",
+				"duplicateFeeds_one": "{{count}} Feed war schon gespeichert",
+				"duplicateFeeds_other": "{{count}} Feeds waren schon gespeichert",
+				"invalidFeeds_one": "{{count}} Feed war ungültig",
+				"invalidFeeds_other": "{{count}} Feeds waren ungültig",
+				"skippedFeedItems_one": "{{count}} gemerkter Eintrag konnte nicht wiederhergestellt werden",
+				"skippedFeedItems_other": "{{count}} gemerkte Einträge konnten nicht wiederhergestellt werden"
 			}
 		},
 		"export": {
 			"title": "Export",
-			"intro": "Lade alle deine Daten herunter: Dashboards, Favoriten mit Tags, Notizen mit Kategorien und Medienquellen. Passkeys und verbundene Apps sind nicht enthalten.",
+			"intro": "Lade alle deine Daten herunter: Dashboards, Favoriten mit Tags, Notizen mit Kategorien, Medienquellen und Feeds. Passkeys und verbundene Apps sind nicht enthalten.",
 			"withFiles": "Dateien einschließen (Bilder und Anhänge)",
 			"withFilesHint": "Der Download ist dann eine ZIP-Datei, die groß sein kann. Ohne Dateien ist es eine JSON-Datei.",
 			"submit": "Alles exportieren",
@@ -728,7 +740,8 @@
 			"groups": {
 				"favourites": "Favoriten",
 				"notes": "Notizen",
-				"media": "Medien"
+				"media": "Medien",
+				"feeds": "Feeds"
 			}
 		},
 		"discard": {
@@ -954,6 +967,33 @@
 				"missing": "Diese Sender existieren nicht mehr",
 				"emptyLibrary": "Deine Mediathek ist leer.",
 				"openLibrary": "Sender hinzufügen"
+			},
+			"feed": {
+				"name": "Feed",
+				"description": "Zeigt die neuesten oder gemerkten Einträge deiner Feeds.",
+				"addTitle": "Feed hinzufügen",
+				"editTitle": "Feed bearbeiten",
+				"allFeeds": "Alle meine Feeds",
+				"addPlaceholder": "Feed hinzufügen…",
+				"noMatches": "Keine passenden Feeds",
+				"full": "Höchstens {{max}} Feeds können ausgewählt werden.",
+				"drag": "{{name}} ziehen",
+				"moveUp": "{{name}} nach oben",
+				"moveDown": "{{name}} nach unten",
+				"remove": "{{name}} entfernen",
+				"gone": "Dieser Feed existiert nicht mehr",
+				"showLabel": "Anzeigen",
+				"countLabel": "Anzahl Einträge",
+				"summaryLabel": "Zusammenfassung zeigen",
+				"audioOnlyLabel": "Nur Einträge mit Audio",
+				"titleLabel": "Titel",
+				"publicLabel": "Auf öffentlichem Dashboard zeigen",
+				"publicHint": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge. Sonst siehst nur du das Widget.",
+				"publicHintAll": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge, auch von Feeds, die du später hinzufügst. Sonst siehst nur du das Widget.",
+				"missing": "Diese Feeds existieren nicht mehr",
+				"empty": "Keine Einträge",
+				"emptyLibrary": "Du hast noch keine Feeds.",
+				"openLibrary": "Feeds hinzufügen"
 			}
 		}
 	},
@@ -1295,7 +1335,10 @@
 		"paused": "Pausiert",
 		"live": "Live",
 		"error": "Dieser Sender kann gerade nicht abgespielt werden",
-		"retry": "Erneut versuchen"
+		"retry": "Erneut versuchen",
+		"position": "Position",
+		"finished": "Beendet",
+		"episodeError": "Diese Episode kann gerade nicht abgespielt werden"
 	},
 	"media": {
 		"title": "Medien",
@@ -1374,5 +1417,51 @@
 		"cookieless": "Nutzungsstatistiken werden ohne Cookies erhoben.",
 		"privacy": "Datenschutzerklärung",
 		"close": "Cookie-Hinweis schließen"
+	},
+	"feeds": {
+		"title": "Feeds",
+		"intro": "News und Podcasts aus RSS-, Atom- und JSON-Feeds. Boardly ruft sie für dich ab, und sie bleiben auf diesem Server.",
+		"add": "Feed hinzufügen",
+		"manage": "Feeds verwalten",
+		"viewsLabel": "Ansicht",
+		"views": {
+			"latest": "Neueste",
+			"read_later": "Später lesen",
+			"liked": "Gefällt mir"
+		},
+		"empty": "Noch keine Feeds",
+		"emptyHint": "Füge die Adresse eines Feeds oder einer Website hinzu.",
+		"emptyView": "Noch nichts hier",
+		"loadMore": "Mehr laden",
+		"failing": "Kann gerade nicht aktualisiert werden",
+		"flagsOf": "Markierungen von {{name}}",
+		"readLater": "Später lesen",
+		"removeReadLater": "Nicht mehr später lesen",
+		"like": "Gefällt mir",
+		"removeLike": "Gefällt mir entfernen",
+		"drag": "{{name}} ziehen",
+		"actions": "Aktionen für {{name}}",
+		"edit": "Bearbeiten",
+		"remove": "Entfernen",
+		"cancel": "Abbrechen",
+		"save": "Speichern",
+		"editTitle": "Feed bearbeiten",
+		"titleLabel": "Titel",
+		"iconLabel": "Symbol",
+		"removeTitle": "Feed entfernen?",
+		"removeText": "„{{name}}“ wird aus deinen Feeds entfernt. Einträge, die du mit „Später lesen“ oder „Gefällt mir“ markiert hast, bleiben erhalten.",
+		"addDialog": {
+			"title": "Feed hinzufügen",
+			"urlLabel": "Feed- oder Website-URL",
+			"urlHint": "Füge die Adresse eines Feeds oder einer Website ein, die einen anbietet.",
+			"submit": "Hinzufügen",
+			"errors": {
+				"invalidUrl": "Das ist keine gültige http- oder https-Adresse.",
+				"unreachable": "Diese Adresse ist nicht erreichbar.",
+				"notFound": "An dieser Adresse wurde kein Feed gefunden.",
+				"already": "Diesen Feed hast du schon.",
+				"rateLimited": "Zu viele Feeds hinzugefügt. Versuch es gleich noch einmal."
+			}
+		}
 	}
 }

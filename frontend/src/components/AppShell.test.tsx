@@ -117,7 +117,7 @@ describe("signed-in user menu", () => {
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"Annann@example.orgDashboardsFavouritesNotesMediaAttachmentsSettingsGitHubSign out",
+			"Annann@example.orgDashboardsFavouritesNotesMediaFeedsAttachmentsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu)
@@ -128,6 +128,7 @@ describe("signed-in user menu", () => {
 			"Favourites",
 			"Notes",
 			"Media",
+			"Feeds",
 			"Attachments",
 			"Settings",
 			"GitHub",
@@ -140,7 +141,7 @@ describe("signed-in user menu", () => {
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"ann@example.orgDashboardsFavouritesNotesMediaAttachmentsSettingsGitHubSign out",
+			"ann@example.orgDashboardsFavouritesNotesMediaFeedsAttachmentsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,

@@ -9,6 +9,7 @@ import {
 	NotebookPen,
 	Paperclip,
 	Radio,
+	Rss,
 	Settings,
 	Star,
 } from "lucide-react";
@@ -85,6 +86,14 @@ export function UserMenu() {
 								>
 									<Radio className="size-4 text-muted" aria-hidden />
 									{t("shell.media")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/feeds" />}
+								>
+									<Rss className="size-4 text-muted" aria-hidden />
+									{t("shell.feeds")}
 								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick

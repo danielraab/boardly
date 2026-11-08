@@ -18,7 +18,8 @@
 			"openSource": "Open source",
 			"legalLinks": "Legal",
 			"cookieSettings": "Cookie settings"
-		}
+		},
+		"feeds": "Feeds"
 	},
 	"theme": {
 		"system": "System",
@@ -266,7 +267,8 @@
 				"favourites": "Favourites",
 				"dashboards": "Dashboards",
 				"notes": "Notes",
-				"media": "Media sources"
+				"media": "Media sources",
+				"feeds": "Feeds"
 			},
 			"dataReport": {
 				"imported": "Imported {{items}}.",
@@ -305,12 +307,22 @@
 				"skippedWidgets_one": "{{count}} widget isn't supported here and was left out",
 				"skippedWidgets_other": "{{count}} widgets aren't supported here and were left out",
 				"skippedFiles_one": "{{count}} file was missing or isn't allowed here and was left out",
-				"skippedFiles_other": "{{count}} files were missing or aren't allowed here and were left out"
+				"skippedFiles_other": "{{count}} files were missing or aren't allowed here and were left out",
+				"feeds_one": "{{count}} feed",
+				"feeds_other": "{{count}} feeds",
+				"feedItems_one": "{{count}} saved item",
+				"feedItems_other": "{{count}} saved items",
+				"duplicateFeeds_one": "{{count}} feed was already saved",
+				"duplicateFeeds_other": "{{count}} feeds were already saved",
+				"invalidFeeds_one": "{{count}} feed wasn't valid",
+				"invalidFeeds_other": "{{count}} feeds weren't valid",
+				"skippedFeedItems_one": "{{count}} saved item couldn't be restored",
+				"skippedFeedItems_other": "{{count}} saved items couldn't be restored"
 			}
 		},
 		"export": {
 			"title": "Export",
-			"intro": "Download all your data: dashboards, favourites with tags, notes with categories and media sources. Passkeys and connected apps aren't included.",
+			"intro": "Download all your data: dashboards, favourites with tags, notes with categories, media sources and feeds. Passkeys and connected apps aren't included.",
 			"withFiles": "Include files (images and attachments)",
 			"withFilesHint": "The download is then a ZIP file, which can be large. Without files, it's a JSON file.",
 			"submit": "Export everything",
@@ -728,7 +740,8 @@
 			"groups": {
 				"favourites": "Favourites",
 				"notes": "Notes",
-				"media": "Media"
+				"media": "Media",
+				"feeds": "Feeds"
 			}
 		},
 		"discard": {
@@ -954,6 +967,33 @@
 				"missing": "These stations no longer exist",
 				"emptyLibrary": "Your media library is empty.",
 				"openLibrary": "Add stations"
+			},
+			"feed": {
+				"name": "Feed",
+				"description": "Shows the latest or saved items of your feeds.",
+				"addTitle": "Add feed",
+				"editTitle": "Edit feed",
+				"allFeeds": "All my feeds",
+				"addPlaceholder": "Add a feed…",
+				"noMatches": "No matching feeds",
+				"full": "At most {{max}} feeds can be selected.",
+				"drag": "Drag {{name}}",
+				"moveUp": "Move {{name}} up",
+				"moveDown": "Move {{name}} down",
+				"remove": "Remove {{name}}",
+				"gone": "This feed no longer exists",
+				"showLabel": "Show",
+				"countLabel": "Number of items",
+				"summaryLabel": "Show summary",
+				"audioOnlyLabel": "Only items with audio",
+				"titleLabel": "Title",
+				"publicLabel": "Show on public dashboard",
+				"publicHint": "Visitors of a public dashboard see the titles and links of these items. Otherwise only you see the widget.",
+				"publicHintAll": "Visitors of a public dashboard see the titles and links of these items, also of feeds you add later. Otherwise only you see the widget.",
+				"missing": "These feeds no longer exist",
+				"empty": "No items",
+				"emptyLibrary": "You don't have any feeds yet.",
+				"openLibrary": "Add feeds"
 			}
 		}
 	},
@@ -1295,7 +1335,10 @@
 		"paused": "Paused",
 		"live": "Live",
 		"error": "This station can't be played right now",
-		"retry": "Try again"
+		"retry": "Try again",
+		"position": "Position",
+		"finished": "Finished",
+		"episodeError": "This episode can't be played right now"
 	},
 	"media": {
 		"title": "Media",
@@ -1374,5 +1417,51 @@
 		"cookieless": "Usage statistics are collected without cookies.",
 		"privacy": "Privacy policy",
 		"close": "Close cookie notice"
+	},
+	"feeds": {
+		"title": "Feeds",
+		"intro": "News and podcasts from RSS, Atom and JSON feeds. Boardly fetches them for you, and they stay on this server.",
+		"add": "Add feed",
+		"manage": "Manage feeds",
+		"viewsLabel": "View",
+		"views": {
+			"latest": "Latest",
+			"read_later": "Read later",
+			"liked": "Liked"
+		},
+		"empty": "No feeds yet",
+		"emptyHint": "Add the address of a feed or website to get started.",
+		"emptyView": "Nothing here yet",
+		"loadMore": "Load more",
+		"failing": "Can't be updated right now",
+		"flagsOf": "Flags of {{name}}",
+		"readLater": "Read later",
+		"removeReadLater": "Remove from read later",
+		"like": "Like",
+		"removeLike": "Remove like",
+		"drag": "Drag {{name}}",
+		"actions": "Actions for {{name}}",
+		"edit": "Edit",
+		"remove": "Remove",
+		"cancel": "Cancel",
+		"save": "Save",
+		"editTitle": "Edit feed",
+		"titleLabel": "Title",
+		"iconLabel": "Icon",
+		"removeTitle": "Remove feed?",
+		"removeText": "\"{{name}}\" is removed from your feeds. Items you marked \"Read later\" or \"Liked\" are kept.",
+		"addDialog": {
+			"title": "Add feed",
+			"urlLabel": "Feed or website URL",
+			"urlHint": "Paste the address of a feed, or of a website that offers one.",
+			"submit": "Add",
+			"errors": {
+				"invalidUrl": "This isn't a valid http or https address.",
+				"unreachable": "This address can't be reached.",
+				"notFound": "No feed was found at this address.",
+				"already": "You already have this feed.",
+				"rateLimited": "Too many feeds added. Try again in a moment."
+			}
+		}
 	}
 }

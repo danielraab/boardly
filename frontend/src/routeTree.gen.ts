@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
+import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as NotesRouteImport } from './routes/notes'
@@ -44,6 +45,11 @@ const DashboardsRoute = DashboardsRouteImport.update({
 const FavouritesRoute = FavouritesRouteImport.update({
   id: '/favourites',
   path: '/favourites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedsRoute = FeedsRouteImport.update({
+  id: '/feeds',
+  path: '/feeds',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImprintRoute = ImprintRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/feeds': typeof FeedsRoute
   '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/feeds': typeof FeedsRoute
   '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
   '/privacy': typeof PrivacyRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/attachments': typeof AttachmentsRoute
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
+  '/feeds': typeof FeedsRoute
   '/imprint': typeof ImprintRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/feeds'
     | '/imprint'
     | '/media'
     | '/notes'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/feeds'
     | '/imprint'
     | '/media'
     | '/privacy'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/attachments'
     | '/dashboards'
     | '/favourites'
+    | '/feeds'
     | '/imprint'
     | '/media'
     | '/notes'
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   AttachmentsRoute: typeof AttachmentsRoute
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
+  FeedsRoute: typeof FeedsRoute
   ImprintRoute: typeof ImprintRoute
   MediaRoute: typeof MediaRoute
   NotesRoute: typeof NotesRouteWithChildren
@@ -262,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: '/favourites'
       fullPath: '/favourites'
       preLoaderRoute: typeof FavouritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feeds': {
+      id: '/feeds'
+      path: '/feeds'
+      fullPath: '/feeds'
+      preLoaderRoute: typeof FeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/imprint': {
@@ -368,6 +388,7 @@ const rootRouteChildren: RootRouteChildren = {
   AttachmentsRoute: AttachmentsRoute,
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
+  FeedsRoute: FeedsRoute,
   ImprintRoute: ImprintRoute,
   MediaRoute: MediaRoute,
   NotesRoute: NotesRouteWithChildren,

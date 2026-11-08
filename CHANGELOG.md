@@ -6,6 +6,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Feeds: subscribe to RSS, Atom and JSON feeds of news and podcasts on the new **Feeds** page
+  (`/feeds`), by the address of a feed or of a website that offers one. A new **Feed** dashboard
+  widget shows the latest items of your feeds, or those you marked **Read later** or **Liked**,
+  which stay until you remove the mark. Each feed and item is stored once per server and fetched
+  in the background; `BOARDLY_FEED_LATEST_ITEMS` (100) sets how many items are kept per feed and
+  `BOARDLY_FEED_REFRESH_MINUTES` (60) how often feeds are refreshed.
+- Podcast episodes play in the media player, with a position slider, and continue where they
+  stopped.
+
 ### Changed
 
 - Height is now set on sections only: widgets no longer have a height of their own. A widget that is
@@ -16,6 +27,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - The save status of the note editor moved into the sticky toolbar row, so it stays visible on long
   notes, also for failed saves and when a note was changed elsewhere. On phones, "Saving…" and
   "Saved" are icons, and the toolbar stays on one row that scrolls sideways. "Saved" is now green and disappears as soon as the note is changed again.
+- The export format is now version 2 and contains your feeds and marked items. Imports still read
+  version 1 exports, but older versions of Boardly can't import version 2.
 
 ### Fixed
 

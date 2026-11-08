@@ -33,6 +33,12 @@ import { menuItem, menuPopup } from "#/components/menuStyles";
 import type { MediaSource } from "#/features/media/api";
 import { iconProps } from "#/features/notes/noteIcon";
 
+/** A source that can be chosen: a station, or a feed for the feed widget. */
+type Choice = Pick<MediaSource, "id" | "title" | "icon">;
+
+/** Where the chooser's texts are: each kind that uses it has the same keys. */
+type Labels = "dashboards.widgets.media" | "dashboards.widgets.feed";
+
 /** The most sources a media widget can show. */
 export const maxMediaSources = 50;
 
@@ -51,10 +57,12 @@ export function ChosenSources({
 	sourceIds,
 	sources,
 	onChange,
+	labels = "dashboards.widgets.media",
 }: {
 	sourceIds: string[];
-	sources: MediaSource[];
+	sources: Choice[];
 	onChange: (sourceIds: string[]) => void;
+	labels?: Labels;
 }) {
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -91,6 +99,7 @@ export function ChosenSources({
 							key={id}
 							id={id}
 							source={byID.get(id)}
+							labels={labels}
 							first={i === 0}
 							last={i === sourceIds.length - 1}
 							onUp={() => move(i, i - 1)}
@@ -107,6 +116,7 @@ export function ChosenSources({
 function ChosenSource({
 	id,
 	source,
+	labels,
 	first,
 	last,
 	onUp,
@@ -114,7 +124,8 @@ function ChosenSource({
 	onRemove,
 }: {
 	id: string;
-	source: MediaSource | undefined;
+	source: Choice | undefined;
+	labels: Labels;
 	first: boolean;
 	last: boolean;
 	onUp: () => void;
@@ -131,7 +142,7 @@ function ChosenSource({
 		transition,
 		isDragging,
 	} = useSortable({ id });
-	const name = source?.title ?? t("dashboards.widgets.media.gone");
+	const name = source?.title ?? t(`${labels}.gone`);
 	const button = `${secondaryIconButton} size-8 shrink-0 disabled:opacity-40`;
 
 	return (
@@ -150,7 +161,7 @@ function ChosenSource({
 				ref={setActivatorNodeRef}
 				{...attributes}
 				{...listeners}
-				aria-label={t("dashboards.widgets.media.drag", { name })}
+				aria-label={t(`${labels}.drag`, { name })}
 				className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
 			>
 				<GripVertical className="size-4" aria-hidden />
@@ -181,7 +192,7 @@ function ChosenSource({
 				type="button"
 				onClick={onUp}
 				disabled={first}
-				aria-label={t("dashboards.widgets.media.moveUp", { name })}
+				aria-label={t(`${labels}.moveUp`, { name })}
 				className={button}
 			>
 				<ArrowUp className="size-4" aria-hidden />
@@ -190,7 +201,7 @@ function ChosenSource({
 				type="button"
 				onClick={onDown}
 				disabled={last}
-				aria-label={t("dashboards.widgets.media.moveDown", { name })}
+				aria-label={t(`${labels}.moveDown`, { name })}
 				className={button}
 			>
 				<ArrowDown className="size-4" aria-hidden />
@@ -198,7 +209,7 @@ function ChosenSource({
 			<button
 				type="button"
 				onClick={onRemove}
-				aria-label={t("dashboards.widgets.media.remove", { name })}
+				aria-label={t(`${labels}.remove`, { name })}
 				className={button}
 			>
 				<X className="size-4" aria-hidden />
@@ -216,11 +227,13 @@ export function SourceSearch({
 	sources,
 	chosen,
 	onAdd,
+	labels = "dashboards.widgets.media",
 }: {
 	id: string;
-	sources: MediaSource[];
+	sources: Choice[];
 	chosen: string[];
 	onAdd: (sourceId: string) => void;
+	labels?: Labels;
 }) {
 	const { t } = useTranslation();
 	const [input, setInput] = useState("");
@@ -247,13 +260,13 @@ export function SourceSearch({
 		>
 			<Combobox.Input
 				id={id}
-				placeholder={t("dashboards.widgets.media.addPlaceholder")}
+				placeholder={t(`${labels}.addPlaceholder`)}
 				aria-describedby={full ? `${id}-full` : undefined}
 				className={textInput}
 			/>
 			{full && (
 				<p id={`${id}-full`} className="mt-1 text-sm text-muted">
-					{t("dashboards.widgets.media.full", { max: maxMediaSources })}
+					{t(`${labels}.full`, { max: maxMediaSources })}
 				</p>
 			)}
 			<Combobox.Portal>
@@ -262,7 +275,7 @@ export function SourceSearch({
 						className={`${menuPopup} max-h-64 w-[var(--anchor-width)] overflow-y-auto`}
 					>
 						<Combobox.Empty className="px-3 py-2 text-muted empty:hidden">
-							{t("dashboards.widgets.media.noMatches")}
+							{t(`${labels}.noMatches`)}
 						</Combobox.Empty>
 						<Combobox.List>
 							{(sourceId: string) => {

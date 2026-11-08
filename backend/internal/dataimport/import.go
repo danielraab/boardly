@@ -16,6 +16,7 @@ import (
 	"boardly/internal/db"
 	"boardly/internal/export"
 	"boardly/internal/favourites"
+	"boardly/internal/feeds"
 	"boardly/internal/images"
 	"boardly/internal/media"
 	"boardly/internal/notes"
@@ -34,7 +35,7 @@ const maxPreviewBytes = 5 << 20
 
 // Parts are the parts of an export to import.
 type Parts struct {
-	Favourites, Dashboards, Notes, Media bool
+	Favourites, Dashboards, Notes, Media, Feeds bool
 }
 
 // Options are the choices of an import.
@@ -54,6 +55,7 @@ type Report struct {
 	Dashboards *DashboardsReport `json:"dashboards"`
 	Notes      *NotesReport      `json:"notes"`
 	Media      *MediaReport      `json:"media"`
+	Feeds      *FeedsReport      `json:"feeds"`
 	Files      FilesReport       `json:"files"`
 }
 
@@ -74,6 +76,16 @@ type NotesReport struct {
 	Notes          int `json:"notes"`
 	Categories     int `json:"categories"`
 	DuplicateNotes int `json:"duplicateNotes"`
+}
+
+// FeedsReport counts the added subscriptions, duplicates and invalid ones,
+// and the flagged items that were restored or skipped.
+type FeedsReport struct {
+	Subscriptions int `json:"subscriptions"`
+	Duplicates    int `json:"duplicates"`
+	Invalid       int `json:"invalid"`
+	RestoredItems int `json:"restoredItems"`
+	SkippedItems  int `json:"skippedItems"`
 }
 
 // MediaReport counts the added media sources, duplicates and invalid ones.
@@ -99,6 +111,7 @@ type Service struct {
 	Notes       *notes.Store
 	Dashboards  *dashboards.Store
 	Media       *media.Store
+	Feeds       *feeds.Store
 	Images      *images.Store
 	Attachments *attachments.Store
 	// OfflineFiles is where the parts of offline copies are stored; empty
@@ -156,7 +169,7 @@ func (s *Service) Import(ctx context.Context, userID string, data []byte, opts O
 	}
 	defer func() { _ = tx.Rollback() }()
 	for _, step := range []func(db.Querier) error{
-		r.insertFiles, r.importFavourites, r.importNotes, r.importMedia, r.importDashboards, r.setDefaults,
+		r.insertFiles, r.importFavourites, r.importNotes, r.importMedia, r.importFeeds, r.importDashboards, r.setDefaults,
 	} {
 		if err := step(tx); err != nil {
 			return Report{}, err
@@ -237,6 +250,11 @@ func (r *run) usedImages() map[string]bool {
 	if r.opts.Parts.Media {
 		for _, m := range r.doc.MediaSources {
 			useIcon(m.Icon)
+		}
+	}
+	if r.opts.Parts.Feeds {
+		for _, f := range r.doc.Feeds {
+			useIcon(f.Icon)
 		}
 	}
 	if r.opts.Parts.Dashboards {
@@ -697,6 +715,68 @@ func (r *run) importMedia(q db.Querier) error {
 	return nil
 }
 
+// importFeeds adds subscriptions and restores flags. Feeds and items are
+// shared with other users, so nothing in the file can change them: see
+// feeds.EnsureFeedTx and feeds.RestoreFlagsTx.
+func (r *run) importFeeds(q db.Querier) error {
+	if !r.opts.Parts.Feeds {
+		return nil
+	}
+	report := &FeedsReport{}
+	r.report.Feeds = report
+	stored := make(map[string]string, len(r.doc.Feeds))
+	for _, f := range r.doc.Feeds {
+		feedID, err := r.s.Feeds.EnsureFeedTx(r.ctx, q, f.URL)
+		if errors.Is(err, feeds.ErrInvalidURL) {
+			report.Invalid++
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		stored[f.ID] = feedID
+		if !f.Subscribed {
+			continue
+		}
+		id, added, err := r.s.Feeds.SubscribeTx(r.ctx, q, r.userID, feedID, f.CustomTitle, r.icon(f.Icon))
+		if errors.Is(err, feeds.ErrInvalidIcon) {
+			report.Invalid++
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		r.ids[f.ID] = id
+		if added {
+			report.Subscriptions++
+		} else {
+			report.Duplicates++
+		}
+	}
+	for _, it := range r.doc.FeedItems {
+		feedID, ok := stored[it.FeedID]
+		if !ok {
+			report.SkippedItems++
+			continue
+		}
+		item := feeds.Imported{Identity: it.GUID, Title: it.Title, Link: it.Link, Summary: it.Summary,
+			PublishedAt: it.PublishedAt, ReadLaterAt: it.ReadLaterAt, LikedAt: it.LikedAt}
+		if it.Audio != nil {
+			item.Audio = &feeds.Audio{URL: it.Audio.URL, Type: it.Audio.Type, DurationSeconds: it.Audio.DurationSeconds}
+		}
+		restored, err := r.s.Feeds.RestoreFlagsTx(r.ctx, q, r.userID, feedID, item)
+		if err != nil {
+			return err
+		}
+		if restored {
+			report.RestoredItems++
+		} else {
+			report.SkippedItems++
+		}
+	}
+	return nil
+}
+
 func (r *run) importDashboards(q db.Querier) error {
 	if !r.opts.Parts.Dashboards {
 		return nil
@@ -780,6 +860,8 @@ func ParseParts(s string) (Parts, bool) {
 			p.Notes = true
 		case "media":
 			p.Media = true
+		case "feeds":
+			p.Feeds = true
 		default:
 			return Parts{}, false
 		}

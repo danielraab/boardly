@@ -36,6 +36,7 @@ tags:
   - name: Dashboards
   - name: Notes
   - name: Media
+  - name: Feeds
   - name: Files
   - name: App tokens
   - name: Meta
@@ -328,7 +329,7 @@ paths:
         - name: parts
           in: query
           description: Comma-separated parts to import; all when missing.
-          schema: { type: string, example: "favourites,dashboards,notes,media" }
+          schema: { type: string, example: "favourites,dashboards,notes,media,feeds" }
         - name: folderId
           in: query
           description: Folder for the favourites; required when favourites are imported.
@@ -1051,6 +1052,149 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # --- Feeds ----------------------------------------------------------------
+
+  /feeds:
+    get:
+      tags: [Feeds]
+      summary: List the user's feed subscriptions
+      responses:
+        "200":
+          description: The subscriptions in their order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FeedSubscription" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Feeds]
+      summary: Subscribe to a feed
+      description: |
+        `url` is a feed, or a web page that advertises one. Feeds are stored
+        once per server, so a feed that is already known isn't fetched again.
+        Errors are `invalid_url`, `feed_unreachable`, `feed_not_found`, 409
+        `already_subscribed` and 429 `rate_limited`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
+      responses:
+        "201":
+          description: The new subscription.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedSubscription" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /feeds/order:
+    put:
+      tags: [Feeds]
+      summary: Reorder the feed subscriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              description: The IDs of all the user's subscriptions, in their new order.
+              items: { type: string }
+      responses:
+        "204": { description: Reordered. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /feeds/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Feeds]
+      summary: Change a subscription's own title or icon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customTitle: { type: [string, "null"], maxLength: 200, description: "`null` or empty removes it." }
+                icon: { $ref: "#/components/schemas/Icon" }
+      responses:
+        "200":
+          description: The subscription.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedSubscription" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Feeds]
+      summary: Remove a subscription
+      description: Items the user flagged stay in their read later and liked views.
+      responses:
+        "204": { description: Removed. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /feed-items:
+    get:
+      tags: [Feeds]
+      summary: List the user's feed items
+      parameters:
+        - { name: view, in: query, schema: { enum: [latest, read_later, liked], default: latest } }
+        - { name: feedId, in: query, description: "A subscription ID.", schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: A page of items.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/FeedItem" }
+                  nextCursor: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /feed-items/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Feeds]
+      summary: Set the user's read later and liked flags on an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                readLater: { type: boolean }
+                liked: { type: boolean }
+      responses:
+        "200":
+          description: The item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedItem" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+
   # --- Media ----------------------------------------------------------------
 
   /media:
@@ -1546,7 +1690,7 @@ components:
 
     DataImportReport:
       type: object
-      required: [favourites, dashboards, notes, media, files]
+      required: [favourites, dashboards, notes, media, feeds, files]
       properties:
         favourites:
           oneOf:
@@ -1579,6 +1723,16 @@ components:
                 sources: { type: integer }
                 duplicates: { type: integer }
                 invalid: { type: integer }
+        feeds:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                subscriptions: { type: integer }
+                duplicates: { type: integer }
+                invalid: { type: integer }
+                restoredItems: { type: integer }
+                skippedItems: { type: integer }
         files:
           type: object
           properties:
@@ -1746,7 +1900,7 @@ components:
             id: { type: string }
             kind:
               type: string
-              enum: [link, link_list, favourite_explorer, recent_favourites, media, note, note_list, recent_notes, selected_notes]
+              enum: [link, link_list, favourite_explorer, recent_favourites, media, feed, note, note_list, recent_notes, selected_notes]
             width: { type: integer, minimum: 1, description: "A width above the parent's renders as the parent's, so 12 is full width." }
             config: { type: object }
             data: { description: "What the widget shows, resolved for the viewer. Only in responses." }
@@ -1863,6 +2017,51 @@ components:
         icon: { $ref: "#/components/schemas/Icon" }
         color: { $ref: "#/components/schemas/Colour" }
         parentId: { type: [string, "null"] }
+
+    FeedSubscription:
+      type: object
+      required: [id, feedId, url, title, customTitle, siteUrl, icon, faviconId, position, lastFetchedAt, failing]
+      properties:
+        id: { type: string }
+        feedId: { type: string }
+        url: { type: string, format: uri }
+        title: { type: string, description: "The custom title or else the feed's title." }
+        customTitle: { type: [string, "null"] }
+        siteUrl: { type: [string, "null"], format: uri }
+        icon: { $ref: "#/components/schemas/Icon" }
+        faviconId: { type: [string, "null"] }
+        position: { type: integer }
+        lastFetchedAt: { type: [string, "null"], format: date-time }
+        failing: { type: boolean, description: "The feed failed at least three times in a row." }
+
+    FeedItem:
+      type: object
+      required: [id, title, link, summary, publishedAt, audio, feed, readLaterAt, likedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        link: { type: [string, "null"], format: uri }
+        summary: { type: [string, "null"] }
+        publishedAt: { type: string, format: date-time }
+        audio:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [url, type, durationSeconds]
+              properties:
+                url: { type: string, format: uri }
+                type: { type: [string, "null"] }
+                durationSeconds: { type: [integer, "null"] }
+        feed:
+          type: object
+          required: [title, subscriptionId, icon, faviconId]
+          properties:
+            title: { type: string }
+            subscriptionId: { type: [string, "null"], description: "`null` when the user doesn't subscribe to the feed." }
+            icon: { $ref: "#/components/schemas/Icon" }
+            faviconId: { type: [string, "null"] }
+        readLaterAt: { type: [string, "null"], format: date-time }
+        likedAt: { type: [string, "null"], format: date-time }
 
     MediaSource:
       type: object

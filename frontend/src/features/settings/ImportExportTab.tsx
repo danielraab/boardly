@@ -13,6 +13,7 @@ import {
 	tagUsageQueryKey,
 } from "#/features/favourites/api";
 import { FavouritePicker } from "#/features/favourites/FavouritePicker";
+import { feedItemsQueryKey, feedsQueryKey } from "#/features/feeds/api";
 import { mediaQueryKey } from "#/features/media/api";
 import { noteCategoriesQueryKey, notesQueryKey } from "#/features/notes/api";
 import { CategoryPicker } from "#/features/notes/categories/CategoryPicker";
@@ -111,6 +112,8 @@ function ImportSection() {
 				dashboardsQueryKey,
 				dashboardViewQueryKey,
 				mediaQueryKey,
+				feedsQueryKey,
+				feedItemsQueryKey,
 			]) {
 				void queryClient.invalidateQueries({ queryKey });
 			}
@@ -373,6 +376,11 @@ type DataReportKey =
 	| "sources"
 	| "duplicateSources"
 	| "invalidSources"
+	| "feeds"
+	| "feedItems"
+	| "duplicateFeeds"
+	| "invalidFeeds"
+	| "skippedFeedItems"
 	| "images"
 	| "attachments"
 	| "offlineCopies"
@@ -405,6 +413,13 @@ function DataReport({ report }: { report: DataImportReport }) {
 		add("sources", report.media.sources);
 		add("duplicateSources", report.media.duplicates, notes);
 		add("invalidSources", report.media.invalid, notes);
+	}
+	if (report.feeds) {
+		add("feeds", report.feeds.subscriptions);
+		add("feedItems", report.feeds.restoredItems);
+		add("duplicateFeeds", report.feeds.duplicates, notes);
+		add("invalidFeeds", report.feeds.invalid, notes);
+		add("skippedFeedItems", report.feeds.skippedItems, notes);
 	}
 	add("images", report.files.images);
 	add("attachments", report.files.attachments);

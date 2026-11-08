@@ -178,7 +178,7 @@ A save based on a layout version that is no longer current SHALL be rejected wit
 - **THEN** the layout is saved
 
 ### Requirement: Add widgets
-"Add widget" SHALL open a picker dialog that lists every available widget kind with its icon, name and a short description, grouped under translated headings in this order: "Favourites" / "Favoriten" (favourite explorer, link, link list, recent favourites), "Notes" / "Notizen" (note, recent notes, note list, selected notes) and "Media" / "Medien" (media). Picking a kind closes the picker and opens that kind's settings dialog for a new widget. A new widget starts with "Full width" / "Volle Breite", which stores the width 12 so that it follows its section, plus the defaults of its kind. Confirming the settings dialog adds the widget at the end of the section in the draft. Cancelling the picker or the settings dialog leaves the draft unchanged.
+"Add widget" SHALL open a picker dialog that lists every available widget kind with its icon, name and a short description, grouped under translated headings in this order: "Favourites" / "Favoriten" (favourite explorer, link, link list, recent favourites), "Notes" / "Notizen" (note, recent notes, note list, selected notes) "Media" / "Medien" (media) and "Feeds" / "Feeds" (feed). Picking a kind closes the picker and opens that kind's settings dialog for a new widget. A new widget starts with "Full width" / "Volle Breite", which stores the width 12 so that it follows its section, plus the defaults of its kind. Confirming the settings dialog adds the widget at the end of the section in the draft. Cancelling the picker or the settings dialog leaves the draft unchanged.
 
 #### Scenario: Add a widget
 - **WHEN** Ann clicks "Add widget" in the section "Work", picks a kind and confirms its settings dialog
@@ -190,7 +190,7 @@ A save based on a layout version that is no longer current SHALL be rejected wit
 
 #### Scenario: Groups
 - **WHEN** Ann opens the widget picker with the language set to German
-- **THEN** it shows the heading "Favoriten" with the four favourite widgets, followed by the heading "Notizen" with "Notiz", "Neueste Notizen", "Notizliste" and "Ausgewählte Notizen", followed by the heading "Medien" with "Medien"
+- **THEN** it shows the heading "Favoriten" with the four favourite widgets, followed by the heading "Notizen" with "Notiz", "Neueste Notizen", "Notizliste" and "Ausgewählte Notizen", followed by the heading "Medien" with "Medien", followed by the heading "Feeds" with "Feed"
 
 #### Scenario: New widget follows its section
 - **WHEN** Ann adds a widget to a width-4 section, confirms, and then changes the section to width 6

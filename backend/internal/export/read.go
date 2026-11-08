@@ -53,6 +53,8 @@ func (s *Service) Document(ctx context.Context, userID string) (*Document, error
 		{"note categories", r.categories},
 		{"notes", r.notes},
 		{"media sources", r.mediaSources},
+		{"feeds", r.feeds},
+		{"feed items", r.feedItems},
 		{"images", r.images},
 		{"attachments", r.attachments},
 	} {
@@ -308,6 +310,54 @@ func (r reader) mediaSources(doc *Document) error {
 			}
 			m.Icon = notes.IconOf(symbol, imageID)
 			doc.MediaSources = append(doc.MediaSources, m)
+			return nil
+		})
+}
+
+func (r reader) feeds(doc *Document) error {
+	doc.Feeds = []Feed{}
+	return r.each(
+		`WITH me (id) AS (SELECT ?)
+		 SELECT COALESCE(s.id, f.id), f.url, f.title, s.custom_title, s.icon_symbol, s.icon_image_id, s.position, s.id IS NOT NULL
+		 FROM feeds f, me LEFT JOIN feed_subscriptions s ON s.feed_id = f.id AND s.user_id = me.id
+		 WHERE s.id IS NOT NULL OR EXISTS (
+		   SELECT 1 FROM feed_item_flags fl JOIN feed_items i ON i.id = fl.item_id
+		   WHERE fl.user_id = me.id AND i.feed_id = f.id)
+		 ORDER BY s.position IS NULL, s.position, f.id`,
+		func(rows *sql.Rows) error {
+			var f Feed
+			var symbol, imageID *string
+			if err := rows.Scan(&f.ID, &f.URL, &f.Title, &f.CustomTitle, &symbol, &imageID, &f.Position, &f.Subscribed); err != nil {
+				return err
+			}
+			f.Icon = notes.IconOf(symbol, imageID)
+			doc.Feeds = append(doc.Feeds, f)
+			return nil
+		})
+}
+
+func (r reader) feedItems(doc *Document) error {
+	doc.FeedItems = []FeedItem{}
+	return r.each(
+		`WITH me (id) AS (SELECT ?)
+		 SELECT COALESCE(s.id, i.feed_id), i.identity, i.title, i.link, i.summary, i.item_time,
+		   i.audio_url, i.audio_type, i.audio_seconds, fl.read_later_at, fl.liked_at
+		 FROM feed_item_flags fl JOIN me ON fl.user_id = me.id
+		 JOIN feed_items i ON i.id = fl.item_id
+		 LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = me.id
+		 ORDER BY i.item_time, i.id`,
+		func(rows *sql.Rows) error {
+			var it FeedItem
+			var audioURL, audioType *string
+			var seconds *int
+			if err := rows.Scan(&it.FeedID, &it.GUID, &it.Title, &it.Link, &it.Summary, &it.PublishedAt,
+				&audioURL, &audioType, &seconds, &it.ReadLaterAt, &it.LikedAt); err != nil {
+				return err
+			}
+			if audioURL != nil {
+				it.Audio = &FeedItemAudio{URL: *audioURL, Type: audioType, DurationSeconds: seconds}
+			}
+			doc.FeedItems = append(doc.FeedItems, it)
 			return nil
 		})
 }

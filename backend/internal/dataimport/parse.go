@@ -66,7 +66,8 @@ func parseDocument(data []byte) (*export.Document, error) {
 	if err := json.Unmarshal(data, &head); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidFile, err)
 	}
-	if head.Format != export.Format || head.Version != export.Version {
+	// Version 1 is the same document without feeds.
+	if head.Format != export.Format || (head.Version != 1 && head.Version != export.Version) {
 		return nil, fmt.Errorf("%w: format %q version %d", ErrInvalidFile, head.Format, head.Version)
 	}
 	var doc export.Document

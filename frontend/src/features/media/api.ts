@@ -5,10 +5,14 @@ import { api } from "#/lib/api";
 /** What the player needs of a media source; visitors get only this. */
 export type PlayableSource = {
 	id: string;
-	kind: "stream";
+	/** A live stream, or an on-demand podcast episode of a feed. */
+	kind: "stream" | "episode";
 	title: string;
 	url: string;
 	icon: NoteIcon | null;
+	/** For an episode: its feed's title, and its length if the feed says. */
+	subtitle?: string;
+	durationSeconds?: number;
 };
 
 /** A media source as the media API returns it. */

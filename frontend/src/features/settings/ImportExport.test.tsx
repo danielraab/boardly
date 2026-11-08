@@ -283,7 +283,13 @@ describe("boardly import", () => {
 
 	it("checks all parts at first and shows both pickers", async () => {
 		const { panel } = await chooseBoardly();
-		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+		for (const name of [
+			"Favourites",
+			"Dashboards",
+			"Notes",
+			"Media sources",
+			"Feeds",
+		]) {
 			expect(within(panel).getByRole("checkbox", { name })).toBeChecked();
 		}
 		expect(within(panel).getByText("Import into")).toBeInTheDocument();
@@ -321,7 +327,7 @@ describe("boardly import", () => {
 		expect(result).toHaveTextContent("2 files were missing or aren't allowed");
 
 		const sent = search as unknown as URLSearchParams;
-		expect(sent.get("parts")).toBe("dashboards,media");
+		expect(sent.get("parts")).toBe("dashboards,media,feeds");
 		expect(sent.has("folderId")).toBe(false);
 		expect(sent.has("categoryId")).toBe(false);
 	});
@@ -329,7 +335,13 @@ describe("boardly import", () => {
 	it("disables the button without any part", async () => {
 		const { panel, user } = await chooseBoardly();
 		await user.upload(within(panel).getByLabelText("File"), zip());
-		for (const name of ["Favourites", "Dashboards", "Notes", "Media sources"]) {
+		for (const name of [
+			"Favourites",
+			"Dashboards",
+			"Notes",
+			"Media sources",
+			"Feeds",
+		]) {
 			await user.click(within(panel).getByRole("checkbox", { name }));
 		}
 		expect(
