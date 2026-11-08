@@ -28,6 +28,8 @@ The toolbar wrapper uses `bg-inherit`, but its parent `div.mt-6` has no backgrou
 
 **Saved uses a new `success` token.** The theming spec requires colours to come from tokens, and no green existed. Light themes use `#166534` and dark themes `#4ade80`, which meet 4.5:1 on `paper`, `surface` and every note colour, because the status sits on the note's background. "Saving…" stays `muted`, so green only ever means that the save is done.
 
+**A new change clears "saved" in `useAutosave`.** `change` sets the status from `saved` back to `idle`, so the editor and cards both stop claiming a save during the delay before the next one. A failed status stays, because those changes are still unsaved and "Retry" still applies. No separate "unsaved" label is added: "Saving…" follows about a second later.
+
 **The toolbar scrolls inside a flex row.** The sticky wrapper becomes `flex items-center gap-2`. The `Toolbar` root is `min-w-0 flex-1 flex-nowrap overflow-x-auto` with a hidden scrollbar, and the separator gets `shrink-0`. The slot is at most 65% of the row and its text may wrap, because "Nicht gespeichert" with "Erneut versuchen" on one line would leave a 360 px phone only 13 px of buttons. A partly cut-off button shows that the row scrolls; no extra fade is added. This applies at every width, because the buttons fit on one row from `sm` on anyway.
 
 **The background is chained with `bg-inherit` on `div.mt-6`.** The note colours are opaque, and the inline `background` on the `section` sets its computed `background-color`, so inheriting through one more element is enough and avoids passing the colour as a prop.

@@ -5,6 +5,7 @@
 - [x] 1.1 Add the `compact` and `onReload` props to `SaveIndicator` and the `notes.editor.status.conflict` string ("Changed elsewhere" / "Anderswo geändert") in `en.json` and `de.json`; verify with tests that compact keeps the text as the accessible status, that conflict with `onReload` shows the label and a working "Reload" button, and that conflict without `onReload` renders nothing
 - [x] 1.2 Add the `toolbarEnd` slot to `NoteEditor`, and in `NoteEditorPage` move `SaveIndicator` from the action row into it with `compact` and `onReload`; verify with a test in `NoteEditor.test.tsx` that the status is rendered once and next to the toolbar, and update existing tests that look up a single "Reload" button
 - [x] 1.3 Add the `success` colour to every theme in `styles.css` and to `contrast.test.ts` (against `paper`, `surface` and the note colours), use it for the saved state in `SaveIndicator`; verify with the contrast test and a test that saved is `text-success` and failed `text-danger`
+- [x] 1.4 In `useAutosave`, clear the saved status as soon as a change is recorded; verify with a test in `useAutosave.test.tsx` that the status goes from saved to idle on a change and back to saved after the next save
 
 ## 2. Toolbar layout
 

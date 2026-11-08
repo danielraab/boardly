@@ -114,6 +114,7 @@ export function useAutosave({
 		(fields: Partial<NoteFields>) => {
 			if (stopped.current) return;
 			Object.assign(pending.current, fields);
+			setStatus((s) => (s === "saved" ? "idle" : s));
 			clearTimeout(timer.current);
 			timer.current = setTimeout(() => void flush(), autosaveDelay);
 		},
