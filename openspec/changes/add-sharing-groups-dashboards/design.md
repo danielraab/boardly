@@ -4,7 +4,7 @@
 
 See `proposal.md` for the motivation and the `sharing` and `groups` specs for the behaviour.
 
-Today a dashboard's visibility is decided in `dashboards.Store.Lookup`: the owner sees it, and anyone else only when `is_public` is set and the owner isn't scheduled for deletion. Widgets are resolved with `Viewer{OwnerID, IsOwner}` and always read data as the dashboard's owner. Every store method filters on `user_id`. Boardly has no admin role, no groups and no way to look up other users.
+Today a dashboard's visibility is decided in `dashboards.Store.Lookup`: the owner sees it, and anyone else only when `is_public` is set and the owner isn't scheduled for deletion. Widgets are resolved with `Viewer{OwnerID, IsOwner}` and always read data as the dashboard's owner. Every store method filters on `user_id`. Boardly has no admin role, no groups and no way to look up other users, and that stays so. Sign-in already answers the same for every address (`auth-magic-link`), and invitations follow it.
 
 This is the first of four changes, so its schema has to fit the later ones.
 
@@ -17,7 +17,8 @@ This is the first of four changes, so its schema has to fit the later ones.
 **Non-Goals:**
 - The level `edit`. The schema allows it, the API rejects it until a later change needs it.
 - Sharing anything other than dashboards, and public access to anything other than dashboards.
-- Notifying people about shares or memberships.
+- Notifications other than the invitation email.
+- Accepting automatically on registration.
 - Connected apps. Karakeep, Linkwarden and Memos stay limited to the token owner's data.
 
 ## Decisions
@@ -27,6 +28,10 @@ This is the first of four changes, so its schema has to fit the later ones.
 ```
 user_groups(id, name, created_at, updated_at)
 user_group_members(group_id, user_id, role, joined_at, PK(group_id, user_id))
+invitations(id, inviter_id, email, token_hash, locale,
+       dashboard_id | note_id | note_category_id | favourite_folder_id | group_id,   -- exactly one
+       level | role,                                                                 -- share or group
+       notice_sent_at, created_at, expires_at)
 shares(id, owner_id,
        dashboard_id | note_id | note_category_id | favourite_folder_id,   -- exactly one
        user_id | group_id,                                                -- exactly one
@@ -57,9 +62,23 @@ In this change `Lookup` adds one `EXISTS` to its visibility check and to the swi
 
 `/api/shares/{type}/{id}`, with only `dashboard` valid for now. Later changes add resource types without adding routes. Unknown types answer 404.
 
-### Finding people only by exact slug
+### Invitations by email, with one path for every address
 
-Registration is open by default, so a search or a list would expose users. Slugs are already public in dashboard addresses. `GET /api/users/{slug}` answers only for an exact match, returns no email address and is rate limited per user with the existing `ratelimit` package.
+Registration is open by default, so anything that confirms an account would expose users. The request does the same work for every address: validate, insert the invitation, queue a job. It never reads `users`.
+
+A new `invitation_mail` job in the existing `jobs` package decides what to send, after the response has gone out. It looks up the address, and either creates the token and mails the link, or mails the notice. Sending in the request would differ in timing, because a notice can be skipped by its limit.
+
+The job generates the token itself and stores only its hash, so the plain token is never in the job's payload. A retry generates a new one. `token_hash` is empty until then, and a notice never has one, so nobody can accept without proving the address. Someone with no account proves it by signing up, and then accepts from the list in the app.
+
+The notice carries nothing the inviter typed, so the server can't be used to send chosen text to arbitrary addresses. The limits are 30 invitations per user per hour with the existing `ratelimit` package, and one notice per address per 24 hours, checked against `notice_sent_at`.
+
+Alternatives: a lookup by slug or email reveals who has an account. Accepting automatically on registration would give access or a group membership without consent. A token in the notice adds nothing, because signing in already proves the address, and it would make the notice look more like phishing.
+
+`GET /api/invitations` matches open invitations against the session's address, so an invitation made before the account existed appears once the person signs up. Sign-up is the proof of ownership, because an account is only created by redeeming a link or code mailed to that address. This also gives registered users a way to accept when the email is lost.
+
+Accepting requires the session's account to have the invited address, so a forwarded link is useless. It runs in one transaction that creates the share or membership and deletes the invitation. An existing share or membership is left unchanged.
+
+The preview and accept calls take the token in the body, like the magic link. The page is `/invitation?token=…` with no sub-path, so it can't shadow any `/<user-slug>/<dashboard-slug>` address.
 
 ### Groups are shared objects with roles
 
@@ -71,7 +90,7 @@ On account deletion, `accounts.deleteAccount` first promotes the member with the
 
 ### Package layout
 
-`internal/groups` holds groups and memberships. `internal/shares` holds shares and the "shared with me" query. `internal/dashboards` keeps the lookup. The migration is `0028_sharing.sql`. On the frontend the feature lives in `features/sharing` and `features/groups`, because `features/share` is already the "Save link" page.
+`internal/groups` holds groups and memberships. `internal/shares` holds shares and the "shared with me" query. `internal/invitations` holds invitations, the job and the sweep. `internal/dashboards` keeps the lookup. The migration is `0028_sharing.sql`. On the frontend the feature lives in `features/sharing`, `features/groups` and `features/invitations`, because `features/share` is already the "Save link" page.
 
 ### The rename touches only texts
 
@@ -97,9 +116,12 @@ These decisions are agreed and recorded here so that the next changes build on t
 ## Risks / Trade-offs
 
 - [A group admin can add someone who then gets access to what others shared with the group] → The share dialog says so whenever a group is involved, and sharers can leave the group or remove the share.
-- [People are added to groups without accepting, which can put a dashboard on someone's "Shared with me" page unasked] → Adding requires knowing the exact slug, and anyone can leave a group at any time.
-- [Exact-slug lookup confirms that a slug exists and shows the name] → Slugs are already public in dashboard addresses, the lookup is signed-in only and rate limited.
-- [A user already has the slug `shared` or `groups`] → Their dashboards at `/shared/<dashboard-slug>` keep working, because the new pages have no sub-paths. Only the bare `/shared` and `/groups` addresses change, and those only ever redirected to `/`.
+- [Any account can make the server send mail to arbitrary addresses] → The limits above, a notice with no text from the inviter, and no notice more than once a day per address.
+- [An invited address stays "Invited" after a registered person ignored it, and also after a notice] → Intended, because any difference would reveal the account. The entry disappears at expiry.
+- [Accepting reveals to the inviter which account an address belongs to] → Accepting is the recipient's own decision.
+- [Someone signs up more than 14 days after the invitation] → The invitation is gone and the inviter has to invite again. The notice names the 14 days.
+- [Addresses of people without an account are stored] → At most 14 days plus the cleanup. Operators write their own privacy policy, so the README points this out.
+- [A user already has the slug `shared`, `groups` or `invitation`] → Their dashboards at `/shared/<dashboard-slug>` keep working, because the new pages have no sub-paths. Only the bare addresses change, and those only ever redirected to `/`.
 - [Unused columns in `shares` until later changes] → Accepted, to avoid rebuilding the table three times.
 - [Existing dashboards with `showIfPublic` widgets are unchanged, but a widget marked for public view is now also shown to people it's shared with] → That's the intended meaning of "Show to other viewers".
 

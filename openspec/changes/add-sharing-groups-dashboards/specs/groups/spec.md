@@ -22,15 +22,15 @@ A signed-in user SHALL be able to create any number of groups. A group has a nam
 - **THEN** the server responds 404 with `not_found`
 
 ### Requirement: Membership roles
-Each membership SHALL have the role group admin (`admin`) or group member (`member`). A group admin can rename and delete the group, add and remove members and change members' roles. A group member can see the group and its members and can leave the group. A person is added by their exact user slug, without having to accept. Member lists show only names and slugs, never email addresses.
+Each membership SHALL have the role group admin (`admin`) or group member (`member`). A group admin can rename and delete the group, invite people, remove members and change members' roles. A group member can see the group and its members and can leave the group. A person joins only by accepting an invitation sent to their email address (see the `invitations` capability), which also sets their role. Member lists show only names and slugs, never email addresses.
 
-#### Scenario: Member tries to add someone
-- **WHEN** Bob is a group member of "Family" and tries to add Carol
-- **THEN** the server responds 403 with `forbidden` and Carol isn't added
+#### Scenario: Member tries to invite someone
+- **WHEN** Bob is a group member of "Family" and tries to invite an address
+- **THEN** the server responds 403 with `forbidden` and no invitation is created
 
 #### Scenario: Promote a member
 - **WHEN** Ann, a group admin, makes Bob a group admin
-- **THEN** Bob can add and remove members
+- **THEN** Bob can invite people and remove members
 
 #### Scenario: No email addresses
 - **WHEN** Bob requests the members of "Family"
@@ -77,18 +77,15 @@ When an account is deleted and it was the last group admin of a group that has o
 The API SHALL provide, for signed-in users only:
 - `GET /api/groups`: the groups the user belongs to, each with `id`, `name`, `role` (the user's own) and `memberCount`, sorted by name, ignoring case.
 - `POST /api/groups`: create a group from `name`. Responds 201 with the group.
-- `GET /api/groups/{id}`: the group and its `members`, each with `id`, `slug`, `name` and `role`, sorted by name, ignoring case.
+- `GET /api/groups/{id}`: the group and its `members`, each with `id`, `slug`, `name` and `role`, sorted by name, ignoring case. For group admins it also has `invitations`, the open invitations as described in the `invitations` capability.
 - `PATCH /api/groups/{id}`: change `name`. Admins only.
 - `DELETE /api/groups/{id}`: delete the group. Admins only. Responds 204.
-- `POST /api/groups/{id}/members`: add a member from `slug` and optionally `role` (default `member`). Admins only. Responds 201 with the member.
 - `PATCH /api/groups/{id}/members/{userId}`: change `role`. Admins only.
 - `DELETE /api/groups/{id}/members/{userId}`: remove a member. Admins only, except that anyone can remove themselves to leave. Responds 204.
 
 The errors are:
 - 404 `not_found` for a group the user doesn't belong to, or an unknown member;
 - 403 `forbidden` for a group member using an admin action;
-- 404 `user_not_found` when no user has the slug, ignoring case, or their account is scheduled for deletion;
-- 409 `already_member` when that person is already a member;
 - 400 `invalid_role` for any other role;
 - 409 `last_admin` as described above.
 
@@ -98,20 +95,16 @@ Requests without a session get 401.
 - **WHEN** Ann belongs to "Family" and "Work" and requests `GET /api/groups`
 - **THEN** the response lists both, with Ann's role and the member count of each
 
-#### Scenario: Add by slug
-- **WHEN** Ann, a group admin, adds `Bob` to "Family"
-- **THEN** the response is 201 and Bob is a group member
-
-#### Scenario: Already a member
-- **WHEN** Ann adds Bob to a group Bob already belongs to
-- **THEN** the server responds 409 with `already_member`
+#### Scenario: Change a role
+- **WHEN** Ann, a group admin, sends `PATCH /api/groups/{id}/members/{userId}` with the role `admin` for Bob
+- **THEN** Bob is a group admin
 
 #### Scenario: Leave
 - **WHEN** Bob, a group member, leaves "Family"
 - **THEN** the response is 204 and Bob is no longer a member
 
 ### Requirement: Groups page
-`/groups` SHALL be available only to signed-in users; signed-out visitors are sent to `/login`. It shows the heading "Groups" / "Gruppen", a create action, and the user's groups with their name, member count and the user's role, shown as "Group admin" / "Gruppen-Admin" or "Group member" / "Gruppenmitglied". Without groups, the page shows an empty state with a create action. Opening a group shows its members with name, slug and role. Group admins additionally get rename and delete actions, a field to add a person by exact user address, a role choice and a remove action for each member. Everyone gets a "Leave group" / "Gruppe verlassen" action. Leaving and deleting ask for confirmation. Server errors, such as `last_admin`, are shown in the dialog that caused them.
+`/groups` SHALL be available only to signed-in users; signed-out visitors are sent to `/login`. It shows the heading "Groups" / "Gruppen", a create action, and the user's groups with their name, member count and the user's role, shown as "Group admin" / "Gruppen-Admin" or "Group member" / "Gruppenmitglied". Without groups, the page shows an empty state with a create action. Opening a group shows its members with name, slug and role. Group admins additionally get rename and delete actions, a field to invite an email address with a role, the open invitations, and a role choice and a remove action for each member. Everyone gets a "Leave group" / "Gruppe verlassen" action. Leaving and deleting ask for confirmation. Server errors, such as `last_admin`, are shown in the dialog that caused them.
 
 #### Scenario: Signed out
 - **WHEN** a signed-out visitor opens `/groups`
@@ -119,11 +112,11 @@ Requests without a session get 401.
 
 #### Scenario: Group member's view
 - **WHEN** Bob, a group member, opens "Family"
-- **THEN** Bob sees the members and "Leave group", and no actions to add, remove or rename
+- **THEN** Bob sees the members and "Leave group", and no actions to invite, remove or rename
 
 #### Scenario: Group admin's view
 - **WHEN** Ann, a group admin, opens "Family"
-- **THEN** Ann sees the actions to rename and delete the group and to add and remove members
+- **THEN** Ann sees the actions to rename and delete the group, to invite people and to remove members
 
 #### Scenario: Last admin leaves
 - **WHEN** Ann is the only group admin and confirms "Leave group"

@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Reserved user slugs
-A user slug SHALL NOT be one of the reserved words: paths that the app uses or may use as its own first path segment (at least `api`, `assets`, `karakeep`, `login`, `logout`, `settings`, `favourites`, `dashboards`, `shared`, `groups`, `admin`, `help`, `about`). The server rejects them with 400 and `slug_reserved`. The web app checks the same list, shows a hint at the field and blocks saving. If a later version adds a fixed route that equals an existing user slug, the route takes precedence and that user has to choose a new slug.
+A user slug SHALL NOT be one of the reserved words: paths that the app uses or may use as its own first path segment (at least `api`, `assets`, `karakeep`, `login`, `logout`, `settings`, `favourites`, `dashboards`, `shared`, `groups`, `invitation`, `admin`, `help`, `about`). The server rejects them with 400 and `slug_reserved`. The web app checks the same list, shows a hint at the field and blocks saving. If a later version adds a fixed route that equals an existing user slug, the route takes precedence and that user has to choose a new slug.
 
 #### Scenario: Reserved word in the form
 - **WHEN** the user enters `login` as their slug

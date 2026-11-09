@@ -7,10 +7,10 @@ Lets the owner of a dashboard give specific users and groups access to it, and s
 ## ADDED Requirements
 
 ### Requirement: Shares
-The owner of a dashboard SHALL be able to share it with a user or with a group, at the level `read`. No share means no access. A dashboard has at most one share per user and one per group. A share belongs to the dashboard's owner, and only the owner can see, create or remove the dashboard's shares. Deleting the dashboard, the user or the group removes the share.
+The owner of a dashboard SHALL be able to share it with a group they belong to, and with a person who accepted an invitation (see the `invitations` capability), at the level `read`. No share means no access. A dashboard has at most one share per user and one per group. A share belongs to the dashboard's owner, and only the owner can see or remove the dashboard's shares. Deleting the dashboard, the user or the group removes the share.
 
-#### Scenario: Share with a user
-- **WHEN** Ann shares the dashboard "Work" with Bob at the level `read`
+#### Scenario: Share through an accepted invitation
+- **WHEN** Bob accepts Ann's invitation to the dashboard "Work"
 - **THEN** Bob can open `/ann/work`
 
 #### Scenario: Remove a share
@@ -60,36 +60,29 @@ While the owner's account is scheduled for deletion, their dashboards SHALL NOT 
 
 ### Requirement: Shares API
 The API SHALL provide, for signed-in users only and for dashboards they own:
-- `GET /api/shares/dashboard/{id}`: list the shares, each with its `id`, its `level` and either a `user` (`id`, `slug`, `name`) or a `group` (`id`, `name`). Users are sorted before groups, each by name, ignoring case.
-- `POST /api/shares/dashboard/{id}`: create a share from `level` and exactly one of `userSlug` and `groupId`. Responds 201 with the share.
+- `GET /api/shares/dashboard/{id}`: responds with `shares`, each with its `id`, its `level` and either a `user` (`id`, `slug`, `name`) or a `group` (`id`, `name`), and with `invitations`, the open invitations as described in the `invitations` capability. Users are sorted before groups, each by name, ignoring case.
+- `POST /api/shares/dashboard/{id}`: share with a group, from `groupId` and `level`. Responds 201 with the share.
 - `DELETE /api/shares/dashboard/{id}/{shareId}`: remove a share. Responds 204.
 
 The errors are:
 - 404 `not_found` for a dashboard the user doesn't own, an unknown share or an unknown resource type in the path;
-- 400 `invalid_share_target` unless exactly one of `userSlug` and `groupId` is given;
 - 400 `invalid_share_level` for any level other than `read`;
-- 400 `cannot_share_with_self` when `userSlug` is the owner's own slug;
-- 404 `user_not_found` when no user has that slug, ignoring case, or their account is scheduled for deletion;
 - 404 `group_not_found` when the group doesn't exist or the owner isn't a member of it;
-- 409 `already_shared` when the dashboard is already shared with that user or group.
+- 409 `already_shared` when the dashboard is already shared with that group.
 
 Requests without a session get 401.
 
-#### Scenario: Create and list
-- **WHEN** Ann sends `POST /api/shares/dashboard/{id}` with `{"userSlug": "Bob", "level": "read"}` and then lists the shares
-- **THEN** the first response is 201 and the list contains a share with Bob's slug and name and the level `read`
+#### Scenario: Share with a group and list
+- **WHEN** Ann, a member of "Family", sends `POST /api/shares/dashboard/{id}` with its `groupId` and the level `read`, and then lists the shares
+- **THEN** the first response is 201 and the list contains a share with "Family" and the level `read`
 
-#### Scenario: No email address
+#### Scenario: No email address of a person with access
 - **WHEN** Ann lists the shares of a dashboard shared with Bob
-- **THEN** the response doesn't contain Bob's email address
+- **THEN** the entry for Bob doesn't contain Bob's email address
 
 #### Scenario: Level edit is not available yet
 - **WHEN** a client sends the level `edit`
 - **THEN** the server responds 400 with `invalid_share_level`
-
-#### Scenario: Share with oneself
-- **WHEN** Ann sends Ann's own slug as `userSlug`
-- **THEN** the server responds 400 with `cannot_share_with_self`
 
 #### Scenario: Group the owner isn't in
 - **WHEN** Ann sends the ID of a group Ann isn't a member of
@@ -100,45 +93,22 @@ Requests without a session get 401.
 - **THEN** the server responds 404 with `not_found`
 
 #### Scenario: Duplicate share
-- **WHEN** Ann shares "Work" with Bob a second time
+- **WHEN** Ann shares "Work" with "Family" a second time
 - **THEN** the server responds 409 with `already_shared`
-
-### Requirement: Find a person by slug
-`GET /api/users/{slug}` SHALL return the `id`, `slug` and `name` of the user with exactly that slug, ignoring case, for signed-in users only. It never returns an email address and there is no way to list or search users. An unknown slug and an account scheduled for deletion respond 404 with `user_not_found`. Each user can make at most 60 of these requests per hour; further ones respond 429 with `rate_limited`.
-
-#### Scenario: Known slug
-- **WHEN** Ann requests `GET /api/users/BOB`
-- **THEN** the response contains Bob's ID, slug and name and no email address
-
-#### Scenario: Partial slug
-- **WHEN** Ann requests `GET /api/users/bo` and no user has the slug `bo`
-- **THEN** the server responds 404 with `user_not_found`
-
-#### Scenario: Signed out
-- **WHEN** a request without a session asks for `GET /api/users/bob`
-- **THEN** the server responds 401
-
-#### Scenario: Too many requests
-- **WHEN** Ann has made 60 of these requests in the last hour and makes another one
-- **THEN** the server responds 429 with `rate_limited`
 
 ### Requirement: Share dialog
 The share action SHALL open a dialog titled "Share <title>" / "<title> teilen" for the dashboard, available only to its owner. It SHALL contain:
 - a "Public" / "Öffentlich" switch with the existing hint, which saves right away;
-- a field to add a person by their exact user address. It shows the person's name and slug once found, and a message when nobody has that address;
+- a field to invite someone by email address, with an explanation that registered users get a link to accept;
 - a choice of the groups the owner belongs to, with a link to `/groups` when they belong to none;
-- the list of people and groups with access, each showing "Can view" / "Kann ansehen" and a remove action;
+- the list of people and groups with access, each showing "Can view" / "Kann ansehen" and a remove action, and the open invitations as described in the `invitations` capability;
 - a hint, shown when the list contains a group or a group is selected: "Group admins decide who is in a group. Anyone they add gets access." / "Gruppen-Admins entscheiden, wer in einer Gruppe ist. Alle, die sie hinzufügen, erhalten Zugriff."
 
-Server errors are shown in the dialog. Email addresses are never shown.
+Server errors are shown in the dialog. There is no way to search for or look up people.
 
-#### Scenario: Add a person
-- **WHEN** Ann opens the share dialog of "Work", enters `bob` and adds Bob
-- **THEN** Bob appears in the list with "Can view"
-
-#### Scenario: Unknown address
-- **WHEN** Ann enters an address nobody has
-- **THEN** the dialog says that nobody has this address and nothing can be added
+#### Scenario: Invite someone
+- **WHEN** Ann opens the share dialog of "Work", enters `bob@example.org` and invites that address
+- **THEN** `bob@example.org` appears in the list with "Invited", whether or not an account exists for it
 
 #### Scenario: Make public
 - **WHEN** Ann turns on "Public" in the dialog
@@ -153,7 +123,7 @@ Server errors are shown in the dialog. Email addresses are never shown.
 - **THEN** Bob disappears from the list and no longer has that share
 
 ### Requirement: Shared with me page
-`/shared` SHALL be available only to signed-in users; signed-out visitors are sent to `/login`. It shows the heading "Shared with me" / "Mit mir geteilt" and lists the dashboards shared with the user, directly or through a group, each once, with its title linking to `/<owner-slug>/<dashboard-slug>` and the owner's name, or their slug when they have no name. The list is sorted by title, ignoring case, then by owner slug. It doesn't list the user's own dashboards or dashboards that are only public. Without entries, the page shows an empty state.
+`/shared` SHALL be available only to signed-in users; signed-out visitors are sent to `/login`. It shows the heading "Shared with me" / "Mit mir geteilt" and lists the dashboards shared with the user, directly or through a group, each once, with its title linking to `/<owner-slug>/<dashboard-slug>` and the owner's name, or their slug when they have no name. The list is sorted by title, ignoring case, then by owner slug. It doesn't list the user's own dashboards or dashboards that are only public. Above the list, the page shows the user's open invitations (see the `invitations` capability), each with who sent it, what it is for and an "Accept" / "Annehmen" action. After accepting, the invitation disappears and a dashboard appears in the list. Without invitations and dashboards, the page shows an empty state.
 
 The page loads `GET /api/shared-with-me`, which responds with `dashboards`, each with `ownerSlug`, `ownerName`, `slug`, `title` and `level`. Requests without a session get 401.
 
@@ -162,7 +132,7 @@ The page loads `GET /api/shared-with-me`, which responds with `dashboards`, each
 - **THEN** the browser shows `/login`
 
 #### Scenario: Direct and group share
-- **WHEN** Ann shared "Work" with Bob and with a group Bob belongs to
+- **WHEN** Bob accepted an invitation to "Work" and Ann also shared it with a group Bob belongs to
 - **THEN** Bob's page lists "Work" once, with Ann's name and the link `/ann/work`
 
 #### Scenario: Own dashboard shared with a group
@@ -173,6 +143,14 @@ The page loads `GET /api/shared-with-me`, which responds with `dashboards`, each
 - **WHEN** Ann's dashboard "Home" is public but isn't shared with Bob
 - **THEN** Bob's page doesn't list "Home"
 
+#### Scenario: Open invitation
+- **WHEN** Bob has an open invitation from Ann to "Work" and opens the page
+- **THEN** the page shows the invitation with Ann's name and "Work", and "Work" isn't in the list until Bob activates "Accept"
+
+#### Scenario: Accept on the page
+- **WHEN** Bob activates "Accept" for the invitation to "Work"
+- **THEN** the invitation disappears and "Work" is in the list
+
 #### Scenario: Empty
-- **WHEN** nothing is shared with Bob
+- **WHEN** nothing is shared with Bob and Bob has no open invitations
 - **THEN** the page shows the empty state

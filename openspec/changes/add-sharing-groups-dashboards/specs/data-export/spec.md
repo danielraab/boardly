@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Data left out of the export
-The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, feed items without a flag of the user, the refresh state of feeds, groups, group memberships, shares, or any data of other users. A dashboard's `isPublic` value is exported as before.
+The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, feed items without a flag of the user, the refresh state of feeds, groups, group memberships, shares, invitations, or any data of other users. A dashboard's `isPublic` value is exported as before.
 
 #### Scenario: Passkeys and app tokens
 - **WHEN** Ann has two passkeys and a Karakeep app token and exports her data

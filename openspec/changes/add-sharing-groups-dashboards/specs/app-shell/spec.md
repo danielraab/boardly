@@ -67,7 +67,7 @@ Every page inside the app shell SHALL use exactly one of these page widths for i
 | full   | the container's width (1536 px) | a dashboard (own, default dashboard on the home page, public, shared), the notes overview |
 | wide   | 1152 px                        | favourites, the dashboards list, "Shared with me", the groups page, the media page, the landing page |
 | narrow | 768 px                         | settings, the full-page note editor, the not-found page, the home page when no default dashboard is shown, the imprint and the privacy policy |
-| focus  | 448 px                         | login, login verification, "Save link" |
+| focus  | 448 px                         | login, login verification, "Save link", the invitation page |
 
 Choosing a page width SHALL only set the page's outer width and horizontal position; the layout inside the page stays as it is.
 
