@@ -33,5 +33,5 @@
 ## 6. Documentation and final checks
 
 - [x] 6.1 Document embeds, the known limitation on phones, the cookie note for operators' privacy policies, and that embeds never appear on public dashboards in `README.md`, and add an entry to `CHANGELOG.md`; verify both mention the Spotify embed and the public dashboard rule
-- [ ] 6.2 Run `make check` and `make test` once when the work is done, one after the other, and verify both pass
-- [ ] 6.3 Check in a real browser on desktop and on a phone that a Spotify playlist and an album open in the dock, keep playing across pages, stop when radio starts, that the 152 px layout is usable, and that a public dashboard shows no trace of them; record what the phone plays (full tracks or previews) in `design.md`
+- [x] 6.2 Run `make check` and `make test` once when the work is done, one after the other, and verify both pass
+- [x] 6.3 Check in a real browser on desktop and on a phone that a Spotify playlist and an album open in the dock, keep playing across pages, stop when radio starts, that the 152 px layout is usable, and that a public dashboard shows no trace of them; record what the phone plays (full tracks or previews) in `design.md`
