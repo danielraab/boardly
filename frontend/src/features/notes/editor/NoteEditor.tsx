@@ -27,6 +27,7 @@ import {
 	TaskIdPlugin,
 	TaskShortcutPlugin,
 } from "./plugins";
+import { TaskHandlesPlugin } from "./TaskHandlesPlugin";
 import { Toolbar } from "./Toolbar";
 import { editorTheme } from "./theme";
 import { noteTransformers } from "./transformers";
@@ -118,6 +119,7 @@ export function NoteEditor({
 							}
 							ErrorBoundary={LexicalErrorBoundary}
 						/>
+						<TaskHandlesPlugin />
 					</div>
 				</EditorLocations>
 			</EditorAttachmentsContext>

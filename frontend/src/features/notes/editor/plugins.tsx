@@ -23,7 +23,7 @@ import { useEffect } from "react";
 import { newTaskId, taskIdState } from "../document/lexical";
 
 /** Whether node is an item of a task list that holds its own content. */
-function isTaskItem(node: LexicalNode): node is ListItemNode {
+export function isTaskItem(node: LexicalNode): node is ListItemNode {
 	if (!$isListItemNode(node)) return false;
 	const parent = node.getParent();
 	if (!$isListNode(parent) || parent.getListType() !== "check") return false;

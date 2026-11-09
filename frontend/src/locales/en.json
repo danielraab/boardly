@@ -1196,6 +1196,7 @@
 			"content": "Content",
 			"placeholder": "Write something…",
 			"menu": "More actions",
+			"moveTask": "Move task",
 			"pin": "Pin note",
 			"unpin": "Unpin note",
 			"archive": "Archive note",
