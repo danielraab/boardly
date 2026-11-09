@@ -157,7 +157,7 @@ func run() error {
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
 	noteStore := notes.NewStore(database)
-	mediaStore := media.NewStore(database, media.NewChecker(cfg.FetchAllowPrivate).Check, favicons.FetchLogo)
+	mediaStore := media.NewStore(database, media.NewChecker(cfg.FetchAllowPrivate).Check, favicons.FetchLogo, media.NewEmbedFetcher(cfg.FetchAllowPrivate).Fetch)
 	feedStore := feeds.NewStore(database, feeds.NewFetcher(cfg.FetchAllowPrivate), favicons,
 		time.Duration(cfg.Feeds.RefreshMinutes)*time.Minute, cfg.Feeds.LatestItems)
 	go feedStore.Run(ctx, time.Minute, time.Hour)

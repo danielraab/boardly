@@ -336,7 +336,7 @@ describe("the feeds page", () => {
 			"GET /api/media": { body: [] },
 		});
 		renderApp("/media");
-		expect(await screen.findByText("No stations yet")).toBeVisible();
+		expect(await screen.findByText("No media yet")).toBeVisible();
 		expect(api.calls.some((c) => c.path.startsWith("/api/feed"))).toBe(false);
 	});
 });

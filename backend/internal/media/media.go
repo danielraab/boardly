@@ -1,6 +1,7 @@
-// Package media stores each user's media library: for now internet radio
-// streams that the web app plays directly from their URL. Audio never passes
-// through the server; it only checks a stream's URL when it is saved.
+// Package media stores each user's media library: internet radio streams
+// that the web app plays directly from their URL, and items of external
+// providers that play in the provider's own embedded player. Audio never
+// passes through the server; it only checks a source's URL when it is saved.
 package media
 
 import (
@@ -19,7 +20,10 @@ import (
 )
 
 // Kinds of media sources.
-const KindStream = "stream"
+const (
+	KindStream = "stream"
+	KindEmbed  = "embed"
+)
 
 // MaxTitle bounds a source's title, in characters after trimming.
 const MaxTitle = 200
@@ -41,10 +45,15 @@ type Source struct {
 	URL      string      `json:"url"`
 	Icon     *notes.Icon `json:"icon"`
 	Position int         `json:"position"`
+	// For an embed only; they follow from URL and aren't stored.
+	Provider string `json:"provider,omitempty"`
+	EmbedURL string `json:"embedUrl,omitempty"`
+	Shape    string `json:"shape,omitempty"`
 }
 
-// NewSource is the input of Create. LogoURL is fetched as the icon when Icon
-// is nil.
+// NewSource is the input of Create. LogoURL is fetched as the icon of a
+// stream when Icon is nil. An embed may leave Title empty; its title and
+// cover then come from the provider.
 type NewSource struct {
 	Kind    string
 	Title   string
@@ -62,18 +71,25 @@ type Patch struct {
 }
 
 // Store keeps media sources. Check resolves and validates a stream URL
-// before it is saved, and FetchLogo stores a logo as an image of the user and
-// returns its ID; both are required.
+// before it is saved, FetchLogo stores a logo as an image of the user and
+// returns its ID, and FetchEmbedInfo asks a provider about an item; all are
+// required.
 type Store struct {
-	DB        *sql.DB
-	Now       func() time.Time
-	Check     func(ctx context.Context, rawURL string) (string, error)
-	FetchLogo func(ctx context.Context, userID, rawURL string) (string, error)
+	DB             *sql.DB
+	Now            func() time.Time
+	Check          func(ctx context.Context, rawURL string) (string, error)
+	FetchLogo      func(ctx context.Context, userID, rawURL string) (string, error)
+	FetchEmbedInfo func(ctx context.Context, infoURL string) (EmbedInfo, error)
 }
 
 // NewStore returns a store that uses the real clock.
-func NewStore(database *sql.DB, check func(context.Context, string) (string, error), fetchLogo func(context.Context, string, string) (string, error)) *Store {
-	return &Store{DB: database, Now: time.Now, Check: check, FetchLogo: fetchLogo}
+func NewStore(
+	database *sql.DB,
+	check func(context.Context, string) (string, error),
+	fetchLogo func(context.Context, string, string) (string, error),
+	fetchEmbedInfo func(context.Context, string) (EmbedInfo, error),
+) *Store {
+	return &Store{DB: database, Now: time.Now, Check: check, FetchLogo: fetchLogo, FetchEmbedInfo: fetchEmbedInfo}
 }
 
 func normalizeTitle(title string) (string, error) {
@@ -82,6 +98,19 @@ func normalizeTitle(title string) (string, error) {
 		return "", ErrInvalidTitle
 	}
 	return t, nil
+}
+
+// providerTitle makes a title of what a provider calls an item. It may be
+// longer than a title can be, so it is cut.
+func providerTitle(title string) (string, error) {
+	runes := []rune(strings.TrimSpace(title))
+	if len(runes) > MaxTitle {
+		runes = runes[:MaxTitle]
+	}
+	if len(runes) == 0 {
+		return "", ErrEmbedUnreachable
+	}
+	return normalizeTitle(string(runes))
 }
 
 func checkIcon(ctx context.Context, q db.Querier, userID string, icon *notes.Icon) (symbol, imageID *string, err error) {
@@ -101,6 +130,11 @@ func scanSource(row interface{ Scan(...any) error }) (Source, error) {
 		return Source{}, err
 	}
 	s.Icon = notes.IconOf(symbol, imageID)
+	if s.Kind == KindEmbed {
+		if e, err := ParseEmbed(s.URL); err == nil {
+			s.Provider, s.EmbedURL, s.Shape = e.Provider, e.PlayerURL, e.Shape
+		}
+	}
 	return s, nil
 }
 
@@ -172,24 +206,57 @@ func (s *Store) Get(ctx context.Context, userID, id string) (Source, error) {
 // Create checks the source's URL and adds it at the end of the user's list.
 // A logo that can't be fetched leaves the source without an icon.
 func (s *Store) Create(ctx context.Context, userID string, n NewSource) (Source, error) {
-	if n.Kind != KindStream {
+	if n.Kind != KindStream && n.Kind != KindEmbed {
 		return Source{}, ErrInvalidKind
 	}
-	title, err := normalizeTitle(n.Title)
-	if err != nil {
-		return Source{}, err
+	var embed Embed
+	if n.Kind == KindEmbed {
+		var err error
+		if embed, err = ParseEmbed(n.URL); err != nil {
+			return Source{}, err
+		}
+	}
+	askTitle := n.Kind == KindEmbed && strings.TrimSpace(n.Title) == ""
+	var title string
+	if !askTitle {
+		var err error
+		if title, err = normalizeTitle(n.Title); err != nil {
+			return Source{}, err
+		}
 	}
 	symbol, imageID, err := checkIcon(ctx, s.DB, userID, n.Icon)
 	if err != nil {
 		return Source{}, err
 	}
-	resolved, err := s.Check(ctx, n.URL)
-	if err != nil {
-		return Source{}, err
+	var resolved, logoURL string
+	if n.Kind == KindStream {
+		if resolved, err = s.Check(ctx, n.URL); err != nil {
+			return Source{}, err
+		}
+		logoURL = n.LogoURL
+	} else {
+		resolved = embed.URL
+		if askTitle || n.Icon == nil {
+			info, err := s.FetchEmbedInfo(ctx, embed.InfoURL)
+			if err != nil {
+				if askTitle {
+					slog.DebugContext(ctx, "embed title not fetched", "url", embed.InfoURL, "error", err)
+					return Source{}, ErrEmbedUnreachable
+				}
+				slog.DebugContext(ctx, "embed cover not fetched", "url", embed.InfoURL, "error", err)
+			} else {
+				logoURL = info.CoverURL
+				if askTitle {
+					if title, err = providerTitle(info.Title); err != nil {
+						return Source{}, err
+					}
+				}
+			}
+		}
 	}
-	if n.Icon == nil && n.LogoURL != "" {
-		if id, err := s.FetchLogo(ctx, userID, n.LogoURL); err != nil {
-			slog.DebugContext(ctx, "station logo not fetched", "url", n.LogoURL, "error", err)
+	if n.Icon == nil && logoURL != "" {
+		if id, err := s.FetchLogo(ctx, userID, logoURL); err != nil {
+			slog.DebugContext(ctx, "source logo not fetched", "url", logoURL, "error", err)
 		} else {
 			imageID = &id
 		}
@@ -206,7 +273,8 @@ func (s *Store) Create(ctx context.Context, userID string, n NewSource) (Source,
 	return s.Get(ctx, userID, id)
 }
 
-// Update changes the fields in p. A changed URL is checked again.
+// Update changes the fields in p. A changed URL is checked again: a stream's
+// by fetching it, an embed's against the providers.
 func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (Source, error) {
 	cur, err := s.Get(ctx, userID, id)
 	if err != nil {
@@ -228,8 +296,14 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (Source,
 		sets, args = append(sets, "icon_symbol = ?", "icon_image_id = ?"), append(args, symbol, imageID)
 	}
 	if p.URL != nil && *p.URL != cur.URL {
-		resolved, err := s.Check(ctx, *p.URL)
-		if err != nil {
+		var resolved string
+		if cur.Kind == KindEmbed {
+			e, err := ParseEmbed(*p.URL)
+			if err != nil {
+				return Source{}, err
+			}
+			resolved = e.URL
+		} else if resolved, err = s.Check(ctx, *p.URL); err != nil {
 			return Source{}, err
 		}
 		sets, args = append(sets, "url = ?"), append(args, resolved)
@@ -306,16 +380,23 @@ type Imported struct {
 
 // InsertTx adds an imported source at the end of the user's list in q and
 // returns its ID. The kind, title, icon (an image of the user) and URL (an
-// absolute http or https URL) are checked like for Create, without fetching.
+// absolute http or https URL, or a link a provider accepts) are checked like
+// for Create, without fetching.
 func (s *Store) InsertTx(ctx context.Context, q db.Querier, userID string, n Imported) (string, error) {
-	if n.Kind != KindStream {
+	if n.Kind != KindStream && n.Kind != KindEmbed {
 		return "", ErrInvalidKind
 	}
 	title, err := normalizeTitle(n.Title)
 	if err != nil {
 		return "", err
 	}
-	if _, err := parseURL(n.URL, nil); err != nil {
+	if n.Kind == KindEmbed {
+		e, err := ParseEmbed(n.URL)
+		if err != nil {
+			return "", err
+		}
+		n.URL = e.URL
+	} else if _, err := parseURL(n.URL, nil); err != nil {
 		return "", err
 	}
 	symbol, imageID, err := checkIcon(ctx, q, userID, n.Icon)

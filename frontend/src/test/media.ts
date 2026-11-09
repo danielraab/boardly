@@ -19,6 +19,27 @@ export function station(
 	};
 }
 
+/** A Spotify album of the media library, at position. */
+export function embed(
+	id: string,
+	title: string,
+	position = 0,
+	fields: Partial<MediaSource> = {},
+): MediaSource {
+	return {
+		id,
+		kind: "embed",
+		title,
+		url: `https://open.spotify.com/album/${id}`,
+		icon: null,
+		position,
+		provider: "spotify",
+		embedUrl: `https://open.spotify.com/embed/album/${id}`,
+		shape: "audio",
+		...fields,
+	};
+}
+
 /**
  * Replaces the media methods jsdom doesn't implement. play resolves unless
  * playResult is changed; the "playing" event must be fired by the test.

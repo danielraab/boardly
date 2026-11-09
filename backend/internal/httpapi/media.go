@@ -31,6 +31,10 @@ func mediaError(err error) error {
 		return invalid("stream_not_https", "The stream isn't available over https")
 	case errors.Is(err, media.ErrUnreachable):
 		return invalid("stream_unreachable", "The URL doesn't answer with an audio stream")
+	case errors.Is(err, media.ErrEmbedUnsupported):
+		return invalid("embed_unsupported", "This link can't be embedded")
+	case errors.Is(err, media.ErrEmbedUnreachable):
+		return invalid("embed_unreachable", "The provider doesn't know this item or can't be reached")
 	}
 	return err
 }

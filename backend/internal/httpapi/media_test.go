@@ -2,7 +2,10 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -23,6 +26,14 @@ func fakeStreamCheck(_ context.Context, rawURL string) (string, error) {
 		return "https://edge.example/radio.aac", nil
 	}
 	return "https://" + strings.TrimPrefix(strings.TrimPrefix(rawURL, "http://"), "https://"), nil
+}
+
+// fakeEmbedInfo stands in for the provider's oEmbed endpoint.
+func fakeEmbedInfo(_ context.Context, infoURL string) (media.EmbedInfo, error) {
+	if strings.Contains(infoURL, "unreachable0000000000a") {
+		return media.EmbedInfo{}, errors.New("down")
+	}
+	return media.EmbedInfo{Title: "Global Warming"}, nil
 }
 
 func (s *server) createStation(t *testing.T, cookie, title, url string) media.Source {
@@ -64,6 +75,37 @@ func TestMediaCreateAndList(t *testing.T) {
 	}
 }
 
+func TestMediaCreateEmbed(t *testing.T) {
+	s := newServer(t)
+	ann := s.signIn(t, "ann@example.org")
+	post := func(body map[string]any) *httptest.ResponseRecorder {
+		return s.req("POST", "/api/media", mustJSON(body), withCookie(ann))
+	}
+	rec := post(map[string]any{"kind": "embed", "url": "https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy?si=x"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["title"] != "Global Warming" || got["provider"] != "spotify" || got["shape"] != "audio" ||
+		got["url"] != "https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy" ||
+		got["embedUrl"] != "https://open.spotify.com/embed/album/4aawyAB9vmqN3uQ7FjRGTy" {
+		t.Errorf("embed = %v", got)
+	}
+
+	for code, body := range map[string]map[string]any{
+		"embed_unsupported": {"kind": "embed", "url": "https://open.spotify.com/track/4aawyAB9vmqN3uQ7FjRGTy"},
+		"embed_unreachable": {"kind": "embed", "url": "https://open.spotify.com/album/unreachable0000000000a"},
+	} {
+		rec := post(body)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), code) {
+			t.Errorf("%s: %d %s", code, rec.Code, rec.Body)
+		}
+	}
+}
+
 func TestMediaCreateErrors(t *testing.T) {
 	s := newServer(t)
 	ann := s.signIn(t, "ann@example.org")
@@ -71,7 +113,7 @@ func TestMediaCreateErrors(t *testing.T) {
 		body map[string]any
 		code string
 	}{
-		{map[string]any{"kind": "embed", "title": "X", "url": "https://a.example/"}, "invalid_kind"},
+		{map[string]any{"kind": "video", "title": "X", "url": "https://a.example/"}, "invalid_kind"},
 		{map[string]any{"kind": "stream", "title": " ", "url": "https://a.example/"}, "invalid_title"},
 		{map[string]any{"kind": "stream", "title": "X", "url": "ftp://a.example/"}, "invalid_url"},
 		{map[string]any{"kind": "stream", "title": "X", "url": "http://http-only.example/"}, "stream_not_https"},

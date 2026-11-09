@@ -75,7 +75,10 @@ func newFixture(t *testing.T) *fixture {
 	f.fav, f.notes, f.dash = favourites.NewStore(database), notes.NewStore(database), dashboards.NewStore(database)
 	noCheck := func(_ context.Context, u string) (string, error) { return u, nil }
 	noLogo := func(context.Context, string, string) (string, error) { return "", errors.New("no logos") }
-	f.media = media.NewStore(database, noCheck, noLogo)
+	noInfo := func(context.Context, string) (media.EmbedInfo, error) {
+		return media.EmbedInfo{}, errors.New("no provider")
+	}
+	f.media = media.NewStore(database, noCheck, noLogo, noInfo)
 	f.feeds = feeds.NewStore(database, feeds.NewFetcher(true), nil, time.Hour, 100)
 	widgets.Register(f.dash, f.fav, f.notes, f.media, f.feeds, images.NewFavicons(f.images, false))
 	offlineDir, err := blobs.Open(t.TempDir())
@@ -315,6 +318,41 @@ func TestImportOwnExportAgain(t *testing.T) {
 	configs := f.widgetConfigs(dashID)
 	if configs[widgets.KindLinkList]["folderId"] != s.dev || configs[widgets.KindNote]["noteId"] != s.note {
 		t.Errorf("widget configs = %v", configs)
+	}
+}
+
+func TestImportEmbedSources(t *testing.T) {
+	f := newFixture(t)
+	const link = "https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy"
+	if _, err := f.media.Create(f.ctx, f.ann, media.NewSource{
+		Kind: media.KindEmbed, Title: "Global Warming", URL: link, Icon: &notes.Icon{Type: notes.IconSymbol, Name: "music"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	export := f.exportOf(f.ann, false)
+
+	report := f.importInto(f.bob, export, Options{Parts: Parts{Media: true}})
+	if report.Media.Sources != 1 || report.Media.Invalid != 0 {
+		t.Fatalf("report = %+v", report.Media)
+	}
+	list, err := f.media.List(f.ctx, f.bob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Kind != media.KindEmbed || list[0].Title != "Global Warming" || list[0].URL != link ||
+		list[0].Icon == nil || list[0].Icon.Name != "music" || list[0].EmbedURL != "https://open.spotify.com/embed/album/4aawyAB9vmqN3uQ7FjRGTy" {
+		t.Errorf("imported = %+v", list)
+	}
+
+	again := f.importInto(f.bob, export, Options{Parts: Parts{Media: true}})
+	if again.Media.Sources != 0 || again.Media.Duplicates != 1 {
+		t.Errorf("second import = %+v", again.Media)
+	}
+
+	bad := bytes.Replace(export, []byte(link), []byte("https://example.org/player"), 1)
+	cleared := f.importInto(f.ann, bad, Options{Parts: Parts{Media: true}})
+	if cleared.Media.Sources != 0 || cleared.Media.Invalid != 1 {
+		t.Errorf("invalid link = %+v", cleared.Media)
 	}
 }
 

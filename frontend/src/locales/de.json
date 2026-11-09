@@ -943,20 +943,20 @@
 			},
 			"media": {
 				"name": "Medien",
-				"description": "Spielt Sender aus deiner Mediathek ab.",
+				"description": "Spielt Sender und eingebettete Player aus deiner Mediathek ab.",
 				"addTitle": "Medien hinzufügen",
 				"editTitle": "Medien bearbeiten",
-				"sourcesLabel": "Sender",
-				"addPlaceholder": "Sender hinzufügen…",
-				"noMatches": "Keine passenden Sender",
-				"full": "Es können höchstens {{max}} Sender ausgewählt werden.",
+				"sourcesLabel": "Medien",
+				"addPlaceholder": "Medien hinzufügen…",
+				"noMatches": "Keine passenden Medien",
+				"full": "Es können höchstens {{max}} Medien ausgewählt werden.",
 				"drag": "{{name}} ziehen",
 				"moveUp": "{{name}} nach oben",
 				"moveDown": "{{name}} nach unten",
 				"remove": "{{name}} entfernen",
-				"gone": "Dieser Sender existiert nicht mehr",
+				"gone": "Dieses Element existiert nicht mehr",
 				"titleLabel": "Titel",
-				"titleHint": "Optional. Wird über den Sendern angezeigt.",
+				"titleHint": "Optional. Wird über den Medien angezeigt.",
 				"layoutLabel": "Darstellung",
 				"layout": {
 					"list": "Liste",
@@ -964,9 +964,10 @@
 				},
 				"publicLabel": "Auf öffentlichem Dashboard zeigen",
 				"publicHint": "Besucher eines öffentlichen Dashboards können diese Sender abspielen. Sonst siehst nur du das Widget.",
-				"missing": "Diese Sender existieren nicht mehr",
+				"missing": "Diese Medien existieren nicht mehr",
 				"emptyLibrary": "Deine Mediathek ist leer.",
-				"openLibrary": "Sender hinzufügen"
+				"openLibrary": "Medien hinzufügen",
+				"publicEmbedHint": "Spotify und andere eingebettete Player werden auf öffentlichen Dashboards nie angezeigt."
 			},
 			"feed": {
 				"name": "Feed",
@@ -1339,31 +1340,41 @@
 		"retry": "Erneut versuchen",
 		"position": "Position",
 		"finished": "Beendet",
-		"episodeError": "Diese Episode kann gerade nicht abgespielt werden"
+		"episodeError": "Diese Episode kann gerade nicht abgespielt werden",
+		"embedLabel": "Eingebetteter Player",
+		"embedNotice": {
+			"title": "{{provider}}-Player öffnen?",
+			"text": "Dabei verbindet sich dein Browser mit {{provider}}. {{provider}} kann Cookies setzen und deine IP-Adresse sehen. Ohne {{provider}}-Anmeldung in diesem Browser spielt der Player nur Vorschauen.",
+			"open": "Player öffnen"
+		}
 	},
 	"media": {
 		"title": "Medien",
-		"intro": "Deine Internetradio-Sender. Sie laufen im Player unten auf jeder Seite, und mit dem Medien-Widget kannst du sie auf Dashboards legen.",
-		"addStation": "Sender hinzufügen",
-		"empty": "Noch keine Sender",
-		"emptyHint": "Durchsuche das Senderverzeichnis oder gib eine Stream-URL ein, um deinen ersten Sender hinzuzufügen.",
+		"intro": "Deine Internetradio-Sender und eingebetteten Player. Sie laufen auf jeder Seite, und mit dem Medien-Widget kannst du sie auf Dashboards legen.",
+		"addMedia": "Medien hinzufügen",
+		"empty": "Noch keine Medien",
+		"emptyHint": "Suche einen Sender, gib eine Stream-URL ein oder füge einen Spotify-Link ein, um dein erstes Element hinzuzufügen.",
 		"drag": "{{name}} ziehen",
 		"playNamed": "{{name}} abspielen",
 		"pauseNamed": "{{name}} pausieren",
+		"openNamed": "{{name}} öffnen",
 		"actions": "Aktionen für {{name}}",
 		"edit": "Bearbeiten",
 		"delete": "Löschen",
 		"editTitle": "Sender bearbeiten",
+		"editEmbedTitle": "Einbettung bearbeiten",
 		"iconLabel": "Symbol",
 		"save": "Speichern",
 		"cancel": "Abbrechen",
 		"deleteTitle": "Sender löschen?",
+		"deleteEmbedTitle": "Einbettung löschen?",
 		"deleteText": "„{{name}}“ wird aus deiner Mediathek und aus allen Medien-Widgets entfernt.",
 		"add": {
-			"title": "Sender hinzufügen",
+			"title": "Medien hinzufügen",
 			"tabs": {
 				"search": "Suchen",
-				"url": "URL eingeben"
+				"url": "URL eingeben",
+				"embed": "Einbetten"
 			},
 			"searchLabel": "Sender suchen",
 			"searchPlaceholder": "Sendername, z. B. FM4",
@@ -1384,12 +1395,17 @@
 			"nameLabel": "Name",
 			"urlLabel": "Stream-URL",
 			"urlHint": "Nur HTTPS-Streams können abgespielt werden. Playlist-Dateien (.pls, .m3u) gehen auch.",
+			"embedLinkLabel": "Link",
+			"embedNameLabel": "Name (optional)",
+			"embedHint": "Füge einen Link zu einer Spotify-Playlist oder einem Spotify-Album ein.",
 			"checking": "Prüfe…",
 			"errors": {
 				"invalidUrl": "Gib eine vollständige http- oder https-URL ein.",
 				"notHttps": "Dieser Sender bietet nur einen unverschlüsselten Stream an, den Boardly nicht abspielen kann.",
 				"unreachable": "Diese URL liefert keinen Audio-Stream.",
-				"invalidTitle": "Der Name muss 1 bis 200 Zeichen haben."
+				"invalidTitle": "Der Name muss 1 bis 200 Zeichen haben.",
+				"embedUnsupported": "Boardly kann diesen Link nicht einbetten. Verwende einen Link zu einer Spotify-Playlist oder einem Spotify-Album.",
+				"embedUnreachable": "Spotify kennt dieses Element nicht oder ist nicht erreichbar. Prüfe den Link oder gib einen Namen ein."
 			}
 		}
 	},

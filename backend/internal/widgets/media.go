@@ -25,12 +25,17 @@ type mediaConfig struct {
 }
 
 // mediaItem is what anyone gets of a shown source: what the player needs.
+// The embed fields are only ever set for the owner.
 type mediaItem struct {
 	ID    string      `json:"id"`
 	Kind  string      `json:"kind"`
 	Title string      `json:"title"`
 	URL   string      `json:"url"`
 	Icon  *notes.Icon `json:"icon"`
+
+	Provider string `json:"provider,omitempty"`
+	EmbedURL string `json:"embedUrl,omitempty"`
+	Shape    string `json:"shape,omitempty"`
 }
 
 type mediaData struct {
@@ -68,6 +73,16 @@ func Media(store *media.Store) dashboards.Kind {
 			}
 			return json.Marshal(c)
 		},
+		// Visitors play from the resolved data. The IDs would name sources
+		// that aren't shown to them, such as embeds.
+		VisitorConfig: func(raw json.RawMessage) (json.RawMessage, error) {
+			var c mediaConfig
+			if err := json.Unmarshal(raw, &c); err != nil {
+				return nil, err
+			}
+			c.SourceIDs = []string{}
+			return json.Marshal(c)
+		},
 		Resolve: func(ctx context.Context, viewer dashboards.Viewer, raw json.RawMessage) (any, bool, error) {
 			var c mediaConfig
 			if err := json.Unmarshal(raw, &c); err != nil {
@@ -80,14 +95,22 @@ func Media(store *media.Store) dashboards.Kind {
 			if err != nil {
 				return nil, false, err
 			}
-			if len(sources) == 0 && !viewer.IsOwner {
+			items := make([]mediaItem, 0, len(sources))
+			for _, s := range sources {
+				// An embed connects the browser to its provider, so it is
+				// never offered to anyone but the owner.
+				if s.Kind == media.KindEmbed && !viewer.IsOwner {
+					continue
+				}
+				items = append(items, mediaItem{
+					ID: s.ID, Kind: s.Kind, Title: s.Title, URL: s.URL, Icon: s.Icon,
+					Provider: s.Provider, EmbedURL: s.EmbedURL, Shape: s.Shape,
+				})
+			}
+			if len(items) == 0 && !viewer.IsOwner {
 				return nil, false, nil
 			}
-			data := mediaData{Sources: make([]mediaItem, len(sources))}
-			for i, s := range sources {
-				data.Sources[i] = mediaItem{ID: s.ID, Kind: s.Kind, Title: s.Title, URL: s.URL, Icon: s.Icon}
-			}
-			return data, true, nil
+			return mediaData{Sources: items}, true, nil
 		},
 	}
 }

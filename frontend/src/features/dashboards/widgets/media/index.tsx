@@ -187,7 +187,8 @@ function Settings(props: WidgetSettingsProps) {
 						{t("dashboards.widgets.media.publicLabel")}
 					</label>
 					<p id="media-public-hint" className="text-sm text-muted">
-						{t("dashboards.widgets.media.publicHint")}
+						{t("dashboards.widgets.media.publicHint")}{" "}
+						{t("dashboards.widgets.media.publicEmbedHint")}
 					</p>
 				</div>
 			</div>

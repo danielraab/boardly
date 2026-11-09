@@ -63,6 +63,57 @@ func TestMediaConfig(t *testing.T) {
 	}
 }
 
+func (f *fixture) embed(userID, id string) media.Source {
+	f.t.Helper()
+	src, err := f.media.Create(f.ctx, userID, media.NewSource{Kind: media.KindEmbed, URL: "https://open.spotify.com/album/" + id})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return src
+}
+
+func TestMediaResolveEmbeds(t *testing.T) {
+	f := newFixture(t)
+	fm4 := f.station(f.ann, "FM4", nil)
+	album := f.embed(f.ann, "4aawyAB9vmqN3uQ7FjRGTy")
+	cfg := func(ids ...string) dashboards.Widget {
+		raw, _ := json.Marshal(mediaConfig{SourceIDs: ids, Layout: "list", Size: "M", ShowIfPublic: true})
+		return mediaWidget(string(raw))
+	}
+	if err := f.save(cfg(fm4.ID, album.ID), cfg(album.ID)); err != nil {
+		t.Fatal(err)
+	}
+
+	owner := f.lookup(f.ann)
+	if len(owner) != 2 {
+		t.Fatalf("owner sees %d widgets, want 2", len(owner))
+	}
+	wantAlbum := `{"id":"` + album.ID + `","kind":"embed","title":"Album","url":"https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy","icon":null,` +
+		`"provider":"spotify","embedUrl":"https://open.spotify.com/embed/album/4aawyAB9vmqN3uQ7FjRGTy","shape":"audio"}`
+	if data, _ := json.Marshal(owner[1]["data"]); string(data) != canonical(t, `{"sources":[`+wantAlbum+`]}`) {
+		t.Errorf("owner data = %s", data)
+	}
+
+	for _, viewer := range []string{"", f.bob} {
+		visitor := f.lookup(viewer)
+		if len(visitor) != 1 {
+			t.Fatalf("visitor %q sees %d widgets, want 1", viewer, len(visitor))
+		}
+		data, _ := json.Marshal(visitor[0])
+		for _, trace := range []string{album.ID, "spotify", "embed"} {
+			if strings.Contains(string(data), trace) {
+				// The widget's stored config isn't part of a visitor's data
+				// unless it says so; any trace is a leak.
+				t.Errorf("visitor %q gets a trace of the embed (%s): %s", viewer, trace, data)
+			}
+		}
+		sources, _ := json.Marshal(visitor[0]["data"])
+		if !strings.Contains(string(sources), "FM4") {
+			t.Errorf("visitor %q lost the stream: %s", viewer, sources)
+		}
+	}
+}
+
 func TestMediaResolve(t *testing.T) {
 	f := newFixture(t)
 	fm4 := f.station(f.ann, "FM4", &notes.Icon{Type: notes.IconSymbol, Name: "music"})

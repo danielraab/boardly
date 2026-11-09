@@ -53,7 +53,8 @@ func newFixture(t *testing.T) *fixture {
 	f.notes = notes.NewStore(database)
 	f.media = media.NewStore(database,
 		func(_ context.Context, rawURL string) (string, error) { return rawURL, nil },
-		func(context.Context, string, string) (string, error) { return "", errors.New("no logos in tests") })
+		func(context.Context, string, string) (string, error) { return "", errors.New("no logos in tests") },
+		func(context.Context, string) (media.EmbedInfo, error) { return media.EmbedInfo{Title: "Album"}, nil })
 	Register(f.dash, f.fav, f.notes, f.media, feeds.NewStore(database, feeds.NewFetcher(true), nil, time.Hour, 100), images.NewFavicons(imageStore, false))
 	d, err := f.dash.Create(ctx, ann.ID, dashboards.Fields{Title: "Home", Slug: "home", IsPublic: true})
 	if err != nil {

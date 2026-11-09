@@ -20,7 +20,6 @@ import {
 	ArrowDown,
 	ArrowUp,
 	GripVertical,
-	Radio,
 	TriangleAlert,
 	X,
 } from "lucide-react";
@@ -31,10 +30,12 @@ import { textInput } from "#/components/dialogStyles";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
 import { menuItem, menuPopup } from "#/components/menuStyles";
 import type { MediaSource } from "#/features/media/api";
+import { sourceFallbackIcon } from "#/features/media/sourceIcon";
 import { iconProps } from "#/features/notes/noteIcon";
 
 /** A source that can be chosen: a station, or a feed for the feed widget. */
-type Choice = Pick<MediaSource, "id" | "title" | "icon">;
+type Choice = Pick<MediaSource, "id" | "title" | "icon"> &
+	Partial<Pick<MediaSource, "kind">>;
 
 /** Where the chooser's texts are: each kind that uses it has the same keys. */
 type Labels = "dashboards.widgets.media" | "dashboards.widgets.feed";
@@ -171,7 +172,7 @@ function ChosenSource({
 					<>
 						<ChosenIcon
 							{...iconProps(source.icon)}
-							fallback={Radio}
+							fallback={sourceFallbackIcon(source)}
 							className="size-4"
 						/>
 						<span className="min-w-0 flex-1 truncate">{name}</span>
@@ -289,7 +290,7 @@ export function SourceSearch({
 									>
 										<ChosenIcon
 											{...iconProps(source.icon)}
-											fallback={Radio}
+											fallback={sourceFallbackIcon(source)}
 											className="size-4"
 										/>
 										<span className="min-w-0 flex-1 truncate">

@@ -320,13 +320,13 @@ notes included.
 ### Media
 
 The **Media** page (`/media`, linked from the user menu) is your library of internet radio
-stations. Play one there or from a **Media** widget on a dashboard, and it plays in the **player
+stations and embedded players. Play a station there or from a **Media** widget on a dashboard, and it plays in the **player
 bar** at the bottom of every page. It keeps playing while you move between pages, until you close
 it, sign out or reload. The bar has play/pause, volume and mute (remembered in the browser), and
 works with the media keys, headset buttons and the lock screen of your device. Only one station
 plays at a time.
 
-- **Adding stations**: **Add station** searches [radio-browser.info](https://www.radio-browser.info),
+- **Adding stations**: **Add media** searches [radio-browser.info](https://www.radio-browser.info),
   a free community directory of internet radio stations. Boardly's server sends the search there
   and loads the stations' logos, so your browser contacts neither the directory nor the logos'
   hosts, and the directory never sees your IP address; the dialog says so. This needs outbound
@@ -344,6 +344,20 @@ plays at a time.
   icon; the server fetches it once and stores it with your images. The URL check and the logo
   fetch follow `BOARDLY_FETCH_ALLOW_PRIVATE` like favicons (see [Favicons and images](#favicons-and-images)),
   so stations on your local network need it set to `true`.
+- **Spotify playlists and albums**: paste a link in the **Embed** tab of **Add media**. The server
+  asks Spotify for the title and cover, sending only the link, which needs outbound HTTPS to
+  `open.spotify.com`. **Open** shows Spotify's own player in a panel in the corner of the page (at
+  the bottom on phones). It keeps playing between pages until you close it, sign out, reload or
+  start a station or podcast. Boardly loads no Spotify script and can't see or control what the
+  player does, so play, pause and volume are in the player, and Boardly only marks it as open.
+- **Spotify login**: full tracks need you to be logged in to Spotify in the same browser; otherwise
+  Spotify plays 30-second previews. This depends on Spotify and on the browser's handling of
+  third-party cookies, and phones may only get previews.
+- **Privacy of embeds**: nothing is loaded from Spotify until you open a player, and the first time
+  a dialog asks you to confirm that your browser will connect to Spotify, which can set cookies
+  (such as a one-year `sp_t`) and see your IP address. Embeds are never shown on public dashboards,
+  whatever "Show on public dashboard" says, so visitors don't connect to Spotify. If you run an
+  instance for others, mention this in your privacy policy.
 
 ### Feeds
 
