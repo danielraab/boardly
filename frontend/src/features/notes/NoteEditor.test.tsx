@@ -5,7 +5,7 @@ import {
 	waitFor,
 	within,
 } from "@testing-library/react";
-import { $getRoot, $isTextNode } from "lexical";
+import { $getRoot, $getSelection, $isTextNode, UNDO_COMMAND } from "lexical";
 import { describe, expect, it, vi } from "vitest";
 import { apiError } from "#/test/api";
 import { editorOf, selectAll, typeInEditor } from "#/test/lexical";
@@ -206,6 +206,113 @@ describe("task items", () => {
 			[true, [{ type: "text", text: "milk" }]],
 			[false, [{ type: "text", text: "eggs" }]],
 		]);
+	});
+});
+
+describe("reordering task items", () => {
+	const text = (t: string) => [{ type: "text" as const, text: t }];
+	const list = (style: "task" | "bullet", ...names: string[]): Block => ({
+		type: "list",
+		style,
+		items: names.map((name) => ({
+			...(style === "task" && { id: `id-${name}`, checked: false }),
+			content: text(name),
+		})),
+	});
+	const names = (block: Block) =>
+		block.type === "list"
+			? block.items.map((i) => i.content.map((c) => "text" in c && c.text))
+			: [];
+
+	/** Puts the cursor into the text and presses Alt with an arrow key. */
+	async function altArrow(
+		content: HTMLElement,
+		inText: string,
+		key: "ArrowUp" | "ArrowDown",
+	) {
+		const editor = editorOf(content);
+		await act(async () => {
+			editor.update(
+				() => {
+					const node = $getRoot()
+						.getAllTextNodes()
+						.find((n) => n.getTextContent() === inText);
+					node?.select(1, 1);
+				},
+				{ discrete: true },
+			);
+		});
+		await act(async () => {
+			fireEvent.keyDown(content, { key, altKey: true });
+		});
+		return editor.read(
+			() => $getSelection()?.getNodes()[0]?.getTextContent() ?? null,
+		);
+	}
+
+	it("moves the task with the cursor with Alt and an arrow", slow, async () => {
+		const server = await openNote({
+			content: { v: 1, blocks: [list("task", "milk", "bread", "eggs")] },
+		});
+		expect(await altArrow(server.content, "eggs", "ArrowUp")).toBe("eggs");
+		const n = await saved(server, 2);
+		expect(names(blocks(n)[0])).toEqual([["milk"], ["eggs"], ["bread"]]);
+		expect(blocks(n)[0]).toMatchObject({
+			items: [{ id: "id-milk" }, { id: "id-eggs" }, { id: "id-bread" }],
+		});
+
+		await act(async () => {
+			editorOf(server.content).dispatchCommand(UNDO_COMMAND, undefined);
+		});
+		const undone = await saved(server, 3);
+		expect(names(blocks(undone)[0])).toEqual([["milk"], ["bread"], ["eggs"]]);
+	});
+
+	it("does nothing at the ends of the list", slow, async () => {
+		const server = await openNote({
+			content: { v: 1, blocks: [list("task", "milk", "bread")] },
+		});
+		await altArrow(server.content, "milk", "ArrowUp");
+		await altArrow(server.content, "bread", "ArrowDown");
+		expect(
+			within(server.content)
+				.getAllByRole("checkbox")
+				.map((c) => c.textContent),
+		).toEqual(["milk", "bread"]);
+		expect(server.notes[0].version).toBe(1);
+	});
+
+	it("leaves bullet lists alone", slow, async () => {
+		const server = await openNote({
+			content: { v: 1, blocks: [list("bullet", "one", "two")] },
+		});
+		await altArrow(server.content, "two", "ArrowUp");
+		expect(server.content.textContent).toBe("onetwo");
+		expect(screen.queryByRole("button", { name: "Move task" })).toBeNull();
+	});
+
+	it("shows one handle per task item", slow, async () => {
+		const server = await openNote({
+			content: {
+				v: 1,
+				blocks: [list("task", "milk", "bread"), list("bullet", "one")],
+			},
+		});
+		const handles = await screen.findAllByRole("button", { name: "Move task" });
+		expect(handles).toHaveLength(2);
+		expect(handles[0]).toHaveAttribute("tabindex", "-1");
+		expect(server.content.contains(handles[0])).toBe(false);
+	});
+
+	it("shows no handles while the editor is locked", slow, async () => {
+		const server = await openNote({
+			content: { v: 1, blocks: [list("task", "milk")] },
+		});
+		await screen.findByRole("button", { name: "Move task" });
+		await act(async () => {
+			editorOf(server.content).setEditable(false);
+		});
+		expect(screen.queryByRole("button", { name: "Move task" })).toBeNull();
 	});
 });
 

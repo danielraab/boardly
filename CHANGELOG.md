@@ -16,6 +16,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `BOARDLY_FEED_REFRESH_MINUTES` (60) how often feeds are refreshed.
 - Podcast episodes play in the media player, with a position slider, and continue where they
   stopped.
+- Task lists in notes can be reordered: drag the handle to the left of a task, with a mouse or by
+  touch, or press Alt+↑ or Alt+↓ in a task. A task keeps its sublist and moves within its own list.
 
 ### Changed
 

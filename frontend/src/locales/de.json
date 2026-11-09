@@ -1196,6 +1196,7 @@
 			"content": "Inhalt",
 			"placeholder": "Schreib etwas…",
 			"menu": "Weitere Aktionen",
+			"moveTask": "Aufgabe verschieben",
 			"pin": "Notiz anheften",
 			"unpin": "Notiz lösen",
 			"archive": "Notiz archivieren",
