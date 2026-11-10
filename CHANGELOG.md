@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-10
+
 ### Added
 
 - Feeds: subscribe to RSS, Atom and JSON feeds of news and podcasts on the new **Feeds** page
@@ -306,7 +308,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/danielraab/boardly/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/danielraab/boardly/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/danielraab/boardly/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/danielraab/boardly/compare/v0.2.0...v0.3.0
