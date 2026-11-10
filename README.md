@@ -353,9 +353,11 @@ plays at a time.
 - **Spotify login**: full tracks need you to be logged in to Spotify in the same browser; otherwise
   Spotify plays 30-second previews. This depends on Spotify and on the browser's handling of
   third-party cookies, and phones may only get previews.
-- **Privacy of embeds**: nothing is loaded from Spotify until you open a player, and the first time
-  a dialog asks you to confirm that your browser will connect to Spotify, which can set cookies
-  (such as a one-year `sp_t`) and see your IP address. Embeds are never shown on public dashboards,
+- **Privacy of embeds**: nothing is loaded from Spotify until you open a player, and a dialog
+  first asks you to confirm that your browser will connect to Spotify, which can set cookies (such
+  as a one-year `sp_t`) and see your IP address. As with maps, your answer holds until you reload
+  the page, unless you tick **Always open Spotify in this browser**; a link in the player panel
+  takes that back. Embeds are never shown on public dashboards,
   whatever "Show on public dashboard" says, so visitors don't connect to Spotify. If you run an
   instance for others, mention this in your privacy policy.
 

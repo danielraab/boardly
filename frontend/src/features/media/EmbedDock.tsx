@@ -1,6 +1,12 @@
 import { X } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton } from "#/components/buttonStyles";
+import {
+	providerName,
+	useEmbedConsentStored,
+	withdrawEmbeds,
+} from "./embedConsent";
 import { useMediaPlayer } from "./player";
 
 /** The height of the player of each shape: phones, then larger screens. */
@@ -11,6 +17,33 @@ const playerHeight: Record<string, string> = {
 /** What the provider's player may use; the same as its own embed snippet. */
 const allowedFeatures =
 	"autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+
+/** With consent stored for provider, takes that consent back. */
+function WithdrawLink({ provider }: { provider: string }) {
+	const { t } = useTranslation();
+	const stored = useEmbedConsentStored(provider);
+	const [withdrawn, setWithdrawn] = useState(false);
+	const name = providerName(provider);
+	if (withdrawn)
+		return (
+			<p role="status" className="truncate text-xs text-muted">
+				{t("player.embedNotice.withdrawn", { provider: name })}
+			</p>
+		);
+	if (!stored) return null;
+	return (
+		<button
+			type="button"
+			className="block max-w-full truncate text-xs text-muted underline underline-offset-2 hover:text-ink"
+			onClick={() => {
+				withdrawEmbeds(provider);
+				setWithdrawn(true);
+			}}
+		>
+			{t("player.embedNotice.withdraw", { provider: name })}
+		</button>
+	);
+}
 
 /**
  * Shows the open embed in the provider's own player, in a plain iframe. Like
@@ -31,9 +64,13 @@ export function EmbedDock() {
 				className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface shadow-[0_-8px_24px_-16px_var(--color-shadow)] sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[360px] sm:overflow-hidden sm:rounded-xl sm:border"
 			>
 				<div className="flex h-12 items-center gap-2 px-3">
-					<p className="min-w-0 flex-1 truncate text-sm font-medium">
-						{current.title}
-					</p>
+					<div className="min-w-0 flex-1">
+						<p className="truncate text-sm font-medium">{current.title}</p>
+						<WithdrawLink
+							key={current.provider}
+							provider={current.provider ?? ""}
+						/>
+					</div>
 					<button
 						type="button"
 						onClick={stop}

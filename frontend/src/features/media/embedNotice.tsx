@@ -4,67 +4,51 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
+	useId,
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { primaryButton, secondaryButton } from "#/components/buttonStyles";
 import { dialogBackdrop, dialogPopup } from "#/components/dialogStyles";
 import type { PlayableSource } from "./api";
+import { allowEmbeds, isEmbedAllowed, providerName } from "./embedConsent";
 import { useMediaPlayer } from "./player";
-
-/** The name to show for each provider of the server's registry. */
-const providerNames: Record<string, string> = { spotify: "Spotify" };
-
-const noticeKey = "boardly.embedNotice";
-
-function confirmedProviders() {
-	try {
-		return (localStorage.getItem(noticeKey) ?? "").split(",").filter(Boolean);
-	} catch {
-		return [];
-	}
-}
-
-function rememberProvider(provider: string) {
-	try {
-		localStorage.setItem(
-			noticeKey,
-			[...confirmedProviders(), provider].join(","),
-		);
-	} catch {
-		// Without storage the notice is just shown again next time.
-	}
-}
 
 const OpenEmbedContext = createContext<((s: PlayableSource) => void) | null>(
 	null,
 );
 
-/** Opens an embed in the dock, after the first-use notice if that is due. */
+/** Opens an embed in the dock, after the consent notice if that is due. */
 export function useOpenEmbed() {
 	const open = useContext(OpenEmbedContext);
 	if (!open) throw new Error("useOpenEmbed outside EmbedNoticeProvider");
 	return open;
 }
 
-/** Asks once per provider before the browser connects to it. */
+/** Asks for consent before the browser connects to a provider. */
 export function EmbedNoticeProvider({ children }: { children: ReactNode }) {
 	const { t } = useTranslation();
 	const { current, play } = useMediaPlayer();
 	const [pending, setPending] = useState<PlayableSource | null>(null);
+	const [always, setAlways] = useState(false);
+	const alwaysId = useId();
 	const currentId = current?.id;
 
 	const open = useCallback(
 		(source: PlayableSource) => {
 			if (source.id === currentId) return;
-			if (confirmedProviders().includes(source.provider ?? "")) play(source);
-			else setPending(source);
+			if (isEmbedAllowed(source.provider ?? "")) {
+				play(source);
+			} else {
+				setAlways(false);
+				setPending(source);
+			}
 		},
 		[currentId, play],
 	);
 
 	const provider = pending?.provider ?? "";
-	const name = providerNames[provider] ?? provider;
+	const name = providerName(provider);
 
 	return (
 		<OpenEmbedContext.Provider value={open}>
@@ -82,6 +66,18 @@ export function EmbedNoticeProvider({ children }: { children: ReactNode }) {
 						<AlertDialog.Description className="mt-2 text-muted">
 							{t("player.embedNotice.text", { provider: name })}
 						</AlertDialog.Description>
+						<div className="mt-4 flex items-center gap-2 text-sm text-muted">
+							<input
+								id={alwaysId}
+								type="checkbox"
+								checked={always}
+								onChange={(e) => setAlways(e.target.checked)}
+								className="size-4 accent-ink"
+							/>
+							<label htmlFor={alwaysId}>
+								{t("player.embedNotice.always", { provider: name })}
+							</label>
+						</div>
 						<div className="mt-6 flex justify-end gap-2">
 							<AlertDialog.Close className={secondaryButton}>
 								{t("media.cancel")}
@@ -90,7 +86,7 @@ export function EmbedNoticeProvider({ children }: { children: ReactNode }) {
 								type="button"
 								onClick={() => {
 									if (!pending) return;
-									rememberProvider(provider);
+									allowEmbeds(provider, always);
 									play(pending);
 									setPending(null);
 								}}

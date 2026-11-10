@@ -8,6 +8,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContentWidget, Widget } from "#/features/dashboards/api";
 import type { PlayableSource } from "#/features/media/api";
+import { allowEmbeds, resetEmbedConsent } from "#/features/media/embedConsent";
 import i18n from "#/i18n";
 import { mockApi, type Routes, signedIn } from "#/test/api";
 import { section, viewData } from "#/test/dashboards";
@@ -116,11 +117,11 @@ describe("the media widget", () => {
 		const album = embed("album", "Global Warming", 2);
 		const iframes = () => document.querySelectorAll("iframe");
 
-		afterEach(() => localStorage.removeItem("boardly.embedNotice"));
+		afterEach(() => resetEmbedConsent());
 
 		it("loads nothing from the provider until it is opened, and marks it open", async () => {
 			stubAudio();
-			localStorage.setItem("boardly.embedNotice", "spotify");
+			allowEmbeds("spotify", false);
 			dashboard(() => [
 				section("Work", {}, mediaWidget({}, [playable(album)]), {
 					...mediaWidget({ layout: "tiles" }, [playable(album)]),

@@ -3,19 +3,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockApi, type Routes, signedIn } from "#/test/api";
 import { embed, station, stubAudio } from "#/test/media";
 import { renderApp } from "#/test/renderApp";
+import { allowEmbeds, resetEmbedConsent } from "./embedConsent";
 
 const fm4 = station("fm4", "FM4", 0);
 const album = embed("album", "Global Warming", 1);
 const other = embed("other", "Second Album", 2);
-const noticeKey = "boardly.embedNotice";
+const consentKey = "boardly.embeds.allowedProviders";
 
 afterEach(() => {
 	vi.restoreAllMocks();
-	localStorage.removeItem(noticeKey);
+	resetEmbedConsent();
 });
 
 function setup({ confirmed = true, routes = {} as Routes } = {}) {
-	if (confirmed) localStorage.setItem(noticeKey, "spotify");
+	if (confirmed) allowEmbeds("spotify", false);
 	const audio = stubAudio();
 	const api = mockApi({
 		"GET /api/me": signedIn(),
@@ -172,28 +173,101 @@ describe("the embed dock", () => {
 	});
 });
 
-describe("the first-use notice for embeds", () => {
+describe("the consent notice for embeds", () => {
 	const notice = () =>
 		screen.findByRole("alertdialog", { name: "Open the Spotify player?" });
 
-	it("asks before anything is loaded, then remembers the answer", async () => {
+	const confirm = async (
+		user: ReturnType<typeof setup>["user"],
+		{ always = false } = {},
+	) => {
+		const dialog = await notice();
+		if (always)
+			await user.click(
+				within(dialog).getByRole("checkbox", {
+					name: "Always open Spotify in this browser",
+				}),
+			);
+		await user.click(
+			within(dialog).getByRole("button", { name: "Open player" }),
+		);
+	};
+	const closePlayer = (user: ReturnType<typeof setup>["user"]) =>
+		user.click(within(dock()).getByRole("button", { name: "Close player" }));
+	const withdrawLink = () =>
+		within(dock()).queryByRole("button", {
+			name: "Don't open Spotify automatically",
+		});
+
+	it("asks before anything is loaded, then holds for the page only", async () => {
 		const { user } = setup({ confirmed: false });
 		await user.click(await openButton("Global Warming"));
 		const dialog = await notice();
 		expect(
 			within(dialog).getByText(/connects your browser to Spotify/),
 		).toBeVisible();
+		expect(within(dialog).getByRole("checkbox")).not.toBeChecked();
 		expect(frame()).toBeNull();
 
-		await user.click(
-			within(dialog).getByRole("button", { name: "Open player" }),
-		);
+		await confirm(user);
 		expect(frame()).toHaveAttribute("src", album.embedUrl);
-		expect(localStorage.getItem(noticeKey)).toBe("spotify");
+		expect(localStorage.getItem(consentKey)).toBeNull();
+		expect(withdrawLink()).toBeNull();
 
 		await user.click(await openButton("Second Album"));
 		expect(screen.queryByRole("alertdialog")).toBeNull();
 		expect(frame()).toHaveAttribute("src", other.embedUrl);
+
+		// A reload forgets the consent for the page.
+		resetEmbedConsent();
+		await user.click(await openButton("Global Warming"));
+		expect(await notice()).toBeVisible();
+	});
+
+	it("doesn't ask again after a reload with the checkbox", async () => {
+		const { user } = setup({ confirmed: false });
+		await user.click(await openButton("Global Warming"));
+		await confirm(user, { always: true });
+		expect(localStorage.getItem(consentKey)).toBe('["spotify"]');
+		expect(withdrawLink()).toBeVisible();
+
+		await closePlayer(user);
+		resetEmbedConsent();
+		await user.click(await openButton("Second Album"));
+		expect(screen.queryByRole("alertdialog")).toBeNull();
+		expect(frame()).toHaveAttribute("src", other.embedUrl);
+	});
+
+	it("starts with the checkbox off each time it asks", async () => {
+		const { user } = setup({ confirmed: false });
+		await user.click(await openButton("Global Warming"));
+		const dialog = await notice();
+		await user.click(within(dialog).getByRole("checkbox"));
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+		await user.click(await openButton("Global Warming"));
+		expect(within(await notice()).getByRole("checkbox")).not.toBeChecked();
+	});
+
+	it("keeps the player open when the stored consent is withdrawn, and asks after a reload", async () => {
+		const { user } = setup({ confirmed: false });
+		await user.click(await openButton("Global Warming"));
+		await confirm(user, { always: true });
+		const iframe = frame();
+
+		const link = withdrawLink();
+		if (!link) throw new Error("no withdraw link");
+		await user.click(link);
+		expect(localStorage.getItem(consentKey)).toBeNull();
+		expect(within(dock()).getByText("Spotify will ask again.")).toBeVisible();
+		expect(withdrawLink()).toBeNull();
+		expect(frame()).toBe(iframe);
+
+		await closePlayer(user);
+		resetEmbedConsent();
+		await user.click(await openButton("Global Warming"));
+		expect(await notice()).toBeVisible();
 	});
 
 	it("leaves everything as it is when cancelled", async () => {
@@ -209,10 +283,10 @@ describe("the first-use notice for embeds", () => {
 		expect(frame()).toBeNull();
 		expect(audio().src).toBe(fm4.url);
 		expect(miniBar()).toBeVisible();
-		expect(localStorage.getItem(noticeKey)).toBeNull();
+		expect(localStorage.getItem(consentKey)).toBeNull();
 	});
 
-	it("asks each time when the answer can't be stored", async () => {
+	it("holds for the page when the consent can't be stored", async () => {
 		const { user } = setup({ confirmed: false });
 		const setItem = vi
 			.spyOn(Storage.prototype, "setItem")
@@ -220,13 +294,15 @@ describe("the first-use notice for embeds", () => {
 				throw new Error("denied");
 			});
 		await user.click(await openButton("Global Warming"));
-		await user.click(
-			within(await notice()).getByRole("button", { name: "Open player" }),
-		);
+		await confirm(user, { always: true });
 		expect(setItem).toHaveBeenCalled();
 		expect(frame()).toHaveAttribute("src", album.embedUrl);
 
 		await user.click(await openButton("Second Album"));
+		expect(screen.queryByRole("alertdialog")).toBeNull();
+
+		resetEmbedConsent();
+		await user.click(await openButton("Global Warming"));
 		expect(await notice()).toBeVisible();
 	});
 });
