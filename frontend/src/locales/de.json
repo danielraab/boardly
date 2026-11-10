@@ -1344,7 +1344,7 @@
 		"embedLabel": "Eingebetteter Player",
 		"embedNotice": {
 			"title": "{{provider}}-Player öffnen?",
-			"text": "Dabei verbindet sich dein Browser mit {{provider}}. {{provider}} kann Cookies setzen und deine IP-Adresse sehen. Ohne {{provider}}-Anmeldung in diesem Browser spielt der Player nur Vorschauen.",
+			"text": "Dabei verbindet sich dein Browser mit {{provider}}. Der Anbieter kann Cookies setzen und deine IP-Adresse sehen. Ohne {{provider}}-Anmeldung in diesem Browser spielt der Player nur Vorschauen.",
 			"open": "Player öffnen"
 		}
 	},
