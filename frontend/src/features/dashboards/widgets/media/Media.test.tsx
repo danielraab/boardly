@@ -11,7 +11,7 @@ import type { PlayableSource } from "#/features/media/api";
 import i18n from "#/i18n";
 import { mockApi, type Routes, signedIn } from "#/test/api";
 import { section, viewData } from "#/test/dashboards";
-import { station, stubAudio } from "#/test/media";
+import { embed, station, stubAudio } from "#/test/media";
 import { renderApp } from "#/test/renderApp";
 import type { MediaConfig } from ".";
 
@@ -112,11 +112,65 @@ describe("the media widget", () => {
 		expect(screen.getByRole("region", { name: "Media player" })).toBeVisible();
 	});
 
+	describe("with an embed", () => {
+		const album = embed("album", "Global Warming", 2);
+		const iframes = () => document.querySelectorAll("iframe");
+
+		afterEach(() => localStorage.removeItem("boardly.embedNotice"));
+
+		it("loads nothing from the provider until it is opened, and marks it open", async () => {
+			stubAudio();
+			localStorage.setItem("boardly.embedNotice", "spotify");
+			dashboard(() => [
+				section("Work", {}, mediaWidget({}, [playable(album)]), {
+					...mediaWidget({ layout: "tiles" }, [playable(album)]),
+					id: "w2",
+				}),
+			]);
+			const { user } = renderApp("/ann/home");
+			const buttons = await screen.findAllByRole("button", {
+				name: "Open Global Warming",
+			});
+			expect(iframes()).toHaveLength(0);
+			expect(buttons[0].querySelector("[data-icon]")).toHaveAttribute(
+				"data-icon",
+				"fallback",
+			);
+
+			await user.click(buttons[0]);
+			expect(iframes()).toHaveLength(1);
+			for (const b of buttons) {
+				expect(b).toHaveAttribute("aria-pressed", "true");
+				expect(b).toHaveAttribute("data-state", "open");
+			}
+
+			const frame = iframes()[0];
+			await user.click(buttons[1]);
+			expect(iframes()[0]).toBe(frame);
+		});
+
+		it("does nothing in edit mode", async () => {
+			stubAudio();
+			dashboard(
+				() => [section("Work", {}, mediaWidget({ sourceIds: ["album"] }, []))],
+				{
+					library: [album],
+				},
+			);
+			const { user } = renderApp("/ann/home?edit=true");
+			await user.click(
+				await screen.findByRole("button", { name: "Open Global Warming" }),
+			);
+			expect(iframes()).toHaveLength(0);
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
+	});
+
 	it("says when none of its stations exist", async () => {
 		dashboard(() => [section("Work", {}, mediaWidget({}, []))]);
 		renderApp("/ann/home");
 		expect(
-			await screen.findByText("These stations no longer exist"),
+			await screen.findByText("These media sources no longer exist"),
 		).toBeVisible();
 	});
 
@@ -170,8 +224,11 @@ describe("the media widget", () => {
 				/Visitors of a public dashboard can play these stations/,
 			),
 		).toBeVisible();
+		expect(
+			within(dialog).getByText(/never shown on public dashboards/),
+		).toBeVisible();
 
-		const search = await within(dialog).findByLabelText("Stations");
+		const search = await within(dialog).findByLabelText("Media");
 		await user.type(search, "fm");
 		await user.click(await screen.findByRole("option", { name: "FM4" }));
 		await user.type(search, "jazz");
@@ -215,7 +272,7 @@ describe("the media widget", () => {
 			within(dialog).getByText(/Your media library is empty\./),
 		).toBeVisible();
 		expect(
-			within(dialog).getByRole("link", { name: "Add stations" }),
+			within(dialog).getByRole("link", { name: "Add media" }),
 		).toHaveAttribute("href", "/media");
 	});
 
@@ -230,7 +287,7 @@ describe("the media widget", () => {
 		});
 		expect(
 			within(within(picker).getByRole("region", { name: "Medien" })).getByText(
-				"Spielt Sender aus deiner Mediathek ab.",
+				"Spielt Sender und eingebettete Player aus deiner Mediathek ab.",
 			),
 		).toBeVisible();
 	});

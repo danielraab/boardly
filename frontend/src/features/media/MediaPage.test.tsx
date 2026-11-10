@@ -119,8 +119,8 @@ const rowTitles = () =>
 		.map((li) => li.querySelector(".font-medium")?.textContent);
 
 async function openAdd(user: ReturnType<typeof renderApp>["user"]) {
-	await user.click(await screen.findByRole("button", { name: "Add station" }));
-	return screen.findByRole("dialog", { name: "Add station" });
+	await user.click(await screen.findByRole("button", { name: "Add media" }));
+	return screen.findByRole("dialog", { name: "Add media" });
 }
 
 describe("the media page", () => {
@@ -148,7 +148,7 @@ describe("the media page", () => {
 	it("says when there are no stations", async () => {
 		fakeServer([]);
 		renderApp("/media");
-		expect(await screen.findByText("No stations yet")).toBeVisible();
+		expect(await screen.findByText("No media yet")).toBeVisible();
 	});
 
 	it("sends signed-out visitors to the login", async () => {
@@ -390,6 +390,52 @@ describe("adding a station", () => {
 			url: "https://stream.example/live.mp3",
 		});
 		await waitFor(() => expect(rowTitles()).toEqual(["My station"]));
+	});
+
+	it("adds an embed by link, without a name", async () => {
+		const server = fakeServer([]);
+		const { user } = renderApp("/media");
+		const dialog = await openAdd(user);
+		await user.click(within(dialog).getByRole("tab", { name: "Embed" }));
+		expect(
+			within(dialog).getByText("Paste a link to a Spotify playlist or album."),
+		).toBeVisible();
+		await user.type(
+			within(dialog).getByLabelText("Link"),
+			"https://open.spotify.com/album/abc",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(server.api.callsTo("POST", "/api/media")[0].body).toEqual({
+			kind: "embed",
+			url: "https://open.spotify.com/album/abc",
+		});
+	});
+
+	it.each([
+		[
+			"embed_unsupported",
+			"Boardly can't embed this link. Use a link to a Spotify playlist or album.",
+		],
+		[
+			"embed_unreachable",
+			"Spotify doesn't know this item or can't be reached. Check the link, or enter a name.",
+		],
+	])("keeps the dialog open on %s", async (code, message) => {
+		fakeServer([], { "POST /api/media": apiError(400, code) });
+		const { user } = renderApp("/media");
+		const dialog = await openAdd(user);
+		await user.click(within(dialog).getByRole("tab", { name: "Embed" }));
+		await user.type(within(dialog).getByLabelText("Link"), "spotify:album:x");
+		await user.type(within(dialog).getByLabelText("Name (optional)"), "Focus");
+		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		expect(await within(dialog).findByText(message)).toBeVisible();
+		expect(within(dialog).getByLabelText("Link")).toHaveValue(
+			"spotify:album:x",
+		);
+		expect(within(dialog).getByLabelText("Name (optional)")).toHaveValue(
+			"Focus",
+		);
 	});
 
 	it("keeps the dialog open with a message when the stream isn't https", async () => {

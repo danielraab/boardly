@@ -19,6 +19,10 @@ type fixture struct {
 	user  string
 	other string
 	logos map[string]string // logo URL → image ID the fake fetcher returns
+
+	info      EmbedInfo // what the fake provider answers
+	infoErr   error     // when set, the fake provider fails
+	infoCalls []string  // the info URLs that were asked
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -47,7 +51,14 @@ func newFixture(t *testing.T) *fixture {
 		}
 		return "", errors.New("no logo")
 	}
-	f.s = NewStore(database, check, fetchLogo)
+	fetchInfo := func(_ context.Context, infoURL string) (EmbedInfo, error) {
+		f.infoCalls = append(f.infoCalls, infoURL)
+		if f.infoErr != nil {
+			return EmbedInfo{}, f.infoErr
+		}
+		return f.info, nil
+	}
+	f.s = NewStore(database, check, fetchLogo, fetchInfo)
 	return f
 }
 
@@ -105,7 +116,7 @@ func TestCreateValidation(t *testing.T) {
 		in   NewSource
 		want error
 	}{
-		{NewSource{Kind: "embed", Title: "X", URL: "https://a.example/"}, ErrInvalidKind},
+		{NewSource{Kind: "video", Title: "X", URL: "https://a.example/"}, ErrInvalidKind},
 		{NewSource{Kind: KindStream, Title: "   ", URL: "https://a.example/"}, ErrInvalidTitle},
 		{NewSource{Kind: KindStream, Title: string(make([]rune, 201)), URL: "https://a.example/"}, ErrInvalidTitle},
 		{NewSource{Kind: KindStream, Title: "X", URL: "https://bad.example/"}, ErrUnreachable},

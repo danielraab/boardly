@@ -21,7 +21,9 @@ export type PlayerStatus =
 	| "playing"
 	| "paused"
 	| "finished"
-	| "error";
+	| "error"
+	// An embed is in the dock. Boardly can't see whether it plays.
+	| "open";
 
 export type MediaPlayer = {
 	/** The loaded source, or null when the player is closed. */
@@ -226,9 +228,15 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	const play = useCallback(
 		(source: PlayableSource) => {
 			setCurrent(source);
+			if (source.kind === "embed") {
+				loadId.current++;
+				detach();
+				setStatus("open");
+				return;
+			}
 			start(source);
 		},
-		[start],
+		[start, detach],
 	);
 
 	const stop = useCallback(() => {
@@ -286,6 +294,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	);
 
 	const toggle = useCallback(() => {
+		if (status === "open") return;
 		if (status === "playing" || status === "loading") pause();
 		else resume();
 	}, [status, pause, resume]);
@@ -322,10 +331,16 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 		const session =
 			typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
 		if (!session) return;
-		if (!current) {
+		// What an embed plays is the provider's to report.
+		if (!current || current.kind === "embed") {
 			session.metadata = null;
 			for (const action of ["play", "pause", "stop"] as const)
 				session.setActionHandler(action, null);
+			try {
+				session.setActionHandler("seekto", null);
+			} catch {
+				// Not every browser knows this action.
+			}
 			return;
 		}
 		if (typeof MediaMetadata !== "undefined") {

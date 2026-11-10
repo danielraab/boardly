@@ -67,7 +67,7 @@ export function MiniPlayer() {
 	const { t } = useTranslation();
 	const player = useMediaPlayer();
 	const { current, status } = player;
-	if (!current) return null;
+	if (!current || current.kind === "embed") return null;
 	const busy = status === "loading";
 	const playing = status === "playing" || busy;
 	const episode = current.kind === "episode";

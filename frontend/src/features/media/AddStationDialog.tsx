@@ -19,9 +19,11 @@ import {
 } from "#/components/dialogStyles";
 import { ApiError } from "#/lib/api";
 import {
+	createEmbed,
 	createStation,
 	type MediaSource,
 	mediaQueryKey,
+	type NewEmbed,
 	type NewStation,
 	normalizeStreamUrl,
 } from "./api";
@@ -37,7 +39,7 @@ const tab =
 	"rounded-md px-3 py-1.5 text-sm text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent data-[selected]:bg-paper data-[selected]:font-medium data-[selected]:text-ink";
 
 /** The message for a failed URL check, by error code. */
-function checkErrorKey(code: string) {
+export function checkErrorKey(code: string) {
 	switch (code) {
 		case "invalid_url":
 			return "media.add.errors.invalidUrl" as const;
@@ -45,12 +47,16 @@ function checkErrorKey(code: string) {
 			return "media.add.errors.notHttps" as const;
 		case "stream_unreachable":
 			return "media.add.errors.unreachable" as const;
+		case "embed_unsupported":
+			return "media.add.errors.embedUnsupported" as const;
+		case "embed_unreachable":
+			return "media.add.errors.embedUnreachable" as const;
 		default:
 			return "common.genericError" as const;
 	}
 }
 
-/** Adds stations: from a radio-browser.info search, or by URL. */
+/** Adds media: stations from a search or by URL, and embeds by link. */
 export function AddStationDialog({
 	open,
 	onClose,
@@ -84,12 +90,18 @@ export function AddStationDialog({
 								<Tabs.Tab value="url" className={tab}>
 									{t("media.add.tabs.url")}
 								</Tabs.Tab>
+								<Tabs.Tab value="embed" className={tab}>
+									{t("media.add.tabs.embed")}
+								</Tabs.Tab>
 							</Tabs.List>
 							<Tabs.Panel value="search" className="flex min-h-0 flex-col pt-4">
 								<StationSearch library={library} onClose={onClose} />
 							</Tabs.Panel>
 							<Tabs.Panel value="url" className="pt-4">
 								<UrlForm onClose={onClose} />
+							</Tabs.Panel>
+							<Tabs.Panel value="embed" className="pt-4">
+								<EmbedForm onClose={onClose} />
 							</Tabs.Panel>
 						</Tabs.Root>
 					)}
@@ -99,10 +111,13 @@ export function AddStationDialog({
 	);
 }
 
-function useCreateStation(onDone: () => void) {
+function useCreateSource<T>(
+	create: (input: T) => Promise<MediaSource>,
+	onDone: () => void,
+) {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (station: NewStation) => createStation(station),
+		mutationFn: create,
 		onSuccess: (created) => {
 			queryClient.setQueryData<MediaSource[]>(mediaQueryKey, (list) =>
 				list ? [...list, created] : list,
@@ -130,7 +145,7 @@ function StationSearch({
 		enabled: query.length >= minQuery,
 		staleTime: 5 * 60_000,
 	});
-	const create = useCreateStation(onClose);
+	const create = useCreateSource<NewStation>(createStation, onClose);
 	const added = new Set(library.map((s) => normalizeStreamUrl(s.url)));
 	const term = input.trim();
 
@@ -318,7 +333,7 @@ function UrlForm({ onClose }: { onClose: () => void }) {
 	const { t } = useTranslation();
 	const [title, setTitle] = useState("");
 	const [url, setUrl] = useState("");
-	const create = useCreateStation(onClose);
+	const create = useCreateSource<NewStation>(createStation, onClose);
 	const error =
 		create.error instanceof ApiError
 			? create.error.code
@@ -378,6 +393,92 @@ function UrlForm({ onClose }: { onClose: () => void }) {
 						{t("media.add.urlHint")}
 					</p>
 				)}
+			</div>
+			<div className="flex justify-end gap-2">
+				<button type="button" onClick={onClose} className={secondaryButton}>
+					{t("media.cancel")}
+				</button>
+				<button
+					type="submit"
+					disabled={create.isPending}
+					className={primaryButton}
+				>
+					{create.isPending && (
+						<LoaderCircle
+							className="size-4 animate-spin motion-reduce:animate-none"
+							aria-hidden
+						/>
+					)}
+					{create.isPending ? t("media.add.checking") : t("media.add.add")}
+				</button>
+			</div>
+		</form>
+	);
+}
+
+function EmbedForm({ onClose }: { onClose: () => void }) {
+	const { t } = useTranslation();
+	const [title, setTitle] = useState("");
+	const [url, setUrl] = useState("");
+	const create = useCreateSource<NewEmbed>(createEmbed, onClose);
+	const error =
+		create.error instanceof ApiError
+			? create.error.code
+			: create.error
+				? "error"
+				: null;
+
+	function onSubmit(event: FormEvent) {
+		event.preventDefault();
+		create.mutate({ url: url.trim(), title: title.trim() || undefined });
+	}
+
+	return (
+		<form onSubmit={onSubmit} className="flex flex-col gap-4">
+			<div>
+				<label htmlFor="embed-link" className="block text-sm font-medium">
+					{t("media.add.embedLinkLabel")}
+				</label>
+				<input
+					id="embed-link"
+					required
+					value={url}
+					onChange={(e) => setUrl(e.target.value)}
+					placeholder="https://open.spotify.com/"
+					autoComplete="off"
+					aria-invalid={error !== null || undefined}
+					aria-describedby="embed-link-hint"
+					className={textInput}
+				/>
+				{error !== null ? (
+					<p
+						id="embed-link-hint"
+						role="alert"
+						className="mt-1 text-sm text-danger"
+					>
+						{t(
+							error === "invalid_title"
+								? "media.add.errors.invalidTitle"
+								: checkErrorKey(error),
+						)}
+					</p>
+				) : (
+					<p id="embed-link-hint" className="mt-1 text-sm text-muted">
+						{t("media.add.embedHint")}
+					</p>
+				)}
+			</div>
+			<div>
+				<label htmlFor="embed-name" className="block text-sm font-medium">
+					{t("media.add.embedNameLabel")}
+				</label>
+				<input
+					id="embed-name"
+					value={title}
+					maxLength={200}
+					onChange={(e) => setTitle(e.target.value)}
+					className={textInput}
+				/>
 			</div>
 			<div className="flex justify-end gap-2">
 				<button type="button" onClick={onClose} className={secondaryButton}>

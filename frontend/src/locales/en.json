@@ -943,20 +943,20 @@
 			},
 			"media": {
 				"name": "Media",
-				"description": "Plays stations from your media library.",
+				"description": "Plays stations and embedded players from your media library.",
 				"addTitle": "Add media",
 				"editTitle": "Edit media",
-				"sourcesLabel": "Stations",
-				"addPlaceholder": "Add a station…",
-				"noMatches": "No matching stations",
-				"full": "At most {{max}} stations can be selected.",
+				"sourcesLabel": "Media",
+				"addPlaceholder": "Add media…",
+				"noMatches": "No matching media",
+				"full": "At most {{max}} items can be selected.",
 				"drag": "Drag {{name}}",
 				"moveUp": "Move {{name}} up",
 				"moveDown": "Move {{name}} down",
 				"remove": "Remove {{name}}",
-				"gone": "This station no longer exists",
+				"gone": "This item no longer exists",
 				"titleLabel": "Title",
-				"titleHint": "Optional. Shown above the stations.",
+				"titleHint": "Optional. Shown above the items.",
 				"layoutLabel": "Layout",
 				"layout": {
 					"list": "List",
@@ -964,9 +964,10 @@
 				},
 				"publicLabel": "Show on public dashboard",
 				"publicHint": "Visitors of a public dashboard can play these stations. Otherwise only you see the widget.",
-				"missing": "These stations no longer exist",
+				"missing": "These media sources no longer exist",
 				"emptyLibrary": "Your media library is empty.",
-				"openLibrary": "Add stations"
+				"openLibrary": "Add media",
+				"publicEmbedHint": "Spotify and other embedded players are never shown on public dashboards."
 			},
 			"feed": {
 				"name": "Feed",
@@ -1339,31 +1340,41 @@
 		"retry": "Try again",
 		"position": "Position",
 		"finished": "Finished",
-		"episodeError": "This episode can't be played right now"
+		"episodeError": "This episode can't be played right now",
+		"embedLabel": "Embedded player",
+		"embedNotice": {
+			"title": "Open the {{provider}} player?",
+			"text": "This connects your browser to {{provider}}, which can set cookies and see your IP address. Without a {{provider}} login in this browser, it plays previews only.",
+			"open": "Open player"
+		}
 	},
 	"media": {
 		"title": "Media",
-		"intro": "Your internet radio stations. They play in the player at the bottom of every page, and you can add them to dashboards with the Media widget.",
-		"addStation": "Add station",
-		"empty": "No stations yet",
-		"emptyHint": "Search the station directory or enter a stream URL to add your first station.",
+		"intro": "Your internet radio stations and embedded players. They play on every page, and you can add them to dashboards with the Media widget.",
+		"addMedia": "Add media",
+		"empty": "No media yet",
+		"emptyHint": "Search for a station, enter a stream URL or paste a Spotify link to add your first item.",
 		"drag": "Drag {{name}}",
 		"playNamed": "Play {{name}}",
 		"pauseNamed": "Pause {{name}}",
+		"openNamed": "Open {{name}}",
 		"actions": "Actions for {{name}}",
 		"edit": "Edit",
 		"delete": "Delete",
 		"editTitle": "Edit station",
+		"editEmbedTitle": "Edit embed",
 		"iconLabel": "Icon",
 		"save": "Save",
 		"cancel": "Cancel",
 		"deleteTitle": "Delete station?",
+		"deleteEmbedTitle": "Delete embed?",
 		"deleteText": "“{{name}}” will be removed from your library and from all media widgets.",
 		"add": {
-			"title": "Add station",
+			"title": "Add media",
 			"tabs": {
 				"search": "Search",
-				"url": "Enter URL"
+				"url": "Enter URL",
+				"embed": "Embed"
 			},
 			"searchLabel": "Search stations",
 			"searchPlaceholder": "Station name, e.g. FM4",
@@ -1384,12 +1395,17 @@
 			"nameLabel": "Name",
 			"urlLabel": "Stream URL",
 			"urlHint": "Only HTTPS streams can be played. Playlist files (.pls, .m3u) work too.",
+			"embedLinkLabel": "Link",
+			"embedNameLabel": "Name (optional)",
+			"embedHint": "Paste a link to a Spotify playlist or album.",
 			"checking": "Checking…",
 			"errors": {
 				"invalidUrl": "Enter a complete http or https URL.",
 				"notHttps": "This station only offers an unencrypted stream, which Boardly can't play.",
 				"unreachable": "This URL doesn't answer with an audio stream.",
-				"invalidTitle": "The name must have 1 to 200 characters."
+				"invalidTitle": "The name must have 1 to 200 characters.",
+				"embedUnsupported": "Boardly can't embed this link. Use a link to a Spotify playlist or album.",
+				"embedUnreachable": "Spotify doesn't know this item or can't be reached. Check the link, or enter a name."
 			}
 		}
 	},

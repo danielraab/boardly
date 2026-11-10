@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	AudioLines,
 	EllipsisVertical,
 	GripVertical,
 	Pause,
@@ -49,7 +50,7 @@ import { widePage } from "#/components/pageWidths";
 import { iconChoice, iconProps, noteIcon } from "#/features/notes/noteIcon";
 import { ApiError } from "#/lib/api";
 import { usePageTitle } from "#/lib/usePageTitle";
-import { AddStationDialog } from "./AddStationDialog";
+import { AddStationDialog, checkErrorKey } from "./AddStationDialog";
 import {
 	deleteSource,
 	hostOf,
@@ -59,9 +60,11 @@ import {
 	reorderSources,
 	updateSource,
 } from "./api";
+import { useOpenEmbed } from "./embedNotice";
 import { useMediaPlayer } from "./player";
+import { sourceFallbackIcon } from "./sourceIcon";
 
-/** /media: the user's media library, for now internet radio stations. */
+/** /media: the user's media library of radio stations and embeds. */
 export function MediaPage() {
 	const { t } = useTranslation();
 	usePageTitle(t("media.title"));
@@ -86,7 +89,7 @@ export function MediaPage() {
 					className={primaryButton}
 				>
 					<Plus className="size-4" aria-hidden />
-					{t("media.addStation")}
+					{t("media.addMedia")}
 				</button>
 			</div>
 			{list.isError && (
@@ -202,6 +205,8 @@ function StationRow({
 }) {
 	const { t } = useTranslation();
 	const player = useMediaPlayer();
+	const openEmbed = useOpenEmbed();
+	const embed = source.kind === "embed";
 	const {
 		attributes,
 		listeners,
@@ -214,6 +219,10 @@ function StationRow({
 	const isCurrent = player.current?.id === source.id;
 	const playing =
 		isCurrent && (player.status === "playing" || player.status === "loading");
+	const active = playing || (embed && isCurrent);
+	let actionLabel = t("media.playNamed", { name: source.title });
+	if (embed) actionLabel = t("media.openNamed", { name: source.title });
+	else if (playing) actionLabel = t("media.pauseNamed", { name: source.title });
 
 	return (
 		<li
@@ -239,7 +248,7 @@ function StationRow({
 			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-paper">
 				<ChosenIcon
 					{...iconProps(source.icon)}
-					fallback={Radio}
+					fallback={sourceFallbackIcon(source)}
 					className="size-6"
 				/>
 			</span>
@@ -249,16 +258,18 @@ function StationRow({
 			</div>
 			<button
 				type="button"
-				onClick={() => (isCurrent ? player.toggle() : player.play(source))}
-				aria-label={
-					playing
-						? t("media.pauseNamed", { name: source.title })
-						: t("media.playNamed", { name: source.title })
-				}
-				aria-pressed={playing}
+				onClick={() => {
+					if (embed) openEmbed(source);
+					else if (isCurrent) player.toggle();
+					else player.play(source);
+				}}
+				aria-label={actionLabel}
+				aria-pressed={active}
 				className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line text-ink hover:bg-paper aria-pressed:bg-ink aria-pressed:text-paper"
 			>
-				{playing ? (
+				{embed && isCurrent ? (
+					<AudioLines className="size-5" aria-hidden />
+				) : playing ? (
 					<Pause className="size-5" aria-hidden />
 				) : (
 					<Play className="size-5" aria-hidden />
@@ -330,6 +341,7 @@ function EditForm({
 	const [title, setTitle] = useState(source.title);
 	const [url, setUrl] = useState(source.url);
 	const [icon, setIcon] = useState<IconChoice>(() => iconChoice(source.icon));
+	const embed = source.kind === "embed";
 	const save = useMutation({
 		mutationFn: () =>
 			updateSource(source.id, {
@@ -361,7 +373,7 @@ function EditForm({
 	return (
 		<form onSubmit={onSubmit} className="flex flex-col gap-4">
 			<Dialog.Title className="text-lg font-semibold">
-				{t("media.editTitle")}
+				{t(embed ? "media.editEmbedTitle" : "media.editTitle")}
 			</Dialog.Title>
 			<div>
 				<span className="block text-sm font-medium">
@@ -389,11 +401,11 @@ function EditForm({
 			</div>
 			<div>
 				<label htmlFor="edit-station-url" className="block text-sm font-medium">
-					{t("media.add.urlLabel")}
+					{t(embed ? "media.add.embedLinkLabel" : "media.add.urlLabel")}
 				</label>
 				<input
 					id="edit-station-url"
-					type="url"
+					type={embed ? "text" : "url"}
 					required
 					value={url}
 					onChange={(e) => setUrl(e.target.value)}
@@ -409,18 +421,12 @@ function EditForm({
 						{t(
 							code === "invalid_title"
 								? "media.add.errors.invalidTitle"
-								: code === "invalid_url"
-									? "media.add.errors.invalidUrl"
-									: code === "stream_not_https"
-										? "media.add.errors.notHttps"
-										: code === "stream_unreachable"
-											? "media.add.errors.unreachable"
-											: "common.genericError",
+								: checkErrorKey(code),
 						)}
 					</p>
 				) : (
 					<p id="edit-station-url-hint" className="mt-1 text-sm text-muted">
-						{t("media.add.urlHint")}
+						{t(embed ? "media.add.embedHint" : "media.add.urlHint")}
 					</p>
 				)}
 			</div>
@@ -470,7 +476,11 @@ function DeleteStationDialog({
 				<AlertDialog.Backdrop className={dialogBackdrop} />
 				<AlertDialog.Popup className={dialogPopup}>
 					<AlertDialog.Title className="text-lg font-semibold">
-						{t("media.deleteTitle")}
+						{t(
+							source?.kind === "embed"
+								? "media.deleteEmbedTitle"
+								: "media.deleteTitle",
+						)}
 					</AlertDialog.Title>
 					<AlertDialog.Description className="mt-2 text-muted">
 						{t("media.deleteText", { name: source?.title ?? "" })}

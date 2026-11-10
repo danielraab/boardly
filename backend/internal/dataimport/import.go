@@ -701,7 +701,8 @@ func (r *run) importMedia(q db.Querier) error {
 		}
 		id, err := r.s.Media.InsertTx(r.ctx, q, r.userID, media.Imported{Kind: m.Kind, Title: m.Title, URL: m.URL, Icon: r.icon(m.Icon)})
 		if errors.Is(err, media.ErrInvalidKind) || errors.Is(err, media.ErrInvalidTitle) ||
-			errors.Is(err, media.ErrInvalidURL) || errors.Is(err, media.ErrInvalidIcon) {
+			errors.Is(err, media.ErrInvalidURL) || errors.Is(err, media.ErrInvalidIcon) ||
+			errors.Is(err, media.ErrEmbedUnsupported) {
 			report.Invalid++
 			continue
 		}

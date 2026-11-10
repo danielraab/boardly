@@ -1214,19 +1214,24 @@ paths:
       tags: [Media]
       summary: Add a media source
       description: |
-        The URL is checked to answer with an audio stream over https. With
-        `logoUrl` (from a station search) and no `icon`, the logo becomes the
-        source's icon. Unknown fields are rejected.
+        For the kind `stream`, the URL is checked to answer with an audio
+        stream over https. With `logoUrl` (from a station search) and no
+        `icon`, the logo becomes the source's icon. For the kind `embed`, the
+        URL must be a link that a provider accepts (`embed_unsupported`
+        otherwise), `logoUrl` is ignored, and a missing `title` or `icon` is
+        taken from the provider. Without a title and an answer from the
+        provider, the request fails with `embed_unreachable`. Unknown fields
+        are rejected.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [kind, title, url]
+              required: [kind, url]
               properties:
-                kind: { const: stream }
-                title: { type: string, minLength: 1, maxLength: 200 }
+                kind: { enum: [stream, embed] }
+                title: { type: string, maxLength: 200, description: "Required for `stream`, optional for `embed`." }
                 url: { type: string, format: uri }
                 icon: { $ref: "#/components/schemas/Icon" }
                 logoUrl: { type: string, format: uri }
@@ -2068,11 +2073,14 @@ components:
       required: [id, kind, title, url, icon, position]
       properties:
         id: { type: string }
-        kind: { const: stream }
+        kind: { enum: [stream, embed] }
         title: { type: string }
-        url: { type: string, format: uri }
+        url: { type: string, description: "The stream URL, or the canonical link of an embed." }
         icon: { $ref: "#/components/schemas/Icon" }
         position: { type: integer }
+        provider: { const: spotify, description: "Only for the kind `embed`." }
+        embedUrl: { type: string, format: uri, description: "The address of the provider's player. Only for the kind `embed`." }
+        shape: { const: audio, description: "How the player is laid out. Only for the kind `embed`." }
 
     Station:
       type: object

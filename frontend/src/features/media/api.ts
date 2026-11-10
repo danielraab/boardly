@@ -5,14 +5,21 @@ import { api } from "#/lib/api";
 /** What the player needs of a media source; visitors get only this. */
 export type PlayableSource = {
 	id: string;
-	/** A live stream, or an on-demand podcast episode of a feed. */
-	kind: "stream" | "episode";
+	/**
+	 * A live stream, an on-demand podcast episode of a feed, or an item of an
+	 * external provider that plays in the provider's own player.
+	 */
+	kind: "stream" | "episode" | "embed";
 	title: string;
 	url: string;
 	icon: NoteIcon | null;
 	/** For an episode: its feed's title, and its length if the feed says. */
 	subtitle?: string;
 	durationSeconds?: number;
+	/** For an embed: who provides it, its player's address and layout. */
+	provider?: string;
+	embedUrl?: string;
+	shape?: string;
 };
 
 /** A media source as the media API returns it. */
@@ -43,6 +50,22 @@ export function createStation(station: NewStation) {
 	return api<MediaSource>("/api/media", {
 		method: "POST",
 		json: { kind: "stream", ...station },
+	});
+}
+
+export type NewEmbed = {
+	url: string;
+	title?: string;
+};
+
+/**
+ * Adds an embed at the end of the library. A failed check throws an ApiError
+ * with embed_unsupported or embed_unreachable.
+ */
+export function createEmbed(embed: NewEmbed) {
+	return api<MediaSource>("/api/media", {
+		method: "POST",
+		json: { kind: "embed", ...embed },
 	});
 }
 

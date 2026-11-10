@@ -139,7 +139,7 @@ func newServer(t *testing.T) *server {
 		t.Fatal(err)
 	}
 	attachmentStore.Now = c.Now
-	mediaStore := media.NewStore(database, fakeStreamCheck, favicons.FetchLogo)
+	mediaStore := media.NewStore(database, fakeStreamCheck, favicons.FetchLogo, fakeEmbedInfo)
 	feedStore := feeds.NewStore(database, feeds.NewFetcher(true), favicons, time.Hour, 100)
 	widgets.Register(dashboardStore, favouriteStore, noteStore, mediaStore, feedStore, favicons)
 

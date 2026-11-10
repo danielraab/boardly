@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { useMe } from "#/features/auth/session";
 import { CurrentDashboardProvider } from "#/features/dashboards/currentDashboard";
 import { DashboardSwitcher } from "#/features/dashboards/DashboardSwitcher";
+import { EmbedDock } from "#/features/media/EmbedDock";
+import { EmbedNoticeProvider } from "#/features/media/embedNotice";
 import { MiniPlayer } from "#/features/media/MiniPlayer";
 import { MediaPlayerProvider } from "#/features/media/player";
 import { DeletionBanner } from "#/features/settings/DeletionBanner";
@@ -24,36 +26,39 @@ export function AppShell({ children }: { children: ReactNode }) {
 	return (
 		<CurrentDashboardProvider>
 			<MediaPlayerProvider>
-				<div className="flex min-h-screen flex-col">
-					<header
-						className={`${container} flex items-center justify-between py-3`}
-					>
-						<div className="flex min-w-0 items-center gap-1.5">
-							<Link
-								to="/"
-								className="flex min-w-0 items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
-							>
-								<AppIcon className="size-6 shrink-0" />
-								<span className="truncate">{appTitle()}</span>
-							</Link>
-							<DashboardSwitcher />
-						</div>
-						<div className="flex items-center gap-1">
-							<AddLinkButton />
-							<ThemeSwitcher />
-							<LanguageSwitcher />
-							<UserMenu />
-						</div>
-					</header>
-					<main className={`${container} flex-1 pb-10`}>
-						<DeletionBanner />
-						{children}
-					</main>
-					{/* Before the mini player, whose spacer keeps the bar off the footer. */}
-					<AppFooter className={container} />
-					<MiniPlayer />
-					<CookieNotice />
-				</div>
+				<EmbedNoticeProvider>
+					<div className="flex min-h-screen flex-col">
+						<header
+							className={`${container} flex items-center justify-between py-3`}
+						>
+							<div className="flex min-w-0 items-center gap-1.5">
+								<Link
+									to="/"
+									className="flex min-w-0 items-center gap-2 rounded-md text-lg font-semibold tracking-tight"
+								>
+									<AppIcon className="size-6 shrink-0" />
+									<span className="truncate">{appTitle()}</span>
+								</Link>
+								<DashboardSwitcher />
+							</div>
+							<div className="flex items-center gap-1">
+								<AddLinkButton />
+								<ThemeSwitcher />
+								<LanguageSwitcher />
+								<UserMenu />
+							</div>
+						</header>
+						<main className={`${container} flex-1 pb-10`}>
+							<DeletionBanner />
+							{children}
+						</main>
+						{/* Before the mini player, whose spacer keeps the bar off the footer. */}
+						<AppFooter className={container} />
+						<MiniPlayer />
+						<EmbedDock />
+						<CookieNotice />
+					</div>
+				</EmbedNoticeProvider>
 			</MediaPlayerProvider>
 		</CurrentDashboardProvider>
 	);
