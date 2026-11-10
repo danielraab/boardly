@@ -1345,7 +1345,10 @@
 		"embedNotice": {
 			"title": "Open the {{provider}} player?",
 			"text": "This connects your browser to {{provider}}, which can set cookies and see your IP address. Without a {{provider}} login in this browser, it plays previews only.",
-			"open": "Open player"
+			"always": "Always open {{provider}} in this browser",
+			"open": "Open player",
+			"withdraw": "Don't open {{provider}} automatically",
+			"withdrawn": "{{provider}} will ask again."
 		}
 	},
 	"media": {

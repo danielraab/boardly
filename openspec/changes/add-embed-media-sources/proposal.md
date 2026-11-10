@@ -12,7 +12,7 @@ Issue #25 asks for internet radio and, later, other media such as Spotify playli
 - The dock and the audio player exclude each other: starting radio or a podcast removes the dock, and opening an embed stops the audio.
 - Boardly can't see whether an embed is playing, so widgets and the media page mark it as **open** rather than playing or paused, and activating an open source leaves it open.
 - **Embeds are never shown on public dashboards.** The server leaves them out for everyone but the owner, whatever "Show on public dashboard" says. A widget with only embeds disappears for visitors.
-- A **first-use notice** per provider and browser says that opening the player connects to the provider, which can set cookies. Nothing is loaded from the provider before the user confirms it.
+- A **consent notice** per provider says that opening the player connects to the provider, which can set cookies. It works like the map consent: confirming holds until the page is reloaded, and only a checkbox stores it in the browser, with a link in the dock to withdraw it. Nothing is loaded from the provider before the user confirms it.
 - Texts that speak of stations where embeds now appear become general ("Add media" / "Medien hinzufügen").
 - No Spotify library, no provider script and no new dependency. Boardly doesn't use Spotify's Web Playback SDK or iFrame API.
 - Known limitation: full tracks need a Spotify login in the same browser, otherwise Spotify plays 30-second previews. This worked on Chrome and Firefox on desktop. Phones are untested and may only play previews.
@@ -26,7 +26,7 @@ None.
 ### Modified Capabilities
 
 - `media-library`: the `embed` kind, the embed link check and provider registry, title and cover through oEmbed, the "Embed" tab, general wording, and managing embeds on `/media`.
-- `media-player`: the embed dock, its exclusion with the audio player, and the first-use notice.
+- `media-player`: the embed dock, its exclusion with the audio player, and the consent notice.
 - `media-widget`: embeds in the widget, the "open" mark, and leaving embeds out for visitors.
 - `data-import`: imported embed sources are validated through the registry.
 

@@ -18,8 +18,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   stopped.
 - Spotify playlists and albums in the media library and the **Media** widget: paste a link in the
   new **Embed** tab of **Add media**. They open in Spotify's own player, in a plain iframe that is
-  only loaded after you confirm a first-use notice, and keep playing between pages. No Spotify
-  library or script is used. Embeds are never shown on public dashboards. Full tracks need a Spotify
+  only loaded after you confirm a notice (for the page, or always in this browser), and keep playing
+  between pages. No Spotify library or script is used. Embeds are never shown on public dashboards. Full tracks need a Spotify
   login in the same browser; otherwise Spotify plays previews.
 - Task lists in notes can be reordered: drag the handle to the left of a task, with a mouse or by
   touch, or press Alt+↑ or Alt+↓ in a task. A task keeps its sublist and moves within its own list.

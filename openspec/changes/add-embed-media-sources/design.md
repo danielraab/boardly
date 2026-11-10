@@ -16,7 +16,7 @@ Today every source of the library plays through one `<audio>` element that `Medi
 - Showing what an embed plays, or controlling it from Boardly. That needs a provider script, which was ruled out because it would run with the rights of Boardly's page.
 - Tracks, podcasts and artists of Spotify. They are later additions to the provider's accepted types.
 - YouTube itself. The design leaves room for it, but this change adds only the `audio` shape.
-- Consent management through the `analytics-consent` banner. The first-use notice is separate, and is per provider.
+- Consent management through the `analytics-consent` banner. The consent notice is separate, and is per provider.
 
 ## Decisions
 
@@ -66,9 +66,9 @@ A fixed element with `sm:` variants: from `sm` up, bottom-right and 360 px wide,
 
 A later `video` shape would use a 16:9 box. The dock has no collapsed state, because YouTube requires its player to stay visible.
 
-### First-use notice in the frontend
+### Consent notice in the frontend, modelled on the map consent
 
-The notice is a dialog shown by a small `useOpenEmbed` helper that widgets and the media page share. The answer is stored per provider under one `localStorage` key, wrapped so that a failure just means asking again. Provider display names ("Spotify") live in a small frontend map, used with translated sentences that take the name as a parameter.
+The notice is a dialog shown by a small `useOpenEmbed` helper that widgets and the media page share. A new `embedConsent.ts` works like `mapConsent.ts`: confirming allows the provider in a module-level set, which lasts until the page is reloaded, and the "Always open" checkbox also stores it in `localStorage`, wrapped so that a failure leaves only the consent for the page. A link in the dock header withdraws the stored consent; it sits under the title, so the height of the dock and the space reserved for it stay the same. Provider display names ("Spotify") live in a small frontend map, used with translated sentences that take the name as a parameter.
 
 ### Visitor filter in `Resolve`
 

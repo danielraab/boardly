@@ -22,7 +22,7 @@
 
 - [x] 4.1 Add `embed` with `provider`, `embedUrl` and `shape` to `PlayableSource`, and the status `open`; make `play` stop the audio for an embed and close the embed for a stream or an episode, and make `toggle` and Media Session ignore embeds; verify in `player.test.tsx` for both directions of exclusion
 - [x] 4.2 Add `EmbedDock` in the app shell next to `MiniPlayer`: plain iframe with the `allow` list, title and close button, 360 px floating from `sm` up and full width below it, 352 or 152 px high from `shape`, keyed on `embedUrl`, and with bottom space reserved on the page; verify with component tests for both shapes of the layout, that a rename doesn't remount the iframe, that a changed link does, and that no provider script is added to the document
-- [x] 4.3 Add the first-use notice and the `useOpenEmbed` helper, with the answer stored per provider and a guarded `localStorage`; verify with tests for first use, confirm, cancel while a station plays, and storage that throws
+- [x] 4.3 Add the consent notice and the `useOpenEmbed` helper, with consent per provider that lasts until a reload, the "Always open" checkbox that stores it in a guarded `localStorage`, and the link in the dock that withdraws it; verify with tests for first use, confirm, a reload with and without the checkbox, withdrawing, cancel while a station plays, and storage that throws
 
 ## 5. Library and widget UI
 
