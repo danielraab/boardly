@@ -182,11 +182,19 @@ With `dashboards`, every dashboard of the file SHALL be added with its title, la
 - **THEN** the dashboards are imported as usual
 
 ### Requirement: Imported media sources
-With `media`, every media source of the file SHALL be added after the user's media sources, in the order of the file, with its kind, title, URL and icon. A media source whose URL equals the URL of one of the user's media sources, or of one imported before it, SHALL be skipped and counted as a duplicate. A media source of a kind this server doesn't know is skipped and counted as invalid.
+With `media`, every media source of the file SHALL be added after the user's media sources, in the order of the file, with its kind, title, URL and icon. A media source whose URL equals the URL of one of the user's media sources, or of one imported before it, SHALL be skipped and counted as a duplicate. A media source of a kind this server doesn't know is skipped and counted as invalid. A media source of the kind `embed` whose URL no provider accepts (see "Embed links" in the `media-library` capability) is skipped and counted as invalid. The import SHALL NOT contact the provider, and it SHALL NOT take a player address from the file.
 
 #### Scenario: Duplicate station
 - **WHEN** Ann has the station `https://radio.example.org/stream` and imports an export with the same URL
 - **THEN** no second station is added, and the report counts one duplicate media source
+
+#### Scenario: Embed source
+- **WHEN** an export has an `embed` source with the URL `https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy` and the title "Global Warming"
+- **THEN** the source is added with its title and icon, and its player address is built by this server
+
+#### Scenario: Embed with a link no provider accepts
+- **WHEN** an export has an `embed` source with the URL `https://example.org/player`
+- **THEN** the source isn't added, and the report counts one invalid media source
 
 ### Requirement: Files from the archive
 An image, attachment or offline copy part of a ZIP export SHALL be imported from the file named in its `file`, or in the `article` or `screenshot` of an `offlineCopy`. Images and attachments SHALL meet this server's rules for uploaded images and attachments (allowed types and maximum size). An article SHALL be HTML of at most `BOARDLY_OFFLINE_MAX_SIZE_MB` megabytes, and it SHALL be sanitized again like a captured article before it is stored (see "Readable article" in the `offline-copies` capability). A screenshot SHALL be a JPEG, PNG or WebP within the preview image limits, and it is converted like a captured screenshot. A file that doesn't meet these rules, that is missing from the archive, or, for images and attachments, whose `file` is `null`, SHALL be skipped and counted in the report. The items that use it are imported without it (see "References between imported items"). An offline copy part whose path is `null` is not imported and not counted, because the copy may simply not have that part. A JSON export has no files, so no image, attachment or offline copy part is imported from it.

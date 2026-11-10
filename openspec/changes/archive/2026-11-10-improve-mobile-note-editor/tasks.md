@@ -14,8 +14,8 @@
 
 ## 3. Keyboard
 
-- [ ] 3.1 Add `interactive-widget=resizes-content` to the viewport meta tag in `frontend/index.html`; verify on Chrome on Android that the toolbar row stays visible while typing at the end of a long note, and that the mini player doesn't get in the way
-- [ ] 3.2 Test typing at the end of a long note on iOS Safari; if the toolbar row leaves the view, update this change with a `visualViewport` offset before implementing one
+- [x] 3.1 Add `interactive-widget=resizes-content` to the viewport meta tag in `frontend/index.html`; verify on Chrome on Android that the toolbar row stays visible while typing at the end of a long note, and that the mini player doesn't get in the way
+- [x] 3.2 Test typing at the end of a long note on iOS Safari; if the toolbar row leaves the view, update this change with a `visualViewport` offset before implementing one
 
 ## 4. Docs and checks
 

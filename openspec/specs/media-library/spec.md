@@ -6,29 +6,29 @@ Gives a signed-in user a library of media sources on the `/media` page, starting
 ## Requirements
 
 ### Requirement: Media page
-`/media` SHALL require a signed-in user and show the heading "Media" / "Medien", an "Add station" / "Sender hinzufügen" button and the user's media sources in their order. Signed-out visitors SHALL be sent to `/login`. When the user has no media sources, the page SHALL show "No stations yet" / "Noch keine Sender" with a hint to add one. The document title is "Media - <app title>".
+`/media` SHALL require a signed-in user and show the heading "Media" / "Medien", an "Add media" / "Medien hinzufügen" button and the user's media sources in their order. Signed-out visitors SHALL be sent to `/login`. When the user has no media sources, the page SHALL show "No media yet" / "Noch keine Medien" with a hint to add some. The document title is "Media - <app title>".
 
 #### Scenario: Open the page
 - **WHEN** Ann has the stations "FM4" and "Jazz Radio" in that order and opens `/media`
-- **THEN** the page shows "Media", the "Add station" button, and "FM4" followed by "Jazz Radio"
+- **THEN** the page shows "Media", the "Add media" button, and "FM4" followed by "Jazz Radio"
 
 #### Scenario: Empty library
 - **WHEN** Ann has no media sources and opens `/media`
-- **THEN** the page shows "No stations yet"
+- **THEN** the page shows "No media yet"
 
 #### Scenario: Signed out
 - **WHEN** a signed-out visitor opens `/media`
 - **THEN** the browser shows `/login`
 
 ### Requirement: Media sources
-Each media source SHALL belong to exactly one user and have an ID, a kind, a title (trimmed, 1–200 characters), a URL, an optional icon (a symbol or an image, never both) and a position in the user's list. The only kind in this version is `stream`, an internet radio station whose URL is an `https` URL of an audio stream. The server SHALL reject any other kind with 400 `invalid_kind`, and a title outside 1–200 characters with 400 `invalid_title`. A user SHALL NOT see or change another user's media sources. Requests for another user's source, or for an unknown one, get 404 `not_found`. Deleting a user deletes their media sources.
+Each media source SHALL belong to exactly one user and have an ID, a kind, a title (trimmed, 1–200 characters), a URL, an optional icon (a symbol or an image, never both) and a position in the user's list. The kinds are `stream`, an internet radio station whose URL is an `https` URL of an audio stream, and `embed`, an item of an external provider that plays in the provider's own player (see "Embed links"). The server SHALL reject any other kind with 400 `invalid_kind`, and a title outside 1–200 characters with 400 `invalid_title`. A user SHALL NOT see or change another user's media sources. Requests for another user's source, or for an unknown one, get 404 `not_found`. Deleting a user deletes their media sources.
 
 #### Scenario: Another user's station
 - **WHEN** Bob requests `PATCH /api/media/<ID of Ann's station>`
 - **THEN** the server responds 404 with `not_found` and the station is unchanged
 
 #### Scenario: Unknown kind
-- **WHEN** Ann creates a media source with kind `embed`
+- **WHEN** Ann creates a media source with kind `video`
 - **THEN** the server responds 400 with `invalid_kind`
 
 #### Scenario: Empty title
@@ -37,9 +37,9 @@ Each media source SHALL belong to exactly one user and have an ID, a kind, a tit
 
 ### Requirement: Media API
 The web app SHALL manage media sources through these endpoints, all of which require a session and respond 401 without one:
-- `GET /api/media` lists the user's sources in their order, each with `id`, `kind`, `title`, `url`, `icon` (as for notes: `{ "type": "symbol", "name": … }`, `{ "type": "image", "imageId": … }` or `null`) and `position`.
-- `POST /api/media` creates a source from `kind`, `title`, `url` and optionally `icon` or `logoUrl`, adds it at the end of the list after checking its URL (see "Stream URL check"), and responds 201 with the source.
-- `PATCH /api/media/{id}` changes `title`, `url` (checked again only when it changed) or `icon` (`null` removes it), and responds with the source.
+- `GET /api/media` lists the user's sources in their order, each with `id`, `kind`, `title`, `url`, `icon` (as for notes: `{ "type": "symbol", "name": … }`, `{ "type": "image", "imageId": … }` or `null`) and `position`. A source of kind `embed` also has `provider` (`spotify`), `embedUrl` (the address of the provider's player) and `shape` (`audio`, a player of fixed height).
+- `POST /api/media` creates a source from `kind`, `title`, `url` and optionally `icon` or `logoUrl`, adds it at the end of the list after checking its URL (see "Stream URL check" and "Embed links"), and responds 201 with the source. For the kind `embed`, `title` is optional and `logoUrl` is ignored (see "Embed title and cover").
+- `PATCH /api/media/{id}` changes `title`, `url` (checked again only when it changed) or `icon` (`null` removes it), and responds with the source. A changed `url` of an `embed` source SHALL be a link to an item the registry accepts, and the title and icon stay as they are.
 - `PUT /api/media/order` takes the IDs of all the user's sources in their new order. A list that isn't exactly the user's source IDs gets 400 `invalid_order`.
 - `DELETE /api/media/{id}` deletes the source and responds 204.
 - `GET /api/media/search?q=<terms>` searches radio-browser.info by station name on the server and responds with at most 30 results, most popular first. Each result has `id`, `name`, `url` (the stream URL, resolved by the directory where it could), `logoUrl` (the directory's logo URL or `null`), `logo` (a link to the logo through Boardly, see below, or `null`), `country`, `tags` (at most 3), `bitrate` (kbit/s or `null`) and `playable` (whether `url` is `https`). Terms that are shorter than 2 or longer than 100 characters after trimming get 400 `invalid_query`. When the directory can't be reached or answers with an error, the server responds 502 `directory_unreachable`. Searches are limited per user, and too many get 429 `rate_limited` with `Retry-After`. The server sends radio-browser.info only the terms and the search options, never the user's IP address, session or any other data about the user.
@@ -48,6 +48,14 @@ The web app SHALL manage media sources through these endpoints, all of which req
 #### Scenario: Create
 - **WHEN** Ann posts a stream "FM4" with the URL `https://orf-live.ors-shoutcast.at/fm4-q2a`
 - **THEN** the server responds 201 with the new station, and it is last in `GET /api/media`
+
+#### Scenario: Create an embed
+- **WHEN** Ann posts kind `embed` with the URL `https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy` and no title
+- **THEN** the server responds 201 with the album's title, `provider` `spotify`, `embedUrl` `https://open.spotify.com/embed/album/4aawyAB9vmqN3uQ7FjRGTy` and `shape` `audio`
+
+#### Scenario: A stream has no embed fields
+- **WHEN** Ann requests `GET /api/media` and has the stream "FM4"
+- **THEN** "FM4" has no `provider`, `embedUrl` or `shape`
 
 #### Scenario: Reorder
 - **WHEN** Ann has "FM4" and "Jazz Radio" and puts `[<Jazz Radio>, <FM4>]` to `/api/media/order`
@@ -131,7 +139,7 @@ When a stream is created with a `logoUrl` and without an `icon`, the server SHAL
 - **THEN** the station is saved without an icon
 
 ### Requirement: Station search
-The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "Enter URL" / "URL eingeben". The search tab has a search field with a "Search" / "Suchen" button next to it. Typing SHALL NOT search: only pressing Enter in the field or activating the button sends the search, and only with at least 2 characters after trimming (with fewer, the button is disabled and Enter does nothing). The button SHALL be aligned with the field and have the same height. Below the `sm` breakpoint, it SHALL show only its search icon; its accessible name still says "Search" / "Suchen". The search goes to Boardly's server (`GET /api/media/search`), which searches the public radio-browser.info directory. While searching, the browser SHALL contact neither radio-browser.info nor the hosts of station logos: logos are loaded through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon, also when the logo can't be loaded), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." When searches are limited, it shows "Too many searches. Try again in a moment." / "Zu viele Suchen. Versuch es gleich noch einmal." Nothing is sent before the user submits a search. Results stay shown for the last submitted search while the user edits the field. Below the `sm` breakpoint, the add button of a result SHALL show only its icon; its accessible name still says "Add <station>" / "<station> hinzufügen".
+The "Add media" dialog SHALL have the tabs "Search" / "Suchen" (default), "Enter URL" / "URL eingeben" and "Embed" / "Einbetten". The search tab has a search field with a "Search" / "Suchen" button next to it. Typing SHALL NOT search: only pressing Enter in the field or activating the button sends the search, and only with at least 2 characters after trimming (with fewer, the button is disabled and Enter does nothing). The button SHALL be aligned with the field and have the same height. Below the `sm` breakpoint, it SHALL show only its search icon; its accessible name still says "Search" / "Suchen". The search goes to Boardly's server (`GET /api/media/search`), which searches the public radio-browser.info directory. While searching, the browser SHALL contact neither radio-browser.info nor the hosts of station logos: logos are loaded through Boardly's server. It shows at most 30 results, ordered by popularity. Each result shows the station's logo (or a radio icon, also when the logo can't be loaded), name, country, tags and bitrate, if known. A station without an `https` stream URL SHALL be shown dimmed with "Not playable (no HTTPS stream)" / "Nicht abspielbar (kein HTTPS-Stream)" and can't be added. Choosing a playable result SHALL create the station with its name as title, its stream URL and its logo URL. A result whose station is already in the library, by URL, SHALL show "Added" / "Hinzugefügt" and can't be added again. While searching, the dialog shows a loading state. When the directory can't be reached, it shows "The station directory isn't reachable right now. You can still enter a URL." / "Das Senderverzeichnis ist gerade nicht erreichbar. Du kannst trotzdem eine URL eingeben." When searches are limited, it shows "Too many searches. Try again in a moment." / "Zu viele Suchen. Versuch es gleich noch einmal." Nothing is sent before the user submits a search. Results stay shown for the last submitted search while the user edits the field. Below the `sm` breakpoint, the add button of a result SHALL show only its icon; its accessible name still says "Add <station>" / "<station> hinzufügen".
 
 #### Scenario: Search and add
 - **WHEN** Ann types "fm4" and chooses the result "FM4" with an `https` stream
@@ -185,7 +193,7 @@ The "Add station" dialog SHALL have the tabs "Search" / "Suchen" (default) and "
 The search tab SHALL always show a notice that the search uses radio-browser.info, a free, community-run station directory that isn't part of Boardly, and that the search terms reach it through this server without the user's IP address: "Search by radio-browser.info, a free community directory. Your search terms are sent to it through this server, without your IP address." / "Suche über radio-browser.info, ein freies Community-Verzeichnis. Deine Suchbegriffe werden über diesen Server dorthin gesendet, ohne deine IP-Adresse." The name SHALL link to `https://www.radio-browser.info` in a new tab, without giving the new page access to the opener, and with an accessible name that says it opens in a new tab.
 
 #### Scenario: Notice shown
-- **WHEN** Ann opens the "Search" tab of the "Add station" dialog
+- **WHEN** Ann opens the "Search" tab of the "Add media" dialog
 - **THEN** the notice about radio-browser.info, with the note that her IP address isn't sent, is visible above the results, with a link to `https://www.radio-browser.info`
 
 ### Requirement: Add a station by URL
@@ -217,3 +225,75 @@ Each station on `/media` SHALL show its icon (or a radio icon), its title and it
 #### Scenario: Reorder with the keyboard
 - **WHEN** Ann focuses the handle of "Jazz Radio", presses Space, ArrowUp and Space
 - **THEN** "Jazz Radio" is above "FM4", and the order is saved
+
+### Requirement: Embed links
+An `embed` source's URL SHALL be a link that a known provider accepts. The server keeps a registry of providers. Each provider recognizes its links, gives each item a canonical URL and the address of its player, and has a `shape`. The only provider in this version is `spotify`, which accepts these links to a playlist or an album, with a 22-character ID of letters and digits:
+- `https://open.spotify.com/playlist/<id>` and `https://open.spotify.com/album/<id>`, also with a language segment such as `/intl-de/` before the type, and with any query string, which is dropped.
+- `spotify:playlist:<id>` and `spotify:album:<id>`.
+
+The server SHALL save the canonical URL `https://open.spotify.com/<type>/<id>`. The provider, the player address `https://open.spotify.com/embed/<type>/<id>` and the shape follow from it and are not stored. Any other link, such as a track, a short `spotify.link` address or another host, SHALL get 400 `embed_unsupported`. Checking a link makes no network request. The player address SHALL always be built by the server from the provider and the item's type and ID, never taken from the pasted link.
+
+#### Scenario: Link with tracking parameter
+- **WHEN** Ann adds `https://open.spotify.com/intl-de/playlist/37i9dQZF1DXcBWIGoYBM5M?si=abc`
+- **THEN** the source is saved with the URL `https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M`
+
+#### Scenario: Spotify URI
+- **WHEN** Ann adds `spotify:album:4aawyAB9vmqN3uQ7FjRGTy`
+- **THEN** the source is saved with the URL `https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy`
+
+#### Scenario: Track link
+- **WHEN** Ann adds a link to a Spotify track
+- **THEN** the server responds 400 with `embed_unsupported` and nothing is saved
+
+#### Scenario: Another host
+- **WHEN** Ann adds `https://example.org/embed/album/4aawyAB9vmqN3uQ7FjRGTy` with the kind `embed`
+- **THEN** the server responds 400 with `embed_unsupported` and nothing is saved
+
+### Requirement: Embed title and cover
+When an `embed` source is created without a title or without an icon, the server SHALL ask the provider for the item's title and cover through the provider's oEmbed endpoint, sending only the item's link, over guarded connections (no private or internal addresses, unless `BOARDLY_FETCH_ALLOW_PRIVATE` is set), within 10 seconds and reading at most 64 KB. A given title SHALL be kept, and a title from the provider SHALL be cut to 200 characters. A cover SHALL be fetched like a station logo (see "Station logo") and become the source's icon unless the request has an `icon`. When the provider can't be reached or doesn't know the item, a source with a title SHALL be saved without a cover, and a source without a title SHALL get 400 `embed_unreachable`. The browser SHALL NOT contact the provider while a source is added.
+
+#### Scenario: Title and cover from the provider
+- **WHEN** Ann adds a link to the album "Global Warming" without a title
+- **THEN** the source's title is "Global Warming" and its icon is the album's cover, served from `/api/images/<id>`
+
+#### Scenario: Own title
+- **WHEN** Ann adds a playlist with the title "Focus"
+- **THEN** the source's title is "Focus" and its icon is the playlist's cover
+
+#### Scenario: Provider unreachable without a title
+- **WHEN** the provider doesn't answer and Ann adds a link without a title
+- **THEN** the server responds 400 with `embed_unreachable` and nothing is saved
+
+#### Scenario: Provider unreachable with a title
+- **WHEN** the provider doesn't answer and Ann adds a link with the title "Focus"
+- **THEN** "Focus" is saved without an icon
+
+### Requirement: Add an embed by link
+The "Embed" tab SHALL have a "Link" / "Link" field (required), a "Name (optional)" / "Name (optional)" field and the hint "Paste a link to a Spotify playlist or album." / "Füge einen Link zu einer Spotify-Playlist oder einem Spotify-Album ein." Confirming creates the source. While the server checks the link, the button shows a busy state. A failed check SHALL be shown at the link field with a translated message for `embed_unsupported` ("Boardly can't embed this link. Use a link to a Spotify playlist or album." / "Boardly kann diesen Link nicht einbetten. Verwende einen Link zu einer Spotify-Playlist oder einem Spotify-Album.") and `embed_unreachable` ("Spotify doesn't know this item or can't be reached. Check the link, or enter a name." / "Spotify kennt dieses Element nicht oder ist nicht erreichbar. Prüfe den Link oder gib einen Namen ein."), and the dialog stays open with the entered values.
+
+#### Scenario: Paste a link
+- **WHEN** Ann pastes a link to a Spotify album in the "Embed" tab and confirms
+- **THEN** the album is added at the end of her library and the dialog closes
+
+#### Scenario: Unsupported link
+- **WHEN** the server responds `embed_unsupported`
+- **THEN** the link field says that Boardly can't embed this link, and the dialog stays open
+
+#### Scenario: No third party while adding
+- **WHEN** Ann adds a Spotify album
+- **THEN** every request the browser made went to Boardly's own origin
+
+### Requirement: Manage embeds
+An embed on `/media` SHALL be listed and managed like a station (see "Manage stations"), with these differences. It shows a music icon when it has no icon of its own. Instead of the play button it has an "Open" / "Öffnen" button, whose accessible name includes the title, that opens it in the embed dock (see the `media-player` capability). While it is open, the button SHALL be marked as open with an accessible state, and activating it again leaves the dock as it is. "Edit" shows the field "Link" / "Link" instead of the stream URL. Deleting the embed that is open closes the dock.
+
+#### Scenario: Open from the page
+- **WHEN** Ann activates "Open" on the album "Global Warming"
+- **THEN** the embed dock shows the album's player and the album is marked as open
+
+#### Scenario: Activate an open embed
+- **WHEN** "Global Warming" is open and Ann activates its button again
+- **THEN** the dock stays open and its player isn't reloaded
+
+#### Scenario: Delete the open embed
+- **WHEN** "Global Warming" is open and Ann deletes it and confirms
+- **THEN** the dock closes and the album is gone from the list
