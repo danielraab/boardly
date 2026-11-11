@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bookmark, Heart, Pause, Play, Rss } from "lucide-react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton } from "#/components/buttonStyles";
 import { ChosenIcon } from "#/components/icons/ChosenIcon";
@@ -22,11 +23,16 @@ import {
 	feedItemsQueryKey,
 	setFeedItemFlags,
 } from "./api";
+import { observeResize } from "./observeResize";
 
 /**
  * A feed item: its feed's icon, title, feed and time. A news item opens its
  * link in a new tab, and an episode has a play button. With editing the row
  * does nothing, and showFlags adds the read later and like buttons.
+ *
+ * The row is a container: narrower than 480 px it puts the feed and time
+ * first, the title below over the full width, and the buttons under the text.
+ * The DOM order (icon, title, meta, summary, actions) is the same in both.
  */
 export function FeedItemRow({
 	item,
@@ -48,24 +54,29 @@ export function FeedItemRow({
 	const date = new Date(item.publishedAt);
 	const newsLink = !item.audio && !editing ? item.link : null;
 	const titleLink = item.audio && !editing ? item.link : null;
+	const flags = showFlags && !editing;
+	// Two lines when narrow, one truncated line when wide.
+	const titleClass = `${rowTitle} font-medium`;
 
 	return (
+		// The row is relative so that the news link covers it, and its bottom
+		// edge is left free for a progress bar.
 		<li
-			className={`relative flex min-w-0 items-start gap-2 rounded-md px-1 ${style.row} ${newsLink ? "hover:bg-paper" : ""}`}
+			className={`@container relative min-w-0 rounded-md px-1 ${style.row} ${newsLink ? "hover:bg-paper" : ""}`}
 		>
-			<ChosenIcon
-				{...iconProps(feedIcon(item.feed))}
-				fallback={Rss}
-				className={`${style.icon} mt-0.5 shrink-0`}
-			/>
-			<div className="min-w-0 flex-1">
+			<div className={rowGrid}>
+				<ChosenIcon
+					{...iconProps(feedIcon(item.feed))}
+					fallback={Rss}
+					className={`${style.icon} shrink-0 self-center [grid-area:icon] @min-[480px]:mt-0.5 @min-[480px]:self-start`}
+				/>
 				{newsLink ? (
 					<a
 						href={newsLink}
 						target="_blank"
 						rel="noopener noreferrer"
 						title={item.title}
-						className="block truncate font-medium after:absolute after:inset-0"
+						className={`${titleClass} after:absolute after:inset-0`}
 					>
 						{item.title}
 					</a>
@@ -75,16 +86,16 @@ export function FeedItemRow({
 						target="_blank"
 						rel="noopener noreferrer"
 						title={item.title}
-						className="block truncate font-medium hover:underline"
+						className={`${titleClass} hover:underline`}
 					>
 						{item.title}
 					</a>
 				) : (
-					<p title={item.title} className="truncate font-medium">
+					<p title={item.title} className={titleClass}>
 						{item.title}
 					</p>
 				)}
-				<p className="flex min-w-0 gap-2 text-[0.85em] text-muted">
+				<p className="flex min-w-0 gap-2 text-[0.85em] text-muted [grid-area:meta]">
 					<span className="min-w-0 truncate">{item.feed.title}</span>
 					<time
 						dateTime={item.publishedAt}
@@ -95,23 +106,82 @@ export function FeedItemRow({
 					</time>
 				</p>
 				{showSummary && item.summary && (
-					<p className="line-clamp-2 text-[0.9em] text-muted">{item.summary}</p>
+					<Summary text={item.summary} editing={editing} />
+				)}
+				{(item.audio || flags) && (
+					<div className="flex items-center gap-2 justify-self-end [grid-area:actions] @min-[480px]:self-start">
+						{item.audio && (
+							<EpisodeButton
+								item={
+									item as FeedItem & { audio: NonNullable<FeedItem["audio"]> }
+								}
+								editing={editing}
+								iconClass={style.icon}
+							/>
+						)}
+						{flags && (
+							<FlagButtons
+								item={item}
+								label={t("feeds.flagsOf", { name: item.title })}
+							/>
+						)}
+					</div>
 				)}
 			</div>
-			{item.audio && (
-				<EpisodeButton
-					item={item as FeedItem & { audio: NonNullable<FeedItem["audio"]> }}
-					editing={editing}
-					iconClass={style.icon}
-				/>
-			)}
-			{showFlags && !editing && (
-				<FlagButtons
-					item={item}
-					label={t("feeds.flagsOf", { name: item.title })}
-				/>
-			)}
 		</li>
+	);
+}
+
+/** The grid of a row, narrow by default and wide from 480 px. */
+const rowGrid =
+	"grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 [grid-template-areas:'icon_meta'_'title_title'_'summary_summary'_'actions_actions'] @min-[480px]:grid-cols-[auto_minmax(0,1fr)_auto] @min-[480px]:[grid-template-areas:'icon_title_actions'_'icon_meta_actions'_'icon_summary_actions']";
+
+/** The title: up to two lines when narrow, one truncated line when wide. */
+const rowTitle =
+	"min-w-0 [grid-area:title] line-clamp-2 break-words @min-[480px]:block @min-[480px]:truncate";
+
+/**
+ * The summary, cut off after two lines. When it doesn't fit, a toggle shows
+ * the rest; it sits above the news link, so it never opens the link.
+ */
+function Summary({ text, editing }: { text: string; editing: boolean }) {
+	const { t } = useTranslation();
+	const id = useId();
+	const ref = useRef<HTMLParagraphElement>(null);
+	const [expanded, setExpanded] = useState(false);
+	const [cut, setCut] = useState(false);
+
+	useLayoutEffect(() => {
+		const el = ref.current;
+		if (!el || expanded) return;
+		// Fractional line heights can make scrollHeight a pixel larger
+		// than clientHeight for a text that fits.
+		const measure = () => setCut(el.scrollHeight > el.clientHeight + 1);
+		measure();
+		return observeResize(el, measure);
+	}, [expanded]);
+
+	return (
+		<div className="min-w-0 text-[0.9em] text-muted [grid-area:summary]">
+			<p
+				id={id}
+				ref={ref}
+				className={`break-words ${expanded ? "" : "line-clamp-2"}`}
+			>
+				{text}
+			</p>
+			{!editing && (cut || expanded) && (
+				<button
+					type="button"
+					aria-expanded={expanded}
+					aria-controls={id}
+					onClick={() => setExpanded(!expanded)}
+					className="relative z-10 text-ink underline-offset-2 hover:underline"
+				>
+					{t(expanded ? "feeds.showLess" : "feeds.showMore")}
+				</button>
+			)}
+		</div>
 	);
 }
 

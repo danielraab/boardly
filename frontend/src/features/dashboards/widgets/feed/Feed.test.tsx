@@ -74,6 +74,17 @@ function dashboard(
 	});
 }
 
+/** jsdom has no layout: summaries starting with "LONG" count as cut off. */
+function stubCutOffSummaries() {
+	vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(
+		function (this: HTMLElement) {
+			return this.textContent?.startsWith("LONG") ? 100 : 0;
+		},
+	);
+}
+
+const long = `LONG ${"word ".repeat(100)}`;
+
 describe("the feed widget", () => {
 	it("shows its items with flag buttons for the owner", async () => {
 		dashboard(() => [section("Work", {}, feedWidget({ title: "News" }))]);
@@ -160,6 +171,50 @@ describe("the feed widget", () => {
 			screen.queryByRole("button", { name: "Like" }),
 		).not.toBeInTheDocument();
 		expect(audio.play).not.toHaveBeenCalled();
+	});
+
+	it("expands a cut-off summary for a visitor", async () => {
+		stubCutOffSummaries();
+		const visitorItem = {
+			...item("a", "News one", { summary: long }),
+		} as Partial<FeedItem>;
+		delete visitorItem.readLaterAt;
+		delete visitorItem.likedAt;
+		dashboard(
+			() => [
+				section(
+					"Work",
+					{},
+					feedWidget({ showSummary: true }, { items: [visitorItem] }),
+				),
+			],
+			{ isOwner: false },
+		);
+		const { user } = renderApp("/ann/home");
+		await user.click(await screen.findByRole("button", { name: "Show more" }));
+		expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute(
+			"aria-expanded",
+			"true",
+		);
+	});
+
+	it("shows no summary toggle in edit mode", async () => {
+		stubCutOffSummaries();
+		dashboard(() => [section("Work", {}, feedWidget({ showSummary: true }))], {
+			more: {
+				"GET /api/feed-items": {
+					body: {
+						items: [item("n", "News two", { summary: long })],
+						nextCursor: null,
+					},
+				},
+			},
+		});
+		renderApp("/ann/home?edit=true");
+		expect(await screen.findByText("News two")).toBeVisible();
+		expect(
+			screen.queryByRole("button", { name: "Show more" }),
+		).not.toBeInTheDocument();
 	});
 
 	it("tells the owner when its feeds are gone", async () => {

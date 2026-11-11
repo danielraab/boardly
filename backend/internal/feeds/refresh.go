@@ -375,7 +375,7 @@ func (s *Store) RestoreFlagsTx(ctx context.Context, q db.Querier, userID, feedID
 }
 
 func (s *Store) insertImported(ctx context.Context, q db.Querier, userID, feedID string, item Imported, now time.Time) (string, error) {
-	title := cut(plainText(item.Title), maxTextLength)
+	title := cut(plainText(item.Title), maxTitleLength)
 	if title == "" {
 		return "", nil
 	}
@@ -384,7 +384,7 @@ func (s *Store) insertImported(ctx context.Context, q db.Querier, userID, feedID
 		link = httpLink(*item.Link)
 	}
 	if item.Summary != nil {
-		if text := cut(plainText(*item.Summary), maxTextLength); text != "" {
+		if text := cut(plainText(*item.Summary), maxSummaryLength); text != "" {
 			summary = &text
 		}
 	}

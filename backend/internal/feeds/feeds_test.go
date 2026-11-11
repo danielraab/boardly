@@ -91,6 +91,8 @@ type feedServer struct {
 	etag     string
 	base     time.Time
 	redirect string
+	// summaries holds a description per guid.
+	summaries map[string]string
 }
 
 func serveFeed(t *testing.T, base time.Time, entries ...entry) *feedServer {
@@ -133,8 +135,8 @@ func (f *feedServer) handle(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0"?><rss version="2.0"><channel><title>Example</title><link>https://site.example/</link>`)
 	for _, e := range f.entries {
-		fmt.Fprintf(&b, `<item><guid>%s</guid><title>%s</title><pubDate>%s</pubDate></item>`,
-			e.guid, e.title, f.base.Add(-e.age).Format(time.RFC1123Z))
+		fmt.Fprintf(&b, `<item><guid>%s</guid><title>%s</title><pubDate>%s</pubDate><description>%s</description></item>`,
+			e.guid, e.title, f.base.Add(-e.age).Format(time.RFC1123Z), f.summaries[e.guid])
 	}
 	b.WriteString(`</channel></rss>`)
 	w.Header().Set("Content-Type", "application/rss+xml")
@@ -322,6 +324,28 @@ func TestRefreshKeepsIDAndFlags(t *testing.T) {
 	}
 	if len(e.items(bob, ViewReadLater)) != 0 || e.items(bob, ViewLatest)[1].ReadLaterAt != nil {
 		t.Fatal("Ann's flag leaked to Bob")
+	}
+}
+
+func TestRefreshLengthensSummary(t *testing.T) {
+	e := newEnv(t, 100)
+	srv := serveFeed(t, e.clock.now(), entry{"1", "One", time.Hour})
+	ann := e.user("ann")
+	e.subscribe(ann, srv.URL+"/feed")
+	if _, err := e.db.Exec(`UPDATE feed_items SET summary = ?`, strings.Repeat("a", 500)); err != nil {
+		t.Fatal(err)
+	}
+
+	srv.mu.Lock()
+	srv.summaries = map[string]string{"1": strings.Repeat("a", 1500)}
+	srv.mu.Unlock()
+	e.clock.add(2 * time.Hour)
+	if _, err := e.s.RefreshDue(ctx); err != nil {
+		t.Fatal(err)
+	}
+	items := e.items(ann, ViewLatest)
+	if len(items) != 1 || items[0].Summary == nil || len(*items[0].Summary) != maxSummaryLength {
+		t.Fatalf("%+v", items)
 	}
 }
 

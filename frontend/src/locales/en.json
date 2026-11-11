@@ -1454,6 +1454,8 @@
 		"emptyView": "Nothing here yet",
 		"loadMore": "Load more",
 		"failing": "Can't be updated right now",
+		"showMore": "Show more",
+		"showLess": "Show less",
 		"flagsOf": "Flags of {{name}}",
 		"readLater": "Read later",
 		"removeReadLater": "Remove from read later",

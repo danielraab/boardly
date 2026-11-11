@@ -652,6 +652,22 @@ func TestImportNewFeedIgnoresTitleAndDoesntFetch(t *testing.T) {
 	}
 }
 
+func TestImportKeepsLongSummary(t *testing.T) {
+	f := newFixture(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer srv.Close()
+	var doc map[string]any
+	_ = json.Unmarshal(craftedFeedDoc(srv.URL+"/feed", "x", "Item"), &doc)
+	doc["feedItems"].([]any)[0].(map[string]any)["summary"] = strings.Repeat("s", 1500)
+	data, _ := json.Marshal(doc)
+
+	f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	liked := f.feedItems(f.bob, feeds.ViewLiked)
+	if len(liked) != 1 || liked[0].Summary == nil || len(*liked[0].Summary) != 1000 {
+		t.Fatalf("%+v", liked)
+	}
+}
+
 func TestImportFeedInvalidURLAndOrphanItem(t *testing.T) {
 	f := newFixture(t)
 	report := f.importInto(f.bob, craftedFeedDoc("javascript:alert(1)", "x", "Item"), Options{Parts: Parts{Feeds: true}})

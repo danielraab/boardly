@@ -1454,6 +1454,8 @@
 		"emptyView": "Noch nichts hier",
 		"loadMore": "Mehr laden",
 		"failing": "Kann gerade nicht aktualisiert werden",
+		"showMore": "Mehr anzeigen",
+		"showLess": "Weniger anzeigen",
 		"flagsOf": "Markierungen von {{name}}",
 		"readLater": "Später lesen",
 		"removeReadLater": "Nicht mehr später lesen",

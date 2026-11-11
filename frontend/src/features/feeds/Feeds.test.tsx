@@ -97,6 +97,17 @@ function setup(
 	return { api, ...renderApp(path) };
 }
 
+/** jsdom has no layout: summaries starting with "LONG" count as cut off. */
+function stubCutOffSummaries() {
+	vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(
+		function (this: HTMLElement) {
+			return this.textContent?.startsWith("LONG") ? 100 : 0;
+		},
+	);
+}
+
+const long = `LONG ${"word ".repeat(100)}`;
+
 const bar = () => screen.getByRole("region", { name: "Media player" });
 
 describe("the feeds page", () => {
@@ -158,6 +169,42 @@ describe("the feeds page", () => {
 		expect(link).toHaveAttribute("href", "https://news.example/a");
 		expect(link).toHaveAttribute("target", "_blank");
 		expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+	});
+
+	it("expands a cut-off summary without opening the link", async () => {
+		stubCutOffSummaries();
+		const { user, router } = setup({
+			items: {
+				latest: [
+					item("a", "First", { summary: long }),
+					item("b", "Second", { summary: "Short one" }),
+				],
+			},
+		});
+		const more = await screen.findByRole("button", { name: "Show more" });
+		expect(screen.getAllByRole("button", { name: "Show more" })).toHaveLength(
+			1,
+		);
+		expect(more).toHaveAttribute("aria-expanded", "false");
+		const summary = document.getElementById(
+			more.getAttribute("aria-controls") ?? "",
+		);
+		expect(summary).toHaveTextContent(long.trim());
+		expect(screen.getByRole("link", { name: "First" })).not.toContainElement(
+			more,
+		);
+
+		await user.click(more);
+		const less = screen.getByRole("button", { name: "Show less" });
+		expect(less).toHaveAttribute("aria-expanded", "true");
+		expect(summary).not.toHaveClass("line-clamp-2");
+		expect(router.state.location.pathname).toBe("/feeds");
+
+		await user.click(less);
+		expect(screen.getByRole("button", { name: "Show more" })).toHaveAttribute(
+			"aria-expanded",
+			"false",
+		);
 	});
 
 	it("flags an item, showing it right away", async () => {
