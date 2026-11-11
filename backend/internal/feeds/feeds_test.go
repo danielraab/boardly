@@ -549,6 +549,69 @@ func TestUnsubscribedFeedKeepsFlaggedItems(t *testing.T) {
 	}
 }
 
+func (e *env) search(user string, q ItemQuery) ([]Item, string) {
+	e.t.Helper()
+	if q.View == "" {
+		q.View = ViewLatest
+	}
+	if q.Limit == 0 {
+		q.Limit = 100
+	}
+	items, next, err := e.s.Items(ctx, user, q)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return items, next
+}
+
+func TestSearch(t *testing.T) {
+	e := newEnv(t, 100)
+	a := serveFeed(t, e.clock.now(),
+		entry{"1", "Rust in production", time.Minute},
+		entry{"2", "Go in production", 2 * time.Minute},
+		entry{"3", "Ärger im Büro", 3 * time.Minute},
+		entry{"4", "Plain", 4 * time.Minute})
+	a.summaries = map[string]string{"4": "All about Kubernetes"}
+	b := serveFeed(t, e.clock.now(), entry{"1", "Rust on B", 30 * time.Second})
+	ann := e.user("ann")
+	subA := e.subscribe(ann, a.URL+"/feed")
+	e.subscribe(ann, b.URL+"/feed")
+
+	for q, want := range map[string]string{
+		"production rust": "Rust in production",
+		"kubernetes":      "Plain",
+		"ärger":           "Ärger im Büro",
+		"ÄRGER büro":      "Ärger im Büro",
+		"  ":              "Rust on B,Rust in production,Go in production,Ärger im Büro,Plain",
+		"missing":         "",
+	} {
+		if items, _ := e.search(ann, ItemQuery{Search: q}); titles(items) != want {
+			t.Errorf("%q: %s", q, titles(items))
+		}
+	}
+
+	for _, it := range e.items(ann, ViewLatest) {
+		if strings.HasPrefix(it.Title, "Rust") {
+			e.flag(ann, it.ID, nil, ptr(true))
+		}
+	}
+	if items, _ := e.search(ann, ItemQuery{View: ViewLiked, Search: "rust", SubscriptionIDs: []string{subA.ID}}); titles(items) != "Rust in production" {
+		t.Fatalf("liked: %s", titles(items))
+	}
+	if items, _ := e.search(ann, ItemQuery{View: ViewReadLater, Search: "rust"}); len(items) != 0 {
+		t.Fatalf("read later: %s", titles(items))
+	}
+
+	first, next := e.search(ann, ItemQuery{Search: "production", Limit: 1})
+	if titles(first) != "Rust in production" || next == "" {
+		t.Fatalf("first page: %s %q", titles(first), next)
+	}
+	second, last := e.search(ann, ItemQuery{Search: "production", Limit: 1, Cursor: next})
+	if titles(second) != "Go in production" || last != "" {
+		t.Fatalf("second page: %s %q", titles(second), last)
+	}
+}
+
 func TestFlagAccess(t *testing.T) {
 	e := newEnv(t, 100)
 	srv := serveFeed(t, e.clock.now(), entry{"1", "A", time.Minute})

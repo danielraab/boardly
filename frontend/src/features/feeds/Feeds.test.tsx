@@ -253,6 +253,97 @@ describe("the feeds page", () => {
 		).toHaveAttribute("aria-pressed", "true");
 	});
 
+	describe("searching", () => {
+		const all = {
+			latest: [
+				item("a", "Rust news"),
+				item("b", "Go news"),
+				{ ...episode, title: "Rust podcast" },
+			],
+			read_later: [item("c", "Rust later"), item("d", "Other later")],
+		};
+		function searchSetup() {
+			return setup({
+				feeds: [
+					subscription("s1", "Heise"),
+					subscription("s2", "Podcast Eins"),
+				],
+				more: {
+					"GET /api/feed-items": ({ url }) => {
+						const q = url.searchParams.get("q")?.toLowerCase() ?? "";
+						const feedId = url.searchParams.get("feedId");
+						const view = (url.searchParams.get("view") ??
+							"latest") as keyof typeof all;
+						return {
+							body: {
+								items: (all[view] ?? []).filter(
+									(it) =>
+										it.title.toLowerCase().includes(q) &&
+										(!feedId || it.feed.subscriptionId === feedId),
+								),
+								nextCursor: null,
+							},
+						};
+					},
+				},
+			});
+		}
+
+		it("searches the current view and keeps the search across views", async () => {
+			const { api, user } = searchSetup();
+			expect(await screen.findByText("Go news")).toBeVisible();
+			await user.type(screen.getByLabelText("Search items"), "rust");
+			await waitFor(() =>
+				expect(screen.queryByText("Go news")).not.toBeInTheDocument(),
+			);
+			expect(screen.getByText("Rust news")).toBeVisible();
+			expect(
+				api
+					.callsTo("GET", "/api/feed-items")
+					.some(
+						(c) =>
+							c.search.includes("view=latest") && c.search.includes("q=rust"),
+					),
+			).toBe(true);
+
+			await user.click(
+				within(screen.getByRole("group", { name: "View" })).getByRole(
+					"button",
+					{ name: "Read later" },
+				),
+			);
+			expect(await screen.findByText("Rust later")).toBeVisible();
+			expect(screen.queryByText("Other later")).not.toBeInTheDocument();
+			expect(screen.getByLabelText("Search items")).toHaveValue("rust");
+		});
+
+		it("filters by feed", async () => {
+			const { api, user } = searchSetup();
+			expect(await screen.findByText("Go news")).toBeVisible();
+			await user.selectOptions(screen.getByLabelText("Feed"), "Podcast Eins");
+			await waitFor(() =>
+				expect(screen.queryByText("Go news")).not.toBeInTheDocument(),
+			);
+			expect(screen.getByText("Rust podcast")).toBeVisible();
+			expect(
+				api
+					.callsTo("GET", "/api/feed-items")
+					.some((c) => c.search.includes("feedId=s2")),
+			).toBe(true);
+		});
+
+		it("says when nothing matches, and clears the search", async () => {
+			const { user } = searchSetup();
+			expect(await screen.findByText("Go news")).toBeVisible();
+			await user.type(screen.getByLabelText("Search items"), "nothing");
+			expect(await screen.findByText("No matching items")).toBeVisible();
+			await user.click(screen.getByRole("button", { name: "Clear search" }));
+			expect(screen.getByLabelText("Search items")).toHaveValue("");
+			expect(await screen.findByText("Go news")).toBeVisible();
+			expect(screen.getByText("Rust news")).toBeVisible();
+		});
+	});
+
 	describe("adding a feed", () => {
 		it("adds it and closes the dialog", async () => {
 			const { api, user } = setup({

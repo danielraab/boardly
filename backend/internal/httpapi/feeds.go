@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"boardly/internal/feeds"
 	"boardly/internal/notes"
@@ -134,6 +135,9 @@ func (a *api) deleteFeed(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// maxFeedSearchLength is the longest search for feed items, in characters.
+const maxFeedSearchLength = 200
+
 func (a *api) listFeedItems(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
 	query := r.URL.Query()
@@ -150,6 +154,10 @@ func (a *api) listFeedItems(w http.ResponseWriter, r *http.Request) error {
 	}
 	if id := query.Get("feedId"); id != "" {
 		q.SubscriptionIDs = []string{id}
+	}
+	q.Search = query.Get("q")
+	if utf8.RuneCountInString(q.Search) > maxFeedSearchLength {
+		return feedError(feeds.ErrInvalidQuery)
 	}
 	items, next, err := a.feeds.Items(r.Context(), user.ID, q)
 	if err != nil {

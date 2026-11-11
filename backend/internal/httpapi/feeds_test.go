@@ -74,6 +74,7 @@ func TestFeedsAPI(t *testing.T) {
 		"bad limit":     {"GET", "/api/feed-items?limit=101", ``, ann, 400, "invalid_request"},
 		"nan limit":     {"GET", "/api/feed-items?limit=x", ``, ann, 400, "invalid_request"},
 		"bad cursor":    {"GET", "/api/feed-items?cursor=!", ``, ann, 400, "invalid_request"},
+		"long search":   {"GET", "/api/feed-items?q=" + strings.Repeat("x", 201), ``, ann, 400, "invalid_request"},
 	} {
 		rec := s.req(c.method, c.path, c.body, withCookie(c.cookie))
 		if rec.Code != c.status || !strings.Contains(rec.Body.String(), c.code) {
@@ -103,6 +104,18 @@ func TestFeedsAPI(t *testing.T) {
 		t.Fatalf("%+v", page)
 	}
 	id := page.Items[0].ID
+	if page := decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?q=ONE&feedId="+first.ID, "", withCookie(ann))); len(page.Items) != 1 {
+		t.Fatalf("search: %+v", page)
+	}
+	if page := decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?q=two", "", withCookie(ann))); len(page.Items) != 0 {
+		t.Fatalf("search without match: %+v", page)
+	}
+	if rec := s.req("GET", "/api/feed-items?q="+strings.Repeat("ä", 200), "", withCookie(ann)); rec.Code != 200 {
+		t.Fatalf("200 characters: %d", rec.Code)
+	}
+	if page := decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?feedId="+first.ID, "", withCookie(bob))); len(page.Items) != 0 {
+		t.Fatalf("Ann's feed as Bob's filter: %+v", page)
+	}
 
 	rec = s.req("PATCH", "/api/feed-items/"+id, `{"liked":true}`, withCookie(ann))
 	if rec.Code != 200 || decodeJSONBody[feeds.Item](t, rec).LikedAt == nil {

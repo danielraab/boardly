@@ -32,6 +32,22 @@ func TestOpenCreatesDirectoryAndSetsPragmas(t *testing.T) {
 	}
 }
 
+func TestFold(t *testing.T) {
+	db, err := Open(openTemp(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var folded string
+	var null sql.NullString
+	if err := db.QueryRow(`SELECT boardly_fold('ÄRGER'), boardly_fold(NULL)`).Scan(&folded, &null); err != nil {
+		t.Fatal(err)
+	}
+	if folded != "ärger" || null.Valid {
+		t.Fatalf("folded = %q, null = %v", folded, null)
+	}
+}
+
 var fixture = fstest.MapFS{
 	"0001_init.sql":   {Data: []byte("-- nothing\n")},
 	"0002_items.sql":  {Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);")},

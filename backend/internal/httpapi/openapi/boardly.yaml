@@ -1151,7 +1151,14 @@ paths:
       summary: List the user's feed items
       parameters:
         - { name: view, in: query, schema: { enum: [latest, read_later, liked], default: latest } }
-        - { name: feedId, in: query, description: "A subscription ID.", schema: { type: string } }
+        - { name: feedId, in: query, description: "A subscription ID of the user. Limits the items of any view to that feed; another ID gives no items.", schema: { type: string } }
+        - name: q
+          in: query
+          description: |
+            Search. Every word (split at whitespace) must appear in the item's
+            title or summary, ignoring case for all letters. Empty or only
+            whitespace matches every item. Doesn't change the order of the view.
+          schema: { type: string, maxLength: 200 }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
         - { name: cursor, in: query, schema: { type: string } }
       responses:

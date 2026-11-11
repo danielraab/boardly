@@ -61,21 +61,37 @@ export const feedsQueryOptions = queryOptions({
 
 const pageSize = 50;
 
-function itemsPath(view: FeedView, limit: number, cursor?: string) {
+/** A search and a feed filter on top of a view; empty means none. */
+export type FeedItemsFilter = { q?: string; feedId?: string };
+
+function itemsPath(
+	view: FeedView,
+	limit: number,
+	cursor?: string,
+	{ q, feedId }: FeedItemsFilter = {},
+) {
 	const query = new URLSearchParams({ view, limit: String(limit) });
+	if (feedId) query.set("feedId", feedId);
+	if (q?.trim()) query.set("q", q.trim());
 	if (cursor) query.set("cursor", cursor);
 	return `/api/feed-items?${query}`;
 }
 
-/** The items of a view, page by page. */
-export const feedItemsQueryOptions = (view: FeedView) =>
-	infiniteQueryOptions({
-		queryKey: [...feedItemsQueryKey, view],
+/** The items of a view, page by page, optionally searched and filtered. */
+export const feedItemsQueryOptions = (
+	view: FeedView,
+	filter: FeedItemsFilter = {},
+) => {
+	const q = filter.q?.trim() ?? "";
+	const feedId = filter.feedId ?? "";
+	return infiniteQueryOptions({
+		queryKey: [...feedItemsQueryKey, view, { q, feedId }],
 		queryFn: ({ pageParam }) =>
-			api<FeedItemsPage>(itemsPath(view, pageSize, pageParam)),
+			api<FeedItemsPage>(itemsPath(view, pageSize, pageParam, { q, feedId })),
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (last) => last.nextCursor ?? undefined,
 	});
+};
 
 /** One page of a view, for previewing a widget in the editor. */
 export const feedPreviewQueryOptions = (view: FeedView) =>

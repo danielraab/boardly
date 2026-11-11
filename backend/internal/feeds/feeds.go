@@ -541,6 +541,9 @@ func (s *Store) HasSubscription(ctx context.Context, userID string, ids []string
 	return exists, err
 }
 
+// maxSearchWords bounds the conditions a search adds to the query.
+const maxSearchWords = 20
+
 // ItemQuery selects a user's items.
 type ItemQuery struct {
 	View string
@@ -548,8 +551,11 @@ type ItemQuery struct {
 	SubscriptionIDs []string
 	// AudioOnly limits the items to those with audio.
 	AudioOnly bool
-	Limit     int
-	Cursor    string
+	// Search limits the items to those whose title or summary contains each
+	// of its words, ignoring case; empty means all.
+	Search string
+	Limit  int
+	Cursor string
 }
 
 // itemFrom is the FROM clause of a view. Each binds the user three times.
@@ -638,6 +644,14 @@ func (s *Store) Items(ctx context.Context, userID string, q ItemQuery) ([]Item, 
 	}
 	if q.AudioOnly {
 		where += ` AND i.audio_url IS NOT NULL`
+	}
+	words := strings.Fields(db.Fold(q.Search))
+	if len(words) > maxSearchWords {
+		words = words[:maxSearchWords]
+	}
+	for _, word := range words {
+		where += ` AND (instr(boardly_fold(i.title), ?) > 0 OR instr(boardly_fold(COALESCE(i.summary, '')), ?) > 0)`
+		args = append(args, word, word)
 	}
 	if q.Cursor != "" {
 		key, id, err := decodeCursor(q.Cursor)
