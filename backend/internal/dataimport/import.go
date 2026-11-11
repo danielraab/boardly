@@ -716,9 +716,9 @@ func (r *run) importMedia(q db.Querier) error {
 	return nil
 }
 
-// importFeeds adds subscriptions and restores flags. Feeds and items are
-// shared with other users, so nothing in the file can change them: see
-// feeds.EnsureFeedTx and feeds.RestoreFlagsTx.
+// importFeeds adds subscriptions and restores flags and listen records.
+// Feeds and items are shared with other users, so nothing in the file can
+// change them: see feeds.EnsureFeedTx and feeds.RestoreItemTx.
 func (r *run) importFeeds(q db.Querier) error {
 	if !r.opts.Parts.Feeds {
 		return nil
@@ -765,7 +765,11 @@ func (r *run) importFeeds(q db.Querier) error {
 		if it.Audio != nil {
 			item.Audio = &feeds.Audio{URL: it.Audio.URL, Type: it.Audio.Type, DurationSeconds: it.Audio.DurationSeconds}
 		}
-		restored, err := r.s.Feeds.RestoreFlagsTx(r.ctx, q, r.userID, feedID, item)
+		if l := it.Listen; l != nil {
+			item.Listen = &feeds.ImportedListen{PositionSeconds: l.PositionSeconds, DurationSeconds: l.DurationSeconds,
+				StartedAt: l.StartedAt, UpdatedAt: l.UpdatedAt, FinishedAt: l.FinishedAt}
+		}
+		restored, err := r.s.Feeds.RestoreItemTx(r.ctx, q, r.userID, feedID, item)
 		if err != nil {
 			return err
 		}

@@ -33,6 +33,16 @@ func TestSummaryIsPlainText(t *testing.T) {
 	}
 }
 
+func TestLongSummaryAndTitle(t *testing.T) {
+	item := parseOne(t, `<item><title>`+strings.Repeat("t", 800)+`</title><description>`+strings.Repeat("s", 1500)+`</description></item>`)
+	if len(item.Title) != 500 {
+		t.Fatalf("title has %d characters", len(item.Title))
+	}
+	if item.Summary == nil || len(*item.Summary) != 1000 {
+		t.Fatalf("summary = %v", item.Summary)
+	}
+}
+
 func TestDangerousLinkDropped(t *testing.T) {
 	if item := parseOne(t, `<item><title>x</title><link>javascript:alert(1)</link></item>`); item.Link != nil {
 		t.Fatalf("link = %s", *item.Link)

@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -588,11 +590,130 @@ func TestImportFeedsRestoresSubscriptionsAndFlags(t *testing.T) {
 
 func TestImportFeedsVersionOne(t *testing.T) {
 	f := newFixture(t)
-	data := bytes.Replace(f.exportOf(f.ann, false), []byte(`"version": 2`), []byte(`"version": 1`), 1)
-	data = bytes.Replace(data, []byte(`"version":2`), []byte(`"version":1`), 1)
+	data := withVersion(f.exportOf(f.ann, false), 1)
 	report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
 	if report.Feeds == nil || report.Feeds.Subscriptions != 0 {
 		t.Fatalf("%+v", report.Feeds)
+	}
+}
+
+// withVersion changes the version of an export document.
+func withVersion(data []byte, version int) []byte {
+	return regexp.MustCompile(`"version": ?\d+`).ReplaceAll(data, []byte(fmt.Sprintf(`"version":%d`, version)))
+}
+
+func serveEpisodes(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		_, _ = w.Write([]byte(`<rss version="2.0"><channel><title>Podcast</title>` +
+			`<item><guid>ep1</guid><title>Episode one</title><enclosure url="https://cdn.example/1.mp3" type="audio/mpeg"/></item>` +
+			`<item><guid>ep2</guid><title>Episode two</title><enclosure url="https://cdn.example/2.mp3" type="audio/mpeg"/></item>` +
+			`<item><guid>news</guid><title>Article</title></item></channel></rss>`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL + "/feed"
+}
+
+func (f *fixture) itemID(user, title string) string {
+	f.t.Helper()
+	for _, it := range f.feedItems(user, feeds.ViewLatest) {
+		if it.Title == title {
+			return it.ID
+		}
+	}
+	f.t.Fatalf("no item %q", title)
+	return ""
+}
+
+func TestImportListenHistory(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.feeds.Subscribe(f.ctx, f.ann, serveEpisodes(t)); err != nil {
+		t.Fatal(err)
+	}
+	one, two := f.itemID(f.ann, "Episode one"), f.itemID(f.ann, "Episode two")
+	duration, yes := 3600, true
+	if _, err := f.feeds.SaveListen(f.ctx, f.ann, one, 750, &duration, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.feeds.SaveListen(f.ctx, f.ann, two, 0, nil, &yes); err != nil {
+		t.Fatal(err)
+	}
+	data := f.exportOf(f.ann, false)
+
+	report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	if report.Feeds.RestoredItems != 2 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	progress := f.feedItems(f.bob, feeds.ViewInProgress)
+	if len(progress) != 1 || progress[0].ID != one || progress[0].Listen.PositionSeconds != 750 || *progress[0].Listen.DurationSeconds != 3600 {
+		t.Fatalf("in progress: %+v", progress)
+	}
+	if finished := f.feedItems(f.bob, feeds.ViewFinished); len(finished) != 1 || finished[0].ID != two {
+		t.Fatalf("finished: %+v", finished)
+	}
+
+	// Ann's newer position wins over her older export.
+	if _, err := f.feeds.SaveListen(f.ctx, f.ann, one, 2400, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	f.importInto(f.ann, data, Options{Parts: Parts{Feeds: true}})
+	if got := f.feedItems(f.ann, feeds.ViewInProgress); len(got) != 1 || got[0].Listen.PositionSeconds != 2400 {
+		t.Fatalf("existing record: %+v", got)
+	}
+
+	// A version 2 document without records still imports.
+	cid, err := f.users.EnsureByEmail(f.ctx, f.db, "cid@example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	_ = json.Unmarshal(withVersion(data, 2), &doc)
+	for _, it := range doc["feedItems"].([]any) {
+		delete(it.(map[string]any), "listen")
+		it.(map[string]any)["likedAt"] = "2026-11-08T09:00:00.000Z"
+	}
+	old, _ := json.Marshal(doc)
+	if report := f.importInto(cid.ID, old, Options{Parts: Parts{Feeds: true}}); report.Feeds.RestoredItems != 2 {
+		t.Fatalf("version 2: %+v", report.Feeds)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feed_item_listens WHERE user_id = ?`, cid.ID); n != 0 {
+		t.Fatalf("version 2 created %d records", n)
+	}
+}
+
+func TestImportInvalidListenRecord(t *testing.T) {
+	f := newFixture(t)
+	feedURL := serveEpisodes(t)
+	if _, err := f.feeds.Subscribe(f.ctx, f.ann, feedURL); err != nil {
+		t.Fatal(err)
+	}
+	listen := func(position int) map[string]any {
+		return map[string]any{"positionSeconds": position, "durationSeconds": nil,
+			"startedAt": "2026-11-08T09:00:00.000Z", "updatedAt": "2026-11-08T09:00:00.000Z", "finishedAt": nil}
+	}
+	doc := map[string]any{
+		"format": "boardly", "version": 3, "exportedAt": "2026-11-08T10:00:00.000Z", "withFiles": false,
+		"profile": map[string]any{"email": "m@example.org", "createdAt": "2026-01-01T00:00:00.000Z"},
+		"feeds":   []map[string]any{{"id": "doc-feed", "url": feedURL, "title": "Podcast", "subscribed": true}},
+		"feedItems": []map[string]any{
+			{"feedId": "doc-feed", "guid": "ep1", "title": "Episode one", "publishedAt": "2026-11-08T09:00:00.000Z",
+				"likedAt": "2026-11-08T09:00:00.000Z", "listen": listen(-5)},
+			{"feedId": "doc-feed", "guid": "news", "title": "Article", "publishedAt": "2026-11-08T09:00:00.000Z", "listen": listen(10)},
+			{"feedId": "doc-feed", "guid": "ep2", "title": "Episode two", "publishedAt": "2026-11-08T09:00:00.000Z",
+				"listen": map[string]any{"positionSeconds": 10, "startedAt": "yesterday", "updatedAt": "2026-11-08T09:00:00.000Z"}},
+		},
+	}
+	data, _ := json.Marshal(doc)
+	report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	if report.Feeds.RestoredItems != 1 || report.Feeds.SkippedItems != 2 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	if liked := f.feedItems(f.bob, feeds.ViewLiked); len(liked) != 1 || liked[0].Listen != nil {
+		t.Fatalf("liked: %+v", liked)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM feed_item_listens`); n != 0 {
+		t.Fatalf("%d records", n)
 	}
 }
 
@@ -649,6 +770,22 @@ func TestImportNewFeedIgnoresTitleAndDoesntFetch(t *testing.T) {
 	}
 	if n := f.count(`SELECT COUNT(*) FROM feeds WHERE title = 'Forged feed'`); n != 0 {
 		t.Fatal("the feed's title came from the file")
+	}
+}
+
+func TestImportKeepsLongSummary(t *testing.T) {
+	f := newFixture(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer srv.Close()
+	var doc map[string]any
+	_ = json.Unmarshal(craftedFeedDoc(srv.URL+"/feed", "x", "Item"), &doc)
+	doc["feedItems"].([]any)[0].(map[string]any)["summary"] = strings.Repeat("s", 1500)
+	data, _ := json.Marshal(doc)
+
+	f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}})
+	liked := f.feedItems(f.bob, feeds.ViewLiked)
+	if len(liked) != 1 || liked[0].Summary == nil || len(*liked[0].Summary) != 1000 {
+		t.Fatalf("%+v", liked)
 	}
 }
 

@@ -32,6 +32,7 @@ func newFeedFixture(t *testing.T) *feedFixture {
 		_, _ = w.Write([]byte(`<rss version="2.0"><channel><title>Secret name</title>` +
 			`<item><guid>1</guid><title>News one</title><link>https://a.example/1</link><description>The summary</description><pubDate>Sat, 07 Nov 2026 10:00:00 +0000</pubDate></item>` +
 			`<item><guid>2</guid><title>Episode</title><enclosure url="https://a.example/2.mp3" type="audio/mpeg"/><pubDate>Fri, 06 Nov 2026 10:00:00 +0000</pubDate></item>` +
+			`<item><guid>3</guid><title>Second show</title><enclosure url="https://a.example/3.mp3" type="audio/mpeg"/><pubDate>Thu, 05 Nov 2026 10:00:00 +0000</pubDate></item>` +
 			`</channel></rss>`))
 	}))
 	t.Cleanup(srv.Close)
@@ -75,6 +76,9 @@ func TestFeedNormalize(t *testing.T) {
 	}
 	if _, err := f.kind.Normalize(context.Background(), f.owner, feedRaw(nil, "latest", false, false)); err != nil {
 		t.Fatalf("all feeds: %v", err)
+	}
+	if _, err := f.kind.Normalize(context.Background(), f.owner, feedRaw(nil, "in_progress", false, false)); err != nil {
+		t.Fatalf("in_progress: %v", err)
 	}
 }
 
@@ -190,5 +194,54 @@ func TestFeedAudioOnly(t *testing.T) {
 	// A widget saved before the setting existed shows everything.
 	if got, _ := f.resolve(t, true, feedRaw(nil, "latest", false, false)); !strings.Contains(got, "News one") || !strings.Contains(got, "Episode") {
 		t.Errorf("without the field: %s", got)
+	}
+}
+
+func TestFeedContinueListening(t *testing.T) {
+	f := newFeedFixture(t)
+	ctx := context.Background()
+	now := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
+	f.store.Now = func() time.Time { return now }
+	items, _, err := f.store.Items(ctx, f.owner, feeds.ItemQuery{View: feeds.ViewLatest, Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byTitle := map[string]string{}
+	for _, it := range items {
+		byTitle[it.Title] = it.ID
+	}
+	duration := 3600
+	if _, err := f.store.SaveListen(ctx, f.owner, byTitle["Second show"], 750, &duration, nil); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(time.Minute)
+	if _, err := f.store.SaveListen(ctx, f.owner, byTitle["Episode"], 30, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	raw := feedRaw(nil, "in_progress", true, false)
+	got, ok := f.resolve(t, true, raw)
+	if !ok || strings.Index(got, `"Episode"`) > strings.Index(got, `"Second show"`) || strings.Index(got, `"Episode"`) < 0 {
+		t.Fatalf("order: %s", got)
+	}
+	if !strings.Contains(got, `"positionSeconds":750`) || strings.Contains(got, "News one") {
+		t.Fatalf("owner: %s", got)
+	}
+	got, ok = f.resolve(t, false, raw)
+	if !ok || !strings.Contains(got, "Second show") {
+		t.Fatalf("visitor: %v %s", ok, got)
+	}
+	for _, hidden := range []string{"listen", "positionSeconds", "updatedAt"} {
+		if strings.Contains(got, hidden) {
+			t.Errorf("%q leaked to a visitor: %s", hidden, got)
+		}
+	}
+
+	finished := true
+	if _, err := f.store.SaveListen(ctx, f.owner, byTitle["Episode"], 0, nil, &finished); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.resolve(t, true, raw); strings.Contains(got, `"Episode"`) {
+		t.Fatalf("a finished episode stayed: %s", got)
 	}
 }

@@ -1150,8 +1150,21 @@ paths:
       tags: [Feeds]
       summary: List the user's feed items
       parameters:
-        - { name: view, in: query, schema: { enum: [latest, read_later, liked], default: latest } }
-        - { name: feedId, in: query, description: "A subscription ID.", schema: { type: string } }
+        - name: view
+          in: query
+          description: |
+            `listened`, `in_progress` and `finished` are the listen history:
+            every record, unfinished records with a position above 0, and
+            finished records, sorted by the record's `updatedAt`.
+          schema: { enum: [latest, read_later, liked, listened, in_progress, finished], default: latest }
+        - { name: feedId, in: query, description: "A subscription ID of the user. Limits the items of any view to that feed; another ID gives no items.", schema: { type: string } }
+        - name: q
+          in: query
+          description: |
+            Search. Every word (split at whitespace) must appear in the item's
+            title or summary, ignoring case for all letters. Empty or only
+            whitespace matches every item. Doesn't change the order of the view.
+          schema: { type: string, maxLength: 200 }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
         - { name: cursor, in: query, schema: { type: string } }
       responses:
@@ -1192,6 +1205,48 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FeedItem" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /feed-items/{id}/listen:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Feeds]
+      summary: Save the user's position in an episode
+      description: |
+        Creates or changes the user's listen record of an item with audio.
+        With `finished` `true` the record is finished now and its position
+        set to 0; otherwise it is unfinished and gets the position (rounded
+        down). A left-out `durationSeconds` keeps the stored duration. An
+        item without audio gets 400 `invalid_request`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [positionSeconds]
+              additionalProperties: false
+              properties:
+                positionSeconds: { type: number, minimum: 0, maximum: 172800 }
+                durationSeconds: { type: [number, "null"], exclusiveMinimum: 0, maximum: 172800 }
+                finished: { type: boolean }
+      responses:
+        "200":
+          description: The item with its listen record.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedItem" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Feeds]
+      summary: Remove an episode from the user's listen history
+      description: Responds 204 also when there was no record.
+      responses:
+        "204": { description: Removed. }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/Error" }
 
@@ -2041,7 +2096,7 @@ components:
 
     FeedItem:
       type: object
-      required: [id, title, link, summary, publishedAt, audio, feed, readLaterAt, likedAt]
+      required: [id, title, link, summary, publishedAt, audio, feed, readLaterAt, likedAt, listen]
       properties:
         id: { type: string }
         title: { type: string }
@@ -2067,6 +2122,18 @@ components:
             faviconId: { type: [string, "null"] }
         readLaterAt: { type: [string, "null"], format: date-time }
         likedAt: { type: [string, "null"], format: date-time }
+        listen:
+          description: The user's listen record of the episode, or `null` without one.
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [positionSeconds, durationSeconds, startedAt, updatedAt, finishedAt]
+              properties:
+                positionSeconds: { type: integer }
+                durationSeconds: { type: [integer, "null"], description: "The duration the player measured." }
+                startedAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+                finishedAt: { type: [string, "null"], format: date-time }
 
     MediaSource:
       type: object

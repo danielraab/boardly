@@ -196,6 +196,21 @@ func (s *Store) merge(ctx context.Context, tx *sql.Tx, from, into string) error 
 			keep, drop); err != nil {
 			return err
 		}
+		// Of two listen records of one user, the one changed last stays.
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO feed_item_listens (user_id, item_id, position_seconds, duration_seconds, started_at, updated_at, finished_at)
+			 SELECT user_id, ?, position_seconds, duration_seconds, started_at, updated_at, finished_at
+			 FROM feed_item_listens WHERE item_id = ?
+			 ON CONFLICT (user_id, item_id) DO UPDATE SET
+			   position_seconds = excluded.position_seconds,
+			   duration_seconds = excluded.duration_seconds,
+			   started_at = MIN(started_at, excluded.started_at),
+			   updated_at = excluded.updated_at,
+			   finished_at = excluded.finished_at
+			 WHERE excluded.updated_at > updated_at`,
+			keep, drop); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM feed_items WHERE id = ?`, drop); err != nil {
 			return err
 		}
@@ -226,6 +241,7 @@ func (s *Store) trim(ctx context.Context, q db.Querier, feedID string) error {
 		`DELETE FROM feed_items
 		 WHERE feed_id = ?
 		   AND NOT EXISTS (SELECT 1 FROM feed_item_flags WHERE item_id = feed_items.id)
+		   AND NOT EXISTS (SELECT 1 FROM feed_item_listens WHERE item_id = feed_items.id)
 		   AND id NOT IN (
 		     SELECT id FROM feed_items
 		     WHERE feed_id = ? AND imported_by IS NULL
@@ -263,7 +279,8 @@ func (s *Store) Cleanup(ctx context.Context) (int64, error) {
 	res, err := s.DB.ExecContext(ctx,
 		`DELETE FROM feeds
 		 WHERE NOT EXISTS (SELECT 1 FROM feed_subscriptions WHERE feed_id = feeds.id)
-		   AND NOT EXISTS (SELECT 1 FROM feed_items i JOIN feed_item_flags fl ON fl.item_id = i.id WHERE i.feed_id = feeds.id)`)
+		   AND NOT EXISTS (SELECT 1 FROM feed_items i JOIN feed_item_flags fl ON fl.item_id = i.id WHERE i.feed_id = feeds.id)
+		   AND NOT EXISTS (SELECT 1 FROM feed_items i JOIN feed_item_listens ls ON ls.item_id = i.id WHERE i.feed_id = feeds.id)`)
 	if err != nil {
 		return 0, err
 	}
@@ -300,7 +317,7 @@ func (s *Store) runCleanup(ctx context.Context) {
 	}
 }
 
-// Imported is a flagged item of an import.
+// Imported is an item of an import with flags or a listen record.
 type Imported struct {
 	Identity    string
 	Title       string
@@ -310,6 +327,45 @@ type Imported struct {
 	Audio       *Audio
 	ReadLaterAt *string
 	LikedAt     *string
+	Listen      *ImportedListen
+}
+
+// ImportedListen is a listen record of an import.
+type ImportedListen struct {
+	PositionSeconds int
+	DurationSeconds *int
+	StartedAt       string
+	UpdatedAt       string
+	FinishedAt      *string
+}
+
+// valid returns the record with its times in the stored form, or nil when
+// the listen API wouldn't accept its values.
+func (l *ImportedListen) valid() *ImportedListen {
+	if l == nil || l.PositionSeconds < 0 || l.PositionSeconds > MaxListenSeconds ||
+		(l.DurationSeconds != nil && (*l.DurationSeconds <= 0 || *l.DurationSeconds > MaxListenSeconds)) {
+		return nil
+	}
+	stamp := func(v string) (string, bool) {
+		t, err := time.Parse(time.RFC3339, v)
+		return db.FormatTime(t), err == nil
+	}
+	out := *l
+	var ok bool
+	if out.StartedAt, ok = stamp(l.StartedAt); !ok {
+		return nil
+	}
+	if out.UpdatedAt, ok = stamp(l.UpdatedAt); !ok {
+		return nil
+	}
+	if l.FinishedAt != nil {
+		f, ok := stamp(*l.FinishedAt)
+		if !ok {
+			return nil
+		}
+		out.FinishedAt = &f
+	}
+	return &out
 }
 
 // EnsureFeedTx returns the feed with this URL, creating it when the server
@@ -342,40 +398,67 @@ func (s *Store) SubscribeTx(ctx context.Context, q db.Querier, userID, feedID st
 	return s.insertSubscription(ctx, q, userID, feedID, customTitle, symbol, imageID, s.Now())
 }
 
-// RestoreFlagsTx applies a flagged item of an import. It never changes a
-// stored item's content: a known item only gets the user's flags, and an
-// unknown one is created visible to this user alone until a fetch confirms
-// it. An item only another user can see is left alone, and false is
-// returned.
-func (s *Store) RestoreFlagsTx(ctx context.Context, q db.Querier, userID, feedID string, item Imported) (bool, error) {
-	if strings.TrimSpace(item.Identity) == "" || (item.ReadLaterAt == nil && item.LikedAt == nil) {
+// RestoreItemTx applies an item of an import with flags or a listen record.
+// It never changes a stored item's content: a known item only gets the
+// user's flags and record, and an unknown one is created visible to this user
+// alone until a fetch confirms it. Flags and a record the user already has
+// stay. An invalid record, or one on an item without audio, is left out. An
+// item only another user can see is left alone, and false is returned.
+func (s *Store) RestoreItemTx(ctx context.Context, q db.Querier, userID, feedID string, item Imported) (bool, error) {
+	flagged := item.ReadLaterAt != nil || item.LikedAt != nil
+	listen := item.Listen.valid()
+	if strings.TrimSpace(item.Identity) == "" || (!flagged && listen == nil) {
 		return false, nil
 	}
 	var itemID string
 	var importedBy *string
-	err := q.QueryRowContext(ctx, `SELECT id, imported_by FROM feed_items WHERE feed_id = ? AND identity = ?`, feedID, item.Identity).Scan(&itemID, &importedBy)
+	var hasAudio bool
+	err := q.QueryRowContext(ctx, `SELECT id, imported_by, audio_url IS NOT NULL FROM feed_items WHERE feed_id = ? AND identity = ?`,
+		feedID, item.Identity).Scan(&itemID, &importedBy, &hasAudio)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		now := s.Now()
-		if itemID, err = s.insertImported(ctx, q, userID, feedID, item, now); err != nil || itemID == "" {
+		if item.Audio == nil || httpLink(item.Audio.URL) == nil {
+			listen = nil
+		}
+		if !flagged && listen == nil {
+			return false, nil
+		}
+		if itemID, err = s.insertImported(ctx, q, userID, feedID, item, s.Now()); err != nil || itemID == "" {
 			return false, err
 		}
 	case err != nil:
 		return false, err
 	case importedBy != nil && *importedBy != userID:
 		return false, nil
+	case !hasAudio:
+		listen = nil
+		if !flagged {
+			return false, nil
+		}
 	}
-	_, err = q.ExecContext(ctx,
-		`INSERT INTO feed_item_flags (user_id, item_id, read_later_at, liked_at) VALUES (?, ?, ?, ?)
-		 ON CONFLICT (user_id, item_id) DO UPDATE SET
-		   read_later_at = COALESCE(read_later_at, excluded.read_later_at),
-		   liked_at = COALESCE(liked_at, excluded.liked_at)`,
-		userID, itemID, item.ReadLaterAt, item.LikedAt)
-	return err == nil, err
+	if flagged {
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO feed_item_flags (user_id, item_id, read_later_at, liked_at) VALUES (?, ?, ?, ?)
+			 ON CONFLICT (user_id, item_id) DO UPDATE SET
+			   read_later_at = COALESCE(read_later_at, excluded.read_later_at),
+			   liked_at = COALESCE(liked_at, excluded.liked_at)`,
+			userID, itemID, item.ReadLaterAt, item.LikedAt); err != nil {
+			return false, err
+		}
+	}
+	if listen != nil {
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO feed_item_listens (user_id, item_id, position_seconds, duration_seconds, started_at, updated_at, finished_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, item_id) DO NOTHING`,
+			userID, itemID, listen.PositionSeconds, listen.DurationSeconds, listen.StartedAt, listen.UpdatedAt, listen.FinishedAt); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 func (s *Store) insertImported(ctx context.Context, q db.Querier, userID, feedID string, item Imported, now time.Time) (string, error) {
-	title := cut(plainText(item.Title), maxTextLength)
+	title := cut(plainText(item.Title), maxTitleLength)
 	if title == "" {
 		return "", nil
 	}
@@ -384,7 +467,7 @@ func (s *Store) insertImported(ctx context.Context, q db.Querier, userID, feedID
 		link = httpLink(*item.Link)
 	}
 	if item.Summary != nil {
-		if text := cut(plainText(*item.Summary), maxTextLength); text != "" {
+		if text := cut(plainText(*item.Summary), maxSummaryLength); text != "" {
 			summary = &text
 		}
 	}

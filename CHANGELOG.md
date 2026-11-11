@@ -6,6 +6,31 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Feeds: search the items of every view on `/feeds`, and filter them by feed. Every word must
+  appear in an item's title or summary, ignoring case. `GET /api/feed-items` takes the search as
+  `q`.
+- Podcast listen history: when you're signed in, the position in an episode is saved on the
+  server, so it continues where you stopped, also on another device. An episode that plays to its
+  end counts as played. The new **Listened** view on `/feeds` lists episodes you started or
+  finished, with **In progress** and **Finished** filters, and an episode's menu marks it as played
+  or unplayed or removes it from the history. Rows show how much is left with a thin progress bar.
+  The **Feed** widget can show **Continue listening**.
+- Long feed summaries get a **Show more** toggle.
+
+### Changed
+
+- Feed item rows on phones and in narrow widget columns put the feed and time first, the title over
+  the full width and the buttons below the text.
+- Feed summaries are kept with up to 1000 characters instead of 500; items get the longer summary
+  on the next refresh of their feed.
+- Exports have format version 3 and include your listen history. Older Boardly versions can't
+  import them; versions 1 and 2 still import.
+- **Breaking:** episode positions are no longer stored in the browser. Positions stored there by
+  earlier versions are deleted, not uploaded, and visitors of public dashboards start each episode
+  at the beginning after a reload.
+
 ## [1.2.0] - 2026-11-10
 
 ### Added

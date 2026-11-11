@@ -13,7 +13,7 @@ Lets a signed-in user import a Boardly export, as a JSON file or a ZIP archive w
 - `categoryId`: the ID of the import category, optional, used only when `parts` contains `notes`. Missing or empty means the top level,
 - `skipDuplicates`: `true` or `false`, optional. Missing means `true`.
 
-The file SHALL be at most 10 MB, and a larger body fails with `413` and code `file_too_large`. A missing or empty `parts`, an unknown part, a `skipDuplicates` other than `true` or `false`, or an empty body fails with `400` and code `invalid_request`. A body that isn't JSON or ZIP, a ZIP without `boardly.json`, or a document whose `format` isn't `"boardly"` or whose `version` isn't `1` or `2`, fails with `400` and code `invalid_import_file`. A `folderId` that isn't a folder of the user fails with `400` and code `invalid_folder`, and a `categoryId` that isn't a category of the user with `400` and code `invalid_category`. Form posts are rejected with `403` like for every API endpoint. The endpoint requires a signed-in user, and app tokens can't use it.
+The file SHALL be at most 10 MB, and a larger body fails with `413` and code `file_too_large`. A missing or empty `parts`, an unknown part, a `skipDuplicates` other than `true` or `false`, or an empty body fails with `400` and code `invalid_request`. A body that isn't JSON or ZIP, a ZIP without `boardly.json`, or a document whose `format` isn't `"boardly"` or whose `version` isn't `1`, `2` or `3`, fails with `400` and code `invalid_import_file`. A `folderId` that isn't a folder of the user fails with `400` and code `invalid_folder`, and a `categoryId` that isn't a category of the user with `400` and code `invalid_category`. Form posts are rejected with `403` like for every API endpoint. The endpoint requires a signed-in user, and app tokens can't use it.
 
 #### Scenario: Import a JSON export
 - **WHEN** a signed-in user posts a Boardly JSON export with `parts` `favourites,dashboards,notes,media` and the ID of their root folder
@@ -24,7 +24,7 @@ The file SHALL be at most 10 MB, and a larger body fails with `413` and code `fi
 - **THEN** the notes are added with their attachments from the archive
 
 #### Scenario: Unknown version
-- **WHEN** the user posts a document with `format` `"boardly"` and `version` `3`
+- **WHEN** the user posts a document with `format` `"boardly"` and `version` `4`
 - **THEN** the response is `400` with code `invalid_import_file`, and nothing is imported
 
 #### Scenario: Export of the earlier version
@@ -51,6 +51,10 @@ The file SHALL be at most 10 MB, and a larger body fails with `413` and code `fi
 - **WHEN** a visitor without a session posts to the endpoint
 - **THEN** the response is `401`
 
+#### Scenario: Export of version 2
+- **WHEN** the user posts a document with `format` `"boardly"` and `version` `2`, whose feed items have no `listen`
+- **THEN** the response is `200`, and no listen record is created
+
 ### Requirement: Imports only add
 An import SHALL only add data to the account. It SHALL NOT change or delete existing favourites, tags, dashboards, notes, categories, media sources, feed subscriptions, feed items, images or attachments, except that tags are attached to imported links and that the default folder and default note category may be set (see "Profile defaults"). Every imported item SHALL get a new ID, whatever its ID in the file. The import is all or nothing: when it fails, no data is added.
 
@@ -73,7 +77,7 @@ Only the parts in `parts` SHALL be imported:
 - `dashboards`: the dashboards with their widgets,
 - `notes`: the note categories, the notes, and the attachments the notes use,
 - `media`: the media sources,
-- `feeds`: the feed subscriptions and the flagged feed items.
+- `feeds`: the feed subscriptions, and the feed items with flags or a listen record.
 
 An image of the file SHALL be imported only when an imported link uses it as preview, or an imported category, note, media source, feed subscription or widget uses it as icon or image. An attachment SHALL be imported only when an imported note uses it. An image or attachment whose ID is already one of the user's own images or attachments SHALL NOT be imported again: the existing one is used, so importing an export into the account it came from doesn't copy its files.
 
@@ -233,7 +237,7 @@ A successful import SHALL return a report with, for each imported part:
 - `dashboards`: the number of added dashboards and of skipped widgets,
 - `notes`: the number of imported notes and created categories, and of duplicate notes,
 - `media`: the number of added media sources, of duplicates and of invalid ones,
-- `feeds`: the number of added subscriptions, of duplicates and of invalid ones, and the number of restored and of skipped flagged items,
+- `feeds`: the number of added subscriptions, of duplicates and of invalid ones, and the number of restored and of skipped items with flags or a listen record,
 
 and `files`: the number of imported images, attachments and offline copy parts, and of skipped files. A part that wasn't imported is `null`.
 
@@ -267,7 +271,7 @@ When the format "Boardly export (JSON or ZIP)" / "Boardly-Export (JSON oder ZIP)
 ### Requirement: Imported feeds
 With `feeds`, every subscribed feed of the file SHALL be added after the user's subscriptions, in the order of the file, with its custom title and icon. A feed the user already subscribes to, by URL, SHALL be skipped and counted as a duplicate, and references to it point to the existing subscription. A feed whose URL isn't an absolute `http` or `https` URL is skipped and counted as invalid. An import SHALL NOT fetch anything: a feed the server doesn't have yet is created from its URL alone, with the title in the file ignored, and is checked and filled by its first refresh, under the fetch rules of the `feeds` capability. Until then, its title is the host of its URL.
 
-A flagged item of the file SHALL set the user's flags on the stored item of the same feed and identity, and a flag the user already has stays as it is. An import SHALL NOT change the content of a stored item that another source already provided. An item the server doesn't have yet SHALL be created visible only to the importing user, until a refresh of the feed returns the same identity and replaces its content, after which it is an ordinary item. An item that exists visible only to another user SHALL be skipped and counted as skipped. A flagged item whose feed isn't in the file is skipped and counted as skipped.
+An item of the file with flags or a listen record SHALL set the user's flags and listen record on the stored item of the same feed and identity. A flag the user already has stays as it is, and a listen record the user already has on the item stays as it is. A listen record of the file whose values "Listen API" of the `feeds` capability wouldn't accept, or on an item without audio, is left out, and the item's flags are still restored. An item with neither flags nor a listen record is skipped and counted as skipped. An import SHALL NOT change the content of a stored item that another source already provided. An item the server doesn't have yet SHALL be created visible only to the importing user, until a refresh of the feed returns the same identity and replaces its content, after which it is an ordinary item. An item that exists visible only to another user SHALL be skipped and counted as skipped. An item whose feed isn't in the file is skipped and counted as skipped.
 
 #### Scenario: Restore feeds
 - **WHEN** a new user imports an export with two subscribed feeds and one liked item
@@ -292,3 +296,11 @@ A flagged item of the file SHALL set the user's flags on the stored item of the 
 #### Scenario: No outbound request during import
 - **WHEN** a file with a feed the server doesn't have is imported
 - **THEN** the import makes no request to the feed's host
+
+#### Scenario: Restore the listen history
+- **WHEN** a new user imports an export with an episode stopped at 12:30 and a finished episode
+- **THEN** the first episode is in their "In progress" view at 12:30, and the second in "Finished"
+
+#### Scenario: Existing record stays
+- **WHEN** Ann has an episode at 40:00 and imports her older export with the same episode at 10:00
+- **THEN** her record stays at 40:00

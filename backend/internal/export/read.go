@@ -322,7 +322,9 @@ func (r reader) feeds(doc *Document) error {
 		 FROM feeds f, me LEFT JOIN feed_subscriptions s ON s.feed_id = f.id AND s.user_id = me.id
 		 WHERE s.id IS NOT NULL OR EXISTS (
 		   SELECT 1 FROM feed_item_flags fl JOIN feed_items i ON i.id = fl.item_id
-		   WHERE fl.user_id = me.id AND i.feed_id = f.id)
+		   WHERE fl.user_id = me.id AND i.feed_id = f.id) OR EXISTS (
+		   SELECT 1 FROM feed_item_listens ls JOIN feed_items i ON i.id = ls.item_id
+		   WHERE ls.user_id = me.id AND i.feed_id = f.id)
 		 ORDER BY s.position IS NULL, s.position, f.id`,
 		func(rows *sql.Rows) error {
 			var f Feed
@@ -339,20 +341,33 @@ func (r reader) feeds(doc *Document) error {
 func (r reader) feedItems(doc *Document) error {
 	doc.FeedItems = []FeedItem{}
 	return r.each(
-		`WITH me (id) AS (SELECT ?)
+		`WITH me (id) AS (SELECT ?),
+		 mine (item_id) AS (
+		   SELECT item_id FROM feed_item_flags WHERE user_id = (SELECT id FROM me)
+		   UNION SELECT item_id FROM feed_item_listens WHERE user_id = (SELECT id FROM me))
 		 SELECT COALESCE(s.id, i.feed_id), i.identity, i.title, i.link, i.summary, i.item_time,
-		   i.audio_url, i.audio_type, i.audio_seconds, fl.read_later_at, fl.liked_at
-		 FROM feed_item_flags fl JOIN me ON fl.user_id = me.id
-		 JOIN feed_items i ON i.id = fl.item_id
+		   i.audio_url, i.audio_type, i.audio_seconds, fl.read_later_at, fl.liked_at,
+		   ls.position_seconds, ls.duration_seconds, ls.started_at, ls.updated_at, ls.finished_at
+		 FROM mine JOIN me
+		 JOIN feed_items i ON i.id = mine.item_id
+		 LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = me.id
+		 LEFT JOIN feed_item_listens ls ON ls.item_id = i.id AND ls.user_id = me.id
 		 LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = me.id
 		 ORDER BY i.item_time, i.id`,
 		func(rows *sql.Rows) error {
 			var it FeedItem
 			var audioURL, audioType *string
-			var seconds *int
+			var seconds, position *int
+			var listen FeedItemListen
+			var started, updated *string
 			if err := rows.Scan(&it.FeedID, &it.GUID, &it.Title, &it.Link, &it.Summary, &it.PublishedAt,
-				&audioURL, &audioType, &seconds, &it.ReadLaterAt, &it.LikedAt); err != nil {
+				&audioURL, &audioType, &seconds, &it.ReadLaterAt, &it.LikedAt,
+				&position, &listen.DurationSeconds, &started, &updated, &listen.FinishedAt); err != nil {
 				return err
+			}
+			if position != nil && started != nil && updated != nil {
+				listen.PositionSeconds, listen.StartedAt, listen.UpdatedAt = *position, *started, *updated
+				it.Listen = &listen
 			}
 			if audioURL != nil {
 				it.Audio = &FeedItemAudio{URL: *audioURL, Type: audioType, DurationSeconds: seconds}

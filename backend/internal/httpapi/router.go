@@ -153,6 +153,8 @@ func (a *api) mainAPI(db Pinger) *routeMux {
 	mux.Handle("DELETE /api/feeds/{id}", a.requireUser(a.deleteFeed))
 	mux.Handle("GET /api/feed-items", a.requireUser(a.listFeedItems))
 	mux.Handle("PATCH /api/feed-items/{id}", a.requireUser(a.updateFeedItem))
+	mux.Handle("PUT /api/feed-items/{id}/listen", a.requireUser(a.saveFeedItemListen))
+	mux.Handle("DELETE /api/feed-items/{id}/listen", a.requireUser(a.deleteFeedItemListen))
 	mux.Handle("GET /api/media", a.requireUser(a.listMedia))
 	mux.Handle("POST /api/media", a.requireUser(a.createMedia))
 	mux.Handle("PUT /api/media/order", a.requireUser(a.reorderMedia))

@@ -16,6 +16,8 @@ export type PlayableSource = {
 	/** For an episode: its feed's title, and its length if the feed says. */
 	subtitle?: string;
 	durationSeconds?: number;
+	/** For an episode: where to start, in seconds (its saved position). */
+	startAt?: number;
 	/** For an embed: who provides it, its player's address and layout. */
 	provider?: string;
 	embedUrl?: string;

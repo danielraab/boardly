@@ -74,6 +74,17 @@ function dashboard(
 	});
 }
 
+/** jsdom has no layout: summaries starting with "LONG" count as cut off. */
+function stubCutOffSummaries() {
+	vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(
+		function (this: HTMLElement) {
+			return this.textContent?.startsWith("LONG") ? 100 : 0;
+		},
+	);
+}
+
+const long = `LONG ${"word ".repeat(100)}`;
+
 describe("the feed widget", () => {
 	it("shows its items with flag buttons for the owner", async () => {
 		dashboard(() => [section("Work", {}, feedWidget({ title: "News" }))]);
@@ -160,6 +171,50 @@ describe("the feed widget", () => {
 			screen.queryByRole("button", { name: "Like" }),
 		).not.toBeInTheDocument();
 		expect(audio.play).not.toHaveBeenCalled();
+	});
+
+	it("expands a cut-off summary for a visitor", async () => {
+		stubCutOffSummaries();
+		const visitorItem = {
+			...item("a", "News one", { summary: long }),
+		} as Partial<FeedItem>;
+		delete visitorItem.readLaterAt;
+		delete visitorItem.likedAt;
+		dashboard(
+			() => [
+				section(
+					"Work",
+					{},
+					feedWidget({ showSummary: true }, { items: [visitorItem] }),
+				),
+			],
+			{ isOwner: false },
+		);
+		const { user } = renderApp("/ann/home");
+		await user.click(await screen.findByRole("button", { name: "Show more" }));
+		expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute(
+			"aria-expanded",
+			"true",
+		);
+	});
+
+	it("shows no summary toggle in edit mode", async () => {
+		stubCutOffSummaries();
+		dashboard(() => [section("Work", {}, feedWidget({ showSummary: true }))], {
+			more: {
+				"GET /api/feed-items": {
+					body: {
+						items: [item("n", "News two", { summary: long })],
+						nextCursor: null,
+					},
+				},
+			},
+		});
+		renderApp("/ann/home?edit=true");
+		expect(await screen.findByText("News two")).toBeVisible();
+		expect(
+			screen.queryByRole("button", { name: "Show more" }),
+		).not.toBeInTheDocument();
 	});
 
 	it("tells the owner when its feeds are gone", async () => {
@@ -262,6 +317,140 @@ describe("the feed widget", () => {
 			children: [{ kind: "feed", config: { audioOnly: true } }],
 		});
 		expect(api.calls.some((c) => c.method === "PUT")).toBe(true);
+	});
+
+	it("can continue listening", async () => {
+		let saved: { sections: Widget[] } | undefined;
+		dashboard(() => [section("Work")], {
+			feeds: [{ id: "s1", title: "Heise", icon: null, faviconId: null }],
+			more: {
+				"PUT /api/dashboards/d1/layout": ({ body }) => {
+					saved = body as { sections: Widget[] };
+					return { body: { version: 1, sections: [] } };
+				},
+			},
+		});
+		const { user } = renderApp("/ann/home?edit=true");
+		await user.click(await screen.findByRole("button", { name: "Add widget" }));
+		const picker = await screen.findByRole("dialog", { name: "Add widget" });
+		await user.click(
+			within(within(picker).getByRole("region", { name: "Feeds" })).getByRole(
+				"button",
+				{ name: /^Feed/ },
+			),
+		);
+		const dialog = await screen.findByRole("dialog", { name: "Add feed" });
+		await user.selectOptions(
+			within(dialog).getByLabelText("Show"),
+			"Continue listening",
+		);
+		await user.click(within(dialog).getByRole("button", { name: "Add" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await user.click(screen.getByRole("button", { name: "Save and exit" }));
+		await waitFor(() => expect(saved).toBeDefined());
+		expect(saved?.sections[0]).toMatchObject({
+			children: [{ kind: "feed", config: { show: "in_progress" } }],
+		});
+	});
+
+	it("shows the owner's progress, and none to visitors", async () => {
+		const listen = {
+			positionSeconds: 2700,
+			durationSeconds: 3600,
+			startedAt: "2026-11-08T09:00:00.000Z",
+			updatedAt: "2026-11-08T09:00:00.000Z",
+			finishedAt: null,
+		};
+		const episode = item("e", "Episode", {
+			audio: {
+				url: "https://cdn.example/1.mp3",
+				type: null,
+				durationSeconds: 3600,
+			},
+			listen,
+		});
+		dashboard(() => [
+			section(
+				"Work",
+				{},
+				feedWidget(
+					{ show: "in_progress" },
+					{ items: [episode], missing: false },
+				),
+			),
+		]);
+		const { unmount } = renderApp("/ann/home");
+		expect(await screen.findByText("15 min left")).toBeVisible();
+		expect(screen.getByTestId("listen-progress")).toBeInTheDocument();
+		unmount();
+
+		const {
+			listen: _,
+			readLaterAt: __,
+			likedAt: ___,
+			...visitorItem
+		} = episode;
+		dashboard(
+			() => [
+				section(
+					"Work",
+					{},
+					feedWidget({ show: "in_progress" }, { items: [visitorItem] }),
+				),
+			],
+			{ isOwner: false },
+		);
+		renderApp("/ann/home");
+		expect(await screen.findByText("Episode")).toBeVisible();
+		expect(screen.queryByTestId("listen-progress")).toBeNull();
+		expect(screen.queryByText(/min left/)).toBeNull();
+	});
+
+	it("drops a finished episode from Continue listening", async () => {
+		const audio = stubAudio();
+		const episode = item("e", "Episode", {
+			link: null,
+			audio: {
+				url: "https://cdn.example/1.mp3",
+				type: null,
+				durationSeconds: 3600,
+			},
+			listen: {
+				positionSeconds: 600,
+				durationSeconds: 3600,
+				startedAt: "2026-11-08T09:00:00.000Z",
+				updatedAt: "2026-11-08T09:00:00.000Z",
+				finishedAt: null,
+			},
+		});
+		let finished = false;
+		dashboard(
+			() => [
+				section(
+					"Work",
+					{},
+					feedWidget(
+						{ show: "in_progress" },
+						{ items: finished ? [] : [episode], missing: false },
+					),
+				),
+			],
+			{
+				more: {
+					"PUT /api/feed-items/e/listen": ({ body }) => {
+						finished = Boolean((body as { finished?: boolean }).finished);
+						return { body: episode };
+					},
+				},
+			},
+		);
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Play Episode" }),
+		);
+		fireEvent.playing(audio.audio());
+		fireEvent.ended(audio.audio());
+		expect(await screen.findByText("No items")).toBeVisible();
 	});
 
 	it("previews only items with audio when filtered", async () => {

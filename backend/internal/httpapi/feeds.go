@@ -2,9 +2,11 @@ package httpapi
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"boardly/internal/feeds"
 	"boardly/internal/notes"
@@ -134,6 +136,9 @@ func (a *api) deleteFeed(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// maxFeedSearchLength is the longest search for feed items, in characters.
+const maxFeedSearchLength = 200
+
 func (a *api) listFeedItems(w http.ResponseWriter, r *http.Request) error {
 	user, _ := CurrentUser(r.Context())
 	query := r.URL.Query()
@@ -150,6 +155,10 @@ func (a *api) listFeedItems(w http.ResponseWriter, r *http.Request) error {
 	}
 	if id := query.Get("feedId"); id != "" {
 		q.SubscriptionIDs = []string{id}
+	}
+	q.Search = query.Get("q")
+	if utf8.RuneCountInString(q.Search) > maxFeedSearchLength {
+		return feedError(feeds.ErrInvalidQuery)
 	}
 	items, next, err := a.feeds.Items(r.Context(), user.ID, q)
 	if err != nil {
@@ -189,5 +198,57 @@ func (a *api) updateFeedItem(w http.ResponseWriter, r *http.Request) error {
 		return feedError(err)
 	}
 	WriteJSON(w, http.StatusOK, item)
+	return nil
+}
+
+// saveFeedItemListen saves the user's position in an episode, or marks it as
+// played (finished) or unplayed (position 0).
+func (a *api) saveFeedItemListen(w http.ResponseWriter, r *http.Request) error {
+	user, _ := CurrentUser(r.Context())
+	body, err := decodeFields(r, maxFeedBytes, invalid("invalid_request", "The request is too large"))
+	if err != nil {
+		return err
+	}
+	bad := invalid("invalid_request", "A field is missing or invalid")
+	var position, duration *float64
+	var finished *bool
+	if ok, err := field(body, "positionSeconds", &position, bad); err != nil {
+		return err
+	} else if !ok || position == nil || *position < 0 || *position > feeds.MaxListenSeconds {
+		return bad
+	}
+	if _, err := field(body, "durationSeconds", &duration, bad); err != nil {
+		return err
+	} else if duration != nil && (*duration <= 0 || *duration > feeds.MaxListenSeconds) {
+		return bad
+	}
+	if ok, err := field(body, "finished", &finished, bad); err != nil {
+		return err
+	} else if ok && finished == nil {
+		return bad
+	}
+	if err := unknownFields(body, "invalid_request"); err != nil {
+		return err
+	}
+	var seconds *int
+	if duration != nil {
+		d := max(1, int(math.Round(*duration)))
+		seconds = &d
+	}
+	item, err := a.feeds.SaveListen(r.Context(), user.ID, r.PathValue("id"), int(math.Floor(*position)), seconds, finished)
+	if err != nil {
+		return feedError(err)
+	}
+	WriteJSON(w, http.StatusOK, item)
+	return nil
+}
+
+// deleteFeedItemListen removes an episode from the user's listen history.
+func (a *api) deleteFeedItemListen(w http.ResponseWriter, r *http.Request) error {
+	user, _ := CurrentUser(r.Context())
+	if err := a.feeds.DeleteListen(r.Context(), user.ID, r.PathValue("id")); err != nil {
+		return feedError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

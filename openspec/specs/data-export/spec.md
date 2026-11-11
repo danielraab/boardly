@@ -41,7 +41,7 @@ Lets a signed-in user download all of their own data from Boardly in one version
 The export document SHALL be a JSON object with:
 
 - `format`: `"boardly"`,
-- `version`: `2`,
+- `version`: `3`,
 - `exportedAt`: the time of the export,
 - `withFiles`: whether the export contains the files,
 - `profile`: the email address, display name, slug, creation time, the ID of the default folder for new links and the ID of the default category for new notes,
@@ -51,8 +51,8 @@ The export document SHALL be a JSON object with:
 - `noteCategories`: every note category with ID, parent ID, title, icon, colour, and creation and change time,
 - `notes`: every note, archived ones included, with ID, category ID, title, icon, colour, content document as stored, pinned and archived flags, the IDs of its attachments in their order, and creation and change time,
 - `mediaSources`: every media source with ID, kind, title, URL, icon and position,
-- `feeds`: every feed the user subscribes to or has a flagged item in, with `id` (the subscription's ID, or the feed's ID without a subscription), `url`, `title` (the feed's title), `customTitle`, `icon`, `position` and `subscribed`,
-- `feedItems`: every item the user flagged, with `feedId` (the `id` in `feeds`), `guid` (the item's identity), `title`, `link`, `summary`, `publishedAt`, `audio`, `readLaterAt` and `likedAt`,
+- `feeds`: every feed the user subscribes to or has a flagged or listened item in, with `id` (the subscription's ID, or the feed's ID without a subscription), `url`, `title` (the feed's title), `customTitle`, `icon`, `position` and `subscribed`,
+- `feedItems`: every item the user flagged or has a listen record of, with `feedId` (the `id` in `feeds`), `guid` (the item's identity), `title`, `link`, `summary`, `publishedAt`, `audio`, `readLaterAt`, `likedAt` and `listen` (`{ "positionSeconds", "durationSeconds", "startedAt", "updatedAt", "finishedAt" }`, or `null` without a record),
 - `images`: every image the user uploaded or that was fetched as a link preview for them, with ID, source (`upload` or `preview`), content type, size, creation time, and `file`,
 - `attachments`: every attachment of the user that isn't deleted, with ID, file name, content type, size, creation time, and `file`.
 
@@ -60,7 +60,7 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 
 #### Scenario: Version and format
 - **WHEN** Ann exports her data
-- **THEN** the document has `format` `"boardly"`, `version` `2` and `exportedAt` set to the time of the export
+- **THEN** the document has `format` `"boardly"`, `version` `3` and `exportedAt` set to the time of the export
 
 #### Scenario: Favourites tree with tags
 - **WHEN** Ann's tree has a folder "Dev" with the link `https://go.dev` tagged "go"
@@ -91,7 +91,7 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 - **THEN** the link's `offlineCopy` has its `capturedAt` and `title`, and `article` and `screenshot` are `null`
 
 #### Scenario: Flagged items only
-- **WHEN** Ann subscribes to a feed with 100 items and has liked 2 of them
+- **WHEN** Ann subscribes to a feed with 100 items, has liked 2 of them and has listened to none
 - **THEN** `feeds` lists the feed and `feedItems` lists only those 2 items
 
 #### Scenario: Saved item of a removed feed
@@ -102,8 +102,16 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 - **WHEN** Ann's link was imported and never captured
 - **THEN** its `offlineCopy` is `null`
 
+#### Scenario: Listened episode
+- **WHEN** Ann stopped an episode at 12:30 that she didn't flag
+- **THEN** `feedItems` lists it with `readLaterAt` and `likedAt` `null` and `listen.positionSeconds` 750
+
+#### Scenario: Flagged item without a record
+- **WHEN** Ann liked an article
+- **THEN** its entry in `feedItems` has `listen` `null`
+
 ### Requirement: Data left out of the export
-The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, feed items without a flag of the user, the refresh state of feeds, or any data of other users.
+The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, feed items without a flag or a listen record of the user, the refresh state of feeds, or any data of other users.
 
 #### Scenario: Passkeys and app tokens
 - **WHEN** Ann has two passkeys and a Karakeep app token and exports her data

@@ -45,7 +45,8 @@ type publicFeed struct {
 	FaviconID *string     `json:"faviconId"`
 }
 
-// publicFeedItem is what a visitor gets of an item: no flags.
+// publicFeedItem is what a visitor gets of an item: no flags and no listen
+// record.
 type publicFeedItem struct {
 	ID          string       `json:"id"`
 	Title       string       `json:"title"`
@@ -72,8 +73,8 @@ func Feed(store *feeds.Store) dashboards.Kind {
 			if !c.Size.valid() {
 				return nil, fmt.Errorf("%w: size must be S, M or L", dashboards.ErrInvalidLayout)
 			}
-			if c.Show != feeds.ViewLatest && c.Show != feeds.ViewReadLater && c.Show != feeds.ViewLiked {
-				return nil, fmt.Errorf("%w: show must be latest, read_later or liked", dashboards.ErrInvalidLayout)
+			if c.Show != feeds.ViewLatest && c.Show != feeds.ViewReadLater && c.Show != feeds.ViewLiked && c.Show != feeds.ViewInProgress {
+				return nil, fmt.Errorf("%w: show must be latest, read_later, liked or in_progress", dashboards.ErrInvalidLayout)
 			}
 			if c.Count < 1 || c.Count > maxFeedWidgetItems {
 				return nil, fmt.Errorf("%w: count must be 1 to %d", dashboards.ErrInvalidLayout, maxFeedWidgetItems)

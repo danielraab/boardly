@@ -3,9 +3,24 @@ import type { PlayableSource } from "#/features/media/api";
 import type { NoteIcon } from "#/features/notes/api";
 import { api } from "#/lib/api";
 
-export type FeedView = "latest" | "read_later" | "liked";
+export type FeedView =
+	| "latest"
+	| "read_later"
+	| "liked"
+	| "listened"
+	| "in_progress"
+	| "finished";
 
-export const feedViews: FeedView[] = ["latest", "read_later", "liked"];
+/** The views of the feeds page; "listened" has the history's sub-views. */
+export const feedViews: FeedView[] = [
+	"latest",
+	"read_later",
+	"liked",
+	"listened",
+];
+
+/** The history's sub-views: all records, in progress, finished. */
+export const listenViews: FeedView[] = ["listened", "in_progress", "finished"];
 
 /** A user's subscription to a feed. */
 export type FeedSubscription = {
@@ -36,7 +51,16 @@ export type FeedItemFeed = {
 	faviconId: string | null;
 };
 
-/** A feed item. Visitors of a public dashboard get no flags. */
+/** The user's listen record of an episode. */
+export type FeedListen = {
+	positionSeconds: number;
+	durationSeconds: number | null;
+	startedAt: string;
+	updatedAt: string;
+	finishedAt: string | null;
+};
+
+/** A feed item. Visitors of a public dashboard get no flags and no listen. */
 export type FeedItem = {
 	id: string;
 	title: string;
@@ -47,6 +71,7 @@ export type FeedItem = {
 	feed: FeedItemFeed;
 	readLaterAt?: string | null;
 	likedAt?: string | null;
+	listen?: FeedListen | null;
 };
 
 export type FeedItemsPage = { items: FeedItem[]; nextCursor: string | null };
@@ -61,21 +86,37 @@ export const feedsQueryOptions = queryOptions({
 
 const pageSize = 50;
 
-function itemsPath(view: FeedView, limit: number, cursor?: string) {
+/** A search and a feed filter on top of a view; empty means none. */
+export type FeedItemsFilter = { q?: string; feedId?: string };
+
+function itemsPath(
+	view: FeedView,
+	limit: number,
+	cursor?: string,
+	{ q, feedId }: FeedItemsFilter = {},
+) {
 	const query = new URLSearchParams({ view, limit: String(limit) });
+	if (feedId) query.set("feedId", feedId);
+	if (q?.trim()) query.set("q", q.trim());
 	if (cursor) query.set("cursor", cursor);
 	return `/api/feed-items?${query}`;
 }
 
-/** The items of a view, page by page. */
-export const feedItemsQueryOptions = (view: FeedView) =>
-	infiniteQueryOptions({
-		queryKey: [...feedItemsQueryKey, view],
+/** The items of a view, page by page, optionally searched and filtered. */
+export const feedItemsQueryOptions = (
+	view: FeedView,
+	filter: FeedItemsFilter = {},
+) => {
+	const q = filter.q?.trim() ?? "";
+	const feedId = filter.feedId ?? "";
+	return infiniteQueryOptions({
+		queryKey: [...feedItemsQueryKey, view, { q, feedId }],
 		queryFn: ({ pageParam }) =>
-			api<FeedItemsPage>(itemsPath(view, pageSize, pageParam)),
+			api<FeedItemsPage>(itemsPath(view, pageSize, pageParam, { q, feedId })),
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (last) => last.nextCursor ?? undefined,
 	});
+};
 
 /** One page of a view, for previewing a widget in the editor. */
 export const feedPreviewQueryOptions = (view: FeedView) =>
@@ -125,6 +166,33 @@ export function setFeedItemFlags(id: string, patch: FlagPatch) {
 	});
 }
 
+export type ListenPatch = {
+	positionSeconds: number;
+	durationSeconds?: number;
+	finished?: boolean;
+};
+
+const listenPath = (id: string) =>
+	`/api/feed-items/${encodeURIComponent(id)}/listen`;
+
+/** Saves the position in an episode, or marks it as played or unplayed. */
+export function saveListen(
+	id: string,
+	patch: ListenPatch,
+	{ keepalive = false } = {},
+) {
+	return api<FeedItem>(listenPath(id), {
+		method: "PUT",
+		json: patch,
+		keepalive,
+	});
+}
+
+/** Removes an episode from the listen history. */
+export function deleteListen(id: string) {
+	return api<void>(listenPath(id), { method: "DELETE" });
+}
+
 /** A feed's chosen icon, or else the shared favicon of its site. */
 export function feedIcon(feed: {
 	icon: NoteIcon | null;
@@ -146,5 +214,7 @@ export function episodeSource(
 		icon: feedIcon(item.feed),
 		subtitle: item.feed.title,
 		durationSeconds: item.audio.durationSeconds ?? undefined,
+		startAt:
+			item.listen && !item.listen.finishedAt ? item.listen.positionSeconds : 0,
 	};
 }

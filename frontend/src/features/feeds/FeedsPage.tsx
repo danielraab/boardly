@@ -30,10 +30,12 @@ import {
 	Pencil,
 	Plus,
 	Rss,
+	Search,
 	Settings2,
 	Trash2,
+	X,
 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	dangerButton,
@@ -54,6 +56,7 @@ import { dashboardViewQueryKey } from "#/features/dashboards/api";
 import { hostOf } from "#/features/media/api";
 import { iconChoice, iconProps, noteIcon } from "#/features/notes/noteIcon";
 import { ApiError } from "#/lib/api";
+import { useDebounced } from "#/lib/useDebounced";
 import { usePageTitle } from "#/lib/usePageTitle";
 import {
 	createFeed,
@@ -66,6 +69,7 @@ import {
 	feedsQueryKey,
 	feedsQueryOptions,
 	feedViews,
+	listenViews,
 	reorderFeeds,
 	updateFeed,
 } from "./api";
@@ -77,12 +81,20 @@ export function FeedsPage() {
 	usePageTitle(t("feeds.title"));
 	const list = useQuery(feedsQueryOptions);
 	const [view, setView] = useState<FeedView>("latest");
+	// The history's sub-view, kept while another view is open.
+	const [listenView, setListenView] = useState<FeedView>("listened");
 	const [adding, setAdding] = useState(false);
 	const [managing, setManaging] = useState(false);
 	const [editing, setEditing] = useState<FeedSubscription | null>(null);
 	const [removing, setRemoving] = useState<FeedSubscription | null>(null);
+	const [search, setSearch] = useState("");
+	const [feedId, setFeedId] = useState("");
+	const debounced = useDebounced(search.trim(), searchDelayMs);
 	const feeds = list.data ?? [];
 	const noFeeds = list.data !== undefined && feeds.length === 0;
+	// Clearing applies at once; a removed feed falls back to all feeds.
+	const query = search.trim() === "" ? "" : debounced;
+	const filterId = feeds.some((f) => f.id === feedId) ? feedId : "";
 
 	return (
 		<section className={`${widePage} pt-12 pb-16`}>
@@ -141,7 +153,41 @@ export function FeedsPage() {
 					</button>
 				))}
 			</div>
-			<Items view={view} noFeeds={noFeeds} />
+			{view === "listened" && (
+				// biome-ignore lint/a11y/useSemanticElements: a group of view toggles
+				<div
+					role="group"
+					aria-label={t("feeds.listenViewsLabel")}
+					className="mt-3 flex flex-wrap gap-1"
+				>
+					{listenViews.map((v) => (
+						<button
+							key={v}
+							type="button"
+							onClick={() => setListenView(v)}
+							aria-pressed={listenView === v}
+							className="rounded-full border border-line px-3 py-1 text-sm text-muted aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-paper"
+						>
+							{v === "listened" ? t("feeds.listenAll") : t(`feeds.views.${v}`)}
+						</button>
+					))}
+				</div>
+			)}
+			{feeds.length > 0 && (
+				<SearchBar
+					search={search}
+					onSearch={setSearch}
+					feedId={filterId}
+					onFeed={setFeedId}
+					feeds={feeds}
+				/>
+			)}
+			<Items
+				view={view === "listened" ? listenView : view}
+				noFeeds={noFeeds}
+				q={query}
+				feedId={filterId}
+			/>
 			<AddFeedDialog open={adding} onClose={() => setAdding(false)} />
 			<EditFeedDialog feed={editing} onClose={() => setEditing(null)} />
 			<RemoveFeedDialog feed={removing} onClose={() => setRemoving(null)} />
@@ -149,9 +195,99 @@ export function FeedsPage() {
 	);
 }
 
-function Items({ view, noFeeds }: { view: FeedView; noFeeds: boolean }) {
+/** How long typing has to pause before the search runs. */
+const searchDelayMs = 300;
+
+function SearchBar({
+	search,
+	onSearch,
+	feedId,
+	onFeed,
+	feeds,
+}: {
+	search: string;
+	onSearch: (value: string) => void;
+	feedId: string;
+	onFeed: (id: string) => void;
+	feeds: FeedSubscription[];
+}) {
 	const { t } = useTranslation();
-	const pages = useInfiniteQuery(feedItemsQueryOptions(view));
+	const input = useRef<HTMLInputElement>(null);
+	return (
+		<div className="mt-4 flex flex-wrap items-end gap-3">
+			<div className="min-w-48 flex-[2_1_16rem]">
+				<label htmlFor="feed-search" className="block text-sm">
+					{t("feeds.search")}
+				</label>
+				<div className="relative mt-2">
+					<Search
+						className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
+						aria-hidden
+					/>
+					<input
+						ref={input}
+						id="feed-search"
+						type="search"
+						value={search}
+						onChange={(e) => onSearch(e.target.value)}
+						className={`${textInput.replace("mt-2 ", "")} px-9 [&::-webkit-search-cancel-button]:hidden`}
+					/>
+					{search !== "" && (
+						<button
+							type="button"
+							onClick={() => {
+								onSearch("");
+								input.current?.focus();
+							}}
+							aria-label={t("feeds.clearSearch")}
+							className={`${iconButton} absolute top-1/2 right-1.5 -translate-y-1/2`}
+						>
+							<X className="size-4" aria-hidden />
+						</button>
+					)}
+				</div>
+			</div>
+			<div className="min-w-40 flex-[1_1_12rem]">
+				<label htmlFor="feed-filter" className="block text-sm">
+					{t("feeds.feedFilter")}
+				</label>
+				<select
+					id="feed-filter"
+					value={feedId}
+					onChange={(e) => onFeed(e.target.value)}
+					className={textInput}
+				>
+					<option value="">{t("feeds.allFeeds")}</option>
+					{feeds.map((f) => (
+						<option key={f.id} value={f.id}>
+							{f.title}
+						</option>
+					))}
+				</select>
+			</div>
+		</div>
+	);
+}
+
+function Items({
+	view,
+	noFeeds,
+	q,
+	feedId,
+}: {
+	view: FeedView;
+	noFeeds: boolean;
+	q: string;
+	feedId: string;
+}) {
+	const { t } = useTranslation();
+	// While typing, the last results stay until the new ones arrive, but
+	// another view never shows the items of the previous one.
+	const pages = useInfiniteQuery({
+		...feedItemsQueryOptions(view, { q, feedId }),
+		placeholderData: (previous, previousQuery) =>
+			previousQuery?.queryKey[1] === view ? previous : undefined,
+	});
 	const items = pages.data?.pages.flatMap((p) => p.items) ?? [];
 
 	if (pages.isError) {
@@ -163,6 +299,11 @@ function Items({ view, noFeeds }: { view: FeedView; noFeeds: boolean }) {
 	}
 	if (!pages.data) return null;
 	if (items.length === 0) {
+		if (q || feedId) {
+			return (
+				<p className="mt-8 text-center text-muted">{t("feeds.noMatches")}</p>
+			);
+		}
 		return view === "latest" && noFeeds ? (
 			<div className="mt-8 rounded-xl border border-dashed border-line p-10 text-center">
 				<Rss className="mx-auto size-8 text-muted" aria-hidden />
@@ -177,7 +318,13 @@ function Items({ view, noFeeds }: { view: FeedView; noFeeds: boolean }) {
 		<>
 			<ul className="mt-4 flex flex-col gap-1">
 				{items.map((item) => (
-					<FeedItemRow key={item.id} item={item} showFlags showSummary />
+					<FeedItemRow
+						key={item.id}
+						item={item}
+						showFlags
+						showSummary
+						showEpisodeMenu
+					/>
 				))}
 			</ul>
 			{pages.hasNextPage && (

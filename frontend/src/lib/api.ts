@@ -32,7 +32,8 @@ type ApiInit = Omit<RequestInit, "body"> & { json?: unknown; file?: Blob };
  * Calls the API. It sends a JSON content type, or `application/octet-stream`
  * with a raw `file` body (the server's cross-site check requires one of them
  * on every state-changing request), returns the parsed JSON body (undefined
- * for 204) and throws an ApiError for error responses.
+ * for 204) and throws an ApiError for error responses. `keepalive` lets a
+ * request outlive the page, such as a save when the tab is closed.
  */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
 	const { json, file, ...rest } = init;

@@ -137,10 +137,11 @@ scheduled, too.
   `boardly-export-<slug>-<date>.zip`, that holds the same JSON as `boardly.json`, the uploaded
   images and link preview images as `images/<id>.<ext>`, and the note attachments as
   `attachments/<id>/<file name>`.
-- **The JSON** has `"format": "boardly"` and `"version": 1`, and contains the profile (email address,
+- **The JSON** has `"format": "boardly"` and `"version": 3`, and contains the profile (email address,
   name, slug, default folder and note category), the favourites tree with tags, all tags,
   dashboards with their widgets, note categories, notes (archived ones too, with their content
-  document as stored), media sources, and the records of images and attachments. IDs are the ones
+  document as stored), media sources, feed subscriptions with the items you marked or listened to
+  (and where you are in them), and the records of images and attachments. IDs are the ones
   the API uses, so references between items (a widget's folder, a note's attachments, an icon's
   image) stay intact. `file` is the path of a file in the ZIP, or `null` when the export has no
   files or the file couldn't be read.
@@ -376,11 +377,18 @@ shows the same items as a short list on a dashboard.
   [Favicons and images](#favicons-and-images)), so feeds on your local network need it set to
   `true`.
 - **Read later and Liked**: the server keeps the newest `BOARDLY_FEED_LATEST_ITEMS` (100) items of
-  each feed. An item someone marked stays until the mark is removed, also after unsubscribing from
-  its feed. A mark keeps the item's title, link and summary, not the article itself.
+  each feed. An item someone marked or listened to stays until the mark or the listen history entry
+  is removed, also after unsubscribing from its feed. A mark keeps the item's title, link and
+  summary, not the article itself.
+- **Search**: the search field and the feed filter on `/feeds` work in every view, over the items
+  the server keeps.
 - **Podcasts**: episodes play in the media player, straight from their host, so the host sees the
-  IP address of whoever plays them. Your position is remembered in your browser. Episodes whose
-  audio only exists over `http://` can't be played on an https page.
+  IP address of whoever plays them. When you're signed in, your position is saved on the server,
+  so an episode continues where you stopped, also on another device. Visitors of public dashboards
+  start each episode at the beginning after a reload, and nothing is stored for them. The
+  **Listened** view lists the episodes you started or finished, and an episode's menu marks it as
+  played or unplayed or removes it from the history. Episodes whose audio only exists over
+  `http://` can't be played on an https page.
 - **Public dashboards**: a Feed widget with **Show on public dashboard** shows visitors the titles
   and links of its items, and lets them play episodes. They never get the address of the feed, but
   a private podcast's episode URLs do reach them.

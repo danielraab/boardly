@@ -22,7 +22,8 @@ import (
 
 // Limits of what is stored of a feed.
 const (
-	maxTextLength       = 500
+	maxTitleLength      = 500
+	maxSummaryLength    = 1000
 	untitledTitleLength = 100
 )
 
@@ -61,7 +62,7 @@ func Parse(body []byte, keep int, now time.Time) (*Parsed, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrNotAFeed, err)
 	}
-	out := &Parsed{Title: cut(plainText(feed.Title), maxTextLength)}
+	out := &Parsed{Title: cut(plainText(feed.Title), maxTitleLength)}
 	if link := httpLink(feed.Link); link != nil {
 		out.SiteURL = link
 	}
@@ -96,9 +97,9 @@ func parseItem(entry *gofeed.Item, seen time.Time) (ParsedItem, bool) {
 	if title == "" {
 		title = cut(summary, untitledTitleLength)
 	}
-	item := ParsedItem{Title: cut(title, maxTextLength), Link: httpLink(entry.Link), Time: seen, Audio: parseAudio(entry)}
+	item := ParsedItem{Title: cut(title, maxTitleLength), Link: httpLink(entry.Link), Time: seen, Audio: parseAudio(entry)}
 	if summary != "" {
-		s := cut(summary, maxTextLength)
+		s := cut(summary, maxSummaryLength)
 		item.Summary = &s
 	}
 	var when *time.Time
