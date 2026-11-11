@@ -15,4 +15,4 @@
 
 ## 3. Finish
 
-- [ ] 3.1 Run the full checks of both sides once (`make check` and `make test`) and fix what fails
+- [x] 3.1 Run the full checks of both sides once (`make check` and `make test`) and fix what fails

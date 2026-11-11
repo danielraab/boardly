@@ -6,7 +6,8 @@ import {
 	within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mockApi, signedIn } from "#/test/api";
+import { mockApi, type Routes, signedIn, signedOut } from "#/test/api";
+import { section, viewData } from "#/test/dashboards";
 import { station, stubAudio } from "#/test/media";
 import { renderApp } from "#/test/renderApp";
 
@@ -229,5 +230,191 @@ describe("the media player", () => {
 		act(() => handlers.stop?.());
 		expect(screen.queryByRole("region", { name: "Media player" })).toBeNull();
 		expect(handlers.play).toBeNull();
+	});
+});
+
+describe("saving an episode's position", () => {
+	const listen = {
+		positionSeconds: 1500,
+		durationSeconds: 3600,
+		startedAt: "2026-11-08T09:00:00.000Z",
+		updatedAt: "2026-11-08T09:00:00.000Z",
+		finishedAt: null,
+	};
+	const episode = {
+		id: "e1",
+		title: "Episode one",
+		link: null,
+		summary: null,
+		publishedAt: "2026-11-08T09:00:00.000Z",
+		audio: {
+			url: "https://cdn.example/1.mp3",
+			type: "audio/mpeg",
+			durationSeconds: 3600,
+		},
+		feed: {
+			title: "Podcast",
+			subscriptionId: "s1",
+			icon: null,
+			faviconId: null,
+		},
+		readLaterAt: null,
+		likedAt: null,
+		listen,
+	};
+
+	function episodeSetup(
+		save: Routes[string] = ({ body }) => ({
+			body: { ...episode, listen: { ...listen, ...(body as object) } },
+		}),
+	) {
+		const audio = stubAudio();
+		const inits: RequestInit[] = [];
+		const api = mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/feeds": { body: [] },
+			"GET /api/feed-items": { body: { items: [episode], nextCursor: null } },
+			"PUT /api/feed-items/e1/listen": (req) => {
+				inits.push(req.init);
+				return typeof save === "function" ? save(req) : save;
+			},
+		});
+		const app = renderApp("/feeds");
+		const saves = () =>
+			api.callsTo("PUT", "/api/feed-items/e1/listen").map((c) => c.body);
+		const start = async () => {
+			await app.user.click(
+				await screen.findByRole("button", { name: "Play Episode one" }),
+			);
+			fireEvent.loadedMetadata(audio.audio());
+			fireEvent.playing(audio.audio());
+		};
+		return { ...app, ...audio, api, saves, inits, start };
+	}
+
+	it("starts at the saved position and saves when playback starts", async () => {
+		const { audio, saves, start } = episodeSetup();
+		await start();
+		expect(audio().currentTime).toBe(1500);
+		await waitFor(() => expect(saves()).toEqual([{ positionSeconds: 1500 }]));
+	});
+
+	it("saves every 15 seconds while playing, on pause and after seeking", async () => {
+		const { audio, saves, start, user } = episodeSetup();
+		await start();
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		audio().currentTime = 1510;
+		fireEvent.timeUpdate(audio());
+		audio().currentTime = 1515;
+		fireEvent.timeUpdate(audio());
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 1515 }),
+		);
+		expect(saves()).toHaveLength(2);
+
+		audio().currentTime = 1520;
+		await user.click(within(bar()).getByRole("button", { name: "Pause" }));
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 1520 }),
+		);
+
+		fireEvent.change(within(bar()).getByRole("slider", { name: "Position" }), {
+			target: { value: "1800" },
+		});
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 1800 }),
+		);
+	});
+
+	it("saves with keepalive when the page is left", async () => {
+		const { audio, saves, inits, start } = episodeSetup();
+		await start();
+		audio().currentTime = 1600;
+		act(() => {
+			window.dispatchEvent(new Event("pagehide"));
+		});
+		expect(saves().at(-1)).toEqual({ positionSeconds: 1600 });
+		expect(inits.at(-1)?.keepalive).toBe(true);
+	});
+
+	it("marks the episode as finished at its end", async () => {
+		const { audio, saves, start } = episodeSetup();
+		await start();
+		fireEvent.ended(audio());
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 0, finished: true }),
+		);
+	});
+
+	it("goes on playing when a save fails", async () => {
+		const { audio, saves, start } = episodeSetup({
+			status: 500,
+			body: { error: { code: "internal", message: "" } },
+		});
+		await start();
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(within(bar()).queryByRole("alert")).not.toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Pause Episode one" }),
+		).toBeVisible();
+		expect(audio().src).toBe("https://cdn.example/1.mp3");
+	});
+
+	it("deletes positions that earlier versions kept in the browser", async () => {
+		localStorage.setItem("boardly.player.positions", '[["e1",1500]]');
+		episodeSetup();
+		await screen.findByRole("button", { name: "Play Episode one" });
+		expect(localStorage.getItem("boardly.player.positions")).toBeNull();
+	});
+
+	it("saves nothing for a visitor", async () => {
+		const audio = stubAudio();
+		const {
+			listen: _,
+			readLaterAt: __,
+			likedAt: ___,
+			...visitorItem
+		} = episode;
+		const api = mockApi({
+			"GET /api/me": signedOut,
+			"GET /api/u/ann/home": {
+				body: viewData(
+					[
+						section(
+							"Work",
+							{},
+							{
+								id: "w1",
+								kind: "feed",
+								width: 2,
+								config: {
+									feedIds: [],
+									show: "latest",
+									count: 10,
+									showSummary: false,
+									title: null,
+									size: "M",
+									showIfPublic: true,
+								},
+								data: { items: [visitorItem] },
+							},
+						),
+					],
+					{ isOwner: false, id: undefined },
+				),
+			},
+		});
+		const { user } = renderApp("/ann/home");
+		await user.click(
+			await screen.findByRole("button", { name: "Play Episode one" }),
+		);
+		fireEvent.loadedMetadata(audio.audio());
+		fireEvent.playing(audio.audio());
+		expect(audio.audio().currentTime).toBe(0);
+		audio.audio().currentTime = 600;
+		await user.click(within(bar()).getByRole("button", { name: "Pause" }));
+		fireEvent.ended(audio.audio());
+		expect(api.calls.some((c) => c.path.endsWith("/listen"))).toBe(false);
+		expect(localStorage.length).toBe(0);
 	});
 });

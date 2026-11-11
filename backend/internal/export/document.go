@@ -17,7 +17,7 @@ import (
 // Format and Version identify the export document.
 const (
 	Format  = "boardly"
-	Version = 2
+	Version = 3
 )
 
 // Document is an export of all data of one user. Times are RFC 3339 in UTC.
@@ -212,7 +212,7 @@ type MediaSource struct {
 	UpdatedAt string      `json:"updatedAt"`
 }
 
-// Feed is a feed the user subscribes to or has flagged items in. ID is the
+// Feed is a feed the user subscribes to or has flagged or listened items in. ID is the
 // subscription's ID, or the feed's without a subscription.
 type Feed struct {
 	ID          string      `json:"id"`
@@ -224,18 +224,28 @@ type Feed struct {
 	Subscribed  bool        `json:"subscribed"`
 }
 
-// FeedItem is an item the user flagged. FeedID is the ID of its Feed, and
+// FeedItem is an item the user flagged or has a listen record of. FeedID is the ID of its Feed, and
 // GUID is the item's identity within it.
 type FeedItem struct {
-	FeedID      string         `json:"feedId"`
-	GUID        string         `json:"guid"`
-	Title       string         `json:"title"`
-	Link        *string        `json:"link"`
-	Summary     *string        `json:"summary"`
-	PublishedAt string         `json:"publishedAt"`
-	Audio       *FeedItemAudio `json:"audio"`
-	ReadLaterAt *string        `json:"readLaterAt"`
-	LikedAt     *string        `json:"likedAt"`
+	FeedID      string          `json:"feedId"`
+	GUID        string          `json:"guid"`
+	Title       string          `json:"title"`
+	Link        *string         `json:"link"`
+	Summary     *string         `json:"summary"`
+	PublishedAt string          `json:"publishedAt"`
+	Audio       *FeedItemAudio  `json:"audio"`
+	ReadLaterAt *string         `json:"readLaterAt"`
+	LikedAt     *string         `json:"likedAt"`
+	Listen      *FeedItemListen `json:"listen"`
+}
+
+// FeedItemListen is the user's listen record of an episode.
+type FeedItemListen struct {
+	PositionSeconds int     `json:"positionSeconds"`
+	DurationSeconds *int    `json:"durationSeconds"`
+	StartedAt       string  `json:"startedAt"`
+	UpdatedAt       string  `json:"updatedAt"`
+	FinishedAt      *string `json:"finishedAt"`
 }
 
 // FeedItemAudio is the file of a podcast episode.

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type Hls from "hls.js";
 import {
 	createContext,
@@ -11,9 +12,12 @@ import {
 } from "react";
 import { imageUrl } from "#/components/ImageIcon";
 import { useMe } from "#/features/auth/session";
+import {
+	oldPositionsKey,
+	saveProgress,
+} from "#/features/feeds/episodeProgress";
 import { appTitle } from "#/lib/appTitle";
 import type { PlayableSource } from "./api";
-import { forgetPosition, readPosition, savePosition } from "./episodePositions";
 
 export type PlayerStatus =
 	| "idle"
@@ -66,8 +70,8 @@ export function usePlayerProgress() {
 	return useContext(ProgressContext);
 }
 
-/** How often an episode's position is stored while it plays, in seconds. */
-const positionSaveInterval = 10;
+/** How often an episode's position is saved while it plays, in seconds. */
+const positionSaveInterval = 15;
 
 /** Tells the operating system where an episode is, where it can be told. */
 function reportPosition(position: number, duration: number) {
@@ -148,12 +152,51 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	const episodeId = useRef<string | null>(null);
 	const continueAt = useRef(0);
 	const lastSaved = useRef(0);
+	// Where the loaded episode was last, so that playing it again after an
+	// error or its end continues there (or at the beginning).
+	const lastPosition = useRef<{ id: string; seconds: number } | null>(null);
 
-	const rememberPosition = useCallback(() => {
-		const audio = audioRef.current;
-		if (audio && episodeId.current && audio.currentTime > 0)
-			savePosition(episodeId.current, audio.currentTime);
+	// Positions are saved on the server for signed-in users only; visitors
+	// store nothing.
+	const me = useMe();
+	const userId = me.data?.id ?? null;
+	const signedIn = useRef(userId !== null);
+	signedIn.current = userId !== null;
+	const queryClient = useQueryClient();
+
+	// Positions of earlier versions stayed in the browser; they aren't used.
+	useEffect(() => {
+		try {
+			localStorage.removeItem(oldPositionsKey);
+		} catch {
+			// Nothing to clean up without storage.
+		}
 	}, []);
+
+	const rememberPosition = useCallback(
+		({ finished = false, keepalive = false } = {}) => {
+			const audio = audioRef.current;
+			const id = episodeId.current;
+			if (!audio || !id) return;
+			const position = finished ? 0 : audio.currentTime;
+			lastPosition.current = { id, seconds: position };
+			if (!signedIn.current) return;
+			const duration = audio.duration;
+			void saveProgress(
+				queryClient,
+				id,
+				{
+					positionSeconds: Math.max(0, position),
+					...(Number.isFinite(duration) && duration > 0
+						? { durationSeconds: duration }
+						: {}),
+					...(finished ? { finished } : {}),
+				},
+				{ keepalive },
+			);
+		},
+		[queryClient],
+	);
 
 	const detach = useCallback(() => {
 		rememberPosition();
@@ -180,8 +223,9 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
+	// again plays the loaded source anew, from where it last was.
 	const start = useCallback(
-		(source: PlayableSource) => {
+		(source: PlayableSource, again = false) => {
 			const audio = audioRef.current;
 			if (!audio) return;
 			detach();
@@ -189,8 +233,12 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			setStatus("loading");
 			setProgress({ position: 0, duration: source.durationSeconds ?? 0 });
 			if (source.kind === "episode") {
+				const last = lastPosition.current;
 				episodeId.current = source.id;
-				continueAt.current = readPosition(source.id);
+				continueAt.current =
+					again && last?.id === source.id
+						? last.seconds
+						: (source.startAt ?? 0);
 				lastSaved.current = continueAt.current;
 			}
 			const fail = (e: unknown) => {
@@ -263,7 +311,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			playElement(audio, ++loadId.current);
 			return;
 		}
-		start(current);
+		start(current, true);
 	}, [current, status, start, playElement]);
 
 	const seek = useCallback(
@@ -288,7 +336,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 				source.url !== current.url &&
 				(status === "playing" || status === "loading")
 			)
-				start(source);
+				start(source, true);
 		},
 		[current, status, start],
 	);
@@ -318,13 +366,19 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 	}, [volume, muted]);
 
 	// Signing out, or another user signing in, stops what the last one played.
-	const me = useMe();
-	const userId = me.data?.id ?? null;
 	const lastUser = useRef(userId);
 	useEffect(() => {
 		if (lastUser.current !== null && lastUser.current !== userId) stop();
 		lastUser.current = userId;
 	}, [userId, stop]);
+
+	// Closing or leaving the page saves where the episode is. keepalive lets
+	// the request finish after the page is gone.
+	useEffect(() => {
+		const onPageHide = () => rememberPosition({ keepalive: true });
+		window.addEventListener("pagehide", onPageHide);
+		return () => window.removeEventListener("pagehide", onPageHide);
+	}, [rememberPosition]);
 
 	// The operating system's media controls: lock screen, headset, media keys.
 	useEffect(() => {
@@ -408,7 +462,10 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 			<audio
 				ref={audioRef}
 				preload="none"
-				onPlaying={() => setStatus("playing")}
+				onPlaying={() => {
+					setStatus("playing");
+					if (current?.kind === "episode") rememberPosition();
+				}}
 				onWaiting={() => setStatus((s) => (s === "playing" ? "loading" : s))}
 				onError={() => {
 					if (audioRef.current?.getAttribute("src") && !hlsRef.current)
@@ -419,7 +476,7 @@ export function MediaPlayerProvider({ children }: { children: ReactNode }) {
 						setStatus("error");
 						return;
 					}
-					if (episodeId.current) forgetPosition(episodeId.current);
+					rememberPosition({ finished: true });
 					episodeId.current = null;
 					loadId.current++;
 					setStatus("finished");

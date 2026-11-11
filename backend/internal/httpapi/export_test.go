@@ -44,7 +44,7 @@ func TestExportJSON(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &doc); err != nil {
 		t.Fatal(err)
 	}
-	if doc.Format != "boardly" || doc.Version != 2 || doc.WithFiles || doc.Profile.Email != "ann@example.org" {
+	if doc.Format != "boardly" || doc.Version != 3 || doc.WithFiles || doc.Profile.Email != "ann@example.org" {
 		t.Errorf("document = %+v", doc)
 	}
 	if len(doc.Attachments) != 1 || doc.Attachments[0].Name != "report.pdf" || doc.Attachments[0].File != nil {

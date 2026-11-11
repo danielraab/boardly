@@ -10,7 +10,6 @@ import {
 	feedIcon,
 	feedPreviewQueryOptions,
 	feedsQueryOptions,
-	feedViews,
 } from "#/features/feeds/api";
 import { FeedItemRow } from "#/features/feeds/FeedItemRow";
 import { ChosenSources, SourceSearch } from "../media/ChosenSources";
@@ -23,6 +22,14 @@ import { sizeStyles, type WidgetSize, widgetSizes } from "../sizes";
 import { maxWidgetTitle, WidgetSettingsForm } from "../WidgetSettingsForm";
 
 export const maxFeedWidgetItems = 100;
+
+/** What a widget can show; in_progress is "Continue listening". */
+const widgetViews = [
+	"latest",
+	"read_later",
+	"liked",
+	"in_progress",
+] as const satisfies FeedView[];
 
 export type FeedConfig = {
 	/** Subscription IDs; empty means all of the owner's feeds. */
@@ -197,9 +204,11 @@ function Settings(props: WidgetSettingsProps) {
 					onChange={(e) => setShow(e.target.value as FeedView)}
 					className={textInput}
 				>
-					{feedViews.map((v) => (
+					{widgetViews.map((v) => (
 						<option key={v} value={v}>
-							{t(`feeds.views.${v}`)}
+							{v === "in_progress"
+								? t("dashboards.widgets.feed.continueListening")
+								: t(`feeds.views.${v}`)}
 						</option>
 					))}
 				</select>

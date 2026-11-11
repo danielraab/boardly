@@ -102,7 +102,7 @@ func TestImportDataErrors(t *testing.T) {
 		"foreign folder":   {map[string]string{"parts": "favourites", "folderId": "nope"}, export, 400, "invalid_folder"},
 		"unknown category": {map[string]string{"parts": "notes", "categoryId": "nope"}, export, 400, "invalid_category"},
 		"karakeep file":    {map[string]string{"parts": "notes"}, `{"bookmarks":[]}`, 400, "invalid_import_file"},
-		"version 3":        {map[string]string{"parts": "notes"}, strings.Replace(export, `"version": 2`, `"version": 3`, 1), 400, "invalid_import_file"},
+		"version 4":        {map[string]string{"parts": "notes"}, strings.Replace(export, `"version": 3`, `"version": 4`, 1), 400, "invalid_import_file"},
 	} {
 		rec := s.importData(ann, c.params, c.body)
 		if rec.Code != c.status || errorCode(t, rec) != c.code {

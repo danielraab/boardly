@@ -60,6 +60,14 @@ function item(
 	};
 }
 
+const savedListen = {
+	positionSeconds: 0,
+	durationSeconds: 3600,
+	startedAt: "2026-11-08T09:00:00.000Z",
+	updatedAt: "2026-11-08T09:00:00.000Z",
+	finishedAt: null,
+};
+
 const episode = item("e1", "Episode one", {
 	link: null,
 	audio: {
@@ -479,10 +487,229 @@ describe("the feeds page", () => {
 	});
 });
 
-describe("playing an episode", () => {
-	function ready() {
+describe("the listen history", () => {
+	const at = (position: number, fields = {}) => ({
+		...savedListen,
+		positionSeconds: position,
+		...fields,
+	});
+
+	it("shows the listened episodes with their sub-views", async () => {
+		const { api, user } = setup({
+			items: {
+				listened: [{ ...episode, listen: at(0) }],
+				in_progress: [{ ...episode, title: "Half way", listen: at(600) }],
+			},
+		});
+		await user.click(await screen.findByRole("button", { name: "Listened" }));
+		expect(await screen.findByText("Episode one")).toBeVisible();
+		const history = screen.getByRole("group", { name: "History" });
+		expect(
+			within(history).getByRole("button", { name: "All" }),
+		).toHaveAttribute("aria-pressed", "true");
+
+		await user.click(
+			within(history).getByRole("button", { name: "In progress" }),
+		);
+		expect(await screen.findByText("Half way")).toBeVisible();
+		await user.click(within(history).getByRole("button", { name: "Finished" }));
+		expect(await screen.findByText("Nothing here yet")).toBeVisible();
+		const views = api
+			.callsTo("GET", "/api/feed-items")
+			.map((c) => new URLSearchParams(c.search).get("view"));
+		expect(views).toEqual(
+			expect.arrayContaining(["listened", "in_progress", "finished"]),
+		);
+
+		await user.click(screen.getByRole("button", { name: "Latest" }));
+		expect(
+			screen.queryByRole("group", { name: "History" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("shows how much of an episode is left", async () => {
+		setup({
+			items: {
+				latest: [
+					{ ...episode, listen: at(2700) },
+					{
+						...episode,
+						id: "e2",
+						title: "Done",
+						listen: at(0, { finishedAt: "2026-11-08T10:00:00.000Z" }),
+					},
+					{
+						...episode,
+						id: "e3",
+						title: "Unknown length",
+						audio: {
+							url: "https://cdn.example/3.mp3",
+							type: null,
+							durationSeconds: null,
+						},
+						listen: at(100, { durationSeconds: null }),
+					},
+					{ ...episode, id: "e4", title: "Never played" },
+				],
+			},
+		});
+		const row = async (name: string) =>
+			(await screen.findByText(name)).closest("li") as HTMLElement;
+		const half = await row("Episode one");
+		expect(within(half).getByText("15 min left")).toBeVisible();
+		expect(
+			within(half).getByTestId("listen-progress").firstElementChild,
+		).toHaveStyle({ width: "75%" });
+		const done = await row("Done");
+		expect(within(done).getByText("Played")).toBeVisible();
+		expect(
+			within(done).getByTestId("listen-progress").firstElementChild,
+		).toHaveStyle({ width: "100%" });
+		const unknown = await row("Unknown length");
+		expect(within(unknown).queryByTestId("listen-progress")).toBeNull();
+		expect(within(unknown).queryByText(/min left/)).toBeNull();
+		expect(
+			within(await row("Never played")).queryByTestId("listen-progress"),
+		).toBeNull();
+	});
+
+	/** The server keeps the record that the requests change. */
+	function menuSetup(listen: FeedItem["listen"]) {
+		let current = listen;
+		return setup({
+			more: {
+				"GET /api/feed-items": () => ({
+					body: { items: [{ ...episode, listen: current }], nextCursor: null },
+				}),
+				"PUT /api/feed-items/e1/listen": ({ body }) => {
+					const { finished, ...rest } = body as {
+						positionSeconds: number;
+						finished?: boolean;
+					};
+					current = {
+						...savedListen,
+						...rest,
+						finishedAt: finished ? "2026-11-08T11:00:00.000Z" : null,
+					};
+					return { body: { ...episode, listen: current } };
+				},
+				"DELETE /api/feed-items/e1/listen": () => {
+					current = null;
+					return { status: 204 };
+				},
+			},
+		});
+	}
+
+	async function openMenu(user: ReturnType<typeof setup>["user"]) {
+		await user.click(
+			await screen.findByLabelText("Episode actions for Episode one"),
+		);
+		return screen.findByRole("menu");
+	}
+
+	it("marks an episode it never played as played", async () => {
+		const { api, user } = menuSetup(null);
+		const menu = await openMenu(user);
+		expect(
+			within(menu)
+				.getAllByRole("menuitem")
+				.map((m) => m.textContent),
+		).toEqual(["Mark as played"]);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Mark as played" }),
+		);
+		await waitFor(() =>
+			expect(api.callsTo("PUT", "/api/feed-items/e1/listen")[0]?.body).toEqual({
+				positionSeconds: 0,
+				finished: true,
+			}),
+		);
+		expect(await screen.findByText("Played")).toBeVisible();
+	});
+
+	it("marks an episode in progress as unplayed or removes it", async () => {
+		const { api, user } = menuSetup(at(600));
+		let menu = await openMenu(user);
+		expect(
+			within(menu)
+				.getAllByRole("menuitem")
+				.map((m) => m.textContent),
+		).toEqual(["Mark as played", "Mark as unplayed", "Remove from history"]);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Mark as unplayed" }),
+		);
+		await waitFor(() =>
+			expect(api.callsTo("PUT", "/api/feed-items/e1/listen")[0]?.body).toEqual({
+				positionSeconds: 0,
+			}),
+		);
+		menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Remove from history" }),
+		);
+		await waitFor(() =>
+			expect(api.callsTo("DELETE", "/api/feed-items/e1/listen")).toHaveLength(
+				1,
+			),
+		);
+	});
+
+	it("offers no Mark as played for a finished episode", async () => {
+		const { user } = menuSetup(
+			at(0, { finishedAt: "2026-11-08T10:00:00.000Z" }),
+		);
+		const menu = await openMenu(user);
+		expect(
+			within(menu)
+				.getAllByRole("menuitem")
+				.map((m) => m.textContent),
+		).toEqual(["Mark as unplayed", "Remove from history"]);
+	});
+
+	it("stops the player before marking the loaded episode as played", async () => {
 		const audio = stubAudio();
-		const app = setup({ items: { latest: [episode] } });
+		const { api, user } = menuSetup(at(600));
+		await user.click(
+			await screen.findByRole("button", { name: "Play Episode one" }),
+		);
+		fireEvent.playing(audio.audio());
+		audio.audio().currentTime = 900;
+		const menu = await openMenu(user);
+		await user.click(
+			within(menu).getByRole("menuitem", { name: "Mark as played" }),
+		);
+		await waitFor(() =>
+			expect(
+				api.callsTo("PUT", "/api/feed-items/e1/listen").at(-1)?.body,
+			).toEqual({
+				positionSeconds: 0,
+				finished: true,
+			}),
+		);
+		expect(
+			screen.queryByRole("region", { name: "Media player" }),
+		).not.toBeInTheDocument();
+		const bodies = api
+			.callsTo("PUT", "/api/feed-items/e1/listen")
+			.map((c) => c.body);
+		expect(bodies.at(-2)).toEqual({ positionSeconds: 900 });
+	});
+});
+
+describe("playing an episode", () => {
+	function ready(listen: FeedItem["listen"] = null) {
+		const audio = stubAudio();
+		const app = setup({
+			items: { latest: [{ ...episode, listen }] },
+			more: {
+				"PUT /api/feed-items/e1/listen": ({ body }) => ({
+					body: { ...episode, listen: { ...savedListen, ...(body as object) } },
+				}),
+			},
+		});
+		const saves = () =>
+			app.api.callsTo("PUT", "/api/feed-items/e1/listen").map((c) => c.body);
 		const start = async () => {
 			await app.user.click(
 				await screen.findByRole("button", {
@@ -490,7 +717,7 @@ describe("playing an episode", () => {
 				}),
 			);
 		};
-		return { ...audio, ...app, start };
+		return { ...audio, ...app, saves, start };
 	}
 
 	it("resumes in place after a pause, without loading it again", async () => {
@@ -518,38 +745,55 @@ describe("playing an episode", () => {
 	});
 
 	it("continues where it stopped, also after a reload", async () => {
-		localStorage.setItem(
-			"boardly.player.positions",
-			JSON.stringify([["e1", 1500]]),
-		);
-		const { audio, start } = ready();
+		const { audio, start } = ready({ ...savedListen, positionSeconds: 1500 });
 		await start();
 		fireEvent.loadedMetadata(audio());
 		expect(audio().currentTime).toBe(1500);
 	});
 
-	it("stores the position when it is closed", async () => {
-		const { audio, start, user } = ready();
+	it("starts a finished episode at the beginning", async () => {
+		const { audio, start } = ready({
+			...savedListen,
+			finishedAt: "2026-11-08T10:00:00.000Z",
+		});
+		await start();
+		fireEvent.loadedMetadata(audio());
+		expect(audio().currentTime).toBe(0);
+	});
+
+	it("saves the position when it is closed", async () => {
+		const { audio, saves, start, user } = ready();
 		await start();
 		audio().currentTime = 1200;
 		await user.click(
 			within(bar()).getByRole("button", { name: "Close player" }),
 		);
-		expect(
-			JSON.parse(localStorage.getItem("boardly.player.positions") ?? "[]"),
-		).toEqual([["e1", 1200]]);
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 1200 }),
+		);
+		expect(localStorage.getItem("boardly.player.positions")).toBeNull();
 	});
 
 	it("finishes without an error and starts over from the beginning", async () => {
-		const { audio, start, user } = ready();
+		const { audio, saves, start, user } = ready({
+			...savedListen,
+			positionSeconds: 1500,
+		});
 		await start();
+		fireEvent.loadedMetadata(audio());
 		audio().currentTime = 3599;
 		fireEvent.ended(audio());
 		expect(within(bar()).getByText("Finished")).toBeVisible();
 		expect(within(bar()).queryByRole("alert")).not.toBeInTheDocument();
-		expect(localStorage.getItem("boardly.player.positions")).toBe("[]");
+		await waitFor(() =>
+			expect(saves().at(-1)).toEqual({ positionSeconds: 0, finished: true }),
+		);
 		await user.click(within(bar()).getByRole("button", { name: "Play" }));
 		expect(within(bar()).getByText("Connecting…")).toBeVisible();
+		// A browser starts a newly loaded source at 0; jsdom's stub doesn't.
+		audio().currentTime = 0;
+		fireEvent.loadedMetadata(audio());
+		expect(audio().currentTime).toBe(0);
 	});
 
 	it("says so when an episode can't be played", async () => {

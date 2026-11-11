@@ -12,7 +12,7 @@ var exportedTables = []string{
 	"favourite_nodes", "tags", "favourite_node_tags",
 	"dashboards", "dashboard_widgets",
 	"note_categories", "notes", "note_attachments", "attachments",
-	"media_sources", "feed_subscriptions", "feed_items", "feed_item_flags", "images", "offline_copies",
+	"media_sources", "feed_subscriptions", "feed_items", "feed_item_flags", "feed_item_listens", "images", "offline_copies",
 }
 
 // notExportedTables belong to users but are left out on purpose: sign-in

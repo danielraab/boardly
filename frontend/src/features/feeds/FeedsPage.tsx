@@ -69,6 +69,7 @@ import {
 	feedsQueryKey,
 	feedsQueryOptions,
 	feedViews,
+	listenViews,
 	reorderFeeds,
 	updateFeed,
 } from "./api";
@@ -80,6 +81,8 @@ export function FeedsPage() {
 	usePageTitle(t("feeds.title"));
 	const list = useQuery(feedsQueryOptions);
 	const [view, setView] = useState<FeedView>("latest");
+	// The history's sub-view, kept while another view is open.
+	const [listenView, setListenView] = useState<FeedView>("listened");
 	const [adding, setAdding] = useState(false);
 	const [managing, setManaging] = useState(false);
 	const [editing, setEditing] = useState<FeedSubscription | null>(null);
@@ -150,6 +153,26 @@ export function FeedsPage() {
 					</button>
 				))}
 			</div>
+			{view === "listened" && (
+				// biome-ignore lint/a11y/useSemanticElements: a group of view toggles
+				<div
+					role="group"
+					aria-label={t("feeds.listenViewsLabel")}
+					className="mt-3 flex flex-wrap gap-1"
+				>
+					{listenViews.map((v) => (
+						<button
+							key={v}
+							type="button"
+							onClick={() => setListenView(v)}
+							aria-pressed={listenView === v}
+							className="rounded-full border border-line px-3 py-1 text-sm text-muted aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-paper"
+						>
+							{v === "listened" ? t("feeds.listenAll") : t(`feeds.views.${v}`)}
+						</button>
+					))}
+				</div>
+			)}
 			{feeds.length > 0 && (
 				<SearchBar
 					search={search}
@@ -159,7 +182,12 @@ export function FeedsPage() {
 					feeds={feeds}
 				/>
 			)}
-			<Items view={view} noFeeds={noFeeds} q={query} feedId={filterId} />
+			<Items
+				view={view === "listened" ? listenView : view}
+				noFeeds={noFeeds}
+				q={query}
+				feedId={filterId}
+			/>
 			<AddFeedDialog open={adding} onClose={() => setAdding(false)} />
 			<EditFeedDialog feed={editing} onClose={() => setEditing(null)} />
 			<RemoveFeedDialog feed={removing} onClose={() => setRemoving(null)} />
@@ -290,7 +318,13 @@ function Items({
 		<>
 			<ul className="mt-4 flex flex-col gap-1">
 				{items.map((item) => (
-					<FeedItemRow key={item.id} item={item} showFlags showSummary />
+					<FeedItemRow
+						key={item.id}
+						item={item}
+						showFlags
+						showSummary
+						showEpisodeMenu
+					/>
 				))}
 			</ul>
 			{pages.hasNextPage && (

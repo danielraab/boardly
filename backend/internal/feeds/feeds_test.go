@@ -93,6 +93,8 @@ type feedServer struct {
 	redirect string
 	// summaries holds a description per guid.
 	summaries map[string]string
+	// audio makes every entry an episode.
+	audio bool
 }
 
 func serveFeed(t *testing.T, base time.Time, entries ...entry) *feedServer {
@@ -135,8 +137,12 @@ func (f *feedServer) handle(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0"?><rss version="2.0"><channel><title>Example</title><link>https://site.example/</link>`)
 	for _, e := range f.entries {
-		fmt.Fprintf(&b, `<item><guid>%s</guid><title>%s</title><pubDate>%s</pubDate><description>%s</description></item>`,
-			e.guid, e.title, f.base.Add(-e.age).Format(time.RFC1123Z), f.summaries[e.guid])
+		enclosure := ""
+		if f.audio {
+			enclosure = `<enclosure url="https://cdn.example/` + e.guid + `.mp3" type="audio/mpeg"/>`
+		}
+		fmt.Fprintf(&b, `<item><guid>%s</guid><title>%s</title><pubDate>%s</pubDate><description>%s</description>%s</item>`,
+			e.guid, e.title, f.base.Add(-e.age).Format(time.RFC1123Z), f.summaries[e.guid], enclosure)
 	}
 	b.WriteString(`</channel></rss>`)
 	w.Header().Set("Content-Type", "application/rss+xml")
@@ -725,7 +731,7 @@ func TestImportCantChangeSharedItems(t *testing.T) {
 	ann, mallory := e.user("ann"), e.user("mallory")
 	sub := e.subscribe(ann, srv.URL+"/feed")
 	stamp := db.FormatTime(e.clock.now())
-	restored, err := e.s.RestoreFlagsTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: "1", Title: "Forged", LikedAt: &stamp})
+	restored, err := e.s.RestoreItemTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: "1", Title: "Forged", LikedAt: &stamp})
 	if err != nil || !restored {
 		t.Fatalf("%v %v", restored, err)
 	}
@@ -737,7 +743,7 @@ func TestImportCantChangeSharedItems(t *testing.T) {
 	}
 
 	// An item the server doesn't have stays with the one who imported it.
-	if _, err := e.s.RestoreFlagsTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: "x", Title: "Injected", LikedAt: &stamp}); err != nil {
+	if _, err := e.s.RestoreItemTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: "x", Title: "Injected", LikedAt: &stamp}); err != nil {
 		t.Fatal(err)
 	}
 	if got := titles(e.items(ann, ViewLatest)); got != "Real" {
@@ -748,7 +754,7 @@ func TestImportCantChangeSharedItems(t *testing.T) {
 	}
 	// Someone else's private row is skipped.
 	bob := e.user("bob")
-	if ok, err := e.s.RestoreFlagsTx(ctx, e.db, bob, sub.FeedID, Imported{Identity: "x", Title: "Other", LikedAt: &stamp}); err != nil || ok {
+	if ok, err := e.s.RestoreItemTx(ctx, e.db, bob, sub.FeedID, Imported{Identity: "x", Title: "Other", LikedAt: &stamp}); err != nil || ok {
 		t.Fatalf("%v %v", ok, err)
 	}
 	if strings.Contains(titles(e.items(bob, ViewLiked)), "Injected") {
@@ -763,7 +769,7 @@ func TestImportedItemsCantPushOutOthers(t *testing.T) {
 	sub := e.subscribe(ann, srv.URL+"/feed")
 	stamp := db.FormatTime(e.clock.now())
 	for i := range 5 {
-		if _, err := e.s.RestoreFlagsTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: fmt.Sprint("x", i), Title: "Fake", PublishedAt: "2026-11-08T11:59:59Z", LikedAt: &stamp}); err != nil {
+		if _, err := e.s.RestoreItemTx(ctx, e.db, mallory, sub.FeedID, Imported{Identity: fmt.Sprint("x", i), Title: "Fake", PublishedAt: "2026-11-08T11:59:59Z", LikedAt: &stamp}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -780,7 +786,7 @@ func TestImportedItemConfirmedByFetch(t *testing.T) {
 	sub := e.subscribe(ann, srv.URL+"/feed")
 	e.subscribe(bob, srv.URL+"/feed")
 	stamp := db.FormatTime(e.clock.now())
-	if _, err := e.s.RestoreFlagsTx(ctx, e.db, ann, sub.FeedID, Imported{Identity: "2", Title: "From the file", LikedAt: &stamp}); err != nil {
+	if _, err := e.s.RestoreItemTx(ctx, e.db, ann, sub.FeedID, Imported{Identity: "2", Title: "From the file", LikedAt: &stamp}); err != nil {
 		t.Fatal(err)
 	}
 	srv.set(entry{"1", "Real", time.Minute}, entry{"2", "From the feed", 2 * time.Minute})
@@ -831,7 +837,7 @@ func TestDeletingAnAccount(t *testing.T) {
 	e.subscribe(bob, srv.URL+"/feed")
 	e.flag(ann, e.items(ann, ViewLatest)[0].ID, nil, ptr(true))
 	stamp := db.FormatTime(e.clock.now())
-	if _, err := e.s.RestoreFlagsTx(ctx, e.db, ann, sub.FeedID, Imported{Identity: "x", Title: "Mine", LikedAt: &stamp}); err != nil {
+	if _, err := e.s.RestoreItemTx(ctx, e.db, ann, sub.FeedID, Imported{Identity: "x", Title: "Mine", LikedAt: &stamp}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e.db.Exec(`DELETE FROM users WHERE id = ?`, ann); err != nil {

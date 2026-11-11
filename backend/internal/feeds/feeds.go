@@ -42,7 +42,14 @@ const (
 	ViewLatest    = "latest"
 	ViewReadLater = "read_later"
 	ViewLiked     = "liked"
+	// The listen history: every record, those in progress, finished ones.
+	ViewListened   = "listened"
+	ViewInProgress = "in_progress"
+	ViewFinished   = "finished"
 )
+
+// MaxListenSeconds bounds a listen position and duration (48 hours).
+const MaxListenSeconds = 172800
 
 // MaxCustomTitle bounds a subscription's own title, in characters.
 const MaxCustomTitle = 200
@@ -92,6 +99,16 @@ type Item struct {
 	Feed        ItemFeed `json:"feed"`
 	ReadLaterAt *string  `json:"readLaterAt"`
 	LikedAt     *string  `json:"likedAt"`
+	Listen      *Listen  `json:"listen"`
+}
+
+// Listen is a user's listen record of an episode.
+type Listen struct {
+	PositionSeconds int     `json:"positionSeconds"`
+	DurationSeconds *int    `json:"durationSeconds"`
+	StartedAt       string  `json:"startedAt"`
+	UpdatedAt       string  `json:"updatedAt"`
+	FinishedAt      *string `json:"finishedAt"`
 }
 
 // Patch lists a subscription's fields to change; nil fields stay as they
@@ -558,14 +575,17 @@ type ItemQuery struct {
 	Cursor string
 }
 
-// itemFrom is the FROM clause of a view. Each binds the user three times.
-func itemFrom(view string) (from, sortKey, flagged string, err error) {
+// itemFrom is the FROM clause of a view, which binds the user binds times,
+// and the condition that limits it to the user's flags or listen records,
+// which binds the user once.
+func itemFrom(view string) (from string, binds int, sortKey, own string, err error) {
 	switch view {
 	case ViewLatest:
 		return `feed_items i
 			JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
 			JOIN feeds f ON f.id = i.feed_id
-			LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = ?`, "i.item_time", "", nil
+			LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = ?
+			LEFT JOIN feed_item_listens ls ON ls.item_id = i.id AND ls.user_id = ?`, 3, "i.item_time", "", nil
 	case ViewReadLater, ViewLiked:
 		column := "fl.read_later_at"
 		if view == ViewLiked {
@@ -574,23 +594,46 @@ func itemFrom(view string) (from, sortKey, flagged string, err error) {
 		return `feed_item_flags fl
 			JOIN feed_items i ON i.id = fl.item_id
 			JOIN feeds f ON f.id = i.feed_id
-			LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?`, column, ` AND fl.user_id = ? AND ` + column + ` IS NOT NULL`, nil
+			LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
+			LEFT JOIN feed_item_listens ls ON ls.item_id = i.id AND ls.user_id = ?`, 2, column, ` AND fl.user_id = ? AND ` + column + ` IS NOT NULL`, nil
+	case ViewListened, ViewInProgress, ViewFinished:
+		own := ` AND ls.user_id = ?`
+		switch view {
+		case ViewInProgress:
+			own += ` AND ls.finished_at IS NULL AND ls.position_seconds > 0`
+		case ViewFinished:
+			own += ` AND ls.finished_at IS NOT NULL`
+		}
+		return `feed_item_listens ls
+			JOIN feed_items i ON i.id = ls.item_id
+			JOIN feeds f ON f.id = i.feed_id
+			LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
+			LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = ?`, 2, "ls.updated_at", own, nil
 	}
-	return "", "", "", ErrInvalidQuery
+	return "", 0, "", "", ErrInvalidQuery
 }
 
 const itemColumns = `i.id, i.title, i.link, i.summary, i.item_time, i.audio_url, i.audio_type, i.audio_seconds,
 	COALESCE(s.custom_title, f.title), s.id, s.icon_symbol, s.icon_image_id, f.site_url, f.url,
-	fl.read_later_at, fl.liked_at`
+	fl.read_later_at, fl.liked_at,
+	ls.position_seconds, ls.duration_seconds, ls.started_at, ls.updated_at, ls.finished_at`
 
 func scanItem(row interface{ Scan(...any) error }) (Item, error) {
 	var it Item
 	var audioURL, audioType, symbol, imageID, siteURL *string
 	var seconds *int
 	var feedURL string
+	var position *int
+	var listen Listen
+	var started, updated *string
 	if err := row.Scan(&it.ID, &it.Title, &it.Link, &it.Summary, &it.PublishedAt, &audioURL, &audioType, &seconds,
-		&it.Feed.Title, &it.Feed.SubscriptionID, &symbol, &imageID, &siteURL, &feedURL, &it.ReadLaterAt, &it.LikedAt); err != nil {
+		&it.Feed.Title, &it.Feed.SubscriptionID, &symbol, &imageID, &siteURL, &feedURL, &it.ReadLaterAt, &it.LikedAt,
+		&position, &listen.DurationSeconds, &started, &updated, &listen.FinishedAt); err != nil {
 		return Item{}, err
+	}
+	if position != nil && started != nil && updated != nil {
+		listen.PositionSeconds, listen.StartedAt, listen.UpdatedAt = *position, *started, *updated
+		it.Listen = &listen
 	}
 	if audioURL != nil {
 		it.Audio = &Audio{URL: *audioURL, Type: audioType, DurationSeconds: seconds}
@@ -619,21 +662,21 @@ func decodeCursor(cursor string) (key, id string, err error) {
 // Items returns a page of the user's items and the cursor of the next page,
 // or "" for the last one.
 func (s *Store) Items(ctx context.Context, userID string, q ItemQuery) ([]Item, string, error) {
-	from, sortKey, flagged, err := itemFrom(q.View)
+	from, binds, sortKey, own, err := itemFrom(q.View)
 	if err != nil {
 		return nil, "", err
 	}
 	if q.Limit < 1 || q.Limit > 100 {
 		return nil, "", ErrInvalidQuery
 	}
-	args := []any{userID}
-	if q.View == ViewLatest {
+	var args []any
+	for range binds {
 		args = append(args, userID)
 	}
 	where := `(i.imported_by IS NULL OR i.imported_by = ?)`
 	args = append(args, userID)
-	if flagged != "" {
-		where += flagged
+	if own != "" {
+		where += own
 		args = append(args, userID)
 	}
 	if len(q.SubscriptionIDs) > 0 {
@@ -716,16 +759,18 @@ func (s *Store) setFavicons(ctx context.Context, items []Item) {
 	}
 }
 
-// visibleItem loads an item that the user subscribes to or has flagged.
+// visibleItem loads an item that the user subscribes to, has flagged or has
+// a listen record of.
 func (s *Store) visibleItem(ctx context.Context, userID, itemID string) (Item, error) {
 	it, err := scanItem(s.DB.QueryRowContext(ctx,
 		`SELECT `+itemColumns+` FROM feed_items i
 		 JOIN feeds f ON f.id = i.feed_id
 		 LEFT JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
 		 LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = ?
+		 LEFT JOIN feed_item_listens ls ON ls.item_id = i.id AND ls.user_id = ?
 		 WHERE i.id = ? AND (i.imported_by IS NULL OR i.imported_by = ?)
-		   AND (s.id IS NOT NULL OR fl.item_id IS NOT NULL)`,
-		userID, userID, itemID, userID))
+		   AND (s.id IS NOT NULL OR fl.item_id IS NOT NULL OR ls.item_id IS NOT NULL)`,
+		userID, userID, userID, itemID, userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Item{}, ErrNotFound
 	}
@@ -759,6 +804,47 @@ func (s *Store) SetFlags(ctx context.Context, userID, itemID string, readLater, 
 		return Item{}, err
 	}
 	return it, nil
+}
+
+// SaveListen creates or changes the user's listen record of an episode.
+// Finished sets the position to 0; otherwise the record is unfinished and
+// gets the position. A nil duration keeps the stored one. Items without audio
+// give ErrInvalidQuery.
+func (s *Store) SaveListen(ctx context.Context, userID, itemID string, position int, duration *int, finished *bool) (Item, error) {
+	it, err := s.visibleItem(ctx, userID, itemID)
+	if err != nil {
+		return Item{}, err
+	}
+	if it.Audio == nil || position < 0 || position > MaxListenSeconds ||
+		(duration != nil && (*duration <= 0 || *duration > MaxListenSeconds)) {
+		return Item{}, ErrInvalidQuery
+	}
+	now := db.FormatTime(s.Now())
+	var finishedAt *string
+	if finished != nil && *finished {
+		position, finishedAt = 0, &now
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`INSERT INTO feed_item_listens (user_id, item_id, position_seconds, duration_seconds, started_at, updated_at, finished_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT (user_id, item_id) DO UPDATE SET
+		   position_seconds = excluded.position_seconds,
+		   duration_seconds = COALESCE(excluded.duration_seconds, duration_seconds),
+		   updated_at = excluded.updated_at,
+		   finished_at = excluded.finished_at`,
+		userID, itemID, position, duration, now, now, finishedAt); err != nil {
+		return Item{}, err
+	}
+	return s.visibleItem(ctx, userID, itemID)
+}
+
+// DeleteListen removes the user's listen record of an item they can see.
+func (s *Store) DeleteListen(ctx context.Context, userID, itemID string) error {
+	if _, err := s.visibleItem(ctx, userID, itemID); err != nil {
+		return err
+	}
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM feed_item_listens WHERE user_id = ? AND item_id = ?`, userID, itemID)
+	return err
 }
 
 func nextFlag(current *string, set *bool, now string) *string {
