@@ -45,7 +45,7 @@
     "maplibre-gl": "6.16.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-i18next": "^17.1.9",
+    "react-i18next": "^17.1.13",
     "tailwindcss": "^4.3.5",
     "vanilla-cookieconsent": "^3.3.0"
   },
