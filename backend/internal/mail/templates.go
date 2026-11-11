@@ -104,3 +104,53 @@ func RenderAccountDeletion(locale, to string, data AccountDeletionData) (Message
 	}
 	return render("account_deletion", locale, to, data)
 }
+
+// singleLine collapses runs of whitespace, so that text a user typed can't
+// add lines to a subject or spread over several lines of a message.
+func singleLine(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// InvitationData fills the templates of the invitation to a registered user.
+type InvitationData struct {
+	// AppName is the product name the email shows, DefaultAppName if empty.
+	AppName string
+	// InviterName is the inviter's name, or their slug when they have none.
+	InviterName string
+	// Title is the dashboard's title or the group's name.
+	Title string
+	// IsGroup says that the invitation is to a group.
+	IsGroup bool
+	// Link accepts the invitation.
+	Link      string
+	ValidDays int
+}
+
+// RenderInvitation renders the invitation to an address that has an account,
+// for the locale, falling back to English.
+func RenderInvitation(locale, to string, data InvitationData) (Message, error) {
+	if data.AppName == "" {
+		data.AppName = DefaultAppName
+	}
+	data.InviterName = singleLine(data.InviterName)
+	data.Title = singleLine(data.Title)
+	return render("invitation", locale, to, data)
+}
+
+// InvitationNoticeData fills the notice to an address without an account. It
+// has no field for anything the inviter typed, so the notice can't carry it.
+type InvitationNoticeData struct {
+	// AppName is the product name the email shows, DefaultAppName if empty.
+	AppName string
+	// RegistrationOpen says that the recipient can sign up.
+	RegistrationOpen bool
+	ValidDays        int
+}
+
+// RenderInvitationNotice renders the notice that somebody tried to share
+// something with an address without an account, for the locale, falling back
+// to English.
+func RenderInvitationNotice(locale, to string, data InvitationNoticeData) (Message, error) {
+	if data.AppName == "" {
+		data.AppName = DefaultAppName
+	}
+	return render("invitation_notice", locale, to, data)
+}

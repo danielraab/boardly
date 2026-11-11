@@ -31,7 +31,8 @@ user_group_members(group_id, user_id, role, joined_at, PK(group_id, user_id))
 invitations(id, inviter_id, email, token_hash, locale,
        dashboard_id | note_id | note_category_id | favourite_folder_id | group_id,   -- exactly one
        level | role,                                                                 -- share or group
-       notice_sent_at, created_at, expires_at)
+       created_at, expires_at)
+invitation_notices(email PK, sent_at)
 shares(id, owner_id,
        dashboard_id | note_id | note_category_id | favourite_folder_id,   -- exactly one
        user_id | group_id,                                                -- exactly one
@@ -70,7 +71,7 @@ A new `invitation_mail` job in the existing `jobs` package decides what to send,
 
 The job generates the token itself and stores only its hash, so the plain token is never in the job's payload. A retry generates a new one. `token_hash` is empty until then, and a notice never has one, so nobody can accept without proving the address. Someone with no account proves it by signing up, and then accepts from the list in the app.
 
-The notice carries nothing the inviter typed, so the server can't be used to send chosen text to arbitrary addresses. The limits are 30 invitations per user per hour with the existing `ratelimit` package, and one notice per address per 24 hours, checked against `notice_sent_at`.
+The notice carries nothing the inviter typed, so the server can't be used to send chosen text to arbitrary addresses. The limits are 30 invitations per user per hour with the existing `ratelimit` package, and one notice per address per 24 hours, recorded in `invitation_notices`. That record is separate from the invitation, because revoking and repeating an invitation would otherwise send another notice each time. It has no reference to any user and is removed after 24 hours by the sweep, or with the account of that address.
 
 Alternatives: a lookup by slug or email reveals who has an account. Accepting automatically on registration would give access or a group membership without consent. A token in the notice adds nothing, because signing in already proves the address, and it would make the notice look more like phishing.
 

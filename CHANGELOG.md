@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Sharing: share a dashboard read-only with people by inviting their email address, or with a
+  group. Inviting looks the same for every address, so it doesn't reveal who has an account. An
+  address with an account gets a link to accept; one without gets a notice and finds the invitation
+  after signing up within 14 days. Each user can create 30 invitations per hour. Operators should
+  mention in their privacy policy that invited addresses are stored for up to 15 days.
+- Groups: create groups on the new **Groups** page (`/groups`), with group admins and members.
+- **Shared with me** page (`/shared`) with the dashboards shared with you and your open invitations.
 - Feeds: subscribe to RSS, Atom and JSON feeds of news and podcasts on the new **Feeds** page
   (`/feeds`), by the address of a feed or of a website that offers one. A new **Feed** dashboard
   widget shows the latest items of your feeds, or those you marked **Read later** or **Liked**,
@@ -21,6 +28,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- "Public" moved from the dashboard dialog into the new share dialog. The widget setting "Show on
+  public dashboard" is now called "Show to other viewers" and also applies to people a dashboard is
+  shared with.
+- `shared`, `groups` and `invitation` can no longer be chosen as user slugs. Accounts that already
+  have one of them keep it, and their dashboard addresses keep working.
 - Height is now set on sections only: widgets no longer have a height of their own. A widget that is
   the only child of a fixed-height section fills it, and the section scrolls when its content needs
   more room. On upgrade, a fixed height moves to the section when the widget is alone in an

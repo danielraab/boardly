@@ -242,7 +242,7 @@ describe("the link list on a dashboard", () => {
 		expect(within(dialog).getByLabelText("Layout")).toHaveValue("list");
 		expect(within(dialog).getByLabelText("Size")).toHaveValue("M");
 		expect(
-			within(dialog).getByLabelText("Show on public dashboard"),
+			within(dialog).getByLabelText("Show to other viewers"),
 		).not.toBeChecked();
 
 		const folder = await within(dialog).findByRole("radiogroup", {

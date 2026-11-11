@@ -1,0 +1,12 @@
+{{define "subject"}}Jemand wollte auf {{.AppName}} etwas mit dir teilen{{end}}
+{{define "body"}}
+Hallo,
+
+jemand wollte auf {{.AppName}} etwas mit dieser E-Mail-Adresse teilen. Für diese Adresse gibt es kein {{.AppName}}-Konto.
+{{if .RegistrationOpen}}
+Wenn du dich innerhalb von {{.ValidDays}} Tagen mit dieser Adresse bei {{.AppName}} registrierst, siehst du die Einladung dort und kannst sie annehmen.
+{{end}}
+Wenn du damit nicht gerechnet hast, kannst du diese E-Mail ignorieren.
+
+– {{.AppName}}
+{{end}}

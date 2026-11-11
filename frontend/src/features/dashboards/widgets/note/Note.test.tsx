@@ -378,7 +378,7 @@ describe("the note widget", () => {
 		expect(add).toBeDisabled();
 		expect(within(dialog).getByLabelText("Size")).toHaveValue("M");
 		expect(
-			within(dialog).getByLabelText("Show on public dashboard"),
+			within(dialog).getByLabelText("Show to other viewers"),
 		).not.toBeChecked();
 
 		const search = await within(dialog).findByRole("combobox", {
@@ -394,7 +394,7 @@ describe("the note widget", () => {
 		await user.click(screen.getByRole("option", { name: /Groceries/ }));
 		expect(search).toHaveValue("Groceries");
 		await user.selectOptions(within(dialog).getByLabelText("Size"), "L");
-		await user.click(within(dialog).getByLabelText("Show on public dashboard"));
+		await user.click(within(dialog).getByLabelText("Show to other viewers"));
 		await user.click(add);
 
 		expect(await screen.findByRole("checkbox", { name: "milk" })).toBeVisible();

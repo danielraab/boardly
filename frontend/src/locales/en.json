@@ -19,7 +19,9 @@
 			"legalLinks": "Legal",
 			"cookieSettings": "Cookie settings"
 		},
-		"feeds": "Feeds"
+		"feeds": "Feeds",
+		"shared": "Shared with me",
+		"groups": "Groups"
 	},
 	"theme": {
 		"system": "System",
@@ -368,7 +370,7 @@
 		"whatIsDeleted": "All of your dashboards, favourites, notes, uploaded files, passkeys and settings are deleted.",
 		"otherDevices": "All your other devices are signed out right away.",
 		"apps": "All connected apps lose access right away. They stay revoked even if you cancel the deletion.",
-		"publicDashboards": "Your public dashboards are hidden from others right away.",
+		"publicDashboards": "Your public and shared dashboards are hidden from others right away.",
 		"slugFree": "After the deletion, your address {{address}} becomes available to other users.",
 		"emailLabel": "Type your email address ({{email}}) to confirm",
 		"emailMismatch": "The email address doesn't match your account.",
@@ -775,8 +777,8 @@
 				"addTitle": "Add favourite explorer",
 				"editTitle": "Edit favourite explorer",
 				"folderLabel": "Folder",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see this folder's links. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see this folder's links. Otherwise only you see the widget.",
 				"empty": "This folder is empty",
 				"missing": "This folder no longer exists",
 				"expandAll": "Expand all",
@@ -834,8 +836,8 @@
 					"compact": "Compact",
 					"tiles": "Tiles"
 				},
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see these links. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see these links. Otherwise only you see the widget.",
 				"empty": "No links in this folder",
 				"missing": "This folder no longer exists",
 				"emptyTag": "No links with this tag in this folder",
@@ -854,8 +856,8 @@
 				"limitHint": "1 to {{max}}.",
 				"daysLabel": "Only the last … days",
 				"daysHint": "Optional, 1 to {{max}}. Empty shows links of any age.",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the newest links of this folder. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the newest links of this folder. Otherwise only you see the widget.",
 				"empty": "No favourites",
 				"emptyDays_one": "No favourites in the last day",
 				"emptyDays_other": "No favourites in the last {{count}} days",
@@ -869,8 +871,8 @@
 				"noteLabel": "Note",
 				"notePlaceholder": "Choose a note",
 				"noMatches": "No matching notes",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the whole note, but can't change it. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the whole note, but can't change it. Otherwise only you see the widget.",
 				"missing": "This note no longer exists",
 				"changeFailed": "The note couldn't be changed. Please try again.",
 				"changedElsewhere": "The note was changed elsewhere. The widget shows the current state."
@@ -892,8 +894,8 @@
 				"limitHint": "1 to {{max}}.",
 				"daysLabel": "Only the last … days",
 				"daysHint": "Optional, 1 to {{max}}. Empty shows notes of any age.",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the titles of your newest notes, but not their content. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the titles of your newest notes, but not their content. Otherwise only you see the widget.",
 				"empty": "No notes",
 				"emptyDays_one": "No notes in the last day",
 				"emptyDays_other": "No notes in the last {{count}} days"
@@ -915,8 +917,8 @@
 				},
 				"limitLabel": "Number of notes",
 				"limitHint": "1 to {{max}}.",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
 				"empty": "No notes",
 				"emptyCategory": "No notes in this category",
 				"missing": "This category no longer exists"
@@ -937,8 +939,8 @@
 				"gone": "This note no longer exists",
 				"titleLabel": "Title",
 				"titleHint": "Optional. Shown above the notes.",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the titles of the listed notes, but not their content. Otherwise only you see the widget.",
 				"missing": "None of the selected notes exist anymore"
 			},
 			"media": {
@@ -962,8 +964,8 @@
 					"list": "List",
 					"tiles": "Tiles"
 				},
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard can play these stations. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard can play these stations. Otherwise only you see the widget.",
 				"missing": "These stations no longer exist",
 				"emptyLibrary": "Your media library is empty.",
 				"openLibrary": "Add stations"
@@ -987,9 +989,9 @@
 				"summaryLabel": "Show summary",
 				"audioOnlyLabel": "Only items with audio",
 				"titleLabel": "Title",
-				"publicLabel": "Show on public dashboard",
-				"publicHint": "Visitors of a public dashboard see the titles and links of these items. Otherwise only you see the widget.",
-				"publicHintAll": "Visitors of a public dashboard see the titles and links of these items, also of feeds you add later. Otherwise only you see the widget.",
+				"publicLabel": "Show to other viewers",
+				"publicHint": "Others with access to this dashboard see the titles and links of these items. Otherwise only you see the widget.",
+				"publicHintAll": "Others with access to this dashboard see the titles and links of these items, also of feeds you add later. Otherwise only you see the widget.",
 				"missing": "These feeds no longer exist",
 				"empty": "No items",
 				"emptyLibrary": "You don't have any feeds yet.",
@@ -1463,6 +1465,102 @@
 				"already": "You already have this feed.",
 				"rateLimited": "Too many feeds added. Try again in a moment."
 			}
+		}
+	},
+	"sharing": {
+		"share": "Share",
+		"shareNamed": "Share {{title}}",
+		"invited": "Invited",
+		"canView": "Can view",
+		"remove": "Remove {{name}}",
+		"revoke": "Revoke the invitation of {{email}}",
+		"dialog": {
+			"title": "Share {{title}}",
+			"emailLabel": "Invite by email address",
+			"emailHint": "Registered users get a link to accept. Everyone is listed as invited.",
+			"invite": "Invite",
+			"groupLabel": "Share with a group",
+			"chooseGroup": "Choose a group",
+			"shareWithGroup": "Share",
+			"noGroups": "You aren't in any group yet.",
+			"manageGroups": "Go to groups",
+			"groupHint": "Group admins decide who is in a group. Anyone they add gets access.",
+			"accessList": "People and groups with access"
+		},
+		"page": {
+			"title": "Shared with me",
+			"invitations": "Invitations",
+			"emptyTitle": "Nothing shared with you yet",
+			"emptyText": "Dashboards that others share with you, and your invitations, appear here."
+		},
+		"errors": {
+			"invalid_email": "This email address isn't valid.",
+			"already_invited": "This address is already invited.",
+			"cannot_invite_self": "You can't invite your own address.",
+			"rate_limited": "You sent too many invitations. Try again later.",
+			"already_shared": "It is already shared with this group.",
+			"group_not_found": "This group no longer exists."
+		}
+	},
+	"invitations": {
+		"title": "Invitation",
+		"accept": "Accept",
+		"acceptNamed": "Accept the invitation to {{title}}",
+		"invalid": "This invitation is no longer valid.",
+		"wrongAccount": "This invitation was sent to another address. Sign in with the address it was sent to.",
+		"text": {
+			"dashboard": "{{name}} invited you to view the dashboard \"{{title}}\".",
+			"group": "{{name}} invited you to join the group \"{{title}}\"."
+		}
+	},
+	"groups": {
+		"title": "Groups",
+		"intro": "Groups let you share dashboards with several people at once.",
+		"create": "New group",
+		"back": "All groups",
+		"notFound": "This group doesn't exist or you aren't a member of it.",
+		"members": "Members",
+		"memberCount_one": "{{count}} member",
+		"memberCount_other": "{{count}} members",
+		"role": {
+			"admin": "Group admin",
+			"member": "Group member"
+		},
+		"roleOf": "Role of {{name}}",
+		"inviteRole": "Role of the invited person",
+		"nameLabel": "Name",
+		"cancel": "Cancel",
+		"save": "Save",
+		"rename": "Rename",
+		"leave": "Leave group",
+		"delete": "Delete group",
+		"remove": "Remove",
+		"removeNamed": "Remove {{name}}",
+		"empty": {
+			"title": "No groups yet",
+			"text": "Create a group and invite people to it."
+		},
+		"createDialog": {
+			"title": "New group"
+		},
+		"renameDialog": {
+			"title": "Rename group"
+		},
+		"leaveDialog": {
+			"title": "Leave this group?",
+			"text": "You leave \"{{name}}\". What you shared with this group is no longer shared with it."
+		},
+		"deleteDialog": {
+			"title": "Delete this group?",
+			"text": "\"{{name}}\" is deleted for all its members, and everything shared with it stops being shared."
+		},
+		"removeDialog": {
+			"title": "Remove this member?",
+			"text": "{{name}} is removed from the group, and what they shared with it is no longer shared."
+		},
+		"errors": {
+			"lastAdmin": "This group needs another group admin first.",
+			"invalidName": "Group names need 1 to 100 characters."
 		}
 	}
 }

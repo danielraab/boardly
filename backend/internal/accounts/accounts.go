@@ -15,6 +15,8 @@ import (
 	"boardly/internal/auth"
 	"boardly/internal/blobs"
 	"boardly/internal/db"
+	"boardly/internal/groups"
+	"boardly/internal/invitations"
 	"boardly/internal/mail"
 	"boardly/internal/users"
 )
@@ -283,6 +285,12 @@ func (s *Service) deleteAccount(ctx context.Context, id string) (bool, error) {
 		 UNION ALL SELECT screenshot_id FROM offline_copies WHERE user_id = ? AND screenshot_id IS NOT NULL`, id, id)
 	if err != nil {
 		return false, err
+	}
+	if err := groups.PrepareAccountDeletion(ctx, tx, id); err != nil {
+		return false, fmt.Errorf("handing over groups: %w", err)
+	}
+	if err := invitations.DeleteForAddress(ctx, tx, email); err != nil {
+		return false, fmt.Errorf("deleting invitations: %w", err)
 	}
 	for _, q := range []struct {
 		query string

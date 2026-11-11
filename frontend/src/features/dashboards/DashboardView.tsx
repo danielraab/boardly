@@ -1,11 +1,12 @@
 import { Menu } from "@base-ui/react/menu";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Ellipsis, LayoutGrid, Settings } from "lucide-react";
+import { Ellipsis, LayoutGrid, Settings, Share2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { secondaryIconButton } from "#/components/buttonStyles";
 import { menuItem, menuPopup } from "#/components/menuStyles";
 import { fullPage } from "#/components/pageWidths";
+import { ShareDialog, type ShareTarget } from "#/features/sharing/ShareDialog";
 import { usePageTitle } from "#/lib/usePageTitle";
 import type { Dashboard, DashboardViewData } from "./api";
 import { useShowDashboard } from "./currentDashboard";
@@ -118,7 +119,7 @@ export function DashboardView({
 	);
 }
 
-/** The owner's menu next to the title: edit the layout or the settings. */
+/** The owner's menu next to the title: edit the layout, share or the settings. */
 function DashboardActions({
 	view,
 	onEditLayout,
@@ -130,6 +131,16 @@ function DashboardActions({
 }) {
 	const { t } = useTranslation();
 	const [settings, setSettings] = useState<DashboardDialogTarget | null>(null);
+	const [sharing, setSharing] = useState<ShareTarget | null>(null);
+
+	function openShare() {
+		if (view.id === undefined) return;
+		setSharing({
+			id: view.id,
+			title: view.dashboard.title,
+			isPublic: view.isPublic ?? false,
+		});
+	}
 
 	function openSettings() {
 		if (view.id === undefined) return;
@@ -162,6 +173,10 @@ function DashboardActions({
 								<LayoutGrid className="size-4 text-muted" aria-hidden />
 								{t("dashboards.editor.editLayout")}
 							</Menu.Item>
+							<Menu.Item className={menuItem} onClick={openShare}>
+								<Share2 className="size-4 text-muted" aria-hidden />
+								{t("sharing.share")}
+							</Menu.Item>
 							<Menu.Item className={menuItem} onClick={openSettings}>
 								<Settings className="size-4 text-muted" aria-hidden />
 								{t("dashboards.view.settings")}
@@ -170,6 +185,7 @@ function DashboardActions({
 					</Menu.Positioner>
 				</Menu.Portal>
 			</Menu.Root>
+			<ShareDialog target={sharing} onClose={() => setSharing(null)} />
 			<DashboardDialog
 				target={settings}
 				userSlug={view.ownerSlug}

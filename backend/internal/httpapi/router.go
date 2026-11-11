@@ -16,12 +16,15 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/feeds"
+	"boardly/internal/groups"
 	"boardly/internal/images"
+	"boardly/internal/invitations"
 	"boardly/internal/legal"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/offline"
 	"boardly/internal/ratelimit"
+	"boardly/internal/shares"
 	"boardly/internal/users"
 )
 
@@ -42,6 +45,10 @@ type Deps struct {
 	Notes      *notes.Store
 	Media      *media.Store
 	Feeds      *feeds.Store
+	// Groups, Shares and Invitations let users give others access.
+	Groups      *groups.Store
+	Shares      *shares.Store
+	Invitations *invitations.Store
 	// Directory searches radio-browser.info for the "Add station" dialog.
 	Directory *media.Directory
 	Images    *images.Store
@@ -77,7 +84,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, feeds: d.Feeds, feedLimiter: ratelimit.New(feedAddsPerHour, feedAddBurst, 10_000), directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, feeds: d.Feeds, groups: d.Groups, shares: d.Shares, invitations: d.Invitations, invitationLimiter: ratelimit.NewWindow(invitationsPerHour, 0), feedLimiter: ratelimit.New(feedAddsPerHour, feedAddBurst, 10_000), directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
 	// Logo links of station searches are signed with a key that lives as long
 	// as the process; they are only used while the dialog is open.
 	a.logoKey = make([]byte, 32)
@@ -161,6 +168,24 @@ func (a *api) mainAPI(db Pinger) *routeMux {
 	mux.Handle("PATCH /api/media/{id}", a.requireUser(a.updateMedia))
 	mux.Handle("DELETE /api/media/{id}", a.requireUser(a.deleteMedia))
 	mux.Handle("GET /api/u/{userSlug}/{dashboardSlug}", a.optionalUser(a.viewDashboard))
+	mux.Handle("GET /api/groups", a.requireUser(a.listGroups))
+	mux.Handle("POST /api/groups", a.requireUser(a.createGroup))
+	mux.Handle("GET /api/groups/{id}", a.requireUser(a.getGroup))
+	mux.Handle("PATCH /api/groups/{id}", a.requireUser(a.updateGroup))
+	mux.Handle("DELETE /api/groups/{id}", a.requireUser(a.deleteGroup))
+	mux.Handle("PATCH /api/groups/{id}/members/{userId}", a.requireUser(a.updateGroupMember))
+	mux.Handle("DELETE /api/groups/{id}/members/{userId}", a.requireUser(a.removeGroupMember))
+	mux.Handle("POST /api/groups/{id}/invitations", a.requireUser(a.inviteToGroup))
+	mux.Handle("DELETE /api/groups/{id}/invitations/{invitationId}", a.requireUser(a.revokeGroupInvitation))
+	mux.Handle("GET /api/shares/{type}/{id}", a.requireUser(a.listShares))
+	mux.Handle("POST /api/shares/{type}/{id}", a.requireUser(a.createShare))
+	mux.Handle("DELETE /api/shares/{type}/{id}/{shareId}", a.requireUser(a.deleteShare))
+	mux.Handle("POST /api/shares/dashboard/{id}/invitations", a.requireUser(a.inviteToDashboard))
+	mux.Handle("DELETE /api/shares/dashboard/{id}/invitations/{invitationId}", a.requireUser(a.revokeDashboardInvitation))
+	mux.Handle("GET /api/shared-with-me", a.requireUser(a.sharedWithMe))
+	mux.Handle("GET /api/invitations", a.requireUser(a.listInvitations))
+	mux.Handle("POST /api/invitations/preview", a.requireUser(a.previewInvitation))
+	mux.Handle("POST /api/invitations/accept", a.requireUser(a.acceptInvitation))
 	mux.Handle("GET /api/images/{id}", HandlerFunc(a.getImage))
 	mux.Handle("POST /api/images", a.requireUser(a.uploadImage))
 	mux.Handle("GET /api/attachments", a.requireUser(a.listAttachments))

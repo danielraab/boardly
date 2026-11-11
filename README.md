@@ -26,7 +26,8 @@ There are no passwords. Users sign in with:
 By default anyone can sign up. Set `BOARDLY_ALLOW_REGISTRATION=false` to close registration once your
 users have accounts (see [Sign-in](#sign-in)).
 
-All data (dashboards, favourites, API tokens) belongs to a single user.
+All data (dashboards, favourites, API tokens) belongs to a single user. Dashboards can be shared with
+other people and groups (see [Sharing dashboards](#sharing-dashboards)).
 
 Users can download all their data on **Settings → Import / Export** (see
 [Exporting your data](#exporting-your-data)), and delete their own account on **Settings → Profile**,
@@ -189,7 +190,9 @@ user menu). Each dashboard has a title, an address, and two flags:
 - **Default**: the default dashboard is shown on `/` when you're signed in. You can have at most one.
   Without one, `/` asks you to create your first dashboard or pick a default.
 - **Public**: anyone with the address can see a public dashboard, also without signing in. Private
-  dashboards are only visible to their owner. Everyone else gets "page not found".
+  dashboards are only visible to their owner and the people they are
+  [shared with](#sharing-dashboards). Everyone else gets "page not found". This is set in the
+  dashboard's **Share** dialog.
 
 Every dashboard has its own address, `/<user-slug>/<dashboard-slug>`, for example `/ann/home`:
 
@@ -204,7 +207,27 @@ Every dashboard has its own address, `/<user-slug>/<dashboard-slug>`, for exampl
 - `/<user-slug>` alone redirects to `/`.
 
 With more than one dashboard to choose from, the header shows the current dashboard's title next to
-"Boardly" as a dropdown for switching. Visitors only see the owner's public dashboards there.
+"Boardly" as a dropdown for switching. Visitors only see the owner's dashboards they have access to
+there.
+
+#### Sharing dashboards
+
+**Share** in a dashboard's actions menu, or on the **Dashboards** page, gives other people read
+access without making the dashboard public. There is no way to look up other users. Instead:
+
+- **Invite by email address.** The address is listed as "Invited" whether or not it has an account,
+  so inviting never reveals who uses this Boardly. An address with an account gets a link to accept.
+  An address without one gets a notice that someone tried to share something on Boardly, with no
+  details and no link, at most once a day. After signing up with that address within 14 days, the
+  invitation is waiting on the **Shared with me** page. Each user can create 30 invitations per hour.
+- **Share with a group.** On the **Groups** page (`/groups`), any user can create a group and invite
+  people to it. Group admins manage the members and roles, and a group always keeps at least one.
+  Anyone a group admin adds gets access to what is shared with the group. Leaving a group ends the
+  shares you made with it.
+
+Nobody gets access without accepting. Dashboards shared with you are listed on **Shared with me**
+(`/shared`). You see them like a visitor of a public dashboard: read-only, and only with widgets that
+have **Show to other viewers** on.
 
 #### Layout
 
@@ -250,8 +273,8 @@ A new dashboard is empty. Sections can only be added in edit mode.
 | **Link** | Icon or thumbnail, title and URL. Links always open in a new tab. |
 | **Section** | A container for other widgets, including nested sections (at most 5 levels). It has a width in columns, an optional title, a border that can be turned off, and a height: fitting its content, or a fixed number of rows (4rem each) with a scrollbar when the content is taller. Inside, it has a grid as many columns wide as the section. Widgets other than sections take the full width of their section; use a borderless section to place them side by side. |
 | **Navigation tree** | Shows part of the user's favourites tree. When you add one, you choose a node of the tree as its root, and the widget shows that node and everything below it. A dashboard can have several navigation trees, each with a different root. Changes to the favourites tree show up in the widget right away. On your own dashboard, the + button next to "Expand all" adds a link to the shown folder or another one. |
-| **Link list** | Shows the links of one folder of the favourites tree as a flat list, optionally including the links of all its subfolders. The links are shown as a list (title and URL), a compact list (title only) or tiles, in three sizes. Links open in a new tab. Like the navigation tree, it is hidden from visitors of a public dashboard unless "Show on public dashboard" is on. |
-| **Media** | Stations you pick from your [media library](#media), as a list or tiles, in three sizes. Clicking one plays it in the player, or pauses it. With "Show on public dashboard" on, visitors can play them too. |
+| **Link list** | Shows the links of one folder of the favourites tree as a flat list, optionally including the links of all its subfolders. The links are shown as a list (title and URL), a compact list (title only) or tiles, in three sizes. Links open in a new tab. Like the navigation tree, it is hidden from visitors of a public dashboard unless "Show to other viewers" is on. |
+| **Media** | Stations you pick from your [media library](#media), as a list or tiles, in three sizes. Clicking one plays it in the player, or pauses it. With "Show to other viewers" on, visitors can play them too. |
 
 Sections are available now. Link and navigation-tree widgets will follow. More widget types can be
 added later. The widget model is meant to be extended.
@@ -365,7 +388,7 @@ shows the same items as a short list on a dashboard.
 - **Podcasts**: episodes play in the media player, straight from their host, so the host sees the
   IP address of whoever plays them. Your position is remembered in your browser. Episodes whose
   audio only exists over `http://` can't be played on an https page.
-- **Public dashboards**: a Feed widget with **Show on public dashboard** shows visitors the titles
+- **Public dashboards**: a Feed widget with **Show to other viewers** shows visitors the titles
   and links of its items, and lets them play episodes. They never get the address of the feed, but
   a private podcast's episode URLs do reach them.
 
@@ -998,6 +1021,9 @@ services:
 - **Templates** for both pages are in [docs/legal-example](docs/legal-example). The privacy
   policy lists what Boardly processes, but it is only a starting point: adapt it to your instance
   (operator, hosting, mail provider, analytics) and have it checked if you are unsure.
+- **Invited addresses** are personal data of people who may not have an account: an address invited
+  to a dashboard or a group is stored for up to 15 days (14 days until the invitation expires, and a
+  day for the cleanup) and receives one email. Mention this in your privacy policy.
 - The Vite dev server (`make dev-frontend`) serves the web app without the server's settings, so
   it shows no legal links. Use a build (`make build`) to try them.
 

@@ -24,12 +24,15 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/feeds"
+	"boardly/internal/groups"
 	"boardly/internal/images"
+	"boardly/internal/invitations"
 	"boardly/internal/jobs"
 	"boardly/internal/mail"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/offline"
+	"boardly/internal/shares"
 	"boardly/internal/users"
 	"boardly/internal/widgets"
 )
@@ -96,6 +99,7 @@ type server struct {
 	previews    *images.Previews
 	offline     *offline.Store
 	jobs        *jobs.Queue
+	invitations *invitations.Store
 }
 
 func newServer(t *testing.T) *server {
@@ -153,10 +157,17 @@ func newServer(t *testing.T) *server {
 	directory := media.NewDirectory(true)
 	accountService := &accounts.Service{DB: database, Users: store, Now: c.Now, Days: 7, Mailer: box, Link: testOrigin + "/"}
 
+	groupStore := groups.NewStore(database)
+	groupStore.Now = c.Now
+	shareStore := shares.NewStore(database)
+	shareStore.Now = c.Now
+	invitationStore := &invitations.Store{DB: database, Now: c.Now, Jobs: queue, Mailer: box, BaseURL: base}
+
 	h := New(Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Feeds: feedStore, Directory: directory,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, Offline: offlineStore, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
+		Groups: groupStore, Shares: shareStore, Invitations: invitationStore,
 		Export: &export.Service{
 			DB: database, ImageFiles: blobs.Dir(imageStore.Dir), AttachmentFiles: attachmentStore.Files, Now: c.Now,
 		},
@@ -166,7 +177,7 @@ func newServer(t *testing.T) *server {
 		},
 		ExportsPerHour: 3, ExportsPerDay: 10,
 	})
-	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, offline: offlineStore, jobs: queue}
+	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, offline: offlineStore, jobs: queue, invitations: invitationStore}
 }
 
 // req sends a same-origin JSON request; opts can adjust it.
@@ -686,9 +697,10 @@ func TestPatchMeSlug(t *testing.T) {
 		t.Fatalf("set: %d %s", rec.Code, rec.Body)
 	}
 	for body, want := range map[string]string{
-		`{"slug":"a_nn"}`: "invalid_slug",
-		`{"slug":42}`:     "invalid_slug",
-		`{"slug":"API"}`:  "slug_reserved",
+		`{"slug":"a_nn"}`:   "invalid_slug",
+		`{"slug":42}`:       "invalid_slug",
+		`{"slug":"API"}`:    "slug_reserved",
+		`{"slug":"groups"}`: "slug_reserved",
 	} {
 		if rec := patch(cookie, body); rec.Code != http.StatusBadRequest || errorCode(t, rec) != want {
 			t.Errorf("%s: %d %s, want %s", body, rec.Code, rec.Body, want)

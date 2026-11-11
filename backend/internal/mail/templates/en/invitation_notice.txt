@@ -1,0 +1,12 @@
+{{define "subject"}}Someone tried to share something with you on {{.AppName}}{{end}}
+{{define "body"}}
+Hello,
+
+someone tried to share something with this email address on {{.AppName}}. There is no {{.AppName}} account for this address.
+{{if .RegistrationOpen}}
+If you sign up for {{.AppName}} with this address within {{.ValidDays}} days, you will see the invitation there and can accept it.
+{{end}}
+If you didn't expect this, you can ignore this email.
+
+– {{.AppName}}
+{{end}}

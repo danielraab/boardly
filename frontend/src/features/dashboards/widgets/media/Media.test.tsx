@@ -163,11 +163,11 @@ describe("the media widget", () => {
 		expect(add).toBeDisabled();
 		expect(within(dialog).getByLabelText("Layout")).toHaveValue("list");
 		expect(within(dialog).getByLabelText("Size")).toHaveValue("M");
-		const pub = within(dialog).getByLabelText("Show on public dashboard");
+		const pub = within(dialog).getByLabelText("Show to other viewers");
 		expect(pub).not.toBeChecked();
 		expect(
 			within(dialog).getByText(
-				/Visitors of a public dashboard can play these stations/,
+				/Others with access to this dashboard can play these stations/,
 			),
 		).toBeVisible();
 

@@ -1,0 +1,14 @@
+{{define "subject"}}{{.InviterName}} invited you to {{if .IsGroup}}the group{{else}}the dashboard{{end}} "{{.Title}}" on {{.AppName}}{{end}}
+{{define "body"}}
+Hello,
+
+{{.InviterName}} invited you to {{if .IsGroup}}join the group{{else}}view the dashboard{{end}} "{{.Title}}" on {{.AppName}}.
+
+Open this link to accept. The invitation is valid for {{.ValidDays}} days:
+
+{{.Link}}
+
+If you don't want this, you can ignore this email. Nothing changes until you accept.
+
+– {{.AppName}}
+{{end}}

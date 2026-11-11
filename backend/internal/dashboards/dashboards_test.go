@@ -243,3 +243,63 @@ func TestLookup(t *testing.T) {
 		}
 	}
 }
+
+func TestLookupShared(t *testing.T) {
+	f := newFixture(t)
+	work := f.create(f.ann, Fields{Title: "Work", Slug: "work"})
+	f.create(f.ann, Fields{Title: "Private", Slug: "private"})
+	f.create(f.ann, Fields{Title: "Links", Slug: "links", IsPublic: true})
+	database := f.s.DB
+	const now = "2026-03-01T12:00:00.000Z"
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := database.Exec(q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notFound := func(name, viewer string) {
+		t.Helper()
+		if _, err := f.s.Lookup(f.ctx, "ann", "work", viewer); !errors.Is(err, ErrNotFound) {
+			t.Errorf("%s: err = %v, want ErrNotFound", name, err)
+		}
+	}
+	found := func(name, viewer string) View {
+		t.Helper()
+		v, err := f.s.Lookup(f.ctx, "ann", "work", viewer)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		return v
+	}
+
+	notFound("no share", f.bob)
+	exec(`INSERT INTO shares (id, owner_id, dashboard_id, user_id, level, created_at) VALUES ('s1', ?, ?, ?, 'read', ?)`, f.ann, work.ID, f.bob, now)
+	v := found("direct share", f.bob)
+	if v.IsOwner || v.ID != "" || v.IsDefault != nil || v.IsPublic != nil {
+		t.Errorf("shared view has owner fields: %+v", v)
+	}
+	var slugs []string
+	for _, e := range v.Dashboards {
+		slugs = append(slugs, e.Slug)
+	}
+	if strings.Join(slugs, ",") != "links,work" {
+		t.Errorf("switcher = %v, want the public and the shared dashboard", slugs)
+	}
+	notFound("signed out", "")
+
+	// Through a group, after the direct share is gone.
+	exec(`DELETE FROM shares WHERE id = 's1'`)
+	notFound("share removed", f.bob)
+	exec(`INSERT INTO user_groups (id, name, created_at, updated_at) VALUES ('g', 'G', ?, ?)`, now, now)
+	exec(`INSERT INTO user_group_members VALUES ('g', ?, 'admin', ?)`, f.ann, now)
+	exec(`INSERT INTO shares (id, owner_id, dashboard_id, group_id, level, created_at) VALUES ('s2', ?, ?, 'g', 'read', ?)`, f.ann, work.ID, now)
+	notFound("not in the group", f.bob)
+	exec(`INSERT INTO user_group_members VALUES ('g', ?, 'member', ?)`, f.bob, now)
+	found("group share", f.bob)
+	notFound("signed out with a group share", "")
+
+	exec(`UPDATE users SET delete_after = ? WHERE id = ?`, now, f.ann)
+	notFound("owner scheduled for deletion", f.bob)
+	exec(`UPDATE users SET delete_after = NULL WHERE id = ?`, f.ann)
+	found("deletion cancelled", f.bob)
+}

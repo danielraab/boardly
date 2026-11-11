@@ -98,7 +98,7 @@ describe("dashboards page", () => {
 		const dialog = await screen.findByRole("dialog");
 		await user.type(within(dialog).getByLabelText("Title"), "Küche & Haus");
 		expect(within(dialog).getByLabelText("Address")).toHaveValue("kueche-haus");
-		await user.click(within(dialog).getByLabelText("Public"));
+		expect(within(dialog).queryByLabelText("Public")).toBeNull();
 		await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
 		expect(await screen.findByText("Küche & Haus")).toBeVisible();
@@ -106,7 +106,6 @@ describe("dashboards page", () => {
 			title: "Küche & Haus",
 			slug: "kueche-haus",
 			isDefault: false,
-			isPublic: true,
 			...defaultColumns,
 		});
 	});

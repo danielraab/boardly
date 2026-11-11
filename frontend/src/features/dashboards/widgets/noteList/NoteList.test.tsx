@@ -267,7 +267,7 @@ describe("the note list widget", () => {
 		expect(within(dialog).getByLabelText("Title")).toHaveValue("");
 		expect(within(dialog).getByLabelText("Size")).toHaveValue("M");
 		expect(
-			within(dialog).getByLabelText("Show on public dashboard"),
+			within(dialog).getByLabelText("Show to other viewers"),
 		).not.toBeChecked();
 
 		await user.click(

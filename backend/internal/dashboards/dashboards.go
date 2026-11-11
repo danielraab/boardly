@@ -61,7 +61,7 @@ type View struct {
 	OwnerSlug string `json:"ownerSlug"`
 	IsOwner   bool   `json:"isOwner"`
 	// Dashboards are the switcher entries: all of the owner's dashboards for
-	// the owner, only the public ones for everyone else.
+	// the owner, for everyone else the public ones and those shared with them.
 	Dashboards    []Entry  `json:"dashboards"`
 	Columns       Columns  `json:"columns"`
 	LayoutVersion int      `json:"layoutVersion"`
@@ -283,22 +283,30 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 	return nil
 }
 
+// sharedWithViewer is true when dashboard d is shared with a viewer, directly
+// or through one of their groups. It takes the viewer's ID twice; the ID of a
+// signed-out viewer is "", which matches nothing.
+const sharedWithViewer = `EXISTS (SELECT 1 FROM shares sh WHERE sh.dashboard_id = d.id AND (sh.user_id = ?
+	OR sh.group_id IN (SELECT m.group_id FROM user_group_members m WHERE m.user_id = ?)))`
+
 // Lookup resolves /<userSlug>/<dashboardSlug> for viewerID ("" when signed
 // out), ignoring case. An unknown user, an unknown dashboard and another
 // user's private dashboard all return ErrNotFound, so the response never
-// reveals that a private dashboard exists. So do the public dashboards of
-// another user whose account is scheduled for deletion.
+// reveals that a private dashboard exists. So do the public and shared
+// dashboards of another user whose account is scheduled for deletion. A viewer
+// a dashboard is shared with, directly or through a group, sees it like a
+// visitor of a public dashboard.
 func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID string) (View, error) {
 	var ownerID, dashboardID string
 	var v View
-	var public, isDefault, deleting bool
+	var public, shared, isDefault, deleting bool
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT u.id, u.slug, u.delete_after IS NOT NULL, d.id, d.slug, d.title, d.is_public, d.is_default,
+		`SELECT u.id, u.slug, u.delete_after IS NOT NULL, d.id, d.slug, d.title, d.is_public, `+sharedWithViewer+`, d.is_default,
 		   d.desktop_columns, d.mobile_columns, d.mobile_breakpoint, d.layout_version
 		 FROM users u JOIN dashboards d ON d.user_id = u.id
 		 WHERE u.slug = ? AND d.slug = ?`,
-		strings.ToLower(userSlug), strings.ToLower(dashboardSlug),
-	).Scan(&ownerID, &v.OwnerSlug, &deleting, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public, &isDefault,
+		viewerID, viewerID, strings.ToLower(userSlug), strings.ToLower(dashboardSlug),
+	).Scan(&ownerID, &v.OwnerSlug, &deleting, &dashboardID, &v.Dashboard.Slug, &v.Dashboard.Title, &public, &shared, &isDefault,
 		&v.Columns.DesktopColumns, &v.Columns.MobileColumns, &v.Columns.MobileBreakpoint, &v.LayoutVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return View{}, ErrNotFound
@@ -307,7 +315,7 @@ func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID st
 		return View{}, err
 	}
 	v.IsOwner = viewerID != "" && viewerID == ownerID
-	if !v.IsOwner && (!public || deleting) {
+	if !v.IsOwner && (!(public || shared) || deleting) {
 		return View{}, ErrNotFound
 	}
 	if v.IsOwner {
@@ -323,8 +331,8 @@ func (s *Store) Lookup(ctx context.Context, userSlug, dashboardSlug, viewerID st
 	}
 
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT slug, title FROM dashboards WHERE user_id = ? AND (? OR is_public = 1)
-		 ORDER BY title COLLATE NOCASE, slug`, ownerID, v.IsOwner)
+		`SELECT d.slug, d.title FROM dashboards d WHERE d.user_id = ? AND (? OR d.is_public = 1 OR `+sharedWithViewer+`)
+		 ORDER BY d.title COLLATE NOCASE, d.slug`, ownerID, v.IsOwner, viewerID, viewerID)
 	if err != nil {
 		return View{}, err
 	}

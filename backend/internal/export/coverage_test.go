@@ -16,9 +16,11 @@ var exportedTables = []string{
 }
 
 // notExportedTables belong to users but are left out on purpose: sign-in
-// data, connected apps, the shared favicon cache and internal state.
+// data, connected apps, the shared favicon cache, internal state, and shares,
+// memberships and invitations, which involve other people.
 var notExportedTables = []string{
 	"sessions", "passkeys", "webauthn_challenges", "app_tokens", "favicons",
+	"user_group_members", "shares", "invitations",
 }
 
 // TestEveryUserTableIsCovered fails when a table that holds user data (it

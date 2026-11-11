@@ -14,12 +14,15 @@ import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as FavouritesRouteImport } from './routes/favourites'
 import { Route as FeedsRouteImport } from './routes/feeds'
+import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as ImprintRouteImport } from './routes/imprint'
+import { Route as InvitationRouteImport } from './routes/invitation'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShareRouteImport } from './routes/share'
+import { Route as SharedRouteImport } from './routes/shared'
 import { Route as UserSlugIndexRouteImport } from './routes/$userSlug/index'
 import { Route as UserSlugDashboardSlugRouteImport } from './routes/$userSlug/$dashboardSlug'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
@@ -52,9 +55,19 @@ const FeedsRoute = FeedsRouteImport.update({
   path: '/feeds',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImprintRoute = ImprintRouteImport.update({
   id: '/imprint',
   path: '/imprint',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvitationRoute = InvitationRouteImport.update({
+  id: '/invitation',
+  path: '/invitation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MediaRoute = MediaRouteImport.update({
@@ -80,6 +93,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ShareRoute = ShareRouteImport.update({
   id: '/share',
   path: '/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedRoute = SharedRouteImport.update({
+  id: '/shared',
+  path: '/shared',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UserSlugIndexRoute = UserSlugIndexRouteImport.update({
@@ -119,12 +137,15 @@ export interface FileRoutesByFullPath {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/feeds': typeof FeedsRoute
+  '/groups': typeof GroupsRoute
   '/imprint': typeof ImprintRoute
+  '/invitation': typeof InvitationRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
+  '/shared': typeof SharedRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/notes/$noteId': typeof NotesNoteIdRoute
@@ -138,11 +159,14 @@ export interface FileRoutesByTo {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/feeds': typeof FeedsRoute
+  '/groups': typeof GroupsRoute
   '/imprint': typeof ImprintRoute
+  '/invitation': typeof InvitationRoute
   '/media': typeof MediaRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
+  '/shared': typeof SharedRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/notes/$noteId': typeof NotesNoteIdRoute
@@ -157,12 +181,15 @@ export interface FileRoutesById {
   '/dashboards': typeof DashboardsRoute
   '/favourites': typeof FavouritesRoute
   '/feeds': typeof FeedsRoute
+  '/groups': typeof GroupsRoute
   '/imprint': typeof ImprintRoute
+  '/invitation': typeof InvitationRoute
   '/media': typeof MediaRoute
   '/notes': typeof NotesRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/share': typeof ShareRoute
+  '/shared': typeof SharedRoute
   '/$userSlug/$dashboardSlug': typeof UserSlugDashboardSlugRoute
   '/login/verify': typeof LoginVerifyRoute
   '/notes/$noteId': typeof NotesNoteIdRoute
@@ -178,12 +205,15 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/feeds'
+    | '/groups'
     | '/imprint'
+    | '/invitation'
     | '/media'
     | '/notes'
     | '/privacy'
     | '/settings'
     | '/share'
+    | '/shared'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/notes/$noteId'
@@ -197,11 +227,14 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/feeds'
+    | '/groups'
     | '/imprint'
+    | '/invitation'
     | '/media'
     | '/privacy'
     | '/settings'
     | '/share'
+    | '/shared'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/notes/$noteId'
@@ -215,12 +248,15 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/favourites'
     | '/feeds'
+    | '/groups'
     | '/imprint'
+    | '/invitation'
     | '/media'
     | '/notes'
     | '/privacy'
     | '/settings'
     | '/share'
+    | '/shared'
     | '/$userSlug/$dashboardSlug'
     | '/login/verify'
     | '/notes/$noteId'
@@ -235,12 +271,15 @@ export interface RootRouteChildren {
   DashboardsRoute: typeof DashboardsRoute
   FavouritesRoute: typeof FavouritesRoute
   FeedsRoute: typeof FeedsRoute
+  GroupsRoute: typeof GroupsRoute
   ImprintRoute: typeof ImprintRoute
+  InvitationRoute: typeof InvitationRoute
   MediaRoute: typeof MediaRoute
   NotesRoute: typeof NotesRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   ShareRoute: typeof ShareRoute
+  SharedRoute: typeof SharedRoute
   UserSlugDashboardSlugRoute: typeof UserSlugDashboardSlugRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   UserSlugIndexRoute: typeof UserSlugIndexRoute
@@ -284,11 +323,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/imprint': {
       id: '/imprint'
       path: '/imprint'
       fullPath: '/imprint'
       preLoaderRoute: typeof ImprintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invitation': {
+      id: '/invitation'
+      path: '/invitation'
+      fullPath: '/invitation'
+      preLoaderRoute: typeof InvitationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/media': {
@@ -324,6 +377,13 @@ declare module '@tanstack/react-router' {
       path: '/share'
       fullPath: '/share'
       preLoaderRoute: typeof ShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared': {
+      id: '/shared'
+      path: '/shared'
+      fullPath: '/shared'
+      preLoaderRoute: typeof SharedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$userSlug/': {
@@ -389,12 +449,15 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardsRoute: DashboardsRoute,
   FavouritesRoute: FavouritesRoute,
   FeedsRoute: FeedsRoute,
+  GroupsRoute: GroupsRoute,
   ImprintRoute: ImprintRoute,
+  InvitationRoute: InvitationRoute,
   MediaRoute: MediaRoute,
   NotesRoute: NotesRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   ShareRoute: ShareRoute,
+  SharedRoute: SharedRoute,
   UserSlugDashboardSlugRoute: UserSlugDashboardSlugRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   UserSlugIndexRoute: UserSlugIndexRoute,

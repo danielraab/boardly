@@ -1,0 +1,28 @@
+To: new@example.org
+Subject: Jemand wollte auf Boardly etwas mit dir teilen
+
+Hallo,
+
+jemand wollte auf Boardly etwas mit dieser E-Mail-Adresse teilen. Für diese Adresse gibt es kein Boardly-Konto.
+
+Wenn du dich innerhalb von 14 Tagen mit dieser Adresse bei Boardly registrierst, siehst du die Einladung dort und kannst sie annehmen.
+
+Wenn du damit nicht gerechnet hast, kannst du diese E-Mail ignorieren.
+
+– Boardly
+
+--- html ---
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>Jemand wollte auf Boardly etwas mit dir teilen</title></head>
+<body style="margin:0;padding:24px;background:#eef1f4;color:#1d2733;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #cbd3dc;border-radius:8px;">
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:20px;font-weight:600;">Boardly</p>
+<p style="margin:0 0 24px;">Jemand wollte auf Boardly etwas mit dieser E-Mail-Adresse teilen. Für diese Adresse gibt es kein Boardly-Konto.</p>
+<p style="margin:0 0 24px;">Wenn du dich innerhalb von 14 Tagen mit dieser Adresse bei Boardly registrierst, siehst du die Einladung dort und kannst sie annehmen.</p>
+<p style="margin:0;font-size:14px;color:#5a6878;">Wenn du damit nicht gerechnet hast, kannst du diese E-Mail ignorieren.</p>
+</td></tr>
+</table>
+</body>
+</html>

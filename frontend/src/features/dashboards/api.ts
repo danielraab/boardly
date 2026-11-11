@@ -105,7 +105,10 @@ export function dashboardViewQueryOptions(
 	});
 }
 
-export type DashboardFields = Omit<Dashboard, "id">;
+/** What the dashboard dialog saves; "Public" is set in the share dialog. */
+export type DashboardFields = Omit<Dashboard, "id" | "isPublic"> & {
+	isPublic?: boolean;
+};
 
 /** A copy of a tree without the server-resolved data of its widgets. */
 export function withoutData(tree: Widget[]): Widget[] {

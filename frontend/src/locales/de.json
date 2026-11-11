@@ -19,7 +19,9 @@
 			"legalLinks": "Rechtliches",
 			"cookieSettings": "Cookie-Einstellungen"
 		},
-		"feeds": "Feeds"
+		"feeds": "Feeds",
+		"shared": "Mit mir geteilt",
+		"groups": "Gruppen"
 	},
 	"theme": {
 		"system": "System",
@@ -368,7 +370,7 @@
 		"whatIsDeleted": "Alle deine Dashboards, Favoriten, Notizen, hochgeladenen Dateien, Passkeys und Einstellungen werden gelöscht.",
 		"otherDevices": "Alle deine anderen Geräte werden sofort abgemeldet.",
 		"apps": "Alle verbundenen Apps verlieren sofort den Zugriff. Sie bleiben gesperrt, auch wenn du die Löschung abbrichst.",
-		"publicDashboards": "Deine öffentlichen Dashboards sind für andere sofort nicht mehr sichtbar.",
+		"publicDashboards": "Deine öffentlichen und geteilten Dashboards sind für andere sofort nicht mehr sichtbar.",
 		"slugFree": "Nach der Löschung kann deine Adresse {{address}} von anderen verwendet werden.",
 		"emailLabel": "Gib zur Bestätigung deine E-Mail-Adresse ({{email}}) ein",
 		"emailMismatch": "Die E-Mail-Adresse passt nicht zu deinem Konto.",
@@ -775,8 +777,8 @@
 				"addTitle": "Favoriten-Explorer hinzufügen",
 				"editTitle": "Favoriten-Explorer bearbeiten",
 				"folderLabel": "Ordner",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Links dieses Ordners. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die Links dieses Ordners. Sonst siehst nur du das Widget.",
 				"empty": "Dieser Ordner ist leer",
 				"missing": "Dieser Ordner existiert nicht mehr",
 				"expandAll": "Alle aufklappen",
@@ -834,8 +836,8 @@
 					"compact": "Kompakt",
 					"tiles": "Kacheln"
 				},
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen diese Links. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen diese Links. Sonst siehst nur du das Widget.",
 				"empty": "Keine Links in diesem Ordner",
 				"missing": "Dieser Ordner existiert nicht mehr",
 				"emptyTag": "Keine Links mit diesem „Tag“ in diesem Ordner",
@@ -854,8 +856,8 @@
 				"limitHint": "1 bis {{max}}.",
 				"daysLabel": "Nur die letzten … Tage",
 				"daysHint": "Optional, 1 bis {{max}}. Leer zeigt Links jeden Alters.",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die neuesten Links dieses Ordners. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die neuesten Links dieses Ordners. Sonst siehst nur du das Widget.",
 				"empty": "Keine Favoriten",
 				"emptyDays_one": "Keine Favoriten am letzten Tag",
 				"emptyDays_other": "Keine Favoriten in den letzten {{count}} Tagen",
@@ -869,8 +871,8 @@
 				"noteLabel": "Notiz",
 				"notePlaceholder": "Notiz wählen",
 				"noMatches": "Keine passenden Notizen",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die ganze Notiz, können sie aber nicht ändern. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die ganze Notiz, können sie aber nicht ändern. Sonst siehst nur du das Widget.",
 				"missing": "Diese Notiz existiert nicht mehr",
 				"changeFailed": "Die Notiz konnte nicht geändert werden. Bitte versuch es noch einmal.",
 				"changedElsewhere": "Die Notiz wurde woanders geändert. Das Widget zeigt den aktuellen Stand."
@@ -892,8 +894,8 @@
 				"limitHint": "1 bis {{max}}.",
 				"daysLabel": "Nur die letzten … Tage",
 				"daysHint": "Optional, 1 bis {{max}}. Leer zeigt Notizen jeden Alters.",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel deiner neuesten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die Titel deiner neuesten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
 				"empty": "Keine Notizen",
 				"emptyDays_one": "Keine Notizen am letzten Tag",
 				"emptyDays_other": "Keine Notizen in den letzten {{count}} Tagen"
@@ -915,8 +917,8 @@
 				},
 				"limitLabel": "Anzahl Notizen",
 				"limitHint": "1 bis {{max}}.",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
 				"empty": "Keine Notizen",
 				"emptyCategory": "Keine Notizen in dieser Kategorie",
 				"missing": "Diese Kategorie existiert nicht mehr"
@@ -937,8 +939,8 @@
 				"gone": "Diese Notiz existiert nicht mehr",
 				"titleLabel": "Titel",
 				"titleHint": "Optional. Wird über den Notizen angezeigt.",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen die Titel der aufgelisteten Notizen, aber nicht ihren Inhalt. Sonst siehst nur du das Widget.",
 				"missing": "Keine der ausgewählten Notizen existiert mehr"
 			},
 			"media": {
@@ -962,8 +964,8 @@
 					"list": "Liste",
 					"tiles": "Kacheln"
 				},
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards können diese Sender abspielen. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard können diese Sender abspielen. Sonst siehst nur du das Widget.",
 				"missing": "Diese Sender existieren nicht mehr",
 				"emptyLibrary": "Deine Mediathek ist leer.",
 				"openLibrary": "Sender hinzufügen"
@@ -987,9 +989,9 @@
 				"summaryLabel": "Zusammenfassung zeigen",
 				"audioOnlyLabel": "Nur Einträge mit Audio",
 				"titleLabel": "Titel",
-				"publicLabel": "Auf öffentlichem Dashboard zeigen",
-				"publicHint": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge. Sonst siehst nur du das Widget.",
-				"publicHintAll": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge, auch von Feeds, die du später hinzufügst. Sonst siehst nur du das Widget.",
+				"publicLabel": "Anderen Betrachtern zeigen",
+				"publicHint": "Andere mit Zugriff auf dieses Dashboard sehen Titel und Links dieser Einträge. Sonst siehst nur du das Widget.",
+				"publicHintAll": "Andere mit Zugriff auf dieses Dashboard sehen Titel und Links dieser Einträge, auch von Feeds, die du später hinzufügst. Sonst siehst nur du das Widget.",
 				"missing": "Diese Feeds existieren nicht mehr",
 				"empty": "Keine Einträge",
 				"emptyLibrary": "Du hast noch keine Feeds.",
@@ -1463,6 +1465,102 @@
 				"already": "Diesen Feed hast du schon.",
 				"rateLimited": "Zu viele Feeds hinzugefügt. Versuch es gleich noch einmal."
 			}
+		}
+	},
+	"sharing": {
+		"share": "Teilen",
+		"shareNamed": "{{title}} teilen",
+		"invited": "Eingeladen",
+		"canView": "Kann ansehen",
+		"remove": "{{name}} entfernen",
+		"revoke": "Einladung von {{email}} zurückziehen",
+		"dialog": {
+			"title": "{{title}} teilen",
+			"emailLabel": "Per E-Mail-Adresse einladen",
+			"emailHint": "Registrierte Personen erhalten einen Link zum Annehmen. Alle werden als eingeladen angezeigt.",
+			"invite": "Einladen",
+			"groupLabel": "Mit einer Gruppe teilen",
+			"chooseGroup": "Gruppe wählen",
+			"shareWithGroup": "Teilen",
+			"noGroups": "Du bist noch in keiner Gruppe.",
+			"manageGroups": "Zu den Gruppen",
+			"groupHint": "Gruppen-Admins entscheiden, wer in einer Gruppe ist. Alle, die sie hinzufügen, erhalten Zugriff.",
+			"accessList": "Personen und Gruppen mit Zugriff"
+		},
+		"page": {
+			"title": "Mit mir geteilt",
+			"invitations": "Einladungen",
+			"emptyTitle": "Noch nichts mit dir geteilt",
+			"emptyText": "Dashboards, die andere mit dir teilen, und deine Einladungen erscheinen hier."
+		},
+		"errors": {
+			"invalid_email": "Diese E-Mail-Adresse ist nicht gültig.",
+			"already_invited": "Diese Adresse ist bereits eingeladen.",
+			"cannot_invite_self": "Du kannst deine eigene Adresse nicht einladen.",
+			"rate_limited": "Du hast zu viele Einladungen verschickt. Versuche es später noch einmal.",
+			"already_shared": "Es ist bereits mit dieser Gruppe geteilt.",
+			"group_not_found": "Diese Gruppe gibt es nicht mehr."
+		}
+	},
+	"invitations": {
+		"title": "Einladung",
+		"accept": "Annehmen",
+		"acceptNamed": "Einladung zu {{title}} annehmen",
+		"invalid": "Diese Einladung ist nicht mehr gültig.",
+		"wrongAccount": "Diese Einladung wurde an eine andere Adresse geschickt. Melde dich mit der Adresse an, an die sie geschickt wurde.",
+		"text": {
+			"dashboard": "{{name}} hat dich eingeladen, das Dashboard „{{title}}“ anzusehen.",
+			"group": "{{name}} hat dich eingeladen, der Gruppe „{{title}}“ beizutreten."
+		}
+	},
+	"groups": {
+		"title": "Gruppen",
+		"intro": "Mit Gruppen teilst du Dashboards mit mehreren Personen auf einmal.",
+		"create": "Neue Gruppe",
+		"back": "Alle Gruppen",
+		"notFound": "Diese Gruppe gibt es nicht oder du bist kein Mitglied.",
+		"members": "Mitglieder",
+		"memberCount_one": "{{count}} Mitglied",
+		"memberCount_other": "{{count}} Mitglieder",
+		"role": {
+			"admin": "Gruppen-Admin",
+			"member": "Gruppenmitglied"
+		},
+		"roleOf": "Rolle von {{name}}",
+		"inviteRole": "Rolle der eingeladenen Person",
+		"nameLabel": "Name",
+		"cancel": "Abbrechen",
+		"save": "Speichern",
+		"rename": "Umbenennen",
+		"leave": "Gruppe verlassen",
+		"delete": "Gruppe löschen",
+		"remove": "Entfernen",
+		"removeNamed": "{{name}} entfernen",
+		"empty": {
+			"title": "Noch keine Gruppen",
+			"text": "Erstelle eine Gruppe und lade Personen dazu ein."
+		},
+		"createDialog": {
+			"title": "Neue Gruppe"
+		},
+		"renameDialog": {
+			"title": "Gruppe umbenennen"
+		},
+		"leaveDialog": {
+			"title": "Diese Gruppe verlassen?",
+			"text": "Du verlässt „{{name}}“. Was du mit dieser Gruppe geteilt hast, ist dann nicht mehr geteilt."
+		},
+		"deleteDialog": {
+			"title": "Diese Gruppe löschen?",
+			"text": "„{{name}}“ wird für alle Mitglieder gelöscht, und alles, was damit geteilt ist, ist nicht mehr geteilt."
+		},
+		"removeDialog": {
+			"title": "Dieses Mitglied entfernen?",
+			"text": "{{name}} wird aus der Gruppe entfernt, und was diese Person damit geteilt hat, ist nicht mehr geteilt."
+		},
+		"errors": {
+			"lastAdmin": "Diese Gruppe braucht zuerst einen weiteren Gruppen-Admin.",
+			"invalidName": "Gruppennamen brauchen 1 bis 100 Zeichen."
 		}
 	}
 }

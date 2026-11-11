@@ -22,9 +22,9 @@ var format = regexp.MustCompile(`^[a-z0-9-]{1,32}$`)
 // checked against testdata/reserved.json, like this list.
 var Reserved = []string{
 	"about", "account", "admin", "api", "app", "assets", "auth", "dashboards",
-	"docs", "favicon", "favourites", "health", "help", "karakeep", "login",
-	"logout", "me", "new", "public", "register", "search", "settings", "share",
-	"signup", "static", "tags", "u", "user", "users", "widgets",
+	"docs", "favicon", "favourites", "groups", "health", "help", "invitation",
+	"karakeep", "login", "logout", "me", "new", "public", "register", "search",
+	"settings", "share", "shared", "signup", "static", "tags", "u", "user", "users", "widgets",
 }
 
 // Normalize trims and lowercases s and returns ErrInvalid unless the result is

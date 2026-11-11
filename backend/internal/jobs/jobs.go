@@ -26,6 +26,7 @@ const (
 	KindPreviewFetch   Kind = "preview_fetch"
 	KindPreviewConvert Kind = "preview_convert"
 	KindOfflineCapture Kind = "offline_capture"
+	KindInvitationMail Kind = "invitation_mail"
 )
 
 // FaviconPayload asks for the favicon of URL's origin.
@@ -61,6 +62,12 @@ type OfflineCapturePayload struct {
 	NodeID     string `json:"nodeId"`
 	URL        string `json:"url"`
 	SetPreview bool   `json:"setPreview"`
+}
+
+// InvitationMailPayload asks to send the mail of an invitation. It only holds
+// the ID, so neither an address nor a token is copied into the job.
+type InvitationMailPayload struct {
+	InvitationID string `json:"invitationId"`
 }
 
 // MaxAttempts is how often a job may be started. A job that was interrupted

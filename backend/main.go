@@ -29,14 +29,17 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/feeds"
+	"boardly/internal/groups"
 	"boardly/internal/httpapi"
 	"boardly/internal/images"
+	"boardly/internal/invitations"
 	"boardly/internal/jobs"
 	"boardly/internal/legal"
 	"boardly/internal/mail"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/offline"
+	"boardly/internal/shares"
 	"boardly/internal/users"
 	"boardly/internal/web"
 	"boardly/internal/widgets"
@@ -153,6 +156,13 @@ func run() error {
 	}
 	go accountService.RunSweep(ctx, time.Hour)
 
+	invitationStore := &invitations.Store{
+		DB: database, Now: time.Now, Jobs: queue, Mailer: mailer, AppTitle: cfg.AppTitle,
+		BaseURL: cfg.BaseURL, RegistrationClosed: !cfg.AllowRegistration,
+	}
+	queue.Run(ctx, jobs.KindInvitationMail, 2, invitationStore.RunMailJob)
+	go invitationStore.RunSweep(ctx, time.Hour)
+
 	favouriteStore := favourites.NewStore(database)
 	favouriteStore.Jobs = queue
 	dashboardStore := dashboards.NewStore(database)
@@ -181,6 +191,9 @@ func run() error {
 			Notes:       noteStore,
 			Media:       mediaStore,
 			Feeds:       feedStore,
+			Groups:      groups.NewStore(database),
+			Shares:      shares.NewStore(database),
+			Invitations: invitationStore,
 			Images:      imageStore,
 			Attachments: attachmentStore,
 			Favicons:    favicons,

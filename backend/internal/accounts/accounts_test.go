@@ -432,3 +432,62 @@ func TestFormatDate(t *testing.T) {
 		t.Errorf("de = %q", got)
 	}
 }
+
+func TestDeleteAccountHandsOverGroupsAndInvitations(t *testing.T) {
+	f := newFixture(t)
+	ann, bob := f.ann.ID, f.bob.ID
+	carol, err := f.users.EnsureByEmail(f.ctx, f.db, "carol@example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := db.FormatTime(f.now)
+	later := db.FormatTime(f.now.Add(time.Hour))
+
+	for _, g := range []string{"solo", "family"} {
+		f.exec(`INSERT INTO user_groups (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`, g, g, now, now)
+		f.exec(`INSERT INTO user_group_members VALUES (?, ?, 'admin', ?)`, g, ann, now)
+	}
+	f.exec(`INSERT INTO user_group_members VALUES ('family', ?, 'member', ?), ('family', ?, 'member', ?)`, carol.ID, later, bob, now)
+
+	dash, err := dashboards.NewStore(f.db).Create(f.ctx, bob, dashboards.Fields{Title: "Bobs", Slug: "bobs"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expires := db.FormatTime(f.now.AddDate(1, 0, 0))
+	// One invitation sent to Ann's address, one made by Ann, one that stays.
+	f.exec(`INSERT INTO invitations (id, inviter_id, email, locale, dashboard_id, level, created_at, expires_at)
+	  VALUES ('to-ann', ?, 'ann@example.org', 'en', ?, 'read', ?, ?)`, bob, dash.ID, now, expires)
+	f.exec(`INSERT INTO invitations (id, inviter_id, email, locale, group_id, role, created_at, expires_at)
+	  VALUES ('by-ann', ?, 'x@example.org', 'en', 'family', 'member', ?, ?)`, ann, now, expires)
+	f.exec(`INSERT INTO invitations (id, inviter_id, email, locale, dashboard_id, level, created_at, expires_at)
+	  VALUES ('stays', ?, 'y@example.org', 'en', ?, 'read', ?, ?)`, bob, dash.ID, now, expires)
+	f.exec(`INSERT INTO invitation_notices (email, sent_at) VALUES ('ann@example.org', ?), ('y@example.org', ?)`, now, now)
+
+	f.schedule()
+	f.now = f.now.AddDate(0, 0, f.s.Days+1)
+	if _, _, err := f.s.Sweep(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if n := f.count(`SELECT COUNT(*) FROM users WHERE id = ?`, ann); n != 0 {
+		t.Fatal("account still exists")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM user_groups WHERE id = 'solo'`); n != 0 {
+		t.Error("the group without members still exists")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM user_group_members WHERE group_id = 'family' AND user_id = ? AND role = 'admin'`, bob); n != 1 {
+		t.Error("the earliest member isn't a group admin")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM user_group_members WHERE group_id = 'family' AND user_id = ? AND role = 'member'`, carol.ID); n != 1 {
+		t.Error("the later member's role changed")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM invitations WHERE id IN ('to-ann', 'by-ann')`); n != 0 {
+		t.Errorf("invitations of the account remain: %d", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM invitations WHERE id = 'stays'`); n != 1 {
+		t.Error("another address's invitation was removed")
+	}
+	if n := f.count(`SELECT COUNT(*) FROM invitation_notices WHERE email = 'ann@example.org'`); n != 0 {
+		t.Error("the notice record of the address remains")
+	}
+}

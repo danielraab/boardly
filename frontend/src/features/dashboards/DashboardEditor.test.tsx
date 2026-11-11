@@ -495,7 +495,7 @@ describe("dashboard settings", () => {
 		expect(within(dialog).getByLabelText("Title")).toHaveValue("Home");
 		expect(within(dialog).getByLabelText("Address")).toHaveValue("home");
 		expect(within(dialog).getByLabelText("Default dashboard")).toBeChecked();
-		expect(within(dialog).getByLabelText("Public")).toBeChecked();
+		expect(within(dialog).queryByLabelText("Public")).toBeNull();
 	});
 
 	it("stays on the page after a title change", async () => {

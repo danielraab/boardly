@@ -92,7 +92,6 @@ function DashboardForm({
 	// While creating, the slug follows the title until the user edits it.
 	const [slugEdited, setSlugEdited] = useState(editing !== null);
 	const [isDefault, setIsDefault] = useState(editing?.isDefault ?? false);
-	const [isPublic, setIsPublic] = useState(editing?.isPublic ?? false);
 	const [columns, setColumns] = useState<Columns>(() => {
 		const { desktopColumns, mobileColumns, mobileBreakpoint } =
 			editing ?? defaultColumns;
@@ -109,7 +108,6 @@ function DashboardForm({
 				title,
 				slug,
 				isDefault,
-				isPublic,
 				...columns,
 			};
 			return editing
@@ -207,13 +205,6 @@ function DashboardForm({
 					checked={isDefault}
 					onChange={setIsDefault}
 				/>
-				<Toggle
-					id="dashboard-public"
-					label={t("dashboards.dialog.publicLabel")}
-					hint={t("dashboards.dialog.publicHint")}
-					checked={isPublic}
-					onChange={setIsPublic}
-				/>
 				<ColumnFields
 					columns={columns}
 					onChange={(patch) => setColumns((c) => ({ ...c, ...patch }))}
@@ -256,7 +247,7 @@ function DashboardForm({
 	);
 }
 
-function Toggle({
+export function Toggle({
 	id,
 	label,
 	hint,

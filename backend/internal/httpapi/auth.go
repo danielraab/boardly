@@ -19,12 +19,15 @@ import (
 	"boardly/internal/export"
 	"boardly/internal/favourites"
 	"boardly/internal/feeds"
+	"boardly/internal/groups"
 	"boardly/internal/images"
+	"boardly/internal/invitations"
 	"boardly/internal/legal"
 	"boardly/internal/media"
 	"boardly/internal/notes"
 	"boardly/internal/offline"
 	"boardly/internal/ratelimit"
+	"boardly/internal/shares"
 	"boardly/internal/users"
 )
 
@@ -49,6 +52,12 @@ type api struct {
 	media       *media.Store
 	feeds       *feeds.Store
 	feedLimiter *ratelimit.Limiter
+	// groups, shares and invitations let users give others access;
+	// invitationLimiter limits the invitations per user.
+	groups            *groups.Store
+	shares            *shares.Store
+	invitations       *invitations.Store
+	invitationLimiter *ratelimit.Window
 	// directory searches radio-browser.info; searchLimiter limits it per user.
 	directory     *media.Directory
 	searchLimiter *ratelimit.Limiter

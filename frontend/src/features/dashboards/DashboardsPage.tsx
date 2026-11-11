@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
-import { LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
+import { LayoutGrid, Pencil, Plus, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { iconButton, secondaryButton } from "#/components/buttonStyles";
 import { widePage } from "#/components/pageWidths";
 import { useMe } from "#/features/auth/session";
+import { ShareDialog } from "#/features/sharing/ShareDialog";
 import { usePageTitle } from "#/lib/usePageTitle";
 import { type Dashboard, dashboardsQueryOptions } from "./api";
 import { DashboardDialog, type DashboardDialogTarget } from "./DashboardDialog";
@@ -28,6 +29,7 @@ export function DashboardsPage({
 	const list = useQuery({ ...dashboardsQueryOptions, enabled: !!me });
 	const [editing, setEditing] = useState<DashboardDialogTarget | null>(null);
 	const [deleting, setDeleting] = useState<Dashboard | null>(null);
+	const [sharing, setSharing] = useState<Dashboard | null>(null);
 
 	useEffect(() => {
 		if (openCreate) {
@@ -113,6 +115,14 @@ export function DashboardsPage({
 								<button
 									type="button"
 									className={iconButton}
+									aria-label={t("sharing.shareNamed", { title: d.title })}
+									onClick={() => setSharing(d)}
+								>
+									<Share2 className="size-4" aria-hidden />
+								</button>
+								<button
+									type="button"
+									className={iconButton}
 									aria-label={t("dashboards.edit", { title: d.title })}
 									onClick={() => setEditing({ dashboard: d })}
 								>
@@ -136,6 +146,7 @@ export function DashboardsPage({
 				userSlug={me.slug}
 				onClose={() => setEditing(null)}
 			/>
+			<ShareDialog target={sharing} onClose={() => setSharing(null)} />
 			<DeleteDashboardDialog
 				dashboard={deleting}
 				onClose={() => setDeleting(null)}

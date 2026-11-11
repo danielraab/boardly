@@ -34,6 +34,8 @@ tags:
   - name: Favourites
   - name: Tags
   - name: Dashboards
+  - name: Groups
+  - name: Sharing
   - name: Notes
   - name: Media
   - name: Feeds
@@ -1332,6 +1334,303 @@ paths:
 
   # --- Files ----------------------------------------------------------------
 
+  /groups:
+    get:
+      tags: [Groups]
+      summary: List the user's groups
+      responses:
+        "200":
+          description: The groups the user belongs to, sorted by name.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Group" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Groups]
+      summary: Create a group
+      description: Answers 400 `invalid_name` for a name that is empty or longer than 100 characters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupName" }
+      responses:
+        "201":
+          description: The new group, with the user as its first group admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /groups/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Groups]
+      summary: Get a group with its members
+      description: Member entries never contain an email address. Non-members get 404.
+      responses:
+        "200":
+          description: The group. `invitations` is only there for group admins.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GroupDetails" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Groups]
+      summary: Rename a group
+      description: Group admins only; others get 403 `forbidden`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupName" }
+      responses:
+        "200":
+          description: The renamed group.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Groups]
+      summary: Delete a group
+      description: Group admins only, also the last one.
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /groups/{id}/members/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Groups]
+      summary: Change a member's role
+      description: Group admins only. Answers 400 `invalid_role`, or 409 `last_admin` when the group would be left without a group admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [role], properties: { role: { $ref: "#/components/schemas/GroupRole" } } }
+      responses:
+        "200":
+          description: The group with its members.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GroupDetails" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Groups]
+      summary: Remove a member, or leave
+      description: Group admins can remove anyone, and everyone can remove themselves. The shares that person made with the group end. Answers 409 `last_admin` for the last group admin.
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /groups/{id}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Groups]
+      summary: Invite an email address to a group
+      description: Group admins only. Errors are 400 `invalid_email`, `invalid_role` and `cannot_invite_self`, 409 `already_invited`, and 429 after 30 invitations per user per hour.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupInvitationRequest" }
+      responses:
+        "201":
+          description: The invitation. The answer is the same whether or not the address has an account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /groups/{id}/invitations/{invitationId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - { name: invitationId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Groups]
+      summary: Revoke an invitation to a group
+      description: Group admins only.
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /shares/{type}/{id}:
+    parameters:
+      - { name: type, in: path, required: true, schema: { type: string } }
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Sharing]
+      summary: List who has access to a dashboard
+      description: Only `dashboard` is a valid type for now; others answer 404. Owners only; a person a dashboard is shared with gets 404. Entries contain no email address of a person with access.
+      responses:
+        "200":
+          description: The shares, people before groups, and the open invitations.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShareList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Sharing]
+      summary: Share a dashboard with a group
+      description: Errors are 400 `invalid_share_level` for any level other than `read`, 404 `group_not_found` for a group the owner is not a member of, and 409 `already_shared`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [groupId, level], properties: { groupId: { type: string }, level: { $ref: "#/components/schemas/ShareLevel" } } }
+      responses:
+        "201":
+          description: The new share.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Share" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /shares/{type}/{id}/{shareId}:
+    parameters:
+      - { name: type, in: path, required: true, schema: { type: string } }
+      - $ref: "#/components/parameters/id"
+      - { name: shareId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Sharing]
+      summary: Remove a share
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /shares/dashboard/{id}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Sharing]
+      summary: Invite an email address to a dashboard
+      description: Owners only. Errors are 400 `invalid_email`, `invalid_share_level` and `cannot_invite_self`, 409 `already_invited`, and 429 after 30 invitations per user per hour.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DashboardInvitationRequest" }
+      responses:
+        "201":
+          description: The invitation. The answer is the same whether or not the address has an account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /shares/dashboard/{id}/invitations/{invitationId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - { name: invitationId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Sharing]
+      summary: Revoke an invitation to a dashboard
+      responses:
+        "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /shared-with-me:
+    get:
+      tags: [Sharing]
+      summary: List the dashboards shared with the user
+      responses:
+        "200":
+          description: The dashboards, each once, sorted by title.
+          content:
+            application/json:
+              schema: { type: object, required: [dashboards], properties: { dashboards: { type: array, items: { $ref: "#/components/schemas/SharedDashboard" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /invitations:
+    get:
+      tags: [Sharing]
+      summary: List the open invitations of the user's address
+      responses:
+        "200":
+          description: The open invitations, newest first.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/OpenInvitation" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /invitations/preview:
+    post:
+      tags: [Sharing]
+      summary: Say who invited the user to what
+      description: Answers 404 `invitation_not_found` for an unknown, expired or used token and 403 `invitation_wrong_account` for a token sent to another address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [token], properties: { token: { type: string } } }
+      responses:
+        "200":
+          description: What the invitation is for.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPreview" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /invitations/accept:
+    post:
+      tags: [Sharing]
+      summary: Accept an invitation
+      description: Answers 400 `invalid_request` unless exactly one of the fields is sent, 404 `invitation_not_found`, and for a token sent to another address 403 `invitation_wrong_account`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: "Exactly one of the two.", properties: { token: { type: string }, invitationId: { type: string } } }
+      responses:
+        "200":
+          description: What was accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcceptedInvitation" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /images:
     post:
       tags: [Files]
@@ -2123,3 +2422,140 @@ components:
         expiresAt: { type: [string, "null"], format: date-time }
         revokedAt: { type: [string, "null"], format: date-time }
         status: { type: string, enum: [active, expired, revoked] }
+
+    GroupRole:
+      type: string
+      enum: [admin, member]
+
+    ShareLevel:
+      type: string
+      enum: [read]
+
+    GroupName:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+
+    Group:
+      type: object
+      required: [id, name, role, memberCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/GroupRole" }
+        memberCount: { type: integer }
+
+    GroupMember:
+      type: object
+      required: [id, slug, name, role]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: [string, "null"] }
+        role: { $ref: "#/components/schemas/GroupRole" }
+
+    GroupDetails:
+      allOf:
+        - $ref: "#/components/schemas/Group"
+        - type: object
+          required: [members]
+          properties:
+            members: { type: array, items: { $ref: "#/components/schemas/GroupMember" } }
+            invitations:
+              type: array
+              description: The open invitations; only for group admins.
+              items: { $ref: "#/components/schemas/Invitation" }
+
+    Invitation:
+      type: object
+      required: [id, email, createdAt, expiresAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        level: { $ref: "#/components/schemas/ShareLevel" }
+        role: { $ref: "#/components/schemas/GroupRole" }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+
+    DashboardInvitationRequest:
+      type: object
+      required: [email, level]
+      properties:
+        email: { type: string }
+        level: { $ref: "#/components/schemas/ShareLevel" }
+        locale: { type: string, description: "Language of the mail (en or de)." }
+
+    GroupInvitationRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+        role: { allOf: [{ $ref: "#/components/schemas/GroupRole" }], default: member }
+        locale: { type: string, description: "Language of the mail (en or de)." }
+
+    Share:
+      type: object
+      required: [id, level]
+      description: Either `user` or `group` is set.
+      properties:
+        id: { type: string }
+        level: { $ref: "#/components/schemas/ShareLevel" }
+        user:
+          type: object
+          required: [id, slug, name]
+          properties:
+            id: { type: string }
+            slug: { type: string }
+            name: { type: [string, "null"] }
+        group:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+
+    ShareList:
+      type: object
+      required: [shares, invitations]
+      properties:
+        shares: { type: array, items: { $ref: "#/components/schemas/Share" } }
+        invitations: { type: array, items: { $ref: "#/components/schemas/Invitation" } }
+
+    SharedDashboard:
+      type: object
+      required: [ownerSlug, ownerName, slug, title, level]
+      properties:
+        ownerSlug: { type: string }
+        ownerName: { type: string, description: "The owner's name, or their slug when they have none." }
+        slug: { type: string }
+        title: { type: string }
+        level: { $ref: "#/components/schemas/ShareLevel" }
+
+    InvitationPreview:
+      type: object
+      required: [type, title, inviterName]
+      properties:
+        type: { type: string, enum: [dashboard, group] }
+        title: { type: string, description: "The dashboard's title or the group's name." }
+        inviterName: { type: string, description: "The inviter's name, or their slug when they have none." }
+        level: { $ref: "#/components/schemas/ShareLevel" }
+        role: { $ref: "#/components/schemas/GroupRole" }
+
+    OpenInvitation:
+      allOf:
+        - $ref: "#/components/schemas/InvitationPreview"
+        - type: object
+          required: [id, expiresAt]
+          properties:
+            id: { type: string }
+            expiresAt: { type: string, format: date-time }
+
+    AcceptedInvitation:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [dashboard, group] }
+        ownerSlug: { type: string, description: "For a dashboard." }
+        slug: { type: string, description: "For a dashboard." }
+        groupId: { type: string, description: "For a group." }

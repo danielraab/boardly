@@ -112,12 +112,12 @@ describe("signed-in user menu", () => {
 		return screen.findByRole("menu");
 	}
 
-	it("shows name, email, Dashboards, Favourites, Notes, Media, Attachments, Settings, GitHub and Sign out in this order", async () => {
+	it("shows name, email, Dashboards, Shared with me, Favourites, Notes, Media, Attachments, Groups, Settings, GitHub and Sign out in this order", async () => {
 		mockApi({ "GET /api/me": signedIn({ name: "Ann" }) });
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"Annann@example.orgDashboardsFavouritesNotesMediaFeedsAttachmentsSettingsGitHubSign out",
+			"Annann@example.orgDashboardsShared with meFavouritesNotesMediaFeedsAttachmentsGroupsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu)
@@ -125,11 +125,13 @@ describe("signed-in user menu", () => {
 				.map((i) => i.textContent),
 		).toEqual([
 			"Dashboards",
+			"Shared with me",
 			"Favourites",
 			"Notes",
 			"Media",
 			"Feeds",
 			"Attachments",
+			"Groups",
 			"Settings",
 			"GitHub",
 			"Sign out",
@@ -141,7 +143,7 @@ describe("signed-in user menu", () => {
 		const { user } = renderApp("/");
 		const menu = await openMenu(user);
 		expect(menu.textContent).toBe(
-			"ann@example.orgDashboardsFavouritesNotesMediaFeedsAttachmentsSettingsGitHubSign out",
+			"ann@example.orgDashboardsShared with meFavouritesNotesMediaFeedsAttachmentsGroupsSettingsGitHubSign out",
 		);
 		expect(
 			within(menu).getByText("ann@example.org").previousSibling,
@@ -155,6 +157,22 @@ describe("signed-in user menu", () => {
 		const menu = await screen.findByRole("menu");
 		expect(within(menu).getByText("Loading…")).toBeVisible();
 		expect(within(menu).queryAllByRole("menuitem")).toHaveLength(0);
+	});
+
+	it.each([
+		["Shared with me", "/shared"],
+		["Groups", "/groups"],
+	])("goes to the page from %s", async (name, path) => {
+		mockApi({
+			"GET /api/me": signedIn(),
+			"GET /api/shared-with-me": { body: { dashboards: [] } },
+			"GET /api/invitations": { body: [] },
+			"GET /api/groups": { body: [] },
+		});
+		const { user, router } = renderApp("/");
+		const menu = await openMenu(user);
+		await user.click(within(menu).getByRole("menuitem", { name }));
+		await waitFor(() => expect(router.state.location.pathname).toBe(path));
 	});
 
 	it("goes to /dashboards from the Dashboards item and closes the menu", async () => {

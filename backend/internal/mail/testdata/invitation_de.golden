@@ -1,0 +1,31 @@
+To: bob@example.org
+Subject: Ann hat dich zu dem Dashboard „Work“ auf Boardly eingeladen
+
+Hallo,
+
+Ann hat dich eingeladen, das Dashboard „Work“ auf Boardly anzusehen.
+
+Öffne diesen Link, um anzunehmen. Die Einladung ist 14 Tage gültig:
+
+https://dash.example.org/invitation?token=abc
+
+Wenn du das nicht möchtest, kannst du diese E-Mail ignorieren. Solange du nicht annimmst, ändert sich nichts.
+
+– Boardly
+
+--- html ---
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>Ann hat dich zu dem Dashboard „Work“ auf Boardly eingeladen</title></head>
+<body style="margin:0;padding:24px;background:#eef1f4;color:#1d2733;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #cbd3dc;border-radius:8px;">
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:20px;font-weight:600;">Boardly</p>
+<p style="margin:0 0 24px;">Ann hat dich eingeladen, das Dashboard „Work“ auf Boardly anzusehen.</p>
+<p style="margin:0 0 24px;"><a href="https://dash.example.org/invitation?token=abc" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Einladung ansehen</a></p>
+<p style="margin:0 0 24px;">Nimm die Einladung innerhalb von 14 Tagen an.</p>
+<p style="margin:0;font-size:14px;color:#5a6878;">Wenn du das nicht möchtest, kannst du diese E-Mail ignorieren. Solange du nicht annimmst, ändert sich nichts.</p>
+</td></tr>
+</table>
+</body>
+</html>

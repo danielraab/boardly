@@ -11,7 +11,9 @@ import {
 	Radio,
 	Rss,
 	Settings,
+	Share2,
 	Star,
+	Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMe, useSignOut } from "#/features/auth/session";
@@ -66,6 +68,14 @@ export function UserMenu() {
 								<Menu.LinkItem
 									closeOnClick
 									className={menuItem}
+									render={<Link to="/shared" />}
+								>
+									<Share2 className="size-4 text-muted" aria-hidden />
+									{t("shell.shared")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
 									render={<Link to="/favourites" />}
 								>
 									<Star className="size-4 text-muted" aria-hidden />
@@ -102,6 +112,14 @@ export function UserMenu() {
 								>
 									<Paperclip className="size-4 text-muted" aria-hidden />
 									{t("shell.attachments")}
+								</Menu.LinkItem>
+								<Menu.LinkItem
+									closeOnClick
+									className={menuItem}
+									render={<Link to="/groups" />}
+								>
+									<Users className="size-4 text-muted" aria-hidden />
+									{t("shell.groups")}
 								</Menu.LinkItem>
 								<Menu.LinkItem
 									closeOnClick

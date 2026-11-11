@@ -224,7 +224,7 @@ describe("the feed widget", () => {
 			within(dialog).getByLabelText("Only items with audio"),
 		).not.toBeChecked();
 		expect(
-			within(dialog).getByLabelText("Show on public dashboard"),
+			within(dialog).getByLabelText("Show to other viewers"),
 		).not.toBeChecked();
 		expect(
 			within(dialog).getByText(/also of feeds you add later/),
