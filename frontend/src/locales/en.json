@@ -1474,6 +1474,8 @@
 		"removeFromHistory": "Remove from history",
 		"showMore": "Show more",
 		"showLess": "Show less",
+		"showSummary": "Show summary",
+		"hideSummary": "Hide summary",
 		"flagsOf": "Flags of {{name}}",
 		"readLater": "Read later",
 		"removeReadLater": "Remove from read later",

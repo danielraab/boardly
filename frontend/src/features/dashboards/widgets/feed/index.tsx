@@ -94,7 +94,7 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 							size={config.size}
 							editing={editing}
 							showFlags={owner}
-							showSummary={config.showSummary}
+							summary={config.showSummary ? "preview" : "onDemand"}
 						/>
 					))}
 				</ul>

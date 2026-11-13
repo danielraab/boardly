@@ -2,9 +2,7 @@
 
 ## Purpose
 A dashboard widget that shows a glance list of items from the owner's feeds, either the latest ones or those flagged to read later or as liked, for the owner and, if allowed, for visitors of public dashboards.
-
 ## Requirements
-
 ### Requirement: Feed widget settings
 The widget kind `feed` ("Feed" / "Feed") SHALL have, besides the common width, a choice of feeds, "Show" / "Anzeigen" with the values "Latest" / "Neueste" (`latest`, default), "Read later" / "Später lesen" (`read_later`) and "Liked" / "Gefällt mir" (`liked`) and "Continue listening" / "Weiterhören" (`in_progress`), a number of items ("Number of items" / "Anzahl Einträge", an integer from 1 to 100, default 10), "Show summary" / "Zusammenfassung zeigen" (default off), "Only items with audio" / "Nur Einträge mit Audio" (default off), an optional title (at most 200 characters after trimming), a size (`S`, `M` or `L`, default `M`) and "Show on public dashboard" / "Auf öffentlichem Dashboard zeigen" (default off). The choice of feeds SHALL be "All my feeds" / "Alle meine Feeds" (default) or a list of 1–50 chosen feeds, in a search field over the owner's feed titles. When the owner has no feeds, the dialog SHALL say "You don't have any feeds yet." / "Du hast noch keine Feeds." with a link to `/feeds`. Next to "Show on public dashboard", the dialog SHALL say that visitors then see the titles and links of these items, and with "All my feeds", those of feeds added later too. A layout with a feed widget with more than 50 feeds, a feed ID longer than an ID can be, a repeated feed ID, a show value other than these, a number of items outside 1–100, a title longer than 200 characters or a size other than `S`, `M` or `L` is rejected with 400 and `invalid_layout`. The feeds don't have to exist when the layout is saved.
 
@@ -32,6 +30,8 @@ The widget kind `feed` ("Feed" / "Feed") SHALL have, besides the common width, a
 A feed widget SHALL show its title, if any, and at most its number of items, merged from its feeds. With "Only items with audio", the widget shows only items that have audio, for every "Show" value and for visitors too, and its number of items counts only those. With "Latest", items are sorted newest first. With "Read later" and "Liked", items are sorted by when the flag was set, newest first. "All my feeds" with "Read later" or "Liked" includes items of feeds the owner no longer subscribes to. Each item is a row with the feed's icon, the item's title, the feed's title as a second line and its time as a relative time with the full date and time as a tooltip. With "Show summary", the summary is shown below, cut off after two lines. Text that doesn't fit is cut off with "…". A row of an item with a link and without audio SHALL open the link in a new tab, without giving the new page access to the opener. A row of an item with audio SHALL show a play button that plays it in the media player and pauses it while it is playing, and the widget SHALL mark the episode that is loaded in the player. The size sets the text, icon and padding on the same S/M/L scale as the other widgets. In edit mode, rows SHALL NOT open links or start playback, and flags can't be changed. A widget without items to show SHALL display "No items" / "Keine Einträge".
 
 Rows narrower than 480 px SHALL use the narrow layout of item rows of the `feeds` capability: the feed's icon, the feed's title and the time first, the item's title over the full width of the row below, and the buttons on a line below the text. With "Show summary", a summary that is cut off SHALL have the "Show more" / "Mehr anzeigen" and "Show less" / "Weniger anzeigen" toggle of the `feeds` capability, for the owner and for visitors. In edit mode, the toggle SHALL NOT be shown.
+
+Without "Show summary", the row of an item with a summary SHALL have an info button "Show summary" / "Zusammenfassung zeigen" among its buttons, before the play button, to the right of the text when the row is wide and on the line of buttons when it is narrow. Activating it SHALL show the whole summary in the row, below the title, without cutting it off; the button then says "Hide summary" / "Zusammenfassung verbergen" and hides it again. The button states whether the summary is shown to assistive technology, doesn't open the item's link and doesn't start playback. Showing a summary is not remembered. A row of an item without a summary, and every row in edit mode, SHALL have no info button. Visitors get no summaries without "Show summary" (see "Feed widget on public dashboards"), so their rows have no info button.
 
 #### Scenario: Merged list
 - **WHEN** a widget shows two feeds with items from today and yesterday
@@ -68,6 +68,30 @@ Rows narrower than 480 px SHALL use the narrow layout of item rows of the `feeds
 #### Scenario: No toggle in edit mode
 - **WHEN** Ann edits the dashboard
 - **THEN** the rows of the feed widget have no "Show more" toggle
+
+#### Scenario: Open a summary on demand
+- **WHEN** a widget without "Show summary" shows an item with a summary, and Ann activates its info button
+- **THEN** the whole summary is shown below the title, the button says "Hide summary", and no link opens
+
+#### Scenario: Hide a summary again
+- **WHEN** Ann activates "Hide summary" on a row whose summary she opened
+- **THEN** the summary is no longer shown and the button says "Show summary"
+
+#### Scenario: No summary to show
+- **WHEN** a widget without "Show summary" shows an item without a summary
+- **THEN** its row has no info button
+
+#### Scenario: Info button in a narrow row
+- **WHEN** a widget without "Show summary" is in a column 300 px wide and Ann views it
+- **THEN** the info button is on the line of buttons with the flag buttons, and the row has no extra line for it
+
+#### Scenario: No info button for visitors
+- **WHEN** a visitor views a public dashboard with a feed widget without "Show summary"
+- **THEN** its rows have no info button and show no summary
+
+#### Scenario: No info button in edit mode
+- **WHEN** Ann edits a dashboard with a feed widget without "Show summary"
+- **THEN** its rows have no info button
 
 ### Requirement: Flags in the feed widget
 For the owner, outside edit mode, each row SHALL have the bookmark and the heart button of the `feeds` capability. Removing the flag that a "Read later" or "Liked" widget shows SHALL remove the row. Flag changes SHALL show in every widget on the dashboard and on `/feeds` without a reload.
@@ -124,3 +148,4 @@ With "Continue listening", a feed widget SHALL show the owner's episodes in prog
 #### Scenario: Order
 - **WHEN** Ann listened to episode A yesterday and to episode B today
 - **THEN** the widget lists B before A
+

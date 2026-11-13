@@ -322,7 +322,7 @@ function Items({
 						key={item.id}
 						item={item}
 						showFlags
-						showSummary
+						summary="preview"
 						showEpisodeMenu
 					/>
 				))}

@@ -100,10 +100,58 @@ describe("the feed widget", () => {
 		dashboard(() => [section("Work", {}, feedWidget({ showSummary: true }))]);
 		renderApp("/ann/home");
 		expect(await screen.findByText("A summary")).toBeVisible();
+		expect(
+			screen.queryByRole("button", { name: "Show summary" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("shows the whole summary on demand", async () => {
+		stubCutOffSummaries();
+		dashboard(() => [
+			section(
+				"Work",
+				{},
+				feedWidget(
+					{},
+					{
+						items: [
+							item("a", "News one", { summary: long }),
+							item("b", "News two", { summary: null }),
+						],
+						missing: false,
+					},
+				),
+			),
+		]);
+		const { user } = renderApp("/ann/home");
+		const button = await screen.findByRole("button", { name: "Show summary" });
+		expect(
+			screen.getAllByRole("button", { name: "Show summary" }),
+		).toHaveLength(1);
+		expect(button).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByText(long.trim())).not.toBeInTheDocument();
+
+		await user.click(button);
+		const summary = screen.getByText(long.trim());
+		expect(summary).toBeVisible();
+		expect(summary).not.toHaveClass("line-clamp-2");
+		expect(button).toHaveAccessibleName("Hide summary");
+		expect(button).toHaveAttribute("aria-expanded", "true");
+		expect(button).toHaveAttribute("aria-controls", summary.id);
+		expect(
+			screen.queryByRole("button", { name: "Show more" }),
+		).not.toBeInTheDocument();
+
+		await user.click(button);
+		expect(screen.queryByText(long.trim())).not.toBeInTheDocument();
+		expect(button).toHaveAccessibleName("Show summary");
 	});
 
 	it("gives visitors no flag buttons", async () => {
-		const visitorItem = { ...item("a", "News one") } as Partial<FeedItem>;
+		// Without "Show summary", visitors get no summary.
+		const visitorItem = {
+			...item("a", "News one", { summary: null }),
+		} as Partial<FeedItem>;
 		delete visitorItem.readLaterAt;
 		delete visitorItem.likedAt;
 		dashboard(
@@ -114,6 +162,9 @@ describe("the feed widget", () => {
 		expect(await screen.findByRole("link", { name: "News one" })).toBeVisible();
 		expect(
 			screen.queryByRole("button", { name: "Like" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Show summary" }),
 		).not.toBeInTheDocument();
 	});
 
@@ -169,6 +220,9 @@ describe("the feed widget", () => {
 		expect(screen.getByRole("button", { name: "Play Episode" })).toBeDisabled();
 		expect(
 			screen.queryByRole("button", { name: "Like" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Show summary" }),
 		).not.toBeInTheDocument();
 		expect(audio.play).not.toHaveBeenCalled();
 	});

@@ -1474,6 +1474,8 @@
 		"removeFromHistory": "Aus dem Verlauf entfernen",
 		"showMore": "Mehr anzeigen",
 		"showLess": "Weniger anzeigen",
+		"showSummary": "Zusammenfassung zeigen",
+		"hideSummary": "Zusammenfassung verbergen",
 		"flagsOf": "Markierungen von {{name}}",
 		"readLater": "Später lesen",
 		"removeReadLater": "Nicht mehr später lesen",

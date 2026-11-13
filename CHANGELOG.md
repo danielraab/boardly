@@ -6,6 +6,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Feed widget: with **Show summary** off, rows of items with a summary get an info button that
+  shows the whole summary in the row, and hides it again. Visitors of public dashboards still see
+  no summaries.
+
 ## [1.3.0] - 2026-11-12
 
 ### Added
