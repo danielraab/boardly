@@ -5,6 +5,7 @@ import {
 	Check,
 	EllipsisVertical,
 	Heart,
+	Info,
 	Pause,
 	Play,
 	RotateCcw,
@@ -50,7 +51,9 @@ import { observeResize } from "./observeResize";
  * A feed item: its feed's icon, title, feed and time. A news item opens its
  * link in a new tab, and an episode has a play button. With editing the row
  * does nothing, showFlags adds the read later and like buttons, and
- * showEpisodeMenu the listen history's actions for an episode.
+ * showEpisodeMenu the listen history's actions for an episode. With summary
+ * "preview" the summary is shown cut off after two lines; with "onDemand" an
+ * info button shows the whole summary.
  *
  * The row is a container: narrower than 480 px it puts the feed and time
  * first, the title below over the full width, and the buttons under the text.
@@ -61,7 +64,7 @@ export function FeedItemRow({
 	size = "M",
 	editing = false,
 	showFlags,
-	showSummary,
+	summary,
 	showEpisodeMenu = false,
 	now = new Date(),
 }: {
@@ -69,7 +72,7 @@ export function FeedItemRow({
 	size?: WidgetSize;
 	editing?: boolean;
 	showFlags: boolean;
-	showSummary: boolean;
+	summary: "preview" | "onDemand";
 	showEpisodeMenu?: boolean;
 	now?: Date;
 }) {
@@ -79,6 +82,9 @@ export function FeedItemRow({
 	const newsLink = !item.audio && !editing ? item.link : null;
 	const titleLink = item.audio && !editing ? item.link : null;
 	const flags = showFlags && !editing;
+	const summaryId = useId();
+	const [summaryOpen, setSummaryOpen] = useState(false);
+	const summaryButton = summary === "onDemand" && !editing && !!item.summary;
 	// Two lines when narrow, one truncated line when wide.
 	const titleClass = `${rowTitle} font-medium`;
 
@@ -130,11 +136,33 @@ export function FeedItemRow({
 					</time>
 					<ListenProgress item={item} render={progressText} />
 				</p>
-				{showSummary && item.summary && (
+				{summary === "preview" && item.summary && (
 					<Summary text={item.summary} editing={editing} />
 				)}
-				{(item.audio || flags) && (
+				{summaryButton && summaryOpen && (
+					<p
+						id={summaryId}
+						className="min-w-0 break-words text-[0.9em] text-muted [grid-area:summary]"
+					>
+						{item.summary}
+					</p>
+				)}
+				{(item.audio || flags || summaryButton) && (
 					<div className="flex items-center gap-2 justify-self-end [grid-area:actions] @min-[480px]:self-start">
+						{summaryButton && (
+							<button
+								type="button"
+								aria-label={t(
+									summaryOpen ? "feeds.hideSummary" : "feeds.showSummary",
+								)}
+								aria-expanded={summaryOpen}
+								aria-controls={summaryOpen ? summaryId : undefined}
+								onClick={() => setSummaryOpen(!summaryOpen)}
+								className={`${iconButton} relative z-10`}
+							>
+								<Info className="size-4" aria-hidden />
+							</button>
+						)}
 						{item.audio && (
 							<EpisodeButton
 								item={
