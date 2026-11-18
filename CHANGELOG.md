@@ -12,6 +12,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
   shows the whole summary in the row, and hides it again. Visitors of public dashboards still see
   no summaries.
 
+### Security
+
+- Behind a reverse proxy (`BOARDLY_TRUST_PROXY_HEADERS=true`), the client IP is now the
+  `X-Forwarded-For` entry that the proxy added, counted from the right, instead of the leftmost
+  entry, which clients could fake to get around the per-IP limit on sign-in emails. With more than
+  one proxy in front of Boardly (for example a CDN and nginx), set the new
+  `BOARDLY_TRUSTED_PROXY_COUNT` to their number; otherwise the outer proxy's address is used.
+
 ## [1.3.0] - 2026-11-12
 
 ### Added

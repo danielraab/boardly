@@ -782,6 +782,7 @@ precedence over the file.
 | `BOARDLY_SMTP_FROM` | `Boardly <noreply@localhost>` | Sender address of sign-in emails |
 | `BOARDLY_SMTP_TLS` | `starttls` | `starttls` (required STARTTLS, usually port 587), `tls` (implicit TLS, usually port 465) or `none` |
 | `BOARDLY_TRUST_PROXY_HEADERS` | `false` | Take the client IP from `X-Forwarded-For` (for rate limiting). Enable it only behind a reverse proxy that sets this header |
+| `BOARDLY_TRUSTED_PROXY_COUNT` | `1` | Number of reverse proxies in front of Boardly that add to `X-Forwarded-For` (1–10). Only used with `BOARDLY_TRUST_PROXY_HEADERS=true` |
 | `BOARDLY_WEBAUTHN_RP_ID` | host name of `BOARDLY_BASE_URL` | Relying party ID that passkeys are bound to. It must be the base URL's host name or a parent domain of it (e.g. `example.org` for `dash.example.org`) |
 | `BOARDLY_FETCH_ALLOW_PRIVATE` | `false` | Let the server fetch favicons and link previews from private, loopback and link-local addresses (for example `http://192.168.1.10:8096`). See [Favicons and images](#favicons-and-images) |
 | `BOARDLY_PREVIEW_MAX_SIZE_MB` | `10` | Largest preview image, in megabytes, that the server downloads from a page or accepts from a connected app before converting it |
@@ -864,7 +865,11 @@ Mailpit instead (http://localhost:8025).
   `forbidden_origin`. The server logs the effective base URL at startup.
 - Set `BOARDLY_TRUST_PROXY_HEADERS=true` so rate limits apply per real client instead of to
   the proxy as a whole. Don't enable it when the server is reachable without the proxy, because
-  clients could then fake their IP.
+  clients could then fake their IP. Each proxy adds the address it was connected from to the
+  right of `X-Forwarded-For`, so Boardly counts from the right: the client IP is the entry added
+  by the outermost of your proxies, and anything a client sends itself is ignored. With more than
+  one proxy (for example a CDN in front of nginx), set `BOARDLY_TRUSTED_PROXY_COUNT` to exactly
+  their number. A higher value lets clients fake their IP again.
 
 ### Favicons and images
 

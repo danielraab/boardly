@@ -42,8 +42,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.SMTP != wantSMTP {
 		t.Fatalf("SMTP = %+v, want %+v", cfg.SMTP, wantSMTP)
 	}
-	if cfg.TrustProxyHeaders {
-		t.Fatal("TrustProxyHeaders should default to false")
+	if cfg.TrustProxyHeaders || cfg.TrustedProxyCount != 1 || cfg.TrustedProxies() != 0 {
+		t.Fatalf("TrustProxyHeaders = %v, TrustedProxyCount = %d, TrustedProxies = %d; want false, 1, 0", cfg.TrustProxyHeaders, cfg.TrustedProxyCount, cfg.TrustedProxies())
 	}
 	if !cfg.AllowRegistration {
 		t.Fatal("AllowRegistration should default to true")
@@ -154,6 +154,7 @@ func TestLoadOverrides(t *testing.T) {
 		"BOARDLY_SMTP_FROM":           "Dash <dash@example.org>",
 		"BOARDLY_SMTP_TLS":            "tls",
 		"BOARDLY_TRUST_PROXY_HEADERS": "true",
+		"BOARDLY_TRUSTED_PROXY_COUNT": "2",
 		"BOARDLY_ALLOW_REGISTRATION":  "false",
 		"BOARDLY_DATA_DIR":            "/srv/boardly",
 		"BOARDLY_FETCH_ALLOW_PRIVATE": "true",
@@ -177,8 +178,8 @@ func TestLoadOverrides(t *testing.T) {
 	if !reflect.DeepEqual(cfg.SMTP, wantSMTP) {
 		t.Fatalf("SMTP = %+v, want %+v", cfg.SMTP, wantSMTP)
 	}
-	if !cfg.TrustProxyHeaders {
-		t.Fatal("TrustProxyHeaders should be true")
+	if !cfg.TrustProxyHeaders || cfg.TrustedProxyCount != 2 || cfg.TrustedProxies() != 2 {
+		t.Fatalf("TrustProxyHeaders = %v, TrustedProxyCount = %d, TrustedProxies = %d", cfg.TrustProxyHeaders, cfg.TrustedProxyCount, cfg.TrustedProxies())
 	}
 	if cfg.AllowRegistration {
 		t.Fatal("AllowRegistration should be false")
@@ -281,6 +282,9 @@ func TestLoadInvalid(t *testing.T) {
 		{"smtp port not a number", "BOARDLY_SMTP_PORT", "smtp"},
 		{"unknown TLS mode", "BOARDLY_SMTP_TLS", "ssl"},
 		{"proxy flag not a bool", "BOARDLY_TRUST_PROXY_HEADERS", "maybe"},
+		{"proxy count zero", "BOARDLY_TRUSTED_PROXY_COUNT", "0"},
+		{"proxy count too high", "BOARDLY_TRUSTED_PROXY_COUNT", "11"},
+		{"proxy count not a number", "BOARDLY_TRUSTED_PROXY_COUNT", "abc"},
 		{"registration flag not a bool", "BOARDLY_ALLOW_REGISTRATION", "maybe"},
 		{"private fetch flag not a bool", "BOARDLY_FETCH_ALLOW_PRIVATE", "sometimes"},
 		{"RP ID of another host", "BOARDLY_WEBAUTHN_RP_ID", "example.org"},

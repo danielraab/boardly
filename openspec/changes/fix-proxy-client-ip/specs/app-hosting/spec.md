@@ -28,5 +28,5 @@ The server SHALL use the connection's remote address as the client IP for rate l
 - **THEN** it exits with a non-zero status and an error message that names `BOARDLY_TRUSTED_PROXY_COUNT`
 
 #### Scenario: Faked addresses don't escape the link limit
-- **WHEN** one client behind a single trusted proxy requests sign-in links for 21 different addresses within an hour, each request with a different made-up leftmost `X-Forwarded-For` entry
-- **THEN** the 21st request gets 429 `rate_limited`
+- **WHEN** one client behind a single trusted proxy requests sign-in links for different addresses in quick succession, each request with a different made-up leftmost `X-Forwarded-For` entry
+- **THEN** the requests count against that client's one per-IP limit, and the first request over it gets 429 `rate_limited`

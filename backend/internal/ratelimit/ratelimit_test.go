@@ -47,18 +47,37 @@ func TestEvictsLeastRecentlyUsed(t *testing.T) {
 }
 
 func TestClientIP(t *testing.T) {
-	r := httptest.NewRequest("POST", "/", nil)
-	r.RemoteAddr = "10.0.0.1:5555"
-	r.Header.Set("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
-
-	if got := ClientIP(r, false); got != "10.0.0.1" {
-		t.Fatalf("untrusted: got %q", got)
+	tests := []struct {
+		name    string
+		xff     []string // X-Forwarded-For lines; nil sends none
+		proxies int
+		want    string
+	}{
+		{"not trusted", []string{"203.0.113.7"}, 0, "10.0.0.1"},
+		{"no header", nil, 1, "10.0.0.1"},
+		{"one proxy", []string{"203.0.113.7"}, 1, "203.0.113.7"},
+		{"spoofed leftmost entry", []string{"1.2.3.4, 203.0.113.7"}, 1, "203.0.113.7"},
+		{"two proxies", []string{"1.2.3.4, 203.0.113.7, 198.51.100.2"}, 2, "203.0.113.7"},
+		{"fewer entries than proxies", []string{"203.0.113.7"}, 3, "203.0.113.7"},
+		{"several header lines", []string{"1.2.3.4", "203.0.113.7"}, 1, "203.0.113.7"},
+		{"invalid entry", []string{"1.2.3.4, unknown"}, 1, "10.0.0.1"},
+		{"empty entry", []string{"1.2.3.4, "}, 1, "10.0.0.1"},
+		{"empty header", []string{""}, 1, "10.0.0.1"},
+		{"entry with port", []string{"203.0.113.7:4711"}, 1, "203.0.113.7"},
+		{"IPv6", []string{"2001:db8::1"}, 1, "2001:db8::1"},
+		{"IPv6 in brackets with port", []string{"[2001:db8::1]:4711"}, 1, "2001:db8::1"},
+		{"IPv4-mapped IPv6", []string{"::ffff:203.0.113.7"}, 1, "203.0.113.7"},
 	}
-	if got := ClientIP(r, true); got != "203.0.113.7" {
-		t.Fatalf("trusted: got %q", got)
-	}
-	r.Header.Del("X-Forwarded-For")
-	if got := ClientIP(r, true); got != "10.0.0.1" {
-		t.Fatalf("trusted without header: got %q", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest("POST", "/", nil)
+			r.RemoteAddr = "10.0.0.1:5555"
+			for _, v := range tt.xff {
+				r.Header.Add("X-Forwarded-For", v)
+			}
+			if got := ClientIP(r, tt.proxies); got != tt.want {
+				t.Fatalf("ClientIP = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
