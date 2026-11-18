@@ -226,7 +226,11 @@ func write(w http.ResponseWriter, entries []entry) {
 			status = http.StatusMultiStatus
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	// Like the other JSON responses of the API (see httpapi.WriteJSON).
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(entries); err != nil {
 		slog.Error("writing tRPC response", "error", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -98,7 +99,8 @@ type server struct {
 	jobs        *jobs.Queue
 }
 
-func newServer(t *testing.T) *server {
+// newServer returns a test server; opts can adjust its dependencies.
+func newServer(t *testing.T, opts ...func(*Deps)) *server {
 	t.Helper()
 	database := dbtest.Open(t)
 	c := &clock{now: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)}
@@ -153,7 +155,7 @@ func newServer(t *testing.T) *server {
 	directory := media.NewDirectory(true)
 	accountService := &accounts.Service{DB: database, Users: store, Now: c.Now, Days: 7, Mailer: box, Link: testOrigin + "/"}
 
-	h := New(Deps{
+	d := Deps{
 		DB: database, Web: fakeWeb, Auth: svc, Users: store, Favourites: favouriteStore, Dashboards: dashboardStore, Notes: noteStore, Media: mediaStore, Feeds: feedStore, Directory: directory,
 		Images: imageStore, Attachments: attachmentStore, Favicons: favicons, Previews: previews, Offline: offlineStore, AppTokens: appTokens,
 		Accounts: accountService, Origin: testOrigin, SecureCookies: true,
@@ -165,7 +167,11 @@ func newServer(t *testing.T) *server {
 			Media: mediaStore, Feeds: feedStore, Images: imageStore, Attachments: attachmentStore,
 		},
 		ExportsPerHour: 3, ExportsPerDay: 10,
-	})
+	}
+	for _, opt := range opts {
+		opt(&d)
+	}
+	h := New(d)
 	return &server{h: h, accounts: accountService, db: database, auth: svc, clock: c, mail: box, images: imageStore, attachments: attachmentStore, media: mediaStore, directory: directory, favicons: favicons, previews: previews, offline: offlineStore, jobs: queue}
 }
 
@@ -347,6 +353,45 @@ func TestTokenNotStoredInPlainText(t *testing.T) {
 }
 
 // --- 3.2 rate limits ---
+
+// Behind a trusted proxy, made-up leftmost X-Forwarded-For entries don't give
+// a client a fresh per-IP budget (openspec change fix-proxy-client-ip).
+func TestRateLimitIgnoresSpoofedForwardedFor(t *testing.T) {
+	s := newServer(t, func(d *Deps) { d.TrustedProxies = 1 })
+	request := func(i int) *httptest.ResponseRecorder {
+		return s.req("POST", "/api/auth/magic-link", fmt.Sprintf(`{"email":"user%d@example.org"}`, i), func(r *http.Request) {
+			r.RemoteAddr = "10.0.0.2:4000" // the proxy
+			r.Header.Set("X-Forwarded-For", fmt.Sprintf("198.51.100.%d, 203.0.113.7", i))
+		})
+	}
+	for i := range 5 {
+		if rec := request(i); rec.Code != http.StatusAccepted {
+			t.Fatalf("request %d: got %d %s", i, rec.Code, rec.Body)
+		}
+	}
+	rec := request(5)
+	if rec.Code != http.StatusTooManyRequests || errorCode(t, rec) != "rate_limited" {
+		t.Fatalf("6th request: got %d %s, want 429 rate_limited", rec.Code, rec.Body)
+	}
+	if n := s.mail.count(); n != 5 {
+		t.Fatalf("sent %d mails, want 5", n)
+	}
+}
+
+// Without trusted proxies, the header is ignored and each connection
+// address has its own budget.
+func TestRateLimitPerConnectionWithoutTrustedProxies(t *testing.T) {
+	s := newServer(t)
+	for i := range 6 {
+		rec := s.req("POST", "/api/auth/magic-link", fmt.Sprintf(`{"email":"user%d@example.org"}`, i), func(r *http.Request) {
+			r.RemoteAddr = fmt.Sprintf("198.51.100.%d:4000", i)
+			r.Header.Set("X-Forwarded-For", "203.0.113.7")
+		})
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("request %d: got %d %s", i, rec.Code, rec.Body)
+		}
+	}
+}
 
 func TestRateLimitImmediateRepeat(t *testing.T) {
 	s := newServer(t)

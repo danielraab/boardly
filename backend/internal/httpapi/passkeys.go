@@ -5,8 +5,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"boardly/internal/auth"
+	"boardly/internal/ratelimit"
 )
 
 // WebAuthnCookie carries the challenge of a running passkey ceremony.
@@ -44,7 +46,18 @@ func readBody(r *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+// Passkey sign-in option requests per client IP: 30 at once, then 120 an
+// hour. Each one stores a challenge, and it needs no account.
+const (
+	passkeyOptionsPerHour = 120
+	passkeyOptionsBurst   = 30
+)
+
 func (a *api) passkeyLoginOptions(w http.ResponseWriter, r *http.Request) error {
+	if ok, retry := a.passkeyLoginLimiter.Reserve(ratelimit.ClientIP(r, a.trustedProxies), a.auth.Now()); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds(retry)))
+		return NewError(http.StatusTooManyRequests, "rate_limited", "Too many passkey sign-in attempts, try again later")
+	}
 	opts, secret, err := a.auth.PasskeyLoginOptions(r.Context())
 	if err != nil {
 		return err

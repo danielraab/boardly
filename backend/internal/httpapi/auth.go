@@ -71,8 +71,11 @@ type api struct {
 	exportLimiter *ratelimit.Window
 	origin        string
 	secureCookies bool
-	trustProxy    bool
-	legal         *legal.Pages
+	// trustedProxies is the number of trusted reverse proxies (see ratelimit.ClientIP).
+	trustedProxies int
+	// passkeyLoginLimiter limits passkey sign-in option requests per client IP.
+	passkeyLoginLimiter *ratelimit.Limiter
+	legal               *legal.Pages
 }
 
 func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {
@@ -88,7 +91,7 @@ func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {
 		return NewError(http.StatusBadRequest, "invalid_email", "Enter a valid email address")
 	}
 
-	browserSecret, err := a.auth.RequestLink(r.Context(), email, body.Locale, ratelimit.ClientIP(r, a.trustProxy), cookieValue(r, LoginRequestCookie))
+	browserSecret, err := a.auth.RequestLink(r.Context(), email, body.Locale, ratelimit.ClientIP(r, a.trustedProxies), cookieValue(r, LoginRequestCookie))
 	var limited *auth.RateLimitedError
 	if errors.As(err, &limited) {
 		w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds(limited.RetryAfter)))

@@ -12,6 +12,22 @@ and the project uses [Semantic Versioning](https://semver.org/).
   shows the whole summary in the row, and hides it again. Visitors of public dashboards still see
   no summaries.
 
+### Security
+
+- Behind a reverse proxy (`BOARDLY_TRUST_PROXY_HEADERS=true`), the client IP is now the
+  `X-Forwarded-For` entry that the proxy added, counted from the right, instead of the leftmost
+  entry, which clients could fake to get around the per-IP limit on sign-in emails. With more than
+  one proxy in front of Boardly (for example a CDN and nginx), set the new
+  `BOARDLY_TRUSTED_PROXY_COUNT` to their number; otherwise the outer proxy's address is used.
+- Passkey sign-in is limited to 120 attempts an hour (30 at once) per client IP, because each one
+  stores a challenge without needing an account. The login page says how long to wait, and
+  passkey autofill stops quietly instead of retrying.
+- The web app is sent with a Content-Security-Policy that only lets Boardly's own scripts and
+  the analytics snippet run, and with `X-Frame-Options`, `X-Content-Type-Options` and
+  `Referrer-Policy`. Other sites can no longer frame it. New `BOARDLY_CSP_SCRIPT_SRC` for analytics
+  tools that load scripts from further origins. API responses carry `nosniff` and a policy that
+  loads nothing.
+
 ## [1.3.0] - 2026-11-12
 
 ### Added

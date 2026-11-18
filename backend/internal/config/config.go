@@ -31,6 +31,9 @@ type Config struct {
 	// AnalyticsSnippet is HTML, such as an analytics <script> tag, that the
 	// web app's HTML document carries before </head>. Empty means none.
 	AnalyticsSnippet string
+	// CSPScriptSrc are extra script sources for the web app's
+	// Content-Security-Policy, for analytics tools that load more scripts.
+	CSPScriptSrc []string
 
 	// BaseURL is the public URL of the web app, without a trailing slash.
 	// It is used for sign-in links, the Origin check and the cookie's Secure flag.
@@ -43,6 +46,9 @@ type Config struct {
 
 	// TrustProxyHeaders makes the server take the client IP from X-Forwarded-For.
 	TrustProxyHeaders bool
+	// TrustedProxyCount is the number of reverse proxies in front of the
+	// server that append to X-Forwarded-For; only used with TrustProxyHeaders.
+	TrustedProxyCount int
 
 	// WebAuthnRPID is the relying party ID passkeys are bound to. It defaults
 	// to the host name of BaseURL.
@@ -186,6 +192,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 			TLS:  "starttls",
 		},
 		AllowRegistration:   true,
+		TrustedProxyCount:   1,
 		Previews:            Previews{MaxBytes: 10 << 20, MaxPixels: 25_000_000, Width: 800},
 		Offline:             Offline{MaxBytes: 5 << 20},
 		Attachments:         Attachments{MaxBytes: 5 << 20, DeleteAfterDays: 30},
@@ -213,6 +220,13 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 
 	cfg.AnalyticsSnippet = strings.TrimSpace(getenv("BOARDLY_ANALYTICS_SNIPPET"))
+	if v := getenv("BOARDLY_CSP_SCRIPT_SRC"); v != "" {
+		// A separator would end script-src and start another directive.
+		if strings.ContainsAny(v, ";,") {
+			return Config{}, fmt.Errorf("BOARDLY_CSP_SCRIPT_SRC: %q must be sources separated by spaces, without \";\" or \",\"", v)
+		}
+		cfg.CSPScriptSrc = strings.Fields(v)
+	}
 
 	if v := getenv("BOARDLY_LOG_FORMAT"); v != "" {
 		if v != "json" && v != "text" {
@@ -309,6 +323,7 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}{
 		{"BOARDLY_FEED_LATEST_ITEMS", 1, 1000, func(n int) { cfg.Feeds.LatestItems = n }},
 		{"BOARDLY_FEED_REFRESH_MINUTES", 5, 10080, func(n int) { cfg.Feeds.RefreshMinutes = n }},
+		{"BOARDLY_TRUSTED_PROXY_COUNT", 1, 10, func(n int) { cfg.TrustedProxyCount = n }},
 	} {
 		if v := getenv(p.name); v != "" {
 			n, err := strconv.Atoi(v)
@@ -464,4 +479,13 @@ func (c Config) Origin() string {
 // SecureCookies reports whether cookies must carry the Secure attribute.
 func (c Config) SecureCookies() bool {
 	return c.BaseURL.Scheme == "https"
+}
+
+// TrustedProxies returns the number of reverse proxies whose X-Forwarded-For
+// entries are trusted: TrustedProxyCount with TrustProxyHeaders, otherwise 0.
+func (c Config) TrustedProxies() int {
+	if !c.TrustProxyHeaders {
+		return 0
+	}
+	return c.TrustedProxyCount
 }

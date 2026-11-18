@@ -168,7 +168,7 @@ func run() error {
 		Handler: httpapi.New(httpapi.Deps{
 			DB: database,
 			Web: web.Handler(web.Options{
-				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL,
+				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL, CSPScriptSrc: cfg.CSPScriptSrc,
 				ImprintHref: legalPages.Href(legal.Imprint), PrivacyHref: legalPages.Href(legal.Privacy),
 				ConsentService: cfg.Consent.Service, ConsentCookies: cfg.Consent.Cookies,
 				ConsentRevision: consent.Revision(cfg.AnalyticsSnippet, cfg.Consent.Service, cfg.Consent.Cookies),
@@ -199,12 +199,12 @@ func run() error {
 				OfflineFiles: offlineStore.Files, OfflineMaxBytes: cfg.Offline.MaxBytes,
 				Screenshots: images.Converter{MaxPixels: cfg.Previews.MaxPixels, Width: offline.ScreenshotWidth},
 			},
-			ExportsPerHour:    cfg.Exports.PerHour,
-			ExportsPerDay:     cfg.Exports.PerDay,
-			Origin:            cfg.Origin(),
-			SecureCookies:     cfg.SecureCookies(),
-			TrustProxyHeaders: cfg.TrustProxyHeaders,
-			LogRequests:       cfg.LogRequests,
+			ExportsPerHour: cfg.Exports.PerHour,
+			ExportsPerDay:  cfg.Exports.PerDay,
+			Origin:         cfg.Origin(),
+			SecureCookies:  cfg.SecureCookies(),
+			TrustedProxies: cfg.TrustedProxies(),
+			LogRequests:    cfg.LogRequests,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

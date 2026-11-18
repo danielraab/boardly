@@ -67,8 +67,9 @@ type Deps struct {
 	Origin string
 	// SecureCookies sets the Secure attribute on the session cookie.
 	SecureCookies bool
-	// TrustProxyHeaders takes the client IP from X-Forwarded-For.
-	TrustProxyHeaders bool
+	// TrustedProxies is the number of reverse proxies whose X-Forwarded-For
+	// entries are trusted for the client IP; 0 means the header is ignored.
+	TrustedProxies int
 	// LogRequests picks which requests get a log line: "all", "errors" or "none".
 	LogRequests string
 	// Legal holds the imprint and privacy policy; nil means none.
@@ -77,7 +78,7 @@ type Deps struct {
 
 // New returns the root handler: /api/* goes to the API, everything else to the web app.
 func New(d Deps) http.Handler {
-	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, feeds: d.Feeds, feedLimiter: ratelimit.New(feedAddsPerHour, feedAddBurst, 10_000), directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustProxy: d.TrustProxyHeaders, legal: d.Legal}
+	a := &api{auth: d.Auth, users: d.Users, favourites: d.Favourites, dashboards: d.Dashboards, notes: d.Notes, media: d.Media, feeds: d.Feeds, feedLimiter: ratelimit.New(feedAddsPerHour, feedAddBurst, 10_000), directory: d.Directory, images: d.Images, attachments: d.Attachments, favicons: d.Favicons, previews: d.Previews, offline: d.Offline, offlineLimiter: ratelimit.New(offlineRefreshesPerHour, offlineRefreshBurst, 10_000), refreshLimiter: ratelimit.New(refreshesPerHour, refreshBurst, 10_000), searchLimiter: ratelimit.New(searchesPerHour, searchBurst, 10_000), passkeyLoginLimiter: ratelimit.New(passkeyOptionsPerHour, passkeyOptionsBurst, 10_000), appTokens: d.AppTokens, accounts: d.Accounts, export: d.Export, dataImport: d.DataImport, exportLimiter: ratelimit.NewWindow(d.ExportsPerHour, d.ExportsPerDay), origin: d.Origin, secureCookies: d.SecureCookies, trustedProxies: d.TrustedProxies, legal: d.Legal}
 	// Logo links of station searches are signed with a key that lives as long
 	// as the process; they are only used while the dialog is open.
 	a.logoKey = make([]byte, 32)

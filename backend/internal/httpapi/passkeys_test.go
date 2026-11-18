@@ -486,3 +486,45 @@ func TestPasskeyCeremonyFromOtherOriginRejected(t *testing.T) {
 		t.Fatalf("registration: %d %s", rec.Code, rec.Body)
 	}
 }
+
+// Passkey sign-in options are limited per client IP, separately from the
+// sign-in link limit (openspec change limit-passkey-login-options).
+func TestPasskeyLoginOptionsRateLimit(t *testing.T) {
+	s := newServer(t)
+	from := func(ip string) func(*http.Request) {
+		return func(r *http.Request) { r.RemoteAddr = ip + ":4000" }
+	}
+	for i := range passkeyOptionsBurst {
+		if rec := s.req("POST", "/api/auth/passkey/login/options", `{}`, from("198.51.100.1")); rec.Code != http.StatusOK {
+			t.Fatalf("request %d: got %d %s", i, rec.Code, rec.Body)
+		}
+	}
+	var before int
+	if err := s.db.QueryRow(`SELECT count(*) FROM webauthn_challenges`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := s.req("POST", "/api/auth/passkey/login/options", `{}`, from("198.51.100.1"))
+	if rec.Code != http.StatusTooManyRequests || errorCode(t, rec) != "rate_limited" || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("over the limit: got %d %s (Retry-After %q)", rec.Code, rec.Body, rec.Header().Get("Retry-After"))
+	}
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == WebAuthnCookie {
+			t.Fatalf("challenge cookie set on a rejected request: %+v", c)
+		}
+	}
+	var after int
+	if err := s.db.QueryRow(`SELECT count(*) FROM webauthn_challenges`).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("challenges = %d after a rejected request, want %d", after, before)
+	}
+
+	if rec := s.req("POST", "/api/auth/passkey/login/options", `{}`, from("198.51.100.2")); rec.Code != http.StatusOK {
+		t.Fatalf("another IP: got %d %s", rec.Code, rec.Body)
+	}
+	if rec := s.req("POST", "/api/auth/magic-link", `{"email":"ann@example.org"}`, from("198.51.100.1")); rec.Code != http.StatusAccepted {
+		t.Fatalf("link request from the limited IP: got %d %s", rec.Code, rec.Body)
+	}
+}

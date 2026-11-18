@@ -38,9 +38,23 @@ func (h HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	WriteError(w, apiErr)
 }
 
+// apiPolicy is the Content-Security-Policy of JSON responses: a response
+// opened as a page runs and loads nothing, and can't be framed.
+const apiPolicy = "default-src 'none'; frame-ancestors 'none'"
+
+// setJSONHeaders sets the content type and security headers of a JSON
+// response. A policy that the handler already set is kept.
+func setJSONHeaders(h http.Header) {
+	h.Set("Content-Type", "application/json")
+	h.Set("X-Content-Type-Options", "nosniff")
+	if h.Get("Content-Security-Policy") == "" {
+		h.Set("Content-Security-Policy", apiPolicy)
+	}
+}
+
 // WriteJSON writes v as a JSON response with the given status.
 func WriteJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
+	setJSONHeaders(w.Header())
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Error("writing JSON response", "error", err)

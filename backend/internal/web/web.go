@@ -50,6 +50,8 @@ type Options struct {
 	ConsentService  string
 	ConsentCookies  []string
 	ConsentRevision int
+	// CSPScriptSrc are extra script sources for the Content-Security-Policy.
+	CSPScriptSrc []string
 }
 
 // Handler serves the embedded frontend build with opts filled in.
@@ -70,8 +72,11 @@ func NewHandler(fsys fs.FS, opts Options) http.Handler {
 	if err != nil {
 		panic(err)
 	}
+	// The document is the same for every request, so its policy is too.
+	policy := Policy(titled["index.html"], opts.CSPScriptSrc)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setSecurityHeaders(w.Header(), policy)
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
