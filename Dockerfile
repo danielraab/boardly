@@ -19,6 +19,7 @@ COPY frontend/ ./
 RUN pnpm build
 
 # --- 2. Server binary with the web app embedded ------------------------------
+# Keep the Go release line in sync with GO_VERSION in .github/workflows/govulncheck.yml.
 FROM --platform=$BUILDPLATFORM golang:1.27 AS build
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./

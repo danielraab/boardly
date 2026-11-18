@@ -1,0 +1,43 @@
+name: govulncheck
+
+# Reports known vulnerabilities that the backend's code can reach, in its Go
+# modules and in the standard library. It also runs weekly, because new
+# advisories appear without any change to the code.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: govulncheck-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The Go release line the release image is built with: keep in sync with the
+  # golang build stage in the Dockerfile, so standard library findings match
+  # what is shipped.
+  GO_VERSION: "1.27"
+  GOVULNCHECK_VERSION: v1.10.0
+
+jobs:
+  govulncheck:
+    name: Backend (govulncheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache-dependency-path: backend/go.sum
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }} ./...
