@@ -73,7 +73,9 @@ type api struct {
 	secureCookies bool
 	// trustedProxies is the number of trusted reverse proxies (see ratelimit.ClientIP).
 	trustedProxies int
-	legal          *legal.Pages
+	// passkeyLoginLimiter limits passkey sign-in option requests per client IP.
+	passkeyLoginLimiter *ratelimit.Limiter
+	legal               *legal.Pages
 }
 
 func (a *api) requestLink(w http.ResponseWriter, r *http.Request) error {

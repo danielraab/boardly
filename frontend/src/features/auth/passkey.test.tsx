@@ -171,6 +171,55 @@ describe("passkey sign-in", () => {
 		});
 	});
 
+	it("says how long to wait when the button is rate limited", async () => {
+		const api = mockApi({
+			"POST /api/auth/passkey/login/options": apiError(429, "rate_limited", {
+				"Retry-After": "40",
+			}),
+		});
+		const { user } = renderApp("/login");
+
+		await user.click(
+			await screen.findByRole("button", { name: "Sign in with passkey" }),
+		);
+
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"Too many requests. Try again in 40 s.",
+		);
+		expect(webauthn.startAuthentication).not.toHaveBeenCalled();
+		expect(api.callsTo("POST", "/api/auth/passkey/login/options")).toHaveLength(
+			1,
+		);
+		// The email form stays usable.
+		await user.type(screen.getByLabelText("Email address"), "ann@example.org");
+		expect(
+			screen.getByRole("button", { name: "Send sign-in link" }),
+		).toBeEnabled();
+	});
+
+	it("stops autofill quietly when rate limited", async () => {
+		const api = mockApi({
+			"POST /api/auth/passkey/login/options": apiError(429, "rate_limited", {
+				"Retry-After": "40",
+			}),
+		});
+		webauthn.autofill = true;
+		renderApp("/login");
+
+		await waitFor(() =>
+			expect(
+				api.callsTo("POST", "/api/auth/passkey/login/options"),
+			).toHaveLength(1),
+		);
+		await screen.findByRole("button", { name: "Sign in with passkey" });
+		// Give a restarted autofill time to show up.
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(api.callsTo("POST", "/api/auth/passkey/login/options")).toHaveLength(
+			1,
+		);
+		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
 	it("marks the email field for passkey autofill", async () => {
 		mockPasskeyApi();
 		renderApp("/login");

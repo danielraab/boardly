@@ -19,6 +19,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   entry, which clients could fake to get around the per-IP limit on sign-in emails. With more than
   one proxy in front of Boardly (for example a CDN and nginx), set the new
   `BOARDLY_TRUSTED_PROXY_COUNT` to their number; otherwise the outer proxy's address is used.
+- Passkey sign-in is limited to 120 attempts an hour (30 at once) per client IP, because each one
+  stores a challenge without needing an account. The login page says how long to wait, and
+  passkey autofill stops quietly instead of retrying.
 
 ## [1.3.0] - 2026-11-12
 

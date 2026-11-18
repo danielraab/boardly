@@ -30,9 +30,14 @@ type Problem =
 	| "invalidEmail"
 	| "invalidCode"
 	| "rateLimited"
+	| "passkeyRateLimited"
 	| "passkeyUnknown"
 	| "passkeyInvalid"
 	| "generic";
+
+function isRateLimited(error: unknown): error is ApiError {
+	return error instanceof ApiError && error.code === "rate_limited";
+}
 
 function passkeyProblem(error: unknown): Problem | null {
 	if (isCancelled(error)) return null;
@@ -42,6 +47,7 @@ function passkeyProblem(error: unknown): Problem | null {
 	if (error instanceof ApiError && error.code === "passkey_invalid") {
 		return "passkeyInvalid";
 	}
+	if (isRateLimited(error)) return "passkeyRateLimited";
 	return "generic";
 }
 
@@ -64,7 +70,7 @@ function useSignedIn(next: string) {
  */
 function usePasskeySignIn(
 	signedIn: (user: User) => Promise<void>,
-	onProblem: (problem: Problem | null) => void,
+	onProblem: (problem: Problem | null, retryAfter?: number) => void,
 ) {
 	const [supported] = useState(supportsPasskeys);
 	const [pending, setPending] = useState(false);
@@ -77,6 +83,9 @@ function usePasskeySignIn(
 		} catch (e) {
 			// An aborted autofill request was replaced by the button or the page closed.
 			if (!active.current || isCancelled(e)) return;
+			// Over the server's limit autofill stops quietly, so it can't loop
+			// on it; the button still works.
+			if (isRateLimited(e)) return;
 			onProblem(passkeyProblem(e));
 			if (e instanceof ApiError) void startAutofill();
 		}
@@ -98,8 +107,8 @@ function usePasskeySignIn(
 			await signedIn(await signInWithPasskey(false));
 		} catch (e) {
 			if (!active.current) return;
-			onProblem(passkeyProblem(e));
-			void startAutofill();
+			onProblem(passkeyProblem(e), isRateLimited(e) ? e.retryAfter : undefined);
+			if (!isRateLimited(e)) void startAutofill();
 		} finally {
 			if (active.current) setPending(false);
 		}
@@ -118,7 +127,17 @@ export function LoginPage({ next }: { next: string }) {
 	const [code, setCode] = useState("");
 	const countdown = useCountdown();
 	const signedIn = useSignedIn(next);
-	const passkey = usePasskeySignIn(signedIn, setProblem);
+	// Seconds to wait after the passkey sign-in was rate-limited. It isn't a
+	// countdown, so the email form stays usable meanwhile.
+	const [passkeyRetry, setPasskeyRetry] = useState(RESEND_SECONDS);
+	const onPasskeyProblem = useCallback(
+		(next: Problem | null, retryAfter?: number) => {
+			setPasskeyRetry(retryAfter ?? RESEND_SECONDS);
+			setProblem(next);
+		},
+		[],
+	);
+	const passkey = usePasskeySignIn(signedIn, onPasskeyProblem);
 
 	const request = useMutation({
 		mutationFn: (address: string) =>
@@ -179,17 +198,19 @@ export function LoginPage({ next }: { next: string }) {
 			? waiting
 				? t("login.rateLimited", { seconds: countdown.remaining })
 				: null
-			: problem === "invalidEmail"
-				? t("login.invalidEmail")
-				: problem === "invalidCode"
-					? t("login.invalidCode")
-					: problem === "passkeyUnknown"
-						? t("login.passkeyUnknown")
-						: problem === "passkeyInvalid"
-							? t("login.passkeyInvalid")
-							: problem === "generic"
-								? t("common.genericError")
-								: null;
+			: problem === "passkeyRateLimited"
+				? t("login.rateLimited", { seconds: passkeyRetry })
+				: problem === "invalidEmail"
+					? t("login.invalidEmail")
+					: problem === "invalidCode"
+						? t("login.invalidCode")
+						: problem === "passkeyUnknown"
+							? t("login.passkeyUnknown")
+							: problem === "passkeyInvalid"
+								? t("login.passkeyInvalid")
+								: problem === "generic"
+									? t("common.genericError")
+									: null;
 	const alert = message && (
 		<p role="alert" className="mt-4 text-sm text-danger">
 			{message}

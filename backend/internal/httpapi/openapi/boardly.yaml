@@ -210,7 +210,9 @@ paths:
     post:
       tags: [Auth]
       summary: Start a passkey sign-in
-      description: Returns WebAuthn request options and sets a challenge cookie.
+      description: >-
+        Returns WebAuthn request options and sets a challenge cookie. Limited to
+        120 requests per hour, with a burst of 30, per client IP.
       security: []
       responses:
         "200":
@@ -218,6 +220,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WebAuthnOptions" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /auth/passkey/login/verify:
     post:
