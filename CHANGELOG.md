@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-18
+
 ### Added
 
 - Feed widget: with **Show summary** off, rows of items with a summary get an info button that
@@ -357,7 +359,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/danielraab/boardly/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/danielraab/boardly/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/danielraab/boardly/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/danielraab/boardly/compare/v1.0.0...v1.1.0
