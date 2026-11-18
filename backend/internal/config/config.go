@@ -31,6 +31,9 @@ type Config struct {
 	// AnalyticsSnippet is HTML, such as an analytics <script> tag, that the
 	// web app's HTML document carries before </head>. Empty means none.
 	AnalyticsSnippet string
+	// CSPScriptSrc are extra script sources for the web app's
+	// Content-Security-Policy, for analytics tools that load more scripts.
+	CSPScriptSrc []string
 
 	// BaseURL is the public URL of the web app, without a trailing slash.
 	// It is used for sign-in links, the Origin check and the cookie's Secure flag.
@@ -217,6 +220,13 @@ func Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 
 	cfg.AnalyticsSnippet = strings.TrimSpace(getenv("BOARDLY_ANALYTICS_SNIPPET"))
+	if v := getenv("BOARDLY_CSP_SCRIPT_SRC"); v != "" {
+		// A separator would end script-src and start another directive.
+		if strings.ContainsAny(v, ";,") {
+			return Config{}, fmt.Errorf("BOARDLY_CSP_SCRIPT_SRC: %q must be sources separated by spaces, without \";\" or \",\"", v)
+		}
+		cfg.CSPScriptSrc = strings.Fields(v)
+	}
 
 	if v := getenv("BOARDLY_LOG_FORMAT"); v != "" {
 		if v != "json" && v != "text" {

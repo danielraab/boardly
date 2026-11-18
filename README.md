@@ -773,6 +773,7 @@ precedence over the file.
 | `BOARDLY_BASE_URL` | **required** | Public URL of the web app, as users open it (in development `http://localhost:3000`, set by `.env.example`). The server doesn't start without it. Used in sign-in links, for the cross-site request check (`Origin` must match) and to set the `Secure` cookie flag when it is `https` |
 | `BOARDLY_APP_TITLE` | `Boardly` | Name the web app, its installed app (manifest) and sign-in emails show, for example `Boardly Staging` to tell a staging system apart. Blank means the default. Development with the Vite dev server always shows `Boardly` |
 | `BOARDLY_ANALYTICS_SNIPPET` | (empty) | HTML inserted unchanged right before `</head>` of the web app, for example the `<script>` tag of Umami, Plausible or Matomo. It is read at startup, so changing it needs a restart, not a new build. The web app loads it once per full page load, so let the tool track page changes itself (most do by default). The snippet runs on every page, signed-in ones included, with full access to them: only put code there you trust. The Vite dev server doesn't insert it |
+| `BOARDLY_CSP_SCRIPT_SRC` | (empty) | Extra script sources, separated by spaces, for the web app's Content-Security-Policy, for example `https://cdn.example.org`. Only needed for analytics tools that load scripts from another origin than their own `<script>` tag. See [Security headers](#security-headers) |
 | `BOARDLY_CONSENT_ANALYTICS` | (empty) | Name of the analytics service in `BOARDLY_ANALYTICS_SNIPPET`, for example `Google Analytics`. Setting it turns on a consent banner: the snippet's scripts only run after the visitor accepts. It needs marked scripts and a privacy policy. See [Analytics and cookie consent](#analytics-and-cookie-consent) |
 | `BOARDLY_CONSENT_ANALYTICS_COOKIES` | (empty) | Comma-separated cookie names the analytics service sets, `*` as a wildcard, for example `_ga,_ga_*`. The banner lists them and they're deleted when a visitor withdraws consent. Needs `BOARDLY_CONSENT_ANALYTICS` |
 | `BOARDLY_ALLOW_REGISTRATION` | `true` | Whether the first sign-in with a new email address creates an account. `false` closes registration: only existing users can sign in, and new addresses get an email saying that registration is closed. See [Sign-in](#sign-in) |
@@ -870,6 +871,8 @@ Mailpit instead (http://localhost:8025).
   by the outermost of your proxies, and anything a client sends itself is ignored. With more than
   one proxy (for example a CDN in front of nginx), set `BOARDLY_TRUSTED_PROXY_COUNT` to exactly
   their number. A higher value lets clients fake their IP again.
+- Set `Strict-Transport-Security` (HSTS) at the proxy that terminates TLS. Boardly sends its
+  other [security headers](#security-headers) itself.
 
 ### Favicons and images
 
@@ -1029,6 +1032,21 @@ services:
   (operator, hosting, mail provider, analytics) and have it checked if you are unsure.
 - The Vite dev server (`make dev-frontend`) serves the web app without the server's settings, so
   it shows no legal links. Use a build (`make build`) to try them.
+
+### Security headers
+
+Every page and file of the web app is sent with a `Content-Security-Policy` that lets only
+Boardly's own scripts run, plus `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`
+and `Referrer-Policy: strict-origin-when-cross-origin`. Other sites can't frame Boardly, and a
+script injected into a page is blocked. Images, audio streams, maps, embedded players and styles
+aren't restricted, because they come from addresses that you and your users choose.
+
+The scripts of `BOARDLY_ANALYTICS_SNIPPET` are allowed automatically: inline scripts by their
+hash, and `<script src>` tags by their origin. That covers the usual snippets of Umami, Plausible,
+Matomo and Google Analytics. A tool that loads more scripts from another origin shows a
+"Content Security Policy" error in the browser console. Add that origin to
+`BOARDLY_CSP_SCRIPT_SRC`. The API's JSON responses carry `nosniff` and a policy that lets them
+run and load nothing.
 
 ### Analytics and cookie consent
 

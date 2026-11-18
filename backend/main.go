@@ -168,7 +168,7 @@ func run() error {
 		Handler: httpapi.New(httpapi.Deps{
 			DB: database,
 			Web: web.Handler(web.Options{
-				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL,
+				AppTitle: cfg.AppTitle, AnalyticsSnippet: cfg.AnalyticsSnippet, MapStyleURL: cfg.MapStyleURL, CSPScriptSrc: cfg.CSPScriptSrc,
 				ImprintHref: legalPages.Href(legal.Imprint), PrivacyHref: legalPages.Href(legal.Privacy),
 				ConsentService: cfg.Consent.Service, ConsentCookies: cfg.Consent.Cookies,
 				ConsentRevision: consent.Revision(cfg.AnalyticsSnippet, cfg.Consent.Service, cfg.Consent.Cookies),
