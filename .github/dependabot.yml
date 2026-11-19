@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    assignees: [danielraab]
     schedule:
       interval: weekly
     groups:
@@ -10,6 +11,7 @@ updates:
 
   - package-ecosystem: gomod
     directory: /backend
+    assignees: [danielraab]
     schedule:
       interval: weekly
     groups:
@@ -19,6 +21,7 @@ updates:
   # pnpm is handled by the npm ecosystem (it reads pnpm-lock.yaml).
   - package-ecosystem: npm
     directory: /frontend
+    assignees: [danielraab]
     schedule:
       interval: weekly
     groups:
@@ -27,5 +30,6 @@ updates:
 
   - package-ecosystem: docker
     directory: /
+    assignees: [danielraab]
     schedule:
       interval: weekly
