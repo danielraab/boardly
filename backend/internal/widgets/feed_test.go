@@ -143,6 +143,90 @@ func TestFeedRemoved(t *testing.T) {
 	}
 }
 
+func (f *feedFixture) pause(t *testing.T, id string, paused bool) {
+	t.Helper()
+	if _, err := f.store.Update(context.Background(), f.owner, id, feeds.Patch{Paused: &paused}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFeedPaused(t *testing.T) {
+	f := newFeedFixture(t)
+	ctx := context.Background()
+	other, err := f.store.Subscribe(ctx, f.owner, newOtherFeed(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	both := feedRaw([]string{f.sub.ID, other.ID}, "latest", true, false)
+	f.pause(t, f.sub.ID, true)
+	if got, ok := f.resolve(t, true, both); !ok || strings.Contains(got, "News one") || !strings.Contains(got, "Other news") || strings.Contains(got, `"paused":true`) {
+		t.Fatalf("one of two paused: %v %s", ok, got)
+	}
+	all := feedRaw(nil, "latest", true, false)
+	if got, _ := f.resolve(t, true, all); strings.Contains(got, "News one") || !strings.Contains(got, "Other news") {
+		t.Fatalf("all feeds with one paused: %s", got)
+	}
+
+	only := feedRaw([]string{f.sub.ID}, "latest", true, false)
+	if got, ok := f.resolve(t, true, only); !ok || !strings.Contains(got, `"paused":true`) || strings.Contains(got, `"missing":true`) {
+		t.Fatalf("all chosen paused: %v %s", ok, got)
+	}
+	if _, ok := f.resolve(t, false, only); ok {
+		t.Fatal("visitors see a widget with only paused feeds")
+	}
+	// A removed and a paused feed: the widget is paused, not missing.
+	if err := f.store.Unsubscribe(ctx, f.owner, other.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.resolve(t, true, both); !strings.Contains(got, `"paused":true`) {
+		t.Fatalf("removed and paused: %s", got)
+	}
+	// "All my feeds" with every feed paused just has no items.
+	if got, ok := f.resolve(t, true, all); !ok || strings.Contains(got, `"paused":true`) || strings.Contains(got, "News one") {
+		t.Fatalf("all feeds paused: %v %s", ok, got)
+	}
+
+	// Saved items of a paused feed stay, for the owner and for visitors.
+	items, _, err := f.store.Items(ctx, f.owner, feeds.ItemQuery{View: feeds.ViewLiked, Limit: 10})
+	if err != nil || len(items) != 0 {
+		t.Fatal(items, err)
+	}
+	f.pause(t, f.sub.ID, false)
+	latest, _, _ := f.store.Items(ctx, f.owner, feeds.ItemQuery{View: feeds.ViewLatest, Limit: 10})
+	liked := true
+	if _, err := f.store.SetFlags(ctx, f.owner, latest[0].ID, nil, &liked); err != nil {
+		t.Fatal(err)
+	}
+	f.pause(t, f.sub.ID, true)
+	likedRaw := feedRaw([]string{f.sub.ID}, "liked", true, false)
+	for _, owner := range []bool{true, false} {
+		if got, ok := f.resolve(t, owner, likedRaw); !ok || !strings.Contains(got, "News one") || strings.Contains(got, `"paused":true`) {
+			t.Errorf("liked, owner %v: %v %s", owner, ok, got)
+		}
+	}
+
+	// All chosen feeds removed still says missing.
+	if err := f.store.Unsubscribe(ctx, f.owner, f.sub.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.resolve(t, true, only); !strings.Contains(got, `"missing":true`) || strings.Contains(got, `"paused":true`) {
+		t.Fatalf("all removed: %s", got)
+	}
+}
+
+// newOtherFeed serves a second feed and returns its URL.
+func newOtherFeed(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		_, _ = w.Write([]byte(`<rss version="2.0"><channel><title>Other</title>` +
+			`<item><guid>o1</guid><title>Other news</title><link>https://b.example/1</link><pubDate>Sat, 07 Nov 2026 09:00:00 +0000</pubDate></item>` +
+			`</channel></rss>`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL + "/other"
+}
+
 func TestFeedLikedView(t *testing.T) {
 	f := newFeedFixture(t)
 	ctx := context.Background()

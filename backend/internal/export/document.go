@@ -17,7 +17,7 @@ import (
 // Format and Version identify the export document.
 const (
 	Format  = "boardly"
-	Version = 3
+	Version = 4
 )
 
 // Document is an export of all data of one user. Times are RFC 3339 in UTC.
@@ -222,6 +222,9 @@ type Feed struct {
 	Icon        *notes.Icon `json:"icon"`
 	Position    *int        `json:"position"`
 	Subscribed  bool        `json:"subscribed"`
+	// Paused is false without a subscription. Exports before version 4 don't
+	// have it, which imports as not paused.
+	Paused bool `json:"paused"`
 }
 
 // FeedItem is an item the user flagged or has a listen record of. FeedID is the ID of its Feed, and

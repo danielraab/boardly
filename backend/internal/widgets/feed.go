@@ -36,6 +36,9 @@ type feedData struct {
 	Items []feeds.Item `json:"items"`
 	// Missing says that none of the chosen feeds exist any more.
 	Missing bool `json:"missing"`
+	// Paused says that a widget showing "Latest" has only paused feeds left
+	// among its chosen ones.
+	Paused bool `json:"paused"`
 }
 
 // publicFeed is all a visitor learns about a feed: no URL and no IDs.
@@ -116,15 +119,16 @@ func Feed(store *feeds.Store) dashboards.Kind {
 				return nil, false, nil
 			}
 			if len(c.FeedIDs) > 0 {
-				exists, err := store.HasSubscription(ctx, viewer.OwnerID, c.FeedIDs)
+				exists, active, err := store.ChosenFeeds(ctx, viewer.OwnerID, c.FeedIDs)
 				if err != nil {
 					return nil, false, err
 				}
-				if !exists {
+				paused := exists && !active && c.Show == feeds.ViewLatest
+				if !exists || paused {
 					if !viewer.IsOwner {
 						return nil, false, nil
 					}
-					return feedData{Items: []feeds.Item{}, Missing: true}, true, nil
+					return feedData{Items: []feeds.Item{}, Missing: !exists, Paused: paused}, true, nil
 				}
 			}
 			items, _, err := store.Items(ctx, viewer.OwnerID, feeds.ItemQuery{View: c.Show, SubscriptionIDs: c.FeedIDs, AudioOnly: c.AudioOnly, Limit: c.Count})

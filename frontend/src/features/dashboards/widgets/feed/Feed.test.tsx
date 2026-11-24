@@ -285,6 +285,21 @@ describe("the feed widget", () => {
 		).toBeVisible();
 	});
 
+	it("tells the owner when its feeds are paused", async () => {
+		dashboard(() => [
+			section(
+				"Work",
+				{},
+				feedWidget(
+					{ feedIds: ["s1"] },
+					{ items: [], missing: false, paused: true },
+				),
+			),
+		]);
+		renderApp("/ann/home");
+		expect(await screen.findByText("These feeds are paused")).toBeVisible();
+	});
+
 	it("says so without items", async () => {
 		dashboard(() => [
 			section("Work", {}, feedWidget({}, { items: [], missing: false })),
@@ -525,6 +540,23 @@ describe("the feed widget", () => {
 		renderApp("/ann/home?edit=true");
 		expect(await screen.findByText("Episode")).toBeVisible();
 		expect(screen.queryByText("News two")).not.toBeInTheDocument();
+	});
+
+	it("marks paused feeds in its feed search", async () => {
+		const { dialog, user } = await openSettings([
+			{ id: "s1", title: "Heise", icon: null, faviconId: null, paused: true },
+			{ id: "s2", title: "Hessen", icon: null, faviconId: null, paused: false },
+		]);
+		await user.click(within(dialog).getByLabelText("All my feeds"));
+		await user.type(within(dialog).getByPlaceholderText("Add a feed…"), "He");
+		const heise = await screen.findByRole("option", { name: /Heise/ });
+		expect(heise).toHaveTextContent("Paused");
+		expect(
+			screen.getByRole("option", { name: /Hessen/ }),
+		).not.toHaveTextContent("Paused");
+		await user.click(heise);
+		expect(within(dialog).getByText("Heise")).toBeVisible();
+		expect(within(dialog).getByText("Paused")).toBeVisible();
 	});
 
 	it("needs a valid number of items", async () => {

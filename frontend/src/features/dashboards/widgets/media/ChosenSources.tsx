@@ -35,7 +35,19 @@ import { iconProps } from "#/features/notes/noteIcon";
 
 /** A source that can be chosen: a station, or a feed for the feed widget. */
 type Choice = Pick<MediaSource, "id" | "title" | "icon"> &
-	Partial<Pick<MediaSource, "kind">>;
+	Partial<Pick<MediaSource, "kind">> & {
+		/** A short label after the title, such as that a feed is paused. */
+		badge?: string;
+	};
+
+function Badge({ text }: { text?: string }) {
+	if (!text) return null;
+	return (
+		<span className="shrink-0 rounded-full border border-line px-2 text-xs text-muted">
+			{text}
+		</span>
+	);
+}
 
 /** Where the chooser's texts are: each kind that uses it has the same keys. */
 type Labels = "dashboards.widgets.media" | "dashboards.widgets.feed";
@@ -176,6 +188,7 @@ function ChosenSource({
 							className="size-4"
 						/>
 						<span className="min-w-0 flex-1 truncate">{name}</span>
+						<Badge text={source.badge} />
 					</>
 				) : (
 					<>
@@ -296,6 +309,7 @@ export function SourceSearch({
 										<span className="min-w-0 flex-1 truncate">
 											{source.title}
 										</span>
+										<Badge text={source.badge} />
 									</Combobox.Item>
 								);
 							}}

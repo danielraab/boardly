@@ -6,6 +6,20 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Feeds: pause a feed from its menu in **Manage feeds**, and resume it later. A paused feed keeps
+  its place, title and icon, but its items are left out of **Latest**, of the feed filter and of
+  Feed widgets that show **Latest**. Items you marked or listened to stay in their views. The feed
+  is still refreshed, so it is current when you resume it. Pausing is your own: other users of the
+  same feed aren't affected. `GET /api/feeds` returns `paused`, and `PATCH /api/feeds/{id}` takes
+  it.
+
+### Changed
+
+- The data export is now format version 4, which adds `paused` to each feed. Imports still read
+  versions 1 to 3, and their feeds come in as not paused.
+
 ## [1.4.0] - 2026-11-18
 
 ### Added

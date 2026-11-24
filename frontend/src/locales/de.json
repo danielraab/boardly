@@ -993,6 +993,7 @@
 				"publicHint": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge. Sonst siehst nur du das Widget.",
 				"publicHintAll": "Besucher eines öffentlichen Dashboards sehen Titel und Links dieser Einträge, auch von Feeds, die du später hinzufügst. Sonst siehst nur du das Widget.",
 				"missing": "Diese Feeds existieren nicht mehr",
+				"paused": "Diese Feeds sind pausiert",
 				"empty": "Keine Einträge",
 				"emptyLibrary": "Du hast noch keine Feeds.",
 				"openLibrary": "Feeds hinzufügen"
@@ -1460,6 +1461,9 @@
 		"emptyView": "Noch nichts hier",
 		"loadMore": "Mehr laden",
 		"failing": "Kann gerade nicht aktualisiert werden",
+		"paused": "Pausiert",
+		"pause": "Feed pausieren",
+		"resume": "Feed fortsetzen",
 		"search": "Einträge durchsuchen",
 		"clearSearch": "Suche löschen",
 		"feedFilter": "Feed",

@@ -159,7 +159,7 @@ func TestDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if doc.Format != "boardly" || doc.Version != 3 || doc.ExportedAt != "2026-11-02T10:00:00.000Z" || doc.WithFiles {
+	if doc.Format != "boardly" || doc.Version != 4 || doc.ExportedAt != "2026-11-02T10:00:00.000Z" || doc.WithFiles {
 		t.Errorf("header = %q %d %q %v", doc.Format, doc.Version, doc.ExportedAt, doc.WithFiles)
 	}
 	p := doc.Profile
@@ -328,7 +328,7 @@ func TestFeedsInDocument(t *testing.T) {
 	for _, i := range [][2]string{{"i1", "f1"}, {"i2", "f1"}, {"i3", "f2"}, {"i4", "f3"}, {"i5", "f4"}} {
 		exec(`INSERT INTO feed_items (id, feed_id, identity, title, item_time, first_seen_at, audio_url) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00.000Z', 'x', 'https://a.example/a.mp3')`, i[0], i[1], "g-"+i[0], "Item "+i[0])
 	}
-	exec(`INSERT INTO feed_subscriptions (id, user_id, feed_id, custom_title, position, created_at, updated_at) VALUES ('s1', 'ann', 'f1', 'Mine', 0, 'x', 'x')`)
+	exec(`INSERT INTO feed_subscriptions (id, user_id, feed_id, custom_title, position, paused_at, created_at, updated_at) VALUES ('s1', 'ann', 'f1', 'Mine', 0, 'p', 'x', 'x')`)
 	exec(`INSERT INTO feed_subscriptions (id, user_id, feed_id, position, created_at, updated_at) VALUES ('s9', 'bob', 'f3', 0, 'x', 'x')`)
 	exec(`INSERT INTO feed_item_flags (user_id, item_id, liked_at) VALUES ('ann', 'i1', 'y'), ('ann', 'i3', 'y'), ('bob', 'i4', 'y')`)
 	// i1 is liked and listened, i5 of an unsubscribed feed only listened.
@@ -342,6 +342,9 @@ func TestFeedsInDocument(t *testing.T) {
 	}
 	if len(doc.Feeds) != 3 || doc.Feeds[2].ID != "f4" || doc.Feeds[2].Subscribed || doc.Feeds[0].ID != "s1" || !doc.Feeds[0].Subscribed || *doc.Feeds[0].CustomTitle != "Mine" {
 		t.Fatalf("feeds = %+v", doc.Feeds)
+	}
+	if !doc.Feeds[0].Paused || doc.Feeds[1].Paused || doc.Feeds[2].Paused {
+		t.Fatalf("paused = %v %v %v", doc.Feeds[0].Paused, doc.Feeds[1].Paused, doc.Feeds[2].Paused)
 	}
 	if doc.Feeds[1].ID != "f2" || doc.Feeds[1].Subscribed || doc.Feeds[1].Position != nil {
 		t.Fatalf("saved feed = %+v", doc.Feeds[1])

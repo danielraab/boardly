@@ -739,7 +739,7 @@ func (r *run) importFeeds(q db.Querier) error {
 		if !f.Subscribed {
 			continue
 		}
-		id, added, err := r.s.Feeds.SubscribeTx(r.ctx, q, r.userID, feedID, f.CustomTitle, r.icon(f.Icon))
+		id, added, err := r.s.Feeds.SubscribeTx(r.ctx, q, r.userID, feedID, f.CustomTitle, r.icon(f.Icon), f.Paused)
 		if errors.Is(err, feeds.ErrInvalidIcon) {
 			report.Invalid++
 			continue

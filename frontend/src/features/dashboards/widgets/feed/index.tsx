@@ -44,8 +44,11 @@ export type FeedConfig = {
 	showIfPublic: boolean;
 };
 
-/** Only the owner's data says whether the chosen feeds still exist. */
-type FeedData = { items: FeedItem[]; missing?: boolean };
+/**
+ * Only the owner's data says whether the chosen feeds still exist, and
+ * whether a "Latest" widget has only paused ones left.
+ */
+type FeedData = { items: FeedItem[]; missing?: boolean; paused?: boolean };
 
 /**
  * In view mode the server's data; in edit mode the owner's current items,
@@ -83,6 +86,8 @@ function View({ widget, editing, headingLevel }: WidgetViewProps) {
 			)}
 			{data?.missing && !editing ? (
 				<p className="text-muted">{t("dashboards.widgets.feed.missing")}</p>
+			) : data?.paused && !editing ? (
+				<p className="text-muted">{t("dashboards.widgets.feed.paused")}</p>
 			) : items.length === 0 ? (
 				<p className="text-muted">{t("dashboards.widgets.feed.empty")}</p>
 			) : (
@@ -120,6 +125,7 @@ function Settings(props: WidgetSettingsProps) {
 		id: f.id,
 		title: f.title,
 		icon: feedIcon(f),
+		badge: f.paused ? t("feeds.paused") : undefined,
 	}));
 	const number = Number(count);
 	const countValid =

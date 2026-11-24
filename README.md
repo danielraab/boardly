@@ -382,6 +382,9 @@ shows the same items as a short list on a dashboard.
   summary, not the article itself.
 - **Search**: the search field and the feed filter on `/feeds` work in every view, over the items
   the server keeps.
+- **Pausing**: **Pause feed** in a feed's menu under **Manage feeds** leaves its items out of
+  **Latest**, the feed filter and Feed widgets that show **Latest**, until you resume it. Items you
+  marked or listened to stay in their views, and the feed is still refreshed.
 - **Podcasts**: episodes play in the media player, straight from their host, so the host sees the
   IP address of whoever plays them. When you're signed in, your position is saved on the server,
   so an episode continues where you stopped, also on another device. Visitors of public dashboards
