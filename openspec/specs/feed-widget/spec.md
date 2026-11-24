@@ -2,7 +2,9 @@
 
 ## Purpose
 A dashboard widget that shows a glance list of items from the owner's feeds, either the latest ones or those flagged to read later or as liked, for the owner and, if allowed, for visitors of public dashboards.
+
 ## Requirements
+
 ### Requirement: Feed widget settings
 The widget kind `feed` ("Feed" / "Feed") SHALL have, besides the common width, a choice of feeds, "Show" / "Anzeigen" with the values "Latest" / "Neueste" (`latest`, default), "Read later" / "Später lesen" (`read_later`) and "Liked" / "Gefällt mir" (`liked`) and "Continue listening" / "Weiterhören" (`in_progress`), a number of items ("Number of items" / "Anzahl Einträge", an integer from 1 to 100, default 10), "Show summary" / "Zusammenfassung zeigen" (default off), "Only items with audio" / "Nur Einträge mit Audio" (default off), an optional title (at most 200 characters after trimming), a size (`S`, `M` or `L`, default `M`) and "Show on public dashboard" / "Auf öffentlichem Dashboard zeigen" (default off). The choice of feeds SHALL be "All my feeds" / "Alle meine Feeds" (default) or a list of 1–50 chosen feeds, in a search field over the owner's feed titles. When the owner has no feeds, the dialog SHALL say "You don't have any feeds yet." / "Du hast noch keine Feeds." with a link to `/feeds`. Next to "Show on public dashboard", the dialog SHALL say that visitors then see the titles and links of these items, and with "All my feeds", those of feeds added later too. A layout with a feed widget with more than 50 feeds, a feed ID longer than an ID can be, a repeated feed ID, a show value other than these, a number of items outside 1–100, a title longer than 200 characters or a size other than `S`, `M` or `L` is rejected with 400 and `invalid_layout`. The feeds don't have to exist when the layout is saved.
 
@@ -149,3 +151,36 @@ With "Continue listening", a feed widget SHALL show the owner's episodes in prog
 - **WHEN** Ann listened to episode A yesterday and to episode B today
 - **THEN** the widget lists B before A
 
+### Requirement: Paused feeds in the widget
+A widget showing "Latest" SHALL leave out the items of feeds the owner has paused, both with "All my feeds" and with chosen feeds, for everyone. "Read later", "Liked" and "Continue listening" keep the items of paused feeds. When some of a "Latest" widget's chosen feeds still exist and all of them are paused, the owner SHALL see "These feeds are paused" / "Diese Feeds sind pausiert", and visitors don't get the widget.
+
+#### Scenario: One chosen feed paused
+- **WHEN** a "Latest" widget has "Heise" and "Podcast Eins" and Ann pauses "Heise"
+- **THEN** the widget shows only the items of "Podcast Eins"
+
+#### Scenario: All my feeds
+- **WHEN** a "Latest" widget shows "All my feeds" and Ann pauses "Heise"
+- **THEN** the widget shows the items of her other feeds and none of "Heise"
+
+#### Scenario: All chosen feeds paused
+- **WHEN** a "Latest" widget's only chosen feed is "Heise" and Ann pauses it
+- **THEN** Ann sees "These feeds are paused", and visitors of the public dashboard don't see the widget
+
+#### Scenario: Removed and paused
+- **WHEN** a "Latest" widget has "Heise" and "Podcast Eins", Ann removes "Podcast Eins" and pauses "Heise"
+- **THEN** Ann sees "These feeds are paused"
+
+#### Scenario: Saved items of a paused feed
+- **WHEN** a "Liked" widget has "Heise", Ann liked two of its items and pauses "Heise"
+- **THEN** the widget still shows the two items, for Ann and for visitors when the widget is public
+
+#### Scenario: Resume
+- **WHEN** Ann resumes "Heise"
+- **THEN** the widget shows its items again without a change to the widget's settings
+
+### Requirement: Paused feeds in the widget settings
+The feed widget's settings dialog SHALL list paused feeds in its feed search with the label "Paused" / "Pausiert", and they can still be chosen. Choosing a paused feed doesn't resume it.
+
+#### Scenario: Paused feed in the search
+- **WHEN** Ann has paused "Heise" and searches for "Hei" in the settings of a feed widget
+- **THEN** "Heise" is listed with "Paused" and can be chosen

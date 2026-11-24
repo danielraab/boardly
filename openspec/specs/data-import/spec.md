@@ -13,7 +13,7 @@ Lets a signed-in user import a Boardly export, as a JSON file or a ZIP archive w
 - `categoryId`: the ID of the import category, optional, used only when `parts` contains `notes`. Missing or empty means the top level,
 - `skipDuplicates`: `true` or `false`, optional. Missing means `true`.
 
-The file SHALL be at most 10 MB, and a larger body fails with `413` and code `file_too_large`. A missing or empty `parts`, an unknown part, a `skipDuplicates` other than `true` or `false`, or an empty body fails with `400` and code `invalid_request`. A body that isn't JSON or ZIP, a ZIP without `boardly.json`, or a document whose `format` isn't `"boardly"` or whose `version` isn't `1`, `2` or `3`, fails with `400` and code `invalid_import_file`. A `folderId` that isn't a folder of the user fails with `400` and code `invalid_folder`, and a `categoryId` that isn't a category of the user with `400` and code `invalid_category`. Form posts are rejected with `403` like for every API endpoint. The endpoint requires a signed-in user, and app tokens can't use it.
+The file SHALL be at most 10 MB, and a larger body fails with `413` and code `file_too_large`. A missing or empty `parts`, an unknown part, a `skipDuplicates` other than `true` or `false`, or an empty body fails with `400` and code `invalid_request`. A body that isn't JSON or ZIP, a ZIP without `boardly.json`, or a document whose `format` isn't `"boardly"` or whose `version` isn't `1`, `2`, `3` or `4`, fails with `400` and code `invalid_import_file`. A `folderId` that isn't a folder of the user fails with `400` and code `invalid_folder`, and a `categoryId` that isn't a category of the user with `400` and code `invalid_category`. Form posts are rejected with `403` like for every API endpoint. The endpoint requires a signed-in user, and app tokens can't use it.
 
 #### Scenario: Import a JSON export
 - **WHEN** a signed-in user posts a Boardly JSON export with `parts` `favourites,dashboards,notes,media` and the ID of their root folder
@@ -24,7 +24,7 @@ The file SHALL be at most 10 MB, and a larger body fails with `413` and code `fi
 - **THEN** the notes are added with their attachments from the archive
 
 #### Scenario: Unknown version
-- **WHEN** the user posts a document with `format` `"boardly"` and `version` `4`
+- **WHEN** the user posts a document with `format` `"boardly"` and `version` `5`
 - **THEN** the response is `400` with code `invalid_import_file`, and nothing is imported
 
 #### Scenario: Export of the earlier version
@@ -269,7 +269,7 @@ When the format "Boardly export (JSON or ZIP)" / "Boardly-Export (JSON oder ZIP)
 - **THEN** the section shows that the file can have at most 10 MB and the hint to export without files
 
 ### Requirement: Imported feeds
-With `feeds`, every subscribed feed of the file SHALL be added after the user's subscriptions, in the order of the file, with its custom title and icon. A feed the user already subscribes to, by URL, SHALL be skipped and counted as a duplicate, and references to it point to the existing subscription. A feed whose URL isn't an absolute `http` or `https` URL is skipped and counted as invalid. An import SHALL NOT fetch anything: a feed the server doesn't have yet is created from its URL alone, with the title in the file ignored, and is checked and filled by its first refresh, under the fetch rules of the `feeds` capability. Until then, its title is the host of its URL.
+With `feeds`, every subscribed feed of the file SHALL be added after the user's subscriptions, in the order of the file, with its custom title, its icon and whether it is paused. A feed without `paused`, as in exports before version 4, is added as not paused. A feed the user already subscribes to, by URL, SHALL be skipped and counted as a duplicate, its subscription keeps whether it is paused, and references to it point to the existing subscription. A feed whose URL isn't an absolute `http` or `https` URL is skipped and counted as invalid. An import SHALL NOT fetch anything: a feed the server doesn't have yet is created from its URL alone, with the title in the file ignored, and is checked and filled by its first refresh, under the fetch rules of the `feeds` capability. Until then, its title is the host of its URL.
 
 An item of the file with flags or a listen record SHALL set the user's flags and listen record on the stored item of the same feed and identity. A flag the user already has stays as it is, and a listen record the user already has on the item stays as it is. A listen record of the file whose values "Listen API" of the `feeds` capability wouldn't accept, or on an item without audio, is left out, and the item's flags are still restored. An item with neither flags nor a listen record is skipped and counted as skipped. An import SHALL NOT change the content of a stored item that another source already provided. An item the server doesn't have yet SHALL be created visible only to the importing user, until a refresh of the feed returns the same identity and replaces its content, after which it is an ordinary item. An item that exists visible only to another user SHALL be skipped and counted as skipped. An item whose feed isn't in the file is skipped and counted as skipped.
 
@@ -304,3 +304,15 @@ An item of the file with flags or a listen record SHALL set the user's flags and
 #### Scenario: Existing record stays
 - **WHEN** Ann has an episode at 40:00 and imports her older export with the same episode at 10:00
 - **THEN** her record stays at 40:00
+
+#### Scenario: Restore a paused feed
+- **WHEN** a new user imports an export in which "Heise" is subscribed and paused
+- **THEN** they subscribe to "Heise", it is paused, and its items are not in their "Latest" view
+
+#### Scenario: Export before pausing existed
+- **WHEN** a user imports an export with `version` `3`, whose feeds have no `paused`
+- **THEN** the feeds are added and none of them is paused
+
+#### Scenario: Duplicate keeps its state
+- **WHEN** Ann has paused "Heise" and imports an export in which "Heise" is not paused
+- **THEN** "Heise" is counted as a duplicate and stays paused
