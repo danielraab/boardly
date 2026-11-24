@@ -688,7 +688,7 @@ when the server on `BOARDLY_PORT` is healthy and 1 otherwise.
 ### Running with Docker
 
 Released images are published to `ghcr.io/danielraab/boardly` for `linux/amd64` and
-`linux/arm64`, tagged with the version (`1.4.0`, `1.4`, `1`) and `latest`.
+`linux/arm64`, tagged with the version (`1.5.0`, `1.5`, `1`) and `latest`.
 
 The [Dockerfile](Dockerfile) builds the frontend and the server in separate stages and produces a
 small image that contains only the `boardly` binary. To build it yourself, run this from the
@@ -1177,6 +1177,6 @@ web app manifests are `frontend/public/manifest.en.webmanifest` and `manifest.de
 
 ## Status
 
-Version 1.4.0. All features described above are implemented. Changes between versions are listed
+Version 1.5.0. All features described above are implemented. Changes between versions are listed
 in [CHANGELOG.md](CHANGELOG.md), and released images are published to
-`ghcr.io/danielraab/boardly` (tags `latest`, `1`, `1.4` and `1.4.0`).
+`ghcr.io/danielraab/boardly` (tags `latest`, `1`, `1.5` and `1.5.0`).

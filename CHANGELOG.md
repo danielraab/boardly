@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-24
+
 ### Added
 
 - Feeds: pause a feed from its menu in **Manage feeds**, and resume it later. A paused feed keeps
@@ -373,7 +375,8 @@ First release.
 - Container image with a built-in health check command.
 - GitHub workflows for CI, i18n checks and publishing the image to GHCR on version tags.
 
-[Unreleased]: https://github.com/danielraab/boardly/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/danielraab/boardly/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/danielraab/boardly/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/danielraab/boardly/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/danielraab/boardly/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/danielraab/boardly/compare/v1.1.0...v1.2.0
