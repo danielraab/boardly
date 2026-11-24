@@ -35,6 +35,8 @@ export type FeedSubscription = {
 	position: number;
 	lastFetchedAt: string | null;
 	failing: boolean;
+	/** Paused feeds are left out of "Latest"; saved items stay. */
+	paused: boolean;
 };
 
 export type FeedAudio = {
@@ -142,6 +144,7 @@ export function createFeed(url: string) {
 export type FeedPatch = {
 	customTitle?: string | null;
 	icon?: NoteIcon | null;
+	paused?: boolean;
 };
 
 export function updateFeed(id: string, patch: FeedPatch) {

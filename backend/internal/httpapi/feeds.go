@@ -103,6 +103,11 @@ func (a *api) updateFeed(w http.ResponseWriter, r *http.Request) error {
 	} else if ok {
 		p.Icon = &icon
 	}
+	if ok, err := field(body, "paused", &p.Paused, bad); err != nil {
+		return err
+	} else if ok && p.Paused == nil {
+		return bad
+	}
 	if err := unknownFields(body, "invalid_request"); err != nil {
 		return err
 	}

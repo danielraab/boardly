@@ -27,7 +27,9 @@ import {
 import {
 	EllipsisVertical,
 	GripVertical,
+	Pause,
 	Pencil,
+	Play,
 	Plus,
 	Rss,
 	Search,
@@ -92,9 +94,11 @@ export function FeedsPage() {
 	const debounced = useDebounced(search.trim(), searchDelayMs);
 	const feeds = list.data ?? [];
 	const noFeeds = list.data !== undefined && feeds.length === 0;
-	// Clearing applies at once; a removed feed falls back to all feeds.
+	// Clearing applies at once; a removed or paused feed falls back to all
+	// feeds, and paused feeds can't be chosen.
 	const query = search.trim() === "" ? "" : debounced;
-	const filterId = feeds.some((f) => f.id === feedId) ? feedId : "";
+	const filterable = feeds.filter((f) => !f.paused);
+	const filterId = filterable.some((f) => f.id === feedId) ? feedId : "";
 
 	return (
 		<section className={`${widePage} pt-12 pb-16`}>
@@ -179,7 +183,7 @@ export function FeedsPage() {
 					onSearch={setSearch}
 					feedId={filterId}
 					onFeed={setFeedId}
-					feeds={feeds}
+					feeds={filterable}
 				/>
 			)}
 			<Items
@@ -431,6 +435,19 @@ function FeedRow({
 		transition,
 		isDragging,
 	} = useSortable({ id: feed.id });
+	const queryClient = useQueryClient();
+	const pause = useMutation({
+		mutationFn: (paused: boolean) => updateFeed(feed.id, { paused }),
+		onSuccess: (updated) => {
+			queryClient.setQueryData<FeedSubscription[]>(feedsQueryKey, (list) =>
+				list?.map((f) => (f.id === updated.id ? updated : f)),
+			);
+			void queryClient.invalidateQueries({ queryKey: feedsQueryKey });
+			void queryClient.invalidateQueries({ queryKey: feedItemsQueryKey });
+			void queryClient.invalidateQueries({ queryKey: dashboardViewQueryKey });
+		},
+	});
+	const dimmed = feed.paused ? "opacity-50" : "";
 
 	return (
 		<li
@@ -453,7 +470,9 @@ function FeedRow({
 			>
 				<GripVertical className="size-4" aria-hidden />
 			</button>
-			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-paper">
+			<span
+				className={`flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-paper ${dimmed}`}
+			>
 				<ChosenIcon
 					{...iconProps(feedIcon(feed))}
 					fallback={Rss}
@@ -461,8 +480,17 @@ function FeedRow({
 				/>
 			</span>
 			<div className="min-w-0 flex-1">
-				<p className="truncate font-medium">{feed.title}</p>
-				<p className="truncate text-sm text-muted">{hostOf(feed.url)}</p>
+				<p className="flex min-w-0 items-center gap-2">
+					<span className={`truncate font-medium ${dimmed}`}>{feed.title}</span>
+					{feed.paused && (
+						<span className="shrink-0 rounded-full border border-line px-2 text-xs text-muted">
+							{t("feeds.paused")}
+						</span>
+					)}
+				</p>
+				<p className={`truncate text-sm text-muted ${dimmed}`}>
+					{hostOf(feed.url)}
+				</p>
 				{feed.failing && (
 					<p className="truncate text-sm text-danger">{t("feeds.failing")}</p>
 				)}
@@ -480,6 +508,18 @@ function FeedRow({
 							<Menu.Item className={menuItem} onClick={onEdit}>
 								<Pencil className="size-4 text-muted" aria-hidden />
 								{t("feeds.edit")}
+							</Menu.Item>
+							<Menu.Item
+								className={menuItem}
+								onClick={() => pause.mutate(!feed.paused)}
+								disabled={pause.isPending}
+							>
+								{feed.paused ? (
+									<Play className="size-4 text-muted" aria-hidden />
+								) : (
+									<Pause className="size-4 text-muted" aria-hidden />
+								)}
+								{t(feed.paused ? "feeds.resume" : "feeds.pause")}
 							</Menu.Item>
 							<Menu.Item
 								className={`${menuItem} text-danger`}

@@ -381,8 +381,8 @@ func (s *Store) EnsureFeedTx(ctx context.Context, q db.Querier, rawURL string) (
 
 // SubscribeTx subscribes the user to a stored feed for an import. It returns
 // the subscription's ID, also of one the user already had, and whether it
-// was added.
-func (s *Store) SubscribeTx(ctx context.Context, q db.Querier, userID, feedID string, customTitle *string, icon *notes.Icon) (string, bool, error) {
+// was added. A subscription the user already had keeps its paused state.
+func (s *Store) SubscribeTx(ctx context.Context, q db.Querier, userID, feedID string, customTitle *string, icon *notes.Icon, paused bool) (string, bool, error) {
 	symbol, imageID, err := checkIcon(ctx, q, userID, icon)
 	if err != nil {
 		return "", false, err
@@ -395,7 +395,7 @@ func (s *Store) SubscribeTx(ctx context.Context, q db.Querier, userID, feedID st
 			customTitle = &t
 		}
 	}
-	return s.insertSubscription(ctx, q, userID, feedID, customTitle, symbol, imageID, s.Now())
+	return s.insertSubscription(ctx, q, userID, feedID, customTitle, symbol, imageID, paused, s.Now())
 }
 
 // RestoreItemTx applies an item of an import with flags or a listen record.

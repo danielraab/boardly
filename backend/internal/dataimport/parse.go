@@ -67,7 +67,7 @@ func parseDocument(data []byte) (*export.Document, error) {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidFile, err)
 	}
 	// Version 1 is the same document without feeds, version 2 without
-	// listen records.
+	// listen records, version 3 without paused feeds.
 	if head.Format != export.Format || head.Version < 1 || head.Version > export.Version {
 		return nil, fmt.Errorf("%w: format %q version %d", ErrInvalidFile, head.Format, head.Version)
 	}

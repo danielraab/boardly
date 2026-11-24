@@ -682,6 +682,61 @@ func TestImportListenHistory(t *testing.T) {
 	}
 }
 
+func TestImportPausedFeeds(t *testing.T) {
+	f := newFixture(t)
+	sub, err := f.feeds.Subscribe(f.ctx, f.ann, serveEpisodes(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paused := true
+	if _, err := f.feeds.Update(f.ctx, f.ann, sub.ID, feeds.Patch{Paused: &paused}); err != nil {
+		t.Fatal(err)
+	}
+	data := f.exportOf(f.ann, false)
+
+	// A paused feed is restored paused and stays out of "Latest".
+	if report := f.importInto(f.bob, data, Options{Parts: Parts{Feeds: true}}); report.Feeds.Subscriptions != 1 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	list, err := f.feeds.List(f.ctx, f.bob)
+	if err != nil || len(list) != 1 || !list[0].Paused {
+		t.Fatalf("%+v, %v", list, err)
+	}
+	if got := f.feedItems(f.bob, feeds.ViewLatest); len(got) != 0 {
+		t.Fatalf("latest shows a paused feed: %+v", got)
+	}
+
+	// A duplicate keeps its own state: Ann resumed hers before importing.
+	paused = false
+	if _, err := f.feeds.Update(f.ctx, f.ann, sub.ID, feeds.Patch{Paused: &paused}); err != nil {
+		t.Fatal(err)
+	}
+	if report := f.importInto(f.ann, data, Options{Parts: Parts{Feeds: true}}); report.Feeds.Duplicates != 1 {
+		t.Fatalf("%+v", report.Feeds)
+	}
+	if got, _ := f.feeds.Get(f.ctx, f.ann, sub.ID); got.Paused {
+		t.Fatal("importing a paused duplicate paused the feed")
+	}
+
+	// A version 3 document has no "paused", and its feeds aren't paused.
+	cid, err := f.users.EnsureByEmail(f.ctx, f.db, "cid@example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	_ = json.Unmarshal(withVersion(data, 3), &doc)
+	for _, feed := range doc["feeds"].([]any) {
+		delete(feed.(map[string]any), "paused")
+	}
+	old, _ := json.Marshal(doc)
+	if report := f.importInto(cid.ID, old, Options{Parts: Parts{Feeds: true}}); report.Feeds.Subscriptions != 1 {
+		t.Fatalf("version 3: %+v", report.Feeds)
+	}
+	if list, _ := f.feeds.List(f.ctx, cid.ID); len(list) != 1 || list[0].Paused {
+		t.Fatalf("version 3: %+v", list)
+	}
+}
+
 func TestImportInvalidListenRecord(t *testing.T) {
 	f := newFixture(t)
 	feedURL := serveEpisodes(t)

@@ -76,6 +76,8 @@ type Subscription struct {
 	Position      int         `json:"position"`
 	LastFetchedAt *string     `json:"lastFetchedAt"`
 	Failing       bool        `json:"failing"`
+	// Paused leaves the feed's items out of "Latest" for this user.
+	Paused bool `json:"paused"`
 }
 
 // ItemFeed is the feed an item is shown with.
@@ -116,6 +118,7 @@ type Listen struct {
 type Patch struct {
 	CustomTitle **string
 	Icon        **notes.Icon
+	Paused      *bool
 }
 
 // Store keeps feeds, items, subscriptions and flags.
@@ -227,7 +230,7 @@ func (s *Store) Subscribe(ctx context.Context, userID, rawURL string) (Subscript
 		db.FormatTime(now), feedID); err != nil {
 		return Subscription{}, err
 	}
-	id, added, err := s.insertSubscription(ctx, tx, userID, feedID, nil, nil, nil, now)
+	id, added, err := s.insertSubscription(ctx, tx, userID, feedID, nil, nil, nil, false, now)
 	if err != nil {
 		return Subscription{}, err
 	}
@@ -330,15 +333,20 @@ func emptyNil(s string) *string {
 }
 
 // insertSubscription adds a subscription at the end of the user's list. When
-// the user already has one, it returns its ID and false.
-func (s *Store) insertSubscription(ctx context.Context, q db.Querier, userID, feedID string, customTitle, symbol, imageID *string, now time.Time) (string, bool, error) {
+// the user already has one, it returns its ID and false, and leaves it as it
+// is, paused or not.
+func (s *Store) insertSubscription(ctx context.Context, q db.Querier, userID, feedID string, customTitle, symbol, imageID *string, paused bool, now time.Time) (string, bool, error) {
 	id := uuid.NewString()
 	stamp := db.FormatTime(now)
+	var pausedAt *string
+	if paused {
+		pausedAt = &stamp
+	}
 	res, err := q.ExecContext(ctx,
-		`INSERT INTO feed_subscriptions (id, user_id, feed_id, custom_title, icon_symbol, icon_image_id, position, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM feed_subscriptions WHERE user_id = ?), ?, ?)
+		`INSERT INTO feed_subscriptions (id, user_id, feed_id, custom_title, icon_symbol, icon_image_id, position, paused_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM feed_subscriptions WHERE user_id = ?), ?, ?, ?)
 		 ON CONFLICT (user_id, feed_id) DO NOTHING`,
-		id, userID, feedID, customTitle, symbol, imageID, userID, stamp, stamp)
+		id, userID, feedID, customTitle, symbol, imageID, userID, pausedAt, stamp, stamp)
 	if err != nil {
 		return "", false, err
 	}
@@ -352,13 +360,13 @@ func (s *Store) insertSubscription(ctx context.Context, q db.Querier, userID, fe
 }
 
 const subscriptionColumns = `s.id, s.feed_id, f.url, COALESCE(s.custom_title, f.title), s.custom_title, f.site_url,
-	s.icon_symbol, s.icon_image_id, s.position, f.last_fetched_at, f.failures`
+	s.icon_symbol, s.icon_image_id, s.position, f.last_fetched_at, f.failures, s.paused_at IS NOT NULL`
 
 func scanSubscription(row interface{ Scan(...any) error }) (Subscription, error) {
 	var sub Subscription
 	var symbol, imageID *string
 	var failures int
-	if err := row.Scan(&sub.ID, &sub.FeedID, &sub.URL, &sub.Title, &sub.CustomTitle, &sub.SiteURL, &symbol, &imageID, &sub.Position, &sub.LastFetchedAt, &failures); err != nil {
+	if err := row.Scan(&sub.ID, &sub.FeedID, &sub.URL, &sub.Title, &sub.CustomTitle, &sub.SiteURL, &symbol, &imageID, &sub.Position, &sub.LastFetchedAt, &failures, &sub.Paused); err != nil {
 		return Subscription{}, err
 	}
 	sub.Icon = notes.IconOf(symbol, imageID)
@@ -476,10 +484,19 @@ func (s *Store) Update(ctx context.Context, userID, id string, p Patch) (Subscri
 		}
 		sets, args = append(sets, "icon_symbol = ?", "icon_image_id = ?"), append(args, symbol, imageID)
 	}
+	now := db.FormatTime(s.Now())
+	if p.Paused != nil {
+		if *p.Paused {
+			// Pausing again keeps the time it was first paused.
+			sets, args = append(sets, "paused_at = COALESCE(paused_at, ?)"), append(args, now)
+		} else {
+			sets = append(sets, "paused_at = NULL")
+		}
+	}
 	if len(sets) == 0 {
 		return s.Get(ctx, userID, id)
 	}
-	sets, args = append(sets, "updated_at = ?"), append(args, db.FormatTime(s.Now()), id, userID)
+	sets, args = append(sets, "updated_at = ?"), append(args, now, id, userID)
 	if _, err := s.DB.ExecContext(ctx,
 		`UPDATE feed_subscriptions SET `+strings.Join(sets, ", ")+` WHERE id = ? AND user_id = ?`, args...); err != nil {
 		return Subscription{}, err
@@ -546,16 +563,17 @@ func (s *Store) Unsubscribe(ctx context.Context, userID, id string) error {
 	return nil
 }
 
-// HasSubscription tells whether any of ids is a subscription of the user.
-func (s *Store) HasSubscription(ctx context.Context, userID string, ids []string) (bool, error) {
+// ChosenFeeds tells whether any of ids is a subscription of the user, and
+// whether any of those isn't paused.
+func (s *Store) ChosenFeeds(ctx context.Context, userID string, ids []string) (exists, active bool, err error) {
 	args := []any{userID}
 	for _, id := range ids {
 		args = append(args, id)
 	}
-	var exists bool
-	err := s.DB.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM feed_subscriptions WHERE user_id = ? AND id IN (?`+strings.Repeat(", ?", len(ids)-1)+`))`, args...).Scan(&exists)
-	return exists, err
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) > 0, COALESCE(SUM(paused_at IS NULL), 0) > 0 FROM feed_subscriptions
+		 WHERE user_id = ? AND id IN (?`+strings.Repeat(", ?", len(ids)-1)+`)`, args...).Scan(&exists, &active)
+	return exists, active, err
 }
 
 // maxSearchWords bounds the conditions a search adds to the query.
@@ -577,12 +595,12 @@ type ItemQuery struct {
 
 // itemFrom is the FROM clause of a view, which binds the user binds times,
 // and the condition that limits it to the user's flags or listen records,
-// which binds the user once.
+// which binds the user once. "Latest" leaves out the user's paused feeds.
 func itemFrom(view string) (from string, binds int, sortKey, own string, err error) {
 	switch view {
 	case ViewLatest:
 		return `feed_items i
-			JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ?
+			JOIN feed_subscriptions s ON s.feed_id = i.feed_id AND s.user_id = ? AND s.paused_at IS NULL
 			JOIN feeds f ON f.id = i.feed_id
 			LEFT JOIN feed_item_flags fl ON fl.item_id = i.id AND fl.user_id = ?
 			LEFT JOIN feed_item_listens ls ON ls.item_id = i.id AND ls.user_id = ?`, 3, "i.item_time", "", nil

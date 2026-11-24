@@ -993,6 +993,7 @@
 				"publicHint": "Visitors of a public dashboard see the titles and links of these items. Otherwise only you see the widget.",
 				"publicHintAll": "Visitors of a public dashboard see the titles and links of these items, also of feeds you add later. Otherwise only you see the widget.",
 				"missing": "These feeds no longer exist",
+				"paused": "These feeds are paused",
 				"empty": "No items",
 				"emptyLibrary": "You don't have any feeds yet.",
 				"openLibrary": "Add feeds"
@@ -1460,6 +1461,9 @@
 		"emptyView": "Nothing here yet",
 		"loadMore": "Load more",
 		"failing": "Can't be updated right now",
+		"paused": "Paused",
+		"pause": "Pause feed",
+		"resume": "Resume feed",
 		"search": "Search items",
 		"clearSearch": "Clear search",
 		"feedFilter": "Feed",

@@ -318,7 +318,7 @@ func (r reader) feeds(doc *Document) error {
 	doc.Feeds = []Feed{}
 	return r.each(
 		`WITH me (id) AS (SELECT ?)
-		 SELECT COALESCE(s.id, f.id), f.url, f.title, s.custom_title, s.icon_symbol, s.icon_image_id, s.position, s.id IS NOT NULL
+		 SELECT COALESCE(s.id, f.id), f.url, f.title, s.custom_title, s.icon_symbol, s.icon_image_id, s.position, s.id IS NOT NULL, s.paused_at IS NOT NULL
 		 FROM feeds f, me LEFT JOIN feed_subscriptions s ON s.feed_id = f.id AND s.user_id = me.id
 		 WHERE s.id IS NOT NULL OR EXISTS (
 		   SELECT 1 FROM feed_item_flags fl JOIN feed_items i ON i.id = fl.item_id
@@ -329,7 +329,7 @@ func (r reader) feeds(doc *Document) error {
 		func(rows *sql.Rows) error {
 			var f Feed
 			var symbol, imageID *string
-			if err := rows.Scan(&f.ID, &f.URL, &f.Title, &f.CustomTitle, &symbol, &imageID, &f.Position, &f.Subscribed); err != nil {
+			if err := rows.Scan(&f.ID, &f.URL, &f.Title, &f.CustomTitle, &symbol, &imageID, &f.Position, &f.Subscribed, &f.Paused); err != nil {
 				return err
 			}
 			f.Icon = notes.IconOf(symbol, imageID)

@@ -41,7 +41,7 @@ Lets a signed-in user download all of their own data from Boardly in one version
 The export document SHALL be a JSON object with:
 
 - `format`: `"boardly"`,
-- `version`: `3`,
+- `version`: `4`,
 - `exportedAt`: the time of the export,
 - `withFiles`: whether the export contains the files,
 - `profile`: the email address, display name, slug, creation time, the ID of the default folder for new links and the ID of the default category for new notes,
@@ -51,7 +51,7 @@ The export document SHALL be a JSON object with:
 - `noteCategories`: every note category with ID, parent ID, title, icon, colour, and creation and change time,
 - `notes`: every note, archived ones included, with ID, category ID, title, icon, colour, content document as stored, pinned and archived flags, the IDs of its attachments in their order, and creation and change time,
 - `mediaSources`: every media source with ID, kind, title, URL, icon and position,
-- `feeds`: every feed the user subscribes to or has a flagged or listened item in, with `id` (the subscription's ID, or the feed's ID without a subscription), `url`, `title` (the feed's title), `customTitle`, `icon`, `position` and `subscribed`,
+- `feeds`: every feed the user subscribes to or has a flagged or listened item in, with `id` (the subscription's ID, or the feed's ID without a subscription), `url`, `title` (the feed's title), `customTitle`, `icon`, `position`, `subscribed` and `paused` (`false` without a subscription),
 - `feedItems`: every item the user flagged or has a listen record of, with `feedId` (the `id` in `feeds`), `guid` (the item's identity), `title`, `link`, `summary`, `publishedAt`, `audio`, `readLaterAt`, `likedAt` and `listen` (`{ "positionSeconds", "durationSeconds", "startedAt", "updatedAt", "finishedAt" }`, or `null` without a record),
 - `images`: every image the user uploaded or that was fetched as a link preview for them, with ID, source (`upload` or `preview`), content type, size, creation time, and `file`,
 - `attachments`: every attachment of the user that isn't deleted, with ID, file name, content type, size, creation time, and `file`.
@@ -60,7 +60,7 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 
 #### Scenario: Version and format
 - **WHEN** Ann exports her data
-- **THEN** the document has `format` `"boardly"`, `version` `3` and `exportedAt` set to the time of the export
+- **THEN** the document has `format` `"boardly"`, `version` `4` and `exportedAt` set to the time of the export
 
 #### Scenario: Favourites tree with tags
 - **WHEN** Ann's tree has a folder "Dev" with the link `https://go.dev` tagged "go"
@@ -109,6 +109,10 @@ IDs SHALL be the IDs the Boardly API uses for the same items, so that references
 #### Scenario: Flagged item without a record
 - **WHEN** Ann liked an article
 - **THEN** its entry in `feedItems` has `listen` `null`
+
+#### Scenario: Paused feed
+- **WHEN** Ann has paused her subscription of "Heise"
+- **THEN** `feeds` lists "Heise" with `subscribed` `true` and `paused` `true`
 
 ### Requirement: Data left out of the export
 The export SHALL NOT contain passkeys, app tokens (neither their secrets nor their names), sessions, sign-in links or codes, favicons, background jobs, the state of a scheduled account deletion, feed items without a flag or a listen record of the user, the refresh state of feeds, or any data of other users.

@@ -79,6 +79,8 @@ func TestFeedsAPI(t *testing.T) {
 		"nan limit":     {"GET", "/api/feed-items?limit=x", ``, ann, 400, "invalid_request"},
 		"bad cursor":    {"GET", "/api/feed-items?cursor=!", ``, ann, 400, "invalid_request"},
 		"long search":   {"GET", "/api/feed-items?q=" + strings.Repeat("x", 201), ``, ann, 400, "invalid_request"},
+		"bad paused":    {"PATCH", "/api/feeds/" + first.ID, `{"paused":"yes"}`, ann, 400, "invalid_request"},
+		"null paused":   {"PATCH", "/api/feeds/" + first.ID, `{"paused":null}`, ann, 400, "invalid_request"},
 	} {
 		rec := s.req(c.method, c.path, c.body, withCookie(c.cookie))
 		if rec.Code != c.status || !strings.Contains(rec.Body.String(), c.code) {
@@ -144,6 +146,40 @@ func TestFeedsAPI(t *testing.T) {
 	liked = decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?view=liked", "", withCookie(ann)))
 	if len(liked.Items) != 1 || liked.Items[0].Feed.SubscriptionID != nil {
 		t.Fatalf("saved item after removing the feed: %+v", liked)
+	}
+}
+
+func TestFeedPauseAPI(t *testing.T) {
+	s := newServer(t)
+	host := feedHost(t)
+	ann := s.signIn(t, "ann@example.org")
+	sub := s.addFeed(t, ann, host.URL+"/first")
+	if sub.Paused {
+		t.Fatal("a new subscription is paused")
+	}
+	rec := s.req("PATCH", "/api/feeds/"+sub.ID, `{"paused":true}`, withCookie(ann))
+	if rec.Code != 200 || !decodeJSONBody[feeds.Subscription](t, rec).Paused {
+		t.Fatalf("pause: %d %s", rec.Code, rec.Body)
+	}
+	list := decodeJSONBody[[]feeds.Subscription](t, s.req("GET", "/api/feeds", "", withCookie(ann)))
+	if len(list) != 1 || !list[0].Paused {
+		t.Fatalf("%+v", list)
+	}
+	if page := decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?view=latest", "", withCookie(ann))); len(page.Items) != 0 {
+		t.Fatalf("latest shows a paused feed: %+v", page)
+	}
+	if rec := s.req("PATCH", "/api/feeds/"+sub.ID, `{"paused":"yes"}`, withCookie(ann)); rec.Code != 400 {
+		t.Fatalf("bad value: %d", rec.Code)
+	}
+	if got := decodeJSONBody[[]feeds.Subscription](t, s.req("GET", "/api/feeds", "", withCookie(ann))); !got[0].Paused {
+		t.Fatal("a rejected patch changed the subscription")
+	}
+	rec = s.req("PATCH", "/api/feeds/"+sub.ID, `{"paused":false}`, withCookie(ann))
+	if rec.Code != 200 || decodeJSONBody[feeds.Subscription](t, rec).Paused {
+		t.Fatalf("resume: %d %s", rec.Code, rec.Body)
+	}
+	if page := decodeJSONBody[feedPage](t, s.req("GET", "/api/feed-items?view=latest", "", withCookie(ann))); len(page.Items) != 1 {
+		t.Fatalf("latest after resuming: %+v", page)
 	}
 }
 

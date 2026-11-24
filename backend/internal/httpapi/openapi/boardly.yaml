@@ -1120,7 +1120,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [Feeds]
-      summary: Change a subscription's own title or icon
+      summary: Change a subscription's own title or icon, or pause or resume it
       requestBody:
         required: true
         content:
@@ -1130,6 +1130,7 @@ paths:
               properties:
                 customTitle: { type: [string, "null"], maxLength: 200, description: "`null` or empty removes it." }
                 icon: { $ref: "#/components/schemas/Icon" }
+                paused: { type: boolean, description: "Pausing leaves the feed's items out of the latest view; it is still refreshed." }
       responses:
         "200":
           description: The subscription.
@@ -1156,6 +1157,8 @@ paths:
         - name: view
           in: query
           description: |
+            `latest` leaves out the items of paused subscriptions, also when
+            `feedId` names one; the other views keep them.
             `listened`, `in_progress` and `finished` are the listen history:
             every record, unfinished records with a position above 0, and
             finished records, sorted by the record's `updatedAt`.
@@ -2083,7 +2086,7 @@ components:
 
     FeedSubscription:
       type: object
-      required: [id, feedId, url, title, customTitle, siteUrl, icon, faviconId, position, lastFetchedAt, failing]
+      required: [id, feedId, url, title, customTitle, siteUrl, icon, faviconId, position, lastFetchedAt, failing, paused]
       properties:
         id: { type: string }
         feedId: { type: string }
@@ -2096,6 +2099,7 @@ components:
         position: { type: integer }
         lastFetchedAt: { type: [string, "null"], format: date-time }
         failing: { type: boolean, description: "The feed failed at least three times in a row." }
+        paused: { type: boolean, description: "The user paused the feed, so its items are left out of the latest view." }
 
     FeedItem:
       type: object

@@ -808,7 +808,7 @@ func TestImportedFeedIsCheckedBeforeSharing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := e.s.SubscribeTx(ctx, e.db, mallory, id, nil, nil); err != nil {
+	if _, _, err := e.s.SubscribeTx(ctx, e.db, mallory, id, nil, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if srv.hits.Load() != 0 {

@@ -37,6 +37,7 @@ function subscription(
 		position: 0,
 		lastFetchedAt: null,
 		failing: false,
+		paused: false,
 		...fields,
 	};
 }
@@ -439,6 +440,101 @@ describe("the feeds page", () => {
 			);
 		});
 
+		/** A server whose "Latest" leaves out the feeds paused through PATCH. */
+		function pauseSetup() {
+			let feeds = [
+				subscription("s1", "Heise"),
+				subscription("s2", "Podcast Eins", { position: 1 }),
+			];
+			const latest = [item("a", "Heise news"), episode];
+			return setup({
+				more: {
+					"GET /api/feeds": () => ({ body: feeds }),
+					"GET /api/feed-items": ({ url }) => {
+						const feedId = url.searchParams.get("feedId");
+						const view = url.searchParams.get("view") ?? "latest";
+						const paused = feeds.filter((f) => f.paused).map((f) => f.id);
+						return {
+							body: {
+								items:
+									view === "latest"
+										? latest.filter(
+												(it) =>
+													!paused.includes(it.feed.subscriptionId ?? "") &&
+													(!feedId || it.feed.subscriptionId === feedId),
+											)
+										: [],
+								nextCursor: null,
+							},
+						};
+					},
+					"PATCH /api/feeds/s1": ({ body }) => {
+						feeds = feeds.map((f) =>
+							f.id === "s1"
+								? { ...f, paused: (body as { paused: boolean }).paused }
+								: f,
+						);
+						return { body: feeds[0] };
+					},
+				},
+			});
+		}
+
+		it("pauses and resumes a feed from its menu", async () => {
+			const { api, user } = pauseSetup();
+			expect(await screen.findByText("Heise news")).toBeVisible();
+			await user.click(screen.getByRole("button", { name: "Manage feeds" }));
+			await user.click(
+				screen.getByRole("button", { name: "Actions for Heise" }),
+			);
+			await user.click(
+				await screen.findByRole("menuitem", { name: "Pause feed" }),
+			);
+			await waitFor(() =>
+				expect(screen.queryByText("Heise news")).not.toBeInTheDocument(),
+			);
+			expect(api.calls.find((c) => c.method === "PATCH")?.body).toEqual({
+				paused: true,
+			});
+			expect(screen.getByText("Paused")).toBeVisible();
+			expect(screen.getByText("Episode one")).toBeVisible();
+
+			await user.click(
+				screen.getByRole("button", { name: "Actions for Heise" }),
+			);
+			await user.click(
+				await screen.findByRole("menuitem", { name: "Resume feed" }),
+			);
+			expect(await screen.findByText("Heise news")).toBeVisible();
+			expect(screen.queryByText("Paused")).not.toBeInTheDocument();
+		});
+
+		it("leaves paused feeds out of the feed filter", async () => {
+			const { user } = pauseSetup();
+			expect(await screen.findByText("Heise news")).toBeVisible();
+			await user.selectOptions(screen.getByLabelText("Feed"), "Heise");
+			await waitFor(() =>
+				expect(screen.queryByText("Episode one")).not.toBeInTheDocument(),
+			);
+			await user.click(screen.getByRole("button", { name: "Manage feeds" }));
+			await user.click(
+				screen.getByRole("button", { name: "Actions for Heise" }),
+			);
+			await user.click(
+				await screen.findByRole("menuitem", { name: "Pause feed" }),
+			);
+			// The filter falls back to all feeds, and no longer offers Heise.
+			expect(await screen.findByText("Episode one")).toBeVisible();
+			const filter = screen.getByLabelText("Feed");
+			expect(filter).toHaveValue("");
+			expect(
+				within(filter).queryByRole("option", { name: "Heise" }),
+			).not.toBeInTheDocument();
+			expect(
+				within(filter).getByRole("option", { name: "Podcast Eins" }),
+			).toBeInTheDocument();
+		});
+
 		it("reorders with the keyboard", async () => {
 			// jsdom has no layout; give each row a place so dnd-kit can move.
 			vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
@@ -455,8 +551,9 @@ describe("the feeds page", () => {
 					});
 				},
 			);
+			// A paused feed can be reordered like any other.
 			const { api, user } = setup({
-				feeds: two,
+				feeds: [two[0], { ...two[1], paused: true }],
 				more: { "PUT /api/feeds/order": { status: 204 } },
 			});
 			await user.click(
